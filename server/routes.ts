@@ -65,13 +65,20 @@ async function getPlayerTeamStats(userId: string) {
     player: {
       name: user.firstName || 'Wandering Samurai',
       level: user.level,
-      hp: user.hp,
-      maxHp: user.maxHp,
-      attack: user.attack + totalAtkBonus + horseAtkBonus,
-      defense: user.defense + totalDefBonus,
-      speed: user.speed + totalSpdBonus + horseSpdBonus,
+      hp: user.hp + (user.permHpBonus || 0),
+      maxHp: user.maxHp + (user.permHpBonus || 0),
+      attack: user.attack + totalAtkBonus + horseAtkBonus + (user.permAttackBonus || 0),
+      defense: user.defense + totalDefBonus + (user.permDefenseBonus || 0),
+      speed: user.speed + totalSpdBonus + horseSpdBonus + (user.permSpeedBonus || 0),
       equipped: playerEquipped.map(e => ({ name: e.name, type: e.type, level: e.level, rarity: e.rarity })),
       canTransform: allTransforms.length > 0,
+      seppukuCount: user.seppukuCount || 0,
+      permStats: {
+        attack: user.permAttackBonus || 0,
+        defense: user.permDefenseBonus || 0,
+        speed: user.permSpeedBonus || 0,
+        hp: user.permHpBonus || 0,
+      }
     },
     companions: partyCompanions.map(c => {
       const compEquipped = equips.filter(e => e.isEquipped && e.equippedToType === 'companion' && e.equippedToId === c.id);

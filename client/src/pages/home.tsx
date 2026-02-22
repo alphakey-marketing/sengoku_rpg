@@ -116,7 +116,15 @@ export default function Home() {
                 Lord of the Realm
               </div>
               <h2 className="text-4xl font-display font-bold text-white text-shadow-sm mb-2" data-testid="text-player-name">{player.firstName || 'Wandering Samurai'}</h2>
-              <p className="text-accent text-lg font-medium text-shadow">Level {player.level}</p>
+              <div className="flex items-center gap-4">
+                <p className="text-accent text-lg font-medium text-shadow">Level {player.level}</p>
+                {teamStatus?.player.seppukuCount > 0 && (
+                  <Badge variant="outline" className="bg-primary/10 border-primary/30 text-primary">
+                    <RefreshCcw size={12} className="mr-1" />
+                    Incarnation {teamStatus.player.seppukuCount}
+                  </Badge>
+                )}
+              </div>
               <div className="mt-2 w-48">
                 <div className="flex justify-between text-xs text-zinc-400 mb-1">
                   <span>EXP</span>
@@ -136,8 +144,12 @@ export default function Home() {
               <AlertDialogContent className="bg-card border-destructive/50">
                 <AlertDialogHeader>
                   <AlertDialogTitle className="text-destructive font-display">Are you absolutely sure?</AlertDialogTitle>
-                  <AlertDialogDescription className="text-zinc-400">
-                    This will permanently delete all your companions, equipment, pets, and progress. You will start fresh as a Level 1 Samurai.
+                  <AlertDialogDescription className="text-zinc-400 space-y-2">
+                    <p>This will permanently delete all your companions, equipment, pets, and current progress.</p>
+                    <div className="bg-destructive/10 border border-destructive/20 rounded p-3 text-destructive-foreground">
+                      <p className="font-bold text-xs uppercase tracking-wider mb-1">Ancestral Inheritance</p>
+                      <p className="text-sm">You will gain <span className="font-bold">10% of your current stats</span> as a permanent bonus for your next incarnation. These bonuses stack every time you perform Seppuku.</p>
+                    </div>
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>

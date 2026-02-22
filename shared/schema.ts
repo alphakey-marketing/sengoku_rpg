@@ -28,6 +28,11 @@ export const users = pgTable("users", {
   currentLocationId: integer("current_location_id").notNull().default(1),
   activeTransformId: integer("active_transform_id"),
   upgradeStones: integer("upgrade_stones").notNull().default(0),
+  seppukuCount: integer("seppuku_count").notNull().default(0),
+  permAttackBonus: integer("perm_attack_bonus").notNull().default(0),
+  permDefenseBonus: integer("perm_defense_bonus").notNull().default(0),
+  permSpeedBonus: integer("perm_speed_bonus").notNull().default(0),
+  permHpBonus: integer("perm_hp_bonus").notNull().default(0),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
