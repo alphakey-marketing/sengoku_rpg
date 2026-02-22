@@ -60,10 +60,10 @@ export default function Home() {
 
   const statCards = [
     { label: "Level", value: player.level, icon: Trophy, color: "text-purple-400" },
-    { label: "HP", value: `${player.hp}/${player.maxHp}`, icon: Heart, color: "text-red-400", bonus: teamStatus?.player.permStats?.hp },
-    { label: "ATK", value: teamStatus?.player.attack || player.attack, icon: Sword, color: "text-orange-400", bonus: teamStatus?.player.permStats?.attack },
-    { label: "DEF", value: teamStatus?.player.defense || player.defense, icon: Shield, color: "text-blue-400", bonus: teamStatus?.player.permStats?.defense },
-    { label: "SPD", value: teamStatus?.player.speed || player.speed, icon: Zap, color: "text-cyan-400", bonus: teamStatus?.player.permStats?.speed },
+    { label: "HP", value: `${player.hp}/${player.maxHp}`, icon: Heart, color: "text-red-400", bonus: (teamStatus?.player as any)?.permStats?.hp },
+    { label: "ATK", value: teamStatus?.player.attack || player.attack, icon: Sword, color: "text-orange-400", bonus: (teamStatus?.player as any)?.permStats?.attack },
+    { label: "DEF", value: teamStatus?.player.defense || player.defense, icon: Shield, color: "text-blue-400", bonus: (teamStatus?.player as any)?.permStats?.defense },
+    { label: "SPD", value: teamStatus?.player.speed || player.speed, icon: Zap, color: "text-cyan-400", bonus: (teamStatus?.player as any)?.permStats?.speed },
     { label: "Gold", value: player.gold.toLocaleString(), icon: Coins, color: "text-yellow-400" },
     { label: "Rice", value: player.rice.toLocaleString(), icon: Wheat, color: "text-green-400" },
   ];
@@ -118,10 +118,10 @@ export default function Home() {
               <h2 className="text-4xl font-display font-bold text-white text-shadow-sm mb-2" data-testid="text-player-name">{player.firstName || 'Wandering Samurai'}</h2>
               <div className="flex items-center gap-4">
                 <p className="text-accent text-lg font-medium text-shadow">Level {player.level}</p>
-                {teamStatus?.player.seppukuCount > 0 && (
+                {teamStatus?.player && (teamStatus.player as any).seppukuCount > 0 && (
                   <Badge variant="outline" className="bg-primary/10 border-primary/30 text-primary">
                     <RefreshCcw size={12} className="mr-1" />
-                    Incarnation {teamStatus.player.seppukuCount}
+                    Incarnation {(teamStatus.player as any).seppukuCount}
                   </Badge>
                 )}
               </div>

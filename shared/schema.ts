@@ -170,6 +170,8 @@ export const insertPetSchema = createInsertSchema(pets).omit({ id: true, created
 export const insertHorseSchema = createInsertSchema(horses).omit({ id: true, createdAt: true });
 export const insertTransformationSchema = createInsertSchema(transformations).omit({ id: true, createdAt: true });
 
+export type User = typeof users.$inferSelect;
+export type UpsertUser = typeof users.$inferInsert;
 export type Companion = typeof companions.$inferSelect;
 export type Equipment = typeof equipment.$inferSelect;
 export type Pet = typeof pets.$inferSelect;
