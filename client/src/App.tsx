@@ -3,13 +3,25 @@ import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
+
 import NotFound from "@/pages/not-found";
+import LandingPage from "@/pages/landing";
+import Home from "@/pages/home";
+import Party from "@/pages/party";
+import EquipmentPage from "@/pages/equipment";
+import GachaPage from "@/pages/gacha";
+import MapPage from "@/pages/map";
 
 function Router() {
   return (
     <Switch>
-      {/* Add pages below */}
-      {/* <Route path="/" component={Home}/> */}
+      <Route path="/landing" component={LandingPage} />
+      <Route path="/" component={Home} />
+      <Route path="/party" component={Party} />
+      <Route path="/equipment" component={EquipmentPage} />
+      <Route path="/gacha" component={GachaPage} />
+      <Route path="/map" component={MapPage} />
+      
       {/* Fallback to 404 */}
       <Route component={NotFound} />
     </Switch>
