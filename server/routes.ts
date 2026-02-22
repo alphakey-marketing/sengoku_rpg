@@ -407,12 +407,14 @@ export async function registerRoutes(
       teamStats.companions.forEach(c => {
         if ((c as any).skillType === 'passive') {
           if ((c as any).skillEffect === 'atk_buff') {
-            playerAtkMult += (c as any).skillValue / 100;
-            logs.push(`${c.name} activates ${(c as any).skill}: Party Attack Up!`);
+            const bonus = (c as any).skillValue;
+            playerAtkMult += bonus / 100;
+            logs.push(`[Skill] ${c.name} activates ${c.skill}: Party Attack +${bonus}%`);
           }
           if ((c as any).skillEffect === 'def_buff') {
-            playerDefMult += (c as any).skillValue / 100;
-            logs.push(`${c.name} activates ${(c as any).skill}: Party Defense Up!`);
+            const bonus = (c as any).skillValue;
+            playerDefMult += bonus / 100;
+            logs.push(`[Skill] ${c.name} activates ${c.skill}: Party Defense +${bonus}%`);
           }
         }
       });
@@ -421,16 +423,35 @@ export async function registerRoutes(
       teamStats.companions.forEach(c => {
         if ((c as any).skillType === 'active' && Math.random() > 0.7) {
           if ((c as any).skillEffect === 'spd_debuff') {
-            enemySpdMult -= (c as any).skillValue / 100;
-            logs.push(`${c.name} uses ${(c as any).skill}: Enemy slowed!`);
+            const debuff = (c as any).skillValue;
+            enemySpdMult -= debuff / 100;
+            logs.push(`[Skill] ${c.name} uses ${c.skill}: Enemy Speed -${debuff}%`);
           }
         }
       });
     }
 
-    const playerPower = (teamStats?.player.attack || user.attack) * playerAtkMult + (teamStats?.player.speed || user.speed) * playerSpdMult;
-    const enemyPower = enemy.attack * enemyAtkMult + enemy.speed * enemySpdMult;
-    const victory = playerPower + Math.random() * 30 > enemyPower;
+    const basePlayerAtk = (teamStats?.player.attack || user.attack);
+    const basePlayerSpd = (teamStats?.player.speed || user.speed);
+    const finalPlayerAtk = Math.floor(basePlayerAtk * playerAtkMult);
+    const finalPlayerSpd = Math.floor(basePlayerSpd * playerSpdMult);
+    
+    const baseEnemyAtk = enemy.attack;
+    const baseEnemySpd = enemy.speed;
+    const finalEnemyAtk = Math.floor(baseEnemyAtk * enemyAtkMult);
+    const finalEnemySpd = Math.floor(baseEnemySpd * enemySpdMult);
+
+    logs.push(`[Combat] Player Power: ${finalPlayerAtk + finalPlayerSpd} (Atk: ${finalPlayerAtk}, Spd: ${finalPlayerSpd})`);
+    logs.push(`[Combat] Enemy Power: ${finalEnemyAtk + finalEnemySpd} (Atk: ${finalEnemyAtk}, Spd: ${finalEnemySpd})`);
+
+    const playerPower = finalPlayerAtk + finalPlayerSpd;
+    const enemyPower = finalEnemyAtk + finalEnemySpd;
+    
+    logs.push(`[Combat] Total Calculation: Player ${playerPower} vs Enemy ${enemyPower}`);
+    const roll = Math.floor(Math.random() * 30);
+    logs.push(`[Combat] Fortune Roll: +${roll}`);
+    
+    const victory = playerPower + roll > enemyPower;
     if (teamStats && teamStats.player.speed > enemy.speed) logs.push(`Your speed strikes first!`);
 
     const expGained = victory ? Math.floor(Math.random() * 20) + 10 + enemy.level * 2 : 0;
