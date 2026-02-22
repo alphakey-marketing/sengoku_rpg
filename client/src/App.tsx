@@ -11,6 +11,7 @@ import Party from "@/pages/party";
 import EquipmentPage from "@/pages/equipment";
 import GachaPage from "@/pages/gacha";
 import MapPage from "@/pages/map";
+import StablePage from "@/pages/stable";
 
 function Router() {
   return (
@@ -21,8 +22,7 @@ function Router() {
       <Route path="/equipment" component={EquipmentPage} />
       <Route path="/gacha" component={GachaPage} />
       <Route path="/map" component={MapPage} />
-      
-      {/* Fallback to 404 */}
+      <Route path="/stable" component={StablePage} />
       <Route component={NotFound} />
     </Switch>
   );

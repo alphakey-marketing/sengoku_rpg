@@ -30,7 +30,7 @@ export default function GachaPage() {
     }, 1500);
   };
 
-  const cost = 100;
+  const cost = 10;
   const canAfford = (player?.rice || 0) >= cost;
 
   return (

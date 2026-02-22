@@ -1,20 +1,36 @@
-import { users, companions, equipment, type User, type UpsertUser, type InsertCompanion, type InsertEquipment, type Companion, type Equipment } from "@shared/schema";
+import {
+  users, companions, equipment, pets, horses, transformations,
+  type User, type UpsertUser, type InsertCompanion, type InsertEquipment,
+  type Companion, type Equipment, type Pet, type Horse, type Transformation,
+  type InsertPet, type InsertHorse, type InsertTransformation
+} from "@shared/schema";
 import { db } from "./db";
-import { eq } from "drizzle-orm";
-import { IAuthStorage } from "./replit_integrations/auth";
+import { eq, and } from "drizzle-orm";
 
-export interface IStorage extends IAuthStorage {
+export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   upsertUser(user: UpsertUser): Promise<User>;
   updateUser(id: string, updates: Partial<User>): Promise<User>;
-  
+
   getCompanions(userId: string): Promise<Companion[]>;
   createCompanion(companion: InsertCompanion): Promise<Companion>;
   updateCompanion(id: number, updates: Partial<Companion>): Promise<Companion>;
-  
+
   getEquipment(userId: string): Promise<Equipment[]>;
   createEquipment(equip: InsertEquipment): Promise<Equipment>;
   updateEquipment(id: number, updates: Partial<Equipment>): Promise<Equipment>;
+
+  getPets(userId: string): Promise<Pet[]>;
+  createPet(pet: InsertPet): Promise<Pet>;
+  updatePet(id: number, updates: Partial<Pet>): Promise<Pet>;
+
+  getHorses(userId: string): Promise<Horse[]>;
+  createHorse(horse: InsertHorse): Promise<Horse>;
+  updateHorse(id: number, updates: Partial<Horse>): Promise<Horse>;
+
+  getTransformations(userId: string): Promise<Transformation[]>;
+  createTransformation(t: InsertTransformation): Promise<Transformation>;
+  updateTransformation(id: number, updates: Partial<Transformation>): Promise<Transformation>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -29,10 +45,7 @@ export class DatabaseStorage implements IStorage {
       .values(userData)
       .onConflictDoUpdate({
         target: users.id,
-        set: {
-          ...userData,
-          updatedAt: new Date(),
-        },
+        set: { ...userData, updatedAt: new Date() },
       })
       .returning();
     return user;
@@ -73,6 +86,48 @@ export class DatabaseStorage implements IStorage {
   async updateEquipment(id: number, updates: Partial<Equipment>): Promise<Equipment> {
     const [eqp] = await db.update(equipment).set(updates).where(eq(equipment.id, id)).returning();
     return eqp;
+  }
+
+  async getPets(userId: string): Promise<Pet[]> {
+    return await db.select().from(pets).where(eq(pets.userId, userId));
+  }
+
+  async createPet(pet: InsertPet): Promise<Pet> {
+    const [p] = await db.insert(pets).values(pet).returning();
+    return p;
+  }
+
+  async updatePet(id: number, updates: Partial<Pet>): Promise<Pet> {
+    const [p] = await db.update(pets).set(updates).where(eq(pets.id, id)).returning();
+    return p;
+  }
+
+  async getHorses(userId: string): Promise<Horse[]> {
+    return await db.select().from(horses).where(eq(horses.userId, userId));
+  }
+
+  async createHorse(horse: InsertHorse): Promise<Horse> {
+    const [h] = await db.insert(horses).values(horse).returning();
+    return h;
+  }
+
+  async updateHorse(id: number, updates: Partial<Horse>): Promise<Horse> {
+    const [h] = await db.update(horses).set(updates).where(eq(horses.id, id)).returning();
+    return h;
+  }
+
+  async getTransformations(userId: string): Promise<Transformation[]> {
+    return await db.select().from(transformations).where(eq(transformations.userId, userId));
+  }
+
+  async createTransformation(t: InsertTransformation): Promise<Transformation> {
+    const [tr] = await db.insert(transformations).values(t).returning();
+    return tr;
+  }
+
+  async updateTransformation(id: number, updates: Partial<Transformation>): Promise<Transformation> {
+    const [tr] = await db.update(transformations).set(updates).where(eq(transformations.id, id)).returning();
+    return tr;
   }
 }
 

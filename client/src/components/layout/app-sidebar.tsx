@@ -1,12 +1,13 @@
 import { Link, useLocation } from "wouter";
-import { 
-  Home, 
-  Users, 
-  Sword, 
-  Sparkles, 
-  Map, 
+import {
+  Home,
+  Users,
+  Sword,
+  Sparkles,
+  Map,
   LogOut,
-  Tent
+  Tent,
+  Zap,
 } from "lucide-react";
 import {
   Sidebar,
@@ -26,6 +27,7 @@ const navItems = [
   { title: "Dojo (Home)", url: "/", icon: Home },
   { title: "War Council (Party)", url: "/party", icon: Users },
   { title: "Armory (Equipment)", url: "/equipment", icon: Sword },
+  { title: "Stable & Spirits", url: "/stable", icon: Zap },
   { title: "Shrine (Gacha)", url: "/gacha", icon: Sparkles },
   { title: "Campaign (Map)", url: "/map", icon: Map },
 ];
@@ -47,7 +49,7 @@ export function AppSidebar() {
           </div>
         </div>
       </SidebarHeader>
-      
+
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupLabel className="text-xs font-bold tracking-widest text-accent/70 uppercase mt-4 mb-2 px-4">
@@ -59,13 +61,13 @@ export function AppSidebar() {
                 const isActive = location === item.url;
                 return (
                   <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton 
-                      asChild 
+                    <SidebarMenuButton
+                      asChild
                       isActive={isActive}
                       className={`
                         my-1 mx-2 rounded-md transition-all duration-300
-                        ${isActive 
-                          ? 'bg-primary/20 text-accent border border-primary/30 shadow-[inset_4px_0_0_rgba(220,38,38,0.8)]' 
+                        ${isActive
+                          ? 'bg-primary/20 text-accent border border-primary/30 shadow-[inset_4px_0_0_rgba(220,38,38,0.8)]'
                           : 'text-muted-foreground hover:bg-white/5 hover:text-foreground'
                         }
                       `}
@@ -90,10 +92,11 @@ export function AppSidebar() {
               <span className="text-sm font-bold text-foreground">{user.firstName || 'Daimyo'}</span>
               <span className="text-xs text-muted-foreground">{user.email || 'guest@sengoku.jp'}</span>
             </div>
-            <button 
+            <button
               onClick={() => logout()}
               className="p-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md transition-colors"
               title="Logout"
+              data-testid="button-logout"
             >
               <LogOut size={18} />
             </button>

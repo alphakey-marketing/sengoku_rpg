@@ -1,17 +1,21 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, buildUrl } from "@shared/routes";
 
-// Types derived from schema context
 export interface PlayerData {
   id: string;
-  username: string;
+  firstName: string | null;
+  lastName: string | null;
   level: number;
   experience: number;
   gold: number;
   rice: number;
+  hp: number;
+  maxHp: number;
   attack: number;
   defense: number;
+  speed: number;
   currentLocationId: number;
+  activeTransformId: number | null;
 }
 
 export interface Companion {
@@ -21,8 +25,11 @@ export interface Companion {
   type: string;
   rarity: number;
   level: number;
+  hp: number;
+  maxHp: number;
   attack: number;
   defense: number;
+  speed: number;
   skill: string | null;
   isInParty: boolean;
 }
@@ -34,33 +41,132 @@ export interface Equipment {
   type: string;
   rarity: string;
   level: number;
+  experience: number;
+  expToNext: number;
   attackBonus: number;
   defenseBonus: number;
+  speedBonus: number;
   isEquipped: boolean;
   equippedToId: number | null;
+  equippedToType: string | null;
+}
+
+export interface Pet {
+  id: number;
+  userId: string;
+  name: string;
+  type: string;
+  rarity: number;
+  level: number;
+  hp: number;
+  maxHp: number;
+  attack: number;
+  defense: number;
+  speed: number;
+  skill: string | null;
+  isActive: boolean;
+}
+
+export interface Horse {
+  id: number;
+  userId: string;
+  name: string;
+  rarity: number;
+  level: number;
+  speedBonus: number;
+  attackBonus: number;
+  skill: string | null;
+  isActive: boolean;
+}
+
+export interface Transformation {
+  id: number;
+  userId: string;
+  name: string;
+  level: number;
+  experience: number;
+  expToNext: number;
+  attackPercent: number;
+  defensePercent: number;
+  speedPercent: number;
+  hpPercent: number;
+  skill: string;
+  cooldownSeconds: number;
+  durationSeconds: number;
+}
+
+export interface TeamMemberStats {
+  name: string;
+  level: number;
+  hp: number;
+  maxHp: number;
+  attack: number;
+  defense: number;
+  speed: number;
+  skill?: string | null;
+  equipped?: { name: string; type: string; level: number; rarity: string }[];
+  canTransform?: boolean;
+}
+
+export interface TeamStats {
+  player: TeamMemberStats;
+  companions: TeamMemberStats[];
+  pet: { name: string; level: number; hp: number; maxHp: number; attack: number; defense: number; speed: number; skill: string | null } | null;
+  horse: { name: string; level: number; speedBonus: number; attackBonus: number; skill: string | null } | null;
+}
+
+export interface EnemyStats {
+  name: string;
+  level: number;
+  hp: number;
+  maxHp: number;
+  attack: number;
+  defense: number;
+  speed: number;
+  skills: string[];
 }
 
 export interface BattleResult {
   victory: boolean;
   experienceGained: number;
   goldGained: number;
+  riceGained?: number;
   equipmentDropped?: Equipment[];
+  petDropped?: Pet;
+  horseDropped?: Horse;
+  transformationDropped?: Transformation;
+  equipmentExpGained?: number;
   logs: string[];
+  playerTeam?: TeamStats;
+  enemyTeam?: { enemies: EnemyStats[] };
 }
 
 export interface GachaResult {
   companion: Companion;
 }
 
-// ----------------- HOOKS -----------------
+function fetchWithAuth(url: string, options?: RequestInit) {
+  return fetch(url, { credentials: "include", ...options });
+}
 
 export function usePlayer() {
   return useQuery<PlayerData>({
     queryKey: [api.player.get.path],
     queryFn: async () => {
-      const res = await fetch(api.player.get.path, { credentials: "include" });
+      const res = await fetchWithAuth(api.player.get.path);
       if (res.status === 401) throw new Error("Unauthorized");
       if (!res.ok) throw new Error("Failed to fetch player data");
+      return res.json();
+    },
+  });
+}
+
+export function usePlayerFullStatus() {
+  return useQuery<TeamStats>({
+    queryKey: [api.player.fullStatus.path],
+    queryFn: async () => {
+      const res = await fetchWithAuth(api.player.fullStatus.path);
+      if (!res.ok) throw new Error("Failed to fetch status");
       return res.json();
     },
   });
@@ -70,7 +176,7 @@ export function useCompanions() {
   return useQuery<Companion[]>({
     queryKey: [api.companions.list.path],
     queryFn: async () => {
-      const res = await fetch(api.companions.list.path, { credentials: "include" });
+      const res = await fetchWithAuth(api.companions.list.path);
       if (!res.ok) throw new Error("Failed to fetch companions");
       return res.json();
     },
@@ -81,17 +187,17 @@ export function useSetParty() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (companionIds: number[]) => {
-      const res = await fetch(api.companions.setParty.path, {
-        method: api.companions.setParty.method,
+      const res = await fetchWithAuth(api.companions.setParty.path, {
+        method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ companionIds }),
-        credentials: "include",
       });
       if (!res.ok) throw new Error("Failed to set party");
       return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [api.companions.list.path] });
+      queryClient.invalidateQueries({ queryKey: [api.player.fullStatus.path] });
     },
   });
 }
@@ -100,7 +206,7 @@ export function useEquipment() {
   return useQuery<Equipment[]>({
     queryKey: [api.equipment.list.path],
     queryFn: async () => {
-      const res = await fetch(api.equipment.list.path, { credentials: "include" });
+      const res = await fetchWithAuth(api.equipment.list.path);
       if (!res.ok) throw new Error("Failed to fetch equipment");
       return res.json();
     },
@@ -110,20 +216,101 @@ export function useEquipment() {
 export function useEquip() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ equipmentId, equippedToId }: { equipmentId: number, equippedToId: number | null }) => {
+    mutationFn: async ({ equipmentId, equippedToId, equippedToType }: { equipmentId: number; equippedToId: number | null; equippedToType: string }) => {
       const url = buildUrl(api.equipment.equip.path, { id: equipmentId });
-      const res = await fetch(url, {
-        method: api.equipment.equip.method,
+      const res = await fetchWithAuth(url, {
+        method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ equippedToId }),
-        credentials: "include",
+        body: JSON.stringify({ equippedToId, equippedToType }),
       });
       if (!res.ok) throw new Error("Failed to equip item");
       return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [api.equipment.list.path] });
-      queryClient.invalidateQueries({ queryKey: [api.player.get.path] }); // Stats might change
+      queryClient.invalidateQueries({ queryKey: [api.player.get.path] });
+      queryClient.invalidateQueries({ queryKey: [api.player.fullStatus.path] });
+    },
+  });
+}
+
+export function useUnequip() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (equipmentId: number) => {
+      const url = buildUrl(api.equipment.unequip.path, { id: equipmentId });
+      const res = await fetchWithAuth(url, { method: "POST" });
+      if (!res.ok) throw new Error("Failed to unequip");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [api.equipment.list.path] });
+      queryClient.invalidateQueries({ queryKey: [api.player.fullStatus.path] });
+    },
+  });
+}
+
+export function usePets() {
+  return useQuery<Pet[]>({
+    queryKey: [api.pets.list.path],
+    queryFn: async () => {
+      const res = await fetchWithAuth(api.pets.list.path);
+      if (!res.ok) throw new Error("Failed to fetch pets");
+      return res.json();
+    },
+  });
+}
+
+export function useSetActivePet() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (petId: number) => {
+      const url = buildUrl(api.pets.setActive.path, { id: petId });
+      const res = await fetchWithAuth(url, { method: "POST" });
+      if (!res.ok) throw new Error("Failed to set active pet");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [api.pets.list.path] });
+      queryClient.invalidateQueries({ queryKey: [api.player.fullStatus.path] });
+    },
+  });
+}
+
+export function useHorses() {
+  return useQuery<Horse[]>({
+    queryKey: [api.horses.list.path],
+    queryFn: async () => {
+      const res = await fetchWithAuth(api.horses.list.path);
+      if (!res.ok) throw new Error("Failed to fetch horses");
+      return res.json();
+    },
+  });
+}
+
+export function useSetActiveHorse() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (horseId: number) => {
+      const url = buildUrl(api.horses.setActive.path, { id: horseId });
+      const res = await fetchWithAuth(url, { method: "POST" });
+      if (!res.ok) throw new Error("Failed to set active horse");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [api.horses.list.path] });
+      queryClient.invalidateQueries({ queryKey: [api.player.fullStatus.path] });
+    },
+  });
+}
+
+export function useTransformations() {
+  return useQuery<Transformation[]>({
+    queryKey: [api.transformations.list.path],
+    queryFn: async () => {
+      const res = await fetchWithAuth(api.transformations.list.path);
+      if (!res.ok) throw new Error("Failed to fetch transformations");
+      return res.json();
     },
   });
 }
@@ -132,11 +319,10 @@ export function useFieldBattle() {
   const queryClient = useQueryClient();
   return useMutation<BattleResult, Error, number>({
     mutationFn: async (locationId: number) => {
-      const res = await fetch(api.battle.field.path, {
-        method: api.battle.field.method,
+      const res = await fetchWithAuth(api.battle.field.path, {
+        method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ locationId }),
-        credentials: "include",
       });
       if (!res.ok) throw new Error("Battle failed");
       return res.json();
@@ -144,6 +330,9 @@ export function useFieldBattle() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [api.player.get.path] });
       queryClient.invalidateQueries({ queryKey: [api.equipment.list.path] });
+      queryClient.invalidateQueries({ queryKey: [api.pets.list.path] });
+      queryClient.invalidateQueries({ queryKey: [api.horses.list.path] });
+      queryClient.invalidateQueries({ queryKey: [api.player.fullStatus.path] });
     },
   });
 }
@@ -152,11 +341,10 @@ export function useBossBattle() {
   const queryClient = useQueryClient();
   return useMutation<BattleResult, Error, number>({
     mutationFn: async (locationId: number) => {
-      const res = await fetch(api.battle.boss.path, {
-        method: api.battle.boss.method,
+      const res = await fetchWithAuth(api.battle.boss.path, {
+        method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ locationId }),
-        credentials: "include",
       });
       if (!res.ok) throw new Error("Boss battle failed");
       return res.json();
@@ -164,6 +352,28 @@ export function useBossBattle() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [api.player.get.path] });
       queryClient.invalidateQueries({ queryKey: [api.equipment.list.path] });
+      queryClient.invalidateQueries({ queryKey: [api.player.fullStatus.path] });
+    },
+  });
+}
+
+export function useSpecialBossBattle() {
+  const queryClient = useQueryClient();
+  return useMutation<BattleResult, Error, number>({
+    mutationFn: async (locationId: number) => {
+      const res = await fetchWithAuth(api.battle.specialBoss.path, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ locationId }),
+      });
+      if (!res.ok) throw new Error("Special boss battle failed");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [api.player.get.path] });
+      queryClient.invalidateQueries({ queryKey: [api.equipment.list.path] });
+      queryClient.invalidateQueries({ queryKey: [api.transformations.list.path] });
+      queryClient.invalidateQueries({ queryKey: [api.player.fullStatus.path] });
     },
   });
 }
@@ -172,10 +382,7 @@ export function useGachaPull() {
   const queryClient = useQueryClient();
   return useMutation<GachaResult, Error, void>({
     mutationFn: async () => {
-      const res = await fetch(api.gacha.pull.path, {
-        method: api.gacha.pull.method,
-        credentials: "include",
-      });
+      const res = await fetchWithAuth(api.gacha.pull.path, { method: "POST" });
       if (!res.ok) throw new Error("Gacha pull failed. Not enough rice?");
       return res.json();
     },
