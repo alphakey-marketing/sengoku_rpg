@@ -48,6 +48,9 @@ export const companions = pgTable("companions", {
   defense: integer("defense").notNull(),
   speed: integer("speed").notNull().default(10),
   skill: text("skill"),
+  skillType: text("skill_type").notNull().default('active'),
+  skillEffect: text("skill_effect"),
+  skillValue: integer("skill_value").notNull().default(0),
   isInParty: boolean("is_in_party").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow(),
 });
@@ -83,6 +86,8 @@ export const pets = pgTable("pets", {
   defense: integer("defense").notNull().default(5),
   speed: integer("speed").notNull().default(15),
   skill: text("skill"),
+  skillType: text("skill_type").notNull().default('active'),
+  skillValue: integer("skill_value").notNull().default(0),
   isActive: boolean("is_active").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow(),
 });

@@ -390,12 +390,37 @@ export async function registerRoutes(
 
     const teamStats = await getPlayerTeamStats(userId);
     const enemy = generateEnemyStats('field', user.level);
-    const playerPower = (teamStats?.player.attack || user.attack) + (teamStats?.player.speed || user.speed);
-    const enemyPower = enemy.attack + enemy.speed;
-    const victory = playerPower + Math.random() * 30 > enemyPower;
+    
+    // Skill Impacts
+    let playerAtkMult = 1.0;
+    let playerDefMult = 1.0;
+    let playerSpdMult = 1.0;
+    let enemyAtkMult = 1.0;
+    let enemyDefMult = 1.0;
+    let enemySpdMult = 1.0;
 
     const logs: string[] = [];
     logs.push(`A wild ${enemy.name} (Lv${enemy.level}) appeared!`);
+
+    if (teamStats) {
+      // Passive skills from companions
+      teamStats.companions.forEach(c => {
+        if ((c as any).skillType === 'passive') {
+          if ((c as any).skillEffect === 'atk_buff') {
+            playerAtkMult += (c as any).skillValue / 100;
+            logs.push(`${c.name} activates ${(c as any).skill}: Party Attack Up!`);
+          }
+          if ((c as any).skillEffect === 'def_buff') {
+            playerDefMult += (c as any).skillValue / 100;
+            logs.push(`${c.name} activates ${(c as any).skill}: Party Defense Up!`);
+          }
+        }
+      });
+    }
+
+    const playerPower = (teamStats?.player.attack || user.attack) * playerAtkMult + (teamStats?.player.speed || user.speed) * playerSpdMult;
+    const enemyPower = enemy.attack * enemyAtkMult + enemy.speed * enemySpdMult;
+    const victory = playerPower + Math.random() * 30 > enemyPower;
     if (teamStats && teamStats.player.speed > enemy.speed) logs.push(`Your speed strikes first!`);
 
     const expGained = victory ? Math.floor(Math.random() * 20) + 10 + enemy.level * 2 : 0;
@@ -542,9 +567,17 @@ export async function registerRoutes(
     if (!user) return res.status(401).json({ message: "Unauthorized" });
     if (user.rice < 10) return res.status(400).json({ message: "Not enough rice" });
     await storage.updateUser(userId, { rice: user.rice - 10 });
+    
+    const pool = [
+      { name: "Oda Nobunaga", skill: "Innovative Fire", skillType: "passive", skillEffect: "atk_buff", skillValue: 20 },
+      { name: "Toyotomi Hideyoshi", skill: "Monkey's Scheme", skillType: "active", skillEffect: "spd_debuff", skillValue: 25 },
+      { name: "Tokugawa Ieyasu", skill: "Turtle Shield", skillType: "passive", skillEffect: "def_buff", skillValue: 15 },
+    ];
+    const rolled = pick(pool);
+
     const companion = await storage.createCompanion({
       userId,
-      name: pick(["Oda Nobunaga", "Kunoichi", "Ronin"]),
+      name: rolled.name,
       type: 'historical',
       rarity: 5,
       level: 1,
@@ -553,7 +586,10 @@ export async function registerRoutes(
       attack: 20,
       defense: 20,
       speed: 15,
-      skill: "Slash",
+      skill: rolled.skill,
+      skillType: rolled.skillType,
+      skillEffect: rolled.skillEffect,
+      skillValue: rolled.skillValue,
       isInParty: false,
     });
     res.json({ companion });

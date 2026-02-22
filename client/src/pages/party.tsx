@@ -137,9 +137,18 @@ export default function Party() {
                   )}
 
                   {comp.skill && (
-                    <div className="mt-3 p-2 bg-background/50 rounded text-xs text-zinc-400 border border-border/30">
-                      <span className="text-accent mr-2">Skill:</span>
-                      {comp.skill}
+                    <div className="mt-3 p-2 bg-background/50 rounded border border-border/30">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Sparkles size={14} className="text-accent" />
+                        <span className="text-xs font-bold text-accent uppercase tracking-wider">{comp.skill}</span>
+                        <span className="text-[10px] px-1.5 py-0.5 bg-background rounded border border-border/50 uppercase">{(comp as any).skillType}</span>
+                      </div>
+                      <p className="text-[11px] text-zinc-400 leading-tight">
+                        {(comp as any).skillEffect === 'atk_buff' && `Increases party attack by ${(comp as any).skillValue}%`}
+                        {(comp as any).skillEffect === 'def_buff' && `Increases party defense by ${(comp as any).skillValue}%`}
+                        {(comp as any).skillEffect === 'spd_debuff' && `Reduces enemy speed by ${(comp as any).skillValue}%`}
+                        {!(comp as any).skillEffect && "Active combat technique."}
+                      </p>
                     </div>
                   )}
                 </motion.div>
