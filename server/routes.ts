@@ -665,5 +665,11 @@ export async function registerRoutes(
     res.json({ equipment });
   });
 
+  app.post(api.restart.path, isAuthenticated, async (req: any, res) => {
+    const userId = req.user.claims.sub;
+    await (storage as any).restartGame(userId);
+    res.json({ success: true });
+  });
+
   return httpServer;
 }

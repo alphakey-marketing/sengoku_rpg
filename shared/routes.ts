@@ -154,6 +154,11 @@ export const api = {
       input: z.object({ eventKey: z.string(), choice: z.string().optional() }),
       responses: { 200: z.any(), 400: errorSchemas.validation, 401: errorSchemas.unauthorized },
     }
+  },
+  restart: {
+    method: 'POST' as const,
+    path: '/api/restart' as const,
+    responses: { 200: z.object({ success: z.boolean() }), 401: errorSchemas.unauthorized },
   }
 };
 

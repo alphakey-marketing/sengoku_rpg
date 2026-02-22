@@ -146,6 +146,32 @@ export class DatabaseStorage implements IStorage {
     const [event] = await db.insert(campaignEvents).values(insertEvent).returning();
     return event;
   }
+
+  async restartGame(userId: string): Promise<void> {
+    await db.transaction(async (tx) => {
+      await tx.delete(companions).where(eq(companions.userId, userId));
+      await tx.delete(equipment).where(eq(equipment.userId, userId));
+      await tx.delete(pets).where(eq(pets.userId, userId));
+      await tx.delete(horses).where(eq(horses.userId, userId));
+      await tx.delete(transformations).where(eq(transformations.userId, userId));
+      await tx.delete(campaignEvents).where(eq(campaignEvents.userId, userId));
+      await tx.update(users).set({
+        level: 1,
+        experience: 0,
+        gold: 0,
+        rice: 100,
+        hp: 100,
+        maxHp: 100,
+        attack: 10,
+        defense: 10,
+        speed: 10,
+        currentLocationId: 1,
+        activeTransformId: null,
+        upgradeStones: 0,
+        updatedAt: new Date()
+      }).where(eq(users.id, userId));
+    });
+  }
 }
 
 export const storage = new DatabaseStorage();

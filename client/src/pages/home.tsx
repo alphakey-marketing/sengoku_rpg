@@ -1,14 +1,47 @@
 import { usePlayer, usePlayerFullStatus, useEquipment, useTransformations } from "@/hooks/use-game";
 import { MainLayout } from "@/components/layout/main-layout";
-import { Shield, Sword, Coins, Wheat, Trophy, Zap, Heart, Sparkles } from "lucide-react";
+import { Shield, Sword, Coins, Wheat, Trophy, Zap, Heart, Sparkles, RefreshCcw } from "lucide-react";
 import { motion } from "framer-motion";
 import { Progress } from "@/components/ui/progress";
+import { Button } from "@/components/ui/button";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import { Badge } from "@/components/ui/badge";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 export default function Home() {
   const { data: player, isLoading } = usePlayer();
   const { data: teamStatus } = usePlayerFullStatus();
   const { data: equipment } = useEquipment();
   const { data: transforms } = useTransformations();
+  const { toast } = useToast();
+
+  const handleRestart = async () => {
+    try {
+      await apiRequest('POST', '/api/restart');
+      queryClient.invalidateQueries();
+      toast({
+        title: "Game Restarted",
+        description: "Your journey begins anew, Samurai.",
+      });
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to restart the game.",
+      });
+    }
+  };
 
   if (isLoading) {
     return (
@@ -77,19 +110,44 @@ export default function Home() {
             style={{ backgroundImage: 'url(https://images.unsplash.com/photo-1545569341-9eb8b30979d9?q=80&w=2070&auto=format&fit=crop)' }}
           />
           <div className="absolute inset-0 bg-gradient-to-r from-background/90 via-background/60 to-transparent" />
-          <div className="absolute bottom-0 left-0 p-8">
-            <div className="inline-block px-3 py-1 bg-primary/20 border border-primary/30 rounded text-primary text-xs font-bold uppercase tracking-widest mb-3 backdrop-blur-md">
-              Lord of the Realm
-            </div>
-            <h2 className="text-4xl font-display font-bold text-white text-shadow-sm mb-2" data-testid="text-player-name">{player.firstName || 'Wandering Samurai'}</h2>
-            <p className="text-accent text-lg font-medium text-shadow">Level {player.level}</p>
-            <div className="mt-2 w-48">
-              <div className="flex justify-between text-xs text-zinc-400 mb-1">
-                <span>EXP</span>
-                <span>{player.experience} / {player.level * 100}</span>
+          <div className="absolute bottom-0 left-0 p-8 w-full flex justify-between items-end">
+            <div>
+              <div className="inline-block px-3 py-1 bg-primary/20 border border-primary/30 rounded text-primary text-xs font-bold uppercase tracking-widest mb-3 backdrop-blur-md">
+                Lord of the Realm
               </div>
-              <Progress value={expPercent} className="h-2" />
+              <h2 className="text-4xl font-display font-bold text-white text-shadow-sm mb-2" data-testid="text-player-name">{player.firstName || 'Wandering Samurai'}</h2>
+              <p className="text-accent text-lg font-medium text-shadow">Level {player.level}</p>
+              <div className="mt-2 w-48">
+                <div className="flex justify-between text-xs text-zinc-400 mb-1">
+                  <span>EXP</span>
+                  <span>{player.experience} / {player.level * 100}</span>
+                </div>
+                <Progress value={expPercent} className="h-2" />
+              </div>
             </div>
+
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="outline" size="sm" className="bg-destructive/10 border-destructive/30 text-destructive hover:bg-destructive hover:text-white" data-testid="button-restart">
+                  <RefreshCcw size={16} className="mr-2" />
+                  Seppuku (Restart)
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent className="bg-card border-destructive/50">
+                <AlertDialogHeader>
+                  <AlertDialogTitle className="text-destructive font-display">Are you absolutely sure?</AlertDialogTitle>
+                  <AlertDialogDescription className="text-zinc-400">
+                    This will permanently delete all your companions, equipment, pets, and progress. You will start fresh as a Level 1 Samurai.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel className="bg-zinc-800 text-white border-zinc-700">Withdraw</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleRestart} className="bg-destructive hover:bg-destructive/90 text-white">
+                    Accept Fate
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
         </motion.div>
 
