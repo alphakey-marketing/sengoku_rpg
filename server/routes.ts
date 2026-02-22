@@ -400,6 +400,9 @@ export async function registerRoutes(
 
     const expGained = victory ? Math.floor(Math.random() * 20) + 10 + enemy.level * 2 : 0;
     const goldGained = victory ? Math.floor(Math.random() * 10) + 5 + enemy.level : 0;
+    const equipmentDropped = [];
+    let petDropped = null;
+    let horseDropped = null;
 
     if (victory) {
       logs.push("Victory!");
@@ -408,11 +411,68 @@ export async function registerRoutes(
         gold: user.gold + goldGained,
       });
       await giveEquipmentExp(userId, 10);
+
+      // Equipment Drop (30% chance)
+      if (Math.random() < 0.3) {
+        const type = pick(EQUIP_TYPES);
+        const rarity = rarityFromRandom();
+        const name = pick(type === 'weapon' ? WEAPON_NAMES : type === 'armor' ? ARMOR_NAMES : type === 'accessory' ? ACCESSORY_NAMES : HORSE_GEAR_NAMES);
+        const eq = await storage.createEquipment({
+          userId,
+          name,
+          type,
+          rarity,
+          level: 1,
+          experience: 0,
+          expToNext: 100,
+          attackBonus: rarity === 'gold' ? 20 : rarity === 'purple' ? 15 : rarity === 'blue' ? 10 : 5,
+          defenseBonus: rarity === 'gold' ? 10 : 5,
+          speedBonus: rarity === 'gold' ? 5 : 2,
+        });
+        equipmentDropped.push(eq);
+        logs.push(`Found ${name}!`);
+      }
+
+      // Pet Drop (10% chance)
+      if (Math.random() < 0.1) {
+        const pInfo = pick(PET_NAMES);
+        petDropped = await storage.createPet({
+          userId,
+          name: pInfo.name,
+          type: 'spirit',
+          rarity: 3,
+          level: 1,
+          hp: 30,
+          maxHp: 30,
+          attack: 5,
+          defense: 5,
+          speed: 15,
+          skill: pInfo.skill,
+          isActive: false,
+        });
+        logs.push(`A ${pInfo.name} joined you!`);
+      }
+
+      // Horse Drop (5% chance)
+      if (Math.random() < 0.05) {
+        const hName = pick(HORSE_NAMES);
+        horseDropped = await storage.createHorse({
+          userId,
+          name: hName,
+          rarity: 3,
+          level: 1,
+          speedBonus: 20,
+          attackBonus: 5,
+          skill: "Swift Gallop",
+          isActive: false,
+        });
+        logs.push(`Tamed ${hName}!`);
+      }
     } else {
       logs.push("Defeat!");
     }
 
-    res.json({ victory, experienceGained: expGained, goldGained, logs });
+    res.json({ victory, experienceGained: expGained, goldGained, equipmentDropped, petDropped, horseDropped, logs });
   });
 
   app.post(api.battle.boss.path, isAuthenticated, async (req: any, res) => {
@@ -429,7 +489,32 @@ export async function registerRoutes(
     if (victory) {
       logs.push("Victory!");
       await storage.updateUser(userId, { experience: user.experience + 100, rice: user.rice + 10 });
-      res.json({ victory: true, experienceGained: 100, goldGained: 50, riceGained: 10, logs });
+      
+      // Boss guaranteed equipment drop
+      const type = pick(EQUIP_TYPES);
+      const rarity = 'purple';
+      const name = pick(type === 'weapon' ? WEAPON_NAMES : type === 'armor' ? ARMOR_NAMES : type === 'accessory' ? ACCESSORY_NAMES : HORSE_GEAR_NAMES);
+      const eq = await storage.createEquipment({
+        userId,
+        name,
+        type,
+        rarity,
+        level: 1,
+        experience: 0,
+        expToNext: 100,
+        attackBonus: 25,
+        defenseBonus: 15,
+        speedBonus: 10,
+      });
+
+      res.json({ 
+        victory: true, 
+        experienceGained: 100, 
+        goldGained: 50, 
+        riceGained: 10, 
+        equipmentDropped: [eq],
+        logs 
+      });
     } else {
       logs.push("Defeat!");
       res.json({ victory: false, logs });
