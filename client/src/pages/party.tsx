@@ -4,6 +4,7 @@ import { MainLayout } from "@/components/layout/main-layout";
 import { Button } from "@/components/ui/button";
 import { Users, Star, Sword, Shield, Zap, Heart, Sparkles } from "lucide-react";
 import { motion } from "framer-motion";
+import { Badge } from "@/components/ui/badge";
 
 export default function Party() {
   const { data: companions, isLoading } = useCompanions();
@@ -124,31 +125,34 @@ export default function Party() {
                     </div>
                   </div>
 
-                  {compEquip.length > 0 && (
-                    <div className="mt-3 p-2 bg-background/50 rounded border border-border/30 text-xs text-zinc-400 space-y-1">
-                      <span className="text-muted-foreground uppercase tracking-wider font-bold text-[10px]">Equipped</span>
-                      {compEquip.map(e => (
-                        <div key={e.id} className="flex justify-between">
-                          <span>{e.name} (Lv{e.level})</span>
-                          <span className="text-zinc-500">{e.type}</span>
-                        </div>
-                      ))}
+                  {comp.skill && (
+                    <div className="mt-4 p-3 bg-primary/5 border border-primary/20 rounded-lg">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Sparkles size={16} className="text-accent" />
+                        <span className="text-sm font-bold text-accent uppercase tracking-widest">{comp.skill}</span>
+                        <Badge variant="outline" className="text-[10px] ml-auto uppercase border-accent/30 text-accent/80">{(comp as any).skillType}</Badge>
+                      </div>
+                      <p className="text-xs text-zinc-300 leading-relaxed italic">
+                        {(comp as any).skillEffect === 'atk_buff' && `Tactical Insight: Increases party attack by ${(comp as any).skillValue}% through superior formation.`}
+                        {(comp as any).skillEffect === 'def_buff' && `Iron Resolve: Increases party defense by ${(comp as any).skillValue}% by bracing for impact.`}
+                        {(comp as any).skillEffect === 'spd_debuff' && `Cunning Ruse: Reduces enemy speed by ${(comp as any).skillValue}% using terrain advantages.`}
+                        {!(comp as any).skillEffect && "A secret technique passed down through generations."}
+                      </p>
                     </div>
                   )}
 
-                  {comp.skill && (
-                    <div className="mt-3 p-2 bg-background/50 rounded border border-border/30">
-                      <div className="flex items-center gap-2 mb-1">
-                        <Sparkles size={14} className="text-accent" />
-                        <span className="text-xs font-bold text-accent uppercase tracking-wider">{comp.skill}</span>
-                        <span className="text-[10px] px-1.5 py-0.5 bg-background rounded border border-border/50 uppercase">{(comp as any).skillType}</span>
+                  {compEquip.length > 0 && (
+                    <div className="mt-4 p-3 bg-background/50 rounded border border-border/30 text-xs text-zinc-400 space-y-2">
+                      <div className="flex items-center justify-between border-b border-border/20 pb-1 mb-1">
+                        <span className="text-muted-foreground uppercase tracking-wider font-bold text-[10px]">Arsenal</span>
+                        <span className="text-[9px] text-zinc-500">{compEquip.length} Items</span>
                       </div>
-                      <p className="text-[11px] text-zinc-400 leading-tight">
-                        {(comp as any).skillEffect === 'atk_buff' && `Increases party attack by ${(comp as any).skillValue}%`}
-                        {(comp as any).skillEffect === 'def_buff' && `Increases party defense by ${(comp as any).skillValue}%`}
-                        {(comp as any).skillEffect === 'spd_debuff' && `Reduces enemy speed by ${(comp as any).skillValue}%`}
-                        {!(comp as any).skillEffect && "Active combat technique."}
-                      </p>
+                      {compEquip.map(e => (
+                        <div key={e.id} className="flex justify-between items-center">
+                          <span className="text-zinc-200 font-medium">{e.name}</span>
+                          <span className="text-[10px] px-1.5 py-0.5 bg-zinc-800 rounded text-zinc-400 border border-zinc-700/50">Lv{e.level}</span>
+                        </div>
+                      ))}
                     </div>
                   )}
                 </motion.div>
