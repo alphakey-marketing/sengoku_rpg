@@ -477,17 +477,49 @@ export async function registerRoutes(
     if (!user) return res.status(401).json({ message: "Unauthorized" });
     const teamStats = await getPlayerTeamStats(userId);
     const enemy = generateEnemyStats('boss', user.level);
-    const victory = (teamStats?.player.attack || user.attack) + Math.random() * 50 > enemy.attack;
+
+    // Skill Impacts
+    let playerAtkMult = 1.0;
+    let playerDefMult = 1.0;
+    let enemyAtkMult = 1.0;
 
     const logs: string[] = [];
-    logs.push(`You challenged ${enemy.name}!`);
+    logs.push(`You challenged ${enemy.name} (Lv${enemy.level}) at the Castle!`);
+
+    if (teamStats) {
+      teamStats.companions.forEach(c => {
+        if ((c as any).skillType === 'passive') {
+          if ((c as any).skillEffect === 'atk_buff') {
+            const bonus = (c as any).skillValue;
+            playerAtkMult += bonus / 100;
+            logs.push(`[Skill] ${c.name}: Party Attack +${bonus}%`);
+          }
+          if ((c as any).skillEffect === 'def_buff') {
+            const bonus = (c as any).skillValue;
+            playerDefMult += bonus / 100;
+            logs.push(`[Skill] ${c.name}: Party Defense +${bonus}%`);
+          }
+        }
+      });
+    }
+
+    const finalPlayerAtk = Math.floor((teamStats?.player.attack || user.attack) * playerAtkMult);
+    const finalEnemyAtk = Math.floor(enemy.attack * enemyAtkMult);
+
+    logs.push(`[Combat] Player Siege Power: ${finalPlayerAtk}`);
+    logs.push(`[Combat] Castle Defense Power: ${finalEnemyAtk}`);
+
+    const roll = Math.floor(Math.random() * 50);
+    logs.push(`[Combat] Battle Fortune: +${roll}`);
+
+    const victory = finalPlayerAtk + roll > finalEnemyAtk;
 
     if (victory) {
-      logs.push("Victory!");
+      logs.push("The castle gates fall! Victory!");
       await storage.updateUser(userId, { experience: user.experience + 100, rice: user.rice + 10 });
       res.json({ victory: true, experienceGained: 100, goldGained: 50, riceGained: 10, logs });
     } else {
-      logs.push("Defeat!");
+      logs.push("The siege failed... Retreat!");
       res.json({ victory: false, logs });
     }
   });
@@ -499,13 +531,45 @@ export async function registerRoutes(
     const teamStats = await getPlayerTeamStats(userId);
     const enemy = generateEnemyStats('special', user.level);
     const sb = pick(SPECIAL_BOSSES);
-    const victory = (teamStats?.player.attack || user.attack) + Math.random() * 100 > enemy.attack * 1.5;
+
+    // Skill Impacts
+    let playerAtkMult = 1.0;
+    let playerDefMult = 1.0;
+    let enemyAtkMult = 1.0;
 
     const logs: string[] = [];
-    logs.push(`${enemy.name} appears!`);
+    logs.push(`The sky turns dark... ${enemy.name} (Lv${enemy.level}) descends!`);
+
+    if (teamStats) {
+      teamStats.companions.forEach(c => {
+        if ((c as any).skillType === 'passive') {
+          if ((c as any).skillEffect === 'atk_buff') {
+            const bonus = (c as any).skillValue;
+            playerAtkMult += bonus / 100;
+            logs.push(`[Skill] ${c.name}: Divine Attack +${bonus}%`);
+          }
+          if ((c as any).skillEffect === 'def_buff') {
+            const bonus = (c as any).skillValue;
+            playerDefMult += bonus / 100;
+            logs.push(`[Skill] ${c.name}: Divine Defense +${bonus}%`);
+          }
+        }
+      });
+    }
+
+    const finalPlayerAtk = Math.floor((teamStats?.player.attack || user.attack) * playerAtkMult);
+    const finalEnemyAtk = Math.floor(enemy.attack * enemyAtkMult);
+
+    logs.push(`[Combat] Total Heroic Power: ${finalPlayerAtk}`);
+    logs.push(`[Combat] Calamity Power: ${finalEnemyAtk}`);
+
+    const roll = Math.floor(Math.random() * 100);
+    logs.push(`[Combat] Destiny Roll: +${roll}`);
+
+    const victory = finalPlayerAtk + roll > finalEnemyAtk * 1.5;
 
     if (victory) {
-      logs.push("A mystical stone drops!");
+      logs.push(`The legend is written! ${enemy.name} is sealed!`);
       const trans = await storage.createTransformation({
         userId,
         name: sb.transformName,
@@ -520,9 +584,13 @@ export async function registerRoutes(
         cooldownSeconds: 60,
         durationSeconds: 30,
       });
+      await storage.updateUser(userId, { 
+        experience: user.experience + 200, 
+        gold: user.gold + 100 
+      });
       res.json({ victory: true, transformationDropped: trans, logs, experienceGained: 200, goldGained: 100 });
     } else {
-      logs.push("Defeat!");
+      logs.push("The divine presence was too strong... Retreat!");
       res.json({ victory: false, logs });
     }
   });
