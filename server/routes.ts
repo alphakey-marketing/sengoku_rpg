@@ -62,10 +62,14 @@ async function getPlayerTeamStats(userId: string) {
   const activePet = allPets.find(p => p.isActive);
   const activeHorse = allHorses.find(h => h.isActive);
 
+  const passiveAtkBonus = (user.passiveAtkLevel || 0) * 5;
+  const passiveDefBonus = (user.passiveDefLevel || 0) * 5;
+  const passiveSpdBonus = (user.passiveSpdLevel || 0) * 5;
+
   const playerEquipped = equips.filter(e => e.isEquipped && e.equippedToType === 'player');
-  const totalAtkBonus = playerEquipped.reduce((s, e) => s + Math.floor(e.attackBonus * (1 + (e.level - 1) * 0.05)), 0);
-  const totalDefBonus = playerEquipped.reduce((s, e) => s + Math.floor(e.defenseBonus * (1 + (e.level - 1) * 0.08)), 0);
-  const totalSpdBonus = playerEquipped.reduce((s, e) => s + Math.floor(e.speedBonus * (1 + (e.level - 1) * 0.1)), 0);
+  const totalAtkBonus = playerEquipped.reduce((s, e) => s + Math.floor(e.attackBonus * (1 + (e.level - 1) * 0.05)), 0) + passiveAtkBonus;
+  const totalDefBonus = playerEquipped.reduce((s, e) => s + Math.floor(e.defenseBonus * (1 + (e.level - 1) * 0.08)), 0) + passiveDefBonus;
+  const totalSpdBonus = playerEquipped.reduce((s, e) => s + Math.floor(e.speedBonus * (1 + (e.level - 1) * 0.1)), 0) + passiveSpdBonus;
   const horseSpdBonus = activeHorse ? Math.floor(activeHorse.speedBonus * (1 + (activeHorse.level - 1) * 0.15)) : 0;
   const horseAtkBonus = activeHorse ? Math.floor(activeHorse.attackBonus * (1 + (activeHorse.level - 1) * 0.05)) : 0;
 
@@ -194,6 +198,26 @@ export async function registerRoutes(
     const teamStats = await getPlayerTeamStats(userId);
     if (!teamStats) return res.status(401).json({ message: "Unauthorized" });
     res.json(teamStats);
+  });
+
+  app.post(api.player.upgradePassive.path, isAuthenticated, async (req: any, res) => {
+    const userId = req.user.claims.sub;
+    const { stat } = req.params;
+    const user = await storage.getUser(userId);
+    if (!user) return res.status(401).json({ message: "Unauthorized" });
+
+    if ((user.skillPoints || 0) < 1) {
+      return res.status(400).json({ message: "No skill points available" });
+    }
+
+    const updates: any = { skillPoints: user.skillPoints - 1 };
+    if (stat === 'atk') updates.passiveAtkLevel = (user.passiveAtkLevel || 0) + 1;
+    else if (stat === 'def') updates.passiveDefLevel = (user.passiveDefLevel || 0) + 1;
+    else if (stat === 'spd') updates.passiveSpdLevel = (user.passiveSpdLevel || 0) + 1;
+    else return res.status(400).json({ message: "Invalid stat" });
+
+    const updated = await storage.updateUser(userId, updates);
+    res.json(updated);
   });
 
   // Companions
@@ -563,12 +587,14 @@ export async function registerRoutes(
       let newLevel = user.level;
       let newExp = user.experience + expGained;
       let expToNext = user.level * 100;
+      let currentSkillPoints = user.skillPoints || 0;
       
       while (newExp >= expToNext) {
         newExp -= expToNext;
         newLevel++;
         expToNext = newLevel * 100;
-        logs.push(`[Level Up] You reached Level ${newLevel}!`);
+        currentSkillPoints++;
+        logs.push(`[Level Up] You reached Level ${newLevel}! Skill Point Gained!`);
       }
 
       // Drop logic (15% chance for equipment in field battles)
@@ -599,6 +625,7 @@ export async function registerRoutes(
         level: newLevel,
         experience: newExp,
         gold: user.gold + goldGained,
+        skillPoints: currentSkillPoints,
       });
       await giveEquipmentExp(userId, 10);
       
@@ -670,12 +697,14 @@ export async function registerRoutes(
       let newLevel = user.level;
       let newExp = user.experience + 100;
       let expToNext = user.level * 100;
+      let currentSkillPoints = user.skillPoints || 0;
       
       while (newExp >= expToNext) {
         newExp -= expToNext;
         newLevel++;
         expToNext = newLevel * 100;
-        logs.push(`[Level Up] You reached Level ${newLevel}!`);
+        currentSkillPoints++;
+        logs.push(`[Level Up] You reached Level ${newLevel}! Skill Point Gained!`);
       }
 
       // Guaranteed equipment drop for Bosses
@@ -702,7 +731,8 @@ export async function registerRoutes(
       await storage.updateUser(userId, { 
         level: newLevel,
         experience: newExp, 
-        rice: user.rice + 10 
+        rice: user.rice + 10,
+        skillPoints: currentSkillPoints,
       });
       res.json({ 
         victory: true, 
@@ -774,12 +804,14 @@ export async function registerRoutes(
       let newLevel = user.level;
       let newExp = user.experience + 200;
       let expToNext = user.level * 100;
+      let currentSkillPoints = user.skillPoints || 0;
       
       while (newExp >= expToNext) {
         newExp -= expToNext;
         newLevel++;
         expToNext = newLevel * 100;
-        logs.push(`[Level Up] You reached Level ${newLevel}!`);
+        currentSkillPoints++;
+        logs.push(`[Level Up] You reached Level ${newLevel}! Skill Point Gained!`);
       }
 
       const trans = await storage.createTransformation({
@@ -825,7 +857,8 @@ export async function registerRoutes(
       await storage.updateUser(userId, { 
         level: newLevel,
         experience: newExp, 
-        gold: user.gold + 100 
+        gold: user.gold + 100,
+        skillPoints: currentSkillPoints,
       });
       res.json({ 
         victory: true, 

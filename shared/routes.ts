@@ -34,6 +34,11 @@ export const api = {
       path: '/api/player/status' as const,
       responses: { 200: z.any(), 401: errorSchemas.unauthorized },
     },
+    upgradePassive: {
+      method: 'POST' as const,
+      path: '/api/player/passive/:stat' as const,
+      responses: { 200: z.any(), 400: errorSchemas.validation, 401: errorSchemas.unauthorized },
+    },
   },
   companions: {
     list: {

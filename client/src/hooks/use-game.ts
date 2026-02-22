@@ -17,6 +17,10 @@ export interface PlayerData {
   currentLocationId: number;
   activeTransformId: number | null;
   upgradeStones: number;
+  skillPoints: number;
+  passiveAtkLevel: number;
+  passiveDefLevel: number;
+  passiveSpdLevel: number;
 }
 
 export interface Companion {
@@ -170,6 +174,25 @@ export function usePlayerFullStatus() {
       const res = await fetchWithAuth(api.player.fullStatus.path);
       if (!res.ok) throw new Error("Failed to fetch status");
       return res.json();
+    },
+  });
+}
+
+export function useUpgradePassive() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (stat: 'atk' | 'def' | 'spd') => {
+      const url = buildUrl(api.player.upgradePassive.path, { stat });
+      const res = await fetchWithAuth(url, { method: "POST" });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || "Failed to upgrade passive");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [api.player.get.path] });
+      queryClient.invalidateQueries({ queryKey: [api.player.fullStatus.path] });
     },
   });
 }
