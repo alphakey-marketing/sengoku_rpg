@@ -32,6 +32,9 @@ export const users = pgTable("users", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+export type User = typeof users.$inferSelect;
+export type UpsertUser = typeof users.$inferInsert;
+
 export const companions = pgTable("companions", {
   id: serial("id").primaryKey(),
   userId: varchar("user_id").notNull(),
@@ -53,7 +56,7 @@ export const equipment = pgTable("equipment", {
   id: serial("id").primaryKey(),
   userId: varchar("user_id").notNull(),
   name: text("name").notNull(),
-  type: text("type").notNull(), // 'weapon', 'armor', 'accessory', 'horse_gear'
+  type: text("type").notNull(),
   rarity: text("rarity").notNull(),
   level: integer("level").notNull().default(1),
   experience: integer("experience").notNull().default(0),
@@ -63,7 +66,7 @@ export const equipment = pgTable("equipment", {
   speedBonus: integer("speed_bonus").notNull().default(0),
   isEquipped: boolean("is_equipped").notNull().default(false),
   equippedToId: integer("equipped_to_id"),
-  equippedToType: text("equipped_to_type"), // 'player', 'companion'
+  equippedToType: text("equipped_to_type"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -114,13 +117,22 @@ export const transformations = pgTable("transformations", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// Relations
+export const campaignEvents = pgTable("campaign_events", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull(),
+  eventKey: text("event_key").notNull(),
+  choice: text("choice"),
+  isTriggered: boolean("is_triggered").notNull().default(false),
+  completedAt: timestamp("completed_at"),
+});
+
 export const usersRelations = relations(users, ({ many }) => ({
   companions: many(companions),
   equipment: many(equipment),
   pets: many(pets),
   horses: many(horses),
   transformations: many(transformations),
+  campaignEvents: many(campaignEvents),
 }));
 
 export const companionsRelations = relations(companions, ({ one }) => ({
@@ -143,20 +155,22 @@ export const transformationsRelations = relations(transformations, ({ one }) => 
   user: one(users, { fields: [transformations.userId], references: [users.id] }),
 }));
 
-// Schemas
+export const campaignEventsRelations = relations(campaignEvents, ({ one }) => ({
+  user: one(users, { fields: [campaignEvents.userId], references: [users.id] }),
+}));
+
 export const insertCompanionSchema = createInsertSchema(companions).omit({ id: true, createdAt: true });
 export const insertEquipmentSchema = createInsertSchema(equipment).omit({ id: true, createdAt: true });
 export const insertPetSchema = createInsertSchema(pets).omit({ id: true, createdAt: true });
 export const insertHorseSchema = createInsertSchema(horses).omit({ id: true, createdAt: true });
 export const insertTransformationSchema = createInsertSchema(transformations).omit({ id: true, createdAt: true });
 
-// Types
-export type User = typeof users.$inferSelect;
 export type Companion = typeof companions.$inferSelect;
 export type Equipment = typeof equipment.$inferSelect;
 export type Pet = typeof pets.$inferSelect;
 export type Horse = typeof horses.$inferSelect;
 export type Transformation = typeof transformations.$inferSelect;
+export type CampaignEvent = typeof campaignEvents.$inferSelect;
 export type InsertCompanion = z.infer<typeof insertCompanionSchema>;
 export type InsertEquipment = z.infer<typeof insertEquipmentSchema>;
 export type InsertPet = z.infer<typeof insertPetSchema>;

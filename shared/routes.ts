@@ -141,6 +141,19 @@ export const api = {
       path: '/api/gacha/pull-equipment' as const,
       responses: { 200: z.any(), 400: errorSchemas.validation, 401: errorSchemas.unauthorized },
     }
+  },
+  campaign: {
+    events: {
+      method: 'GET' as const,
+      path: '/api/campaign/events' as const,
+      responses: { 200: z.array(z.any()), 401: errorSchemas.unauthorized },
+    },
+    triggerEvent: {
+      method: 'POST' as const,
+      path: '/api/campaign/events/trigger' as const,
+      input: z.object({ eventKey: z.string(), choice: z.string().optional() }),
+      responses: { 200: z.any(), 400: errorSchemas.validation, 401: errorSchemas.unauthorized },
+    }
   }
 };
 

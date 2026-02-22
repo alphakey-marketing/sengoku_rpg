@@ -412,6 +412,39 @@ export function useSpecialBossBattle() {
   });
 }
 
+export function useCampaignEvents() {
+  return useQuery<any[]>({
+    queryKey: [api.campaign.events.path],
+    queryFn: async () => {
+      const res = await fetchWithAuth(api.campaign.events.path);
+      if (!res.ok) throw new Error("Failed to fetch campaign events");
+      return res.json();
+    },
+  });
+}
+
+export function useTriggerCampaignEvent() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ eventKey, choice }: { eventKey: string; choice?: string }) => {
+      const res = await fetchWithAuth(api.campaign.triggerEvent.path, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ eventKey, choice }),
+      });
+      if (!res.ok) throw new Error("Failed to trigger campaign event");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [api.campaign.events.path] });
+      queryClient.invalidateQueries({ queryKey: [api.player.get.path] });
+      queryClient.invalidateQueries({ queryKey: [api.pets.list.path] });
+      queryClient.invalidateQueries({ queryKey: [api.equipment.list.path] });
+      queryClient.invalidateQueries({ queryKey: [api.player.fullStatus.path] });
+    },
+  });
+}
+
 export function useGachaPull() {
   const queryClient = useQueryClient();
   return useMutation<GachaResult, Error, void>({

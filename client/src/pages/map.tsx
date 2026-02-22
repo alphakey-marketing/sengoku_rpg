@@ -1,13 +1,14 @@
-import { useState } from "react";
-import { useFieldBattle, useBossBattle, useSpecialBossBattle, BattleResult } from "@/hooks/use-game";
+import { useState, useEffect } from "react";
+import { useFieldBattle, useBossBattle, useSpecialBossBattle, BattleResult, useCampaignEvents, useTriggerCampaignEvent } from "@/hooks/use-game";
 import { MainLayout } from "@/components/layout/main-layout";
 import { Button } from "@/components/ui/button";
-import { Map as MapIcon, Swords, Skull, ChevronRight, Crown, Zap, Shield, Heart, Sparkles, ArrowUp } from "lucide-react";
+import { Map as MapIcon, Swords, Skull, ChevronRight, Crown, Zap, Shield, Heart, Sparkles, ArrowUp, Scroll, Star } from "lucide-react";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -18,21 +19,81 @@ const LOCATIONS = [
   { id: 4, name: "Demon Gate (鬼門)", desc: "A cursed portal where legendary yokai lurk. Special bosses drop transformation stones.", level: 15 },
 ];
 
+const STORY_EVENTS = [
+  {
+    key: 'onin_war',
+    name: 'The Onin War',
+    desc: 'The capital is in chaos. Which faction will you support to restore order?',
+    choices: [
+      { key: 'nobunaga', label: 'Support Oda', color: 'bg-red-900/50 hover:bg-red-900/70 border-red-700/50' },
+      { key: 'independent', label: 'Stay Independent', color: 'bg-zinc-800 hover:bg-zinc-700 border-zinc-600' }
+    ]
+  },
+  {
+    key: 'honnoji',
+    name: 'Incident at Honno-ji',
+    desc: 'The temple is surrounded by Akechi forces! What is your move?',
+    choices: [
+      { key: 'rescue', label: 'Rescue the Lord', color: 'bg-orange-900/50 hover:bg-orange-900/70 border-orange-700/50' },
+      { key: 'mitsuhide', label: 'Join Mitsuhide', color: 'bg-blue-900/50 hover:bg-blue-900/70 border-blue-700/50' }
+    ]
+  },
+  {
+    key: 'yokai_random',
+    name: 'Encounter with the Divine',
+    desc: 'A golden fox blocks your path, offering a pack of shadows.',
+    choices: [
+      { key: 'ally', label: 'Form Alliance', color: 'bg-yellow-900/50 hover:bg-yellow-900/70 border-yellow-700/50' },
+      { key: 'ignore', label: 'Decline Offer', color: 'bg-zinc-800 hover:bg-zinc-700 border-zinc-600' }
+    ]
+  }
+];
+
 export default function MapPage() {
   const { mutate: doFieldBattle, isPending: fieldPending } = useFieldBattle();
   const { mutate: doBossBattle, isPending: bossPending } = useBossBattle();
   const { mutate: doSpecialBoss, isPending: specialPending } = useSpecialBossBattle();
+  const { data: events } = useCampaignEvents();
+  const { mutate: triggerEvent, isPending: eventPending } = useTriggerCampaignEvent();
 
   const [result, setResult] = useState<BattleResult | null>(null);
+  const [activeEvent, setActiveEvent] = useState<any>(null);
+  const [eventLogs, setEventLogs] = useState<string[]>([]);
+
+  useEffect(() => {
+    // Random IF trigger check
+    if (!activeEvent && Math.random() < 0.05) {
+       const isDone = events?.some(e => e.eventKey === 'yokai_random');
+       if (!isDone) setActiveEvent(STORY_EVENTS[2]);
+    }
+  }, [events]);
 
   const handleBattle = (type: 'field' | 'boss' | 'special', locationId: number) => {
     const action = type === 'field' ? doFieldBattle : type === 'boss' ? doBossBattle : doSpecialBoss;
     action(locationId, {
-      onSuccess: (data) => setResult(data)
+      onSuccess: (data) => {
+        setResult(data);
+        // Story event triggers
+        if (data.victory) {
+          if (locationId === 1 && !events?.some(e => e.eventKey === 'onin_war')) {
+            setActiveEvent(STORY_EVENTS[0]);
+          } else if (locationId === 3 && !events?.some(e => e.eventKey === 'honnoji')) {
+            setActiveEvent(STORY_EVENTS[1]);
+          }
+        }
+      }
     });
   };
 
-  const isPending = fieldPending || bossPending || specialPending;
+  const handleEventChoice = (eventKey: string, choice: string) => {
+    triggerEvent({ eventKey, choice }, {
+      onSuccess: (data) => {
+        setEventLogs(data.logs);
+      }
+    });
+  };
+
+  const isPending = fieldPending || bossPending || specialPending || eventPending;
 
   return (
     <MainLayout>
@@ -41,7 +102,7 @@ export default function MapPage() {
           <MapIcon className="text-accent" size={32} />
           <div>
             <h1 className="text-3xl font-display font-bold text-white" data-testid="text-page-title">Campaign Map</h1>
-            <p className="text-muted-foreground">Choose a territory to attack. Boss battles yield higher rewards. Special bosses drop transformation stones.</p>
+            <p className="text-muted-foreground">Journey through the Sengoku era. Historical events will shape your destiny.</p>
           </div>
         </div>
 
@@ -231,6 +292,66 @@ export default function MapPage() {
 
           <div className="mt-4 pt-4 border-t border-border/50 flex justify-end">
             <Button onClick={() => setResult(null)} className="w-full sm:w-auto" data-testid="button-return">Return to Camp</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={activeEvent !== null} onOpenChange={(open) => {
+        if (!open) {
+          setActiveEvent(null);
+          setEventLogs([]);
+        }
+      }}>
+        <DialogContent className="bg-card border-accent/30 text-foreground sm:max-w-xl bg-shoji">
+          <DialogHeader>
+            <div className="flex items-center gap-2 mb-2">
+              <Scroll className="text-accent" size={20} />
+              <span className="text-xs font-bold text-accent uppercase tracking-widest">Chronicle Event</span>
+            </div>
+            <DialogTitle className="font-display text-3xl text-white">
+              {activeEvent?.name}
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="py-6">
+            {eventLogs.length > 0 ? (
+              <div className="space-y-4">
+                <div className="bg-background/80 rounded p-4 border border-accent/20 font-mono text-sm space-y-2">
+                  {eventLogs.map((log, i) => (
+                    <motion.div
+                      key={i}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      className="text-zinc-300 flex gap-2"
+                    >
+                      <ChevronRight size={14} className="mt-1 text-accent" />
+                      {log}
+                    </motion.div>
+                  ))}
+                </div>
+                <Button onClick={() => setActiveEvent(null)} className="w-full bg-accent hover:bg-accent/80 text-black font-bold">
+                  Continue Journey
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                <p className="text-zinc-300 leading-relaxed text-lg italic">
+                  "{activeEvent?.desc}"
+                </p>
+                <div className="grid grid-cols-1 gap-3">
+                  {activeEvent?.choices.map((choice: any) => (
+                    <Button
+                      key={choice.key}
+                      onClick={() => handleEventChoice(activeEvent.key, choice.key)}
+                      disabled={eventPending}
+                      className={`h-14 text-lg font-display border transition-all ${choice.color}`}
+                    >
+                      {choice.label}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </DialogContent>
       </Dialog>

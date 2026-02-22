@@ -1,8 +1,8 @@
 import {
-  users, companions, equipment, pets, horses, transformations,
+  users, companions, equipment, pets, horses, transformations, campaignEvents,
   type User, type UpsertUser, type InsertCompanion, type InsertEquipment,
   type Companion, type Equipment, type Pet, type Horse, type Transformation,
-  type InsertPet, type InsertHorse, type InsertTransformation
+  type InsertPet, type InsertHorse, type InsertTransformation, type CampaignEvent
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and } from "drizzle-orm";
@@ -32,6 +32,9 @@ export interface IStorage {
   getTransformations(userId: string): Promise<Transformation[]>;
   createTransformation(t: InsertTransformation): Promise<Transformation>;
   updateTransformation(id: number, updates: Partial<Transformation>): Promise<Transformation>;
+
+  getCampaignEvents(userId: string): Promise<CampaignEvent[]>;
+  createCampaignEvent(event: any): Promise<CampaignEvent>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -133,6 +136,15 @@ export class DatabaseStorage implements IStorage {
   async updateTransformation(id: number, updates: Partial<Transformation>): Promise<Transformation> {
     const [tr] = await db.update(transformations).set(updates).where(eq(transformations.id, id)).returning();
     return tr;
+  }
+
+  async getCampaignEvents(userId: string): Promise<CampaignEvent[]> {
+    return await db.select().from(campaignEvents).where(eq(campaignEvents.userId, userId));
+  }
+
+  async createCampaignEvent(insertEvent: any): Promise<CampaignEvent> {
+    const [event] = await db.insert(campaignEvents).values(insertEvent).returning();
+    return event;
   }
 }
 
