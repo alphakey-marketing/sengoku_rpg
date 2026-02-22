@@ -488,16 +488,61 @@ export async function registerRoutes(
 
     if (victory) {
       logs.push("Victory!");
+      
+      // Level up logic
+      let newLevel = user.level;
+      let newExp = user.experience + expGained;
+      let expToNext = user.level * 100;
+      
+      while (newExp >= expToNext) {
+        newExp -= expToNext;
+        newLevel++;
+        expToNext = newLevel * 100;
+        logs.push(`[Level Up] You reached Level ${newLevel}!`);
+      }
+
+      // Drop logic (15% chance for equipment in field battles)
+      let droppedEquip = null;
+      if (Math.random() < 0.15) {
+        const type = pick(EQUIP_TYPES);
+        const name = pick(type === 'weapon' ? WEAPON_NAMES : type === 'armor' ? ARMOR_NAMES : type === 'accessory' ? ACCESSORY_NAMES : HORSE_GEAR_NAMES);
+        const rarity = rarityFromRandom();
+        droppedEquip = await storage.createEquipment({
+          userId,
+          name,
+          type,
+          rarity,
+          level: 1,
+          experience: 0,
+          expToNext: 100,
+          attackBonus: Math.floor(Math.random() * 5) + 2,
+          defenseBonus: Math.floor(Math.random() * 5) + 2,
+          speedBonus: Math.floor(Math.random() * 5) + 2,
+          isEquipped: false,
+          equippedToId: null,
+          equippedToType: null,
+        });
+        logs.push(`[Drop] Found ${rarity} ${name}!`);
+      }
+
       await storage.updateUser(userId, {
-        experience: user.experience + expGained,
+        level: newLevel,
+        experience: newExp,
         gold: user.gold + goldGained,
       });
       await giveEquipmentExp(userId, 10);
+      
+      res.json({ 
+        victory, 
+        experienceGained: expGained, 
+        goldGained, 
+        logs,
+        equipmentDropped: droppedEquip ? [droppedEquip] : []
+      });
     } else {
       logs.push("Defeat!");
+      res.json({ victory, experienceGained: 0, goldGained: 0, logs });
     }
-
-    res.json({ victory, experienceGained: expGained, goldGained, logs });
   });
 
   app.post(api.battle.boss.path, isAuthenticated, async (req: any, res) => {
@@ -550,8 +595,53 @@ export async function registerRoutes(
 
     if (victory) {
       logs.push("The castle gates fall! Victory!");
-      await storage.updateUser(userId, { experience: user.experience + 100, rice: user.rice + 10 });
-      res.json({ victory: true, experienceGained: 100, goldGained: 50, riceGained: 10, logs });
+      
+      // Level up logic
+      let newLevel = user.level;
+      let newExp = user.experience + 100;
+      let expToNext = user.level * 100;
+      
+      while (newExp >= expToNext) {
+        newExp -= expToNext;
+        newLevel++;
+        expToNext = newLevel * 100;
+        logs.push(`[Level Up] You reached Level ${newLevel}!`);
+      }
+
+      // Guaranteed equipment drop for Bosses
+      const type = pick(EQUIP_TYPES);
+      const name = pick(type === 'weapon' ? WEAPON_NAMES : type === 'armor' ? ARMOR_NAMES : type === 'accessory' ? ACCESSORY_NAMES : HORSE_GEAR_NAMES);
+      const rarity = 'blue'; // Bosses drop at least blue
+      const droppedEquip = await storage.createEquipment({
+        userId,
+        name,
+        type,
+        rarity,
+        level: 1,
+        experience: 0,
+        expToNext: 100,
+        attackBonus: Math.floor(Math.random() * 10) + 5,
+        defenseBonus: Math.floor(Math.random() * 10) + 5,
+        speedBonus: Math.floor(Math.random() * 10) + 5,
+        isEquipped: false,
+        equippedToId: null,
+        equippedToType: null,
+      });
+      logs.push(`[Drop] Found ${rarity} ${name} from the vault!`);
+
+      await storage.updateUser(userId, { 
+        level: newLevel,
+        experience: newExp, 
+        rice: user.rice + 10 
+      });
+      res.json({ 
+        victory: true, 
+        experienceGained: 100, 
+        goldGained: 50, 
+        riceGained: 10, 
+        logs,
+        equipmentDropped: [droppedEquip]
+      });
     } else {
       logs.push("The siege failed... Retreat!");
       res.json({ victory: false, logs });
@@ -609,6 +699,19 @@ export async function registerRoutes(
 
     if (victory) {
       logs.push(`The legend is written! ${enemy.name} is sealed!`);
+      
+      // Level up logic
+      let newLevel = user.level;
+      let newExp = user.experience + 200;
+      let expToNext = user.level * 100;
+      
+      while (newExp >= expToNext) {
+        newExp -= expToNext;
+        newLevel++;
+        expToNext = newLevel * 100;
+        logs.push(`[Level Up] You reached Level ${newLevel}!`);
+      }
+
       const trans = await storage.createTransformation({
         userId,
         name: sb.transformName,
@@ -623,11 +726,45 @@ export async function registerRoutes(
         cooldownSeconds: 60,
         durationSeconds: 30,
       });
+
+      // Special Boss drops 2 pieces of high quality equipment
+      const drops = [];
+      for (let i = 0; i < 2; i++) {
+        const type = pick(EQUIP_TYPES);
+        const name = pick(type === 'weapon' ? WEAPON_NAMES : type === 'armor' ? ARMOR_NAMES : type === 'accessory' ? ACCESSORY_NAMES : HORSE_GEAR_NAMES);
+        const rarity = pick(['purple', 'gold']);
+        const drop = await storage.createEquipment({
+          userId,
+          name,
+          type,
+          rarity,
+          level: 1,
+          experience: 0,
+          expToNext: 100,
+          attackBonus: Math.floor(Math.random() * 20) + 15,
+          defenseBonus: Math.floor(Math.random() * 20) + 15,
+          speedBonus: Math.floor(Math.random() * 20) + 15,
+          isEquipped: false,
+          equippedToId: null,
+          equippedToType: null,
+        });
+        drops.push(drop);
+        logs.push(`[Drop] Found legendary ${rarity} ${name}!`);
+      }
+
       await storage.updateUser(userId, { 
-        experience: user.experience + 200, 
+        level: newLevel,
+        experience: newExp, 
         gold: user.gold + 100 
       });
-      res.json({ victory: true, transformationDropped: trans, logs, experienceGained: 200, goldGained: 100 });
+      res.json({ 
+        victory: true, 
+        transformationDropped: trans, 
+        logs, 
+        experienceGained: 200, 
+        goldGained: 100,
+        equipmentDropped: drops
+      });
     } else {
       logs.push("The divine presence was too strong... Retreat!");
       res.json({ victory: false, logs });
