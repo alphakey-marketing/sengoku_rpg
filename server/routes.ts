@@ -416,6 +416,16 @@ export async function registerRoutes(
           }
         }
       });
+
+      // Active skills (chance-based for simplification in field battles)
+      teamStats.companions.forEach(c => {
+        if ((c as any).skillType === 'active' && Math.random() > 0.7) {
+          if ((c as any).skillEffect === 'spd_debuff') {
+            enemySpdMult -= (c as any).skillValue / 100;
+            logs.push(`${c.name} uses ${(c as any).skill}: Enemy slowed!`);
+          }
+        }
+      });
     }
 
     const playerPower = (teamStats?.player.attack || user.attack) * playerAtkMult + (teamStats?.player.speed || user.speed) * playerSpdMult;

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { usePlayer, useGachaPull, useEquipmentGachaPull, Companion, Equipment } from "@/hooks/use-game";
 import { MainLayout } from "@/components/layout/main-layout";
 import { Button } from "@/components/ui/button";
-import { Sparkles, Star, Wheat, Sword, Shield, Gem } from "lucide-react";
+import { Sparkles, Star, Wheat, Sword, Shield, Gem, Zap, Heart } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
 
@@ -180,13 +180,30 @@ export default function GachaPage() {
                   </div>
                   <h2 className="text-4xl font-display font-bold text-white mb-2 mt-4">{companionResult.name}</h2>
                   <p className="text-primary font-medium tracking-widest uppercase text-sm mb-6">{companionResult.type} Hero</p>
-                  <div className="flex justify-center gap-1 text-accent mb-8">
+                  <div className="flex justify-center gap-1 text-accent mb-6">
                     {Array.from({ length: companionResult.rarity }).map((_, j) => (
                       <motion.div key={j} initial={{ opacity: 0, scale: 2 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.3 + (j * 0.1) }}>
                         <Star size={28} fill="currentColor" />
                       </motion.div>
                     ))}
                   </div>
+
+                  {companionResult.skill && (
+                    <div className="mb-6 p-3 bg-primary/10 border border-primary/20 rounded-lg text-left">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Sparkles size={16} className="text-accent" />
+                        <span className="text-sm font-bold text-accent uppercase tracking-wider">{companionResult.skill}</span>
+                        <Badge variant="outline" className="text-[10px] ml-auto">{(companionResult as any).skillType}</Badge>
+                      </div>
+                      <p className="text-xs text-zinc-300 leading-snug">
+                        {(companionResult as any).skillEffect === 'atk_buff' && `Increases party attack by ${(companionResult as any).skillValue}%`}
+                        {(companionResult as any).skillEffect === 'def_buff' && `Increases party defense by ${(companionResult as any).skillValue}%`}
+                        {(companionResult as any).skillEffect === 'spd_debuff' && `Reduces enemy speed by ${(companionResult as any).skillValue}%`}
+                        {!(companionResult as any).skillEffect && "Active combat technique."}
+                      </p>
+                    </div>
+                  )}
+
                   <Button onClick={() => setCompanionResult(null)} variant="outline" className="w-full border-accent text-accent hover:bg-accent/10">Summon Again</Button>
                 </div>
               </motion.div>
@@ -210,9 +227,18 @@ export default function GachaPage() {
                   </Badge>
                   
                   <div className="grid grid-cols-2 gap-4 text-left bg-background/50 p-4 rounded-lg border border-border/50 mb-8">
-                    <div><span className="text-muted-foreground text-xs uppercase">Attack</span><p className="font-bold text-red-400">+{equipmentResult.attackBonus}</p></div>
-                    <div><span className="text-muted-foreground text-xs uppercase">Defense</span><p className="font-bold text-blue-400">+{equipmentResult.defenseBonus}</p></div>
-                    <div className="col-span-2"><span className="text-muted-foreground text-xs uppercase">Speed</span><p className="font-bold text-green-400">+{equipmentResult.speedBonus}</p></div>
+                    <div className="flex items-center gap-2">
+                      <Sword size={16} className="text-red-400" />
+                      <div><span className="text-muted-foreground text-[10px] uppercase block">Attack</span><p className="font-bold text-red-400">+{equipmentResult.attackBonus}</p></div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Shield size={16} className="text-blue-400" />
+                      <div><span className="text-muted-foreground text-[10px] uppercase block">Defense</span><p className="font-bold text-blue-400">+{equipmentResult.defenseBonus}</p></div>
+                    </div>
+                    <div className="col-span-2 flex items-center gap-2">
+                      <Zap size={16} className="text-green-400" />
+                      <div><span className="text-muted-foreground text-[10px] uppercase block">Speed</span><p className="font-bold text-green-400">+{equipmentResult.speedBonus}</p></div>
+                    </div>
                   </div>
                   
                   <Button onClick={() => setEquipmentResult(null)} variant="outline" className="w-full border-accent text-accent hover:bg-accent/10">Forge Again</Button>
