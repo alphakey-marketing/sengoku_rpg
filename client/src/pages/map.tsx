@@ -3,7 +3,6 @@ import { useFieldBattle, useBossBattle, useSpecialBossBattle, BattleResult, useC
 import { MainLayout } from "@/components/layout/main-layout";
 import { Button } from "@/components/ui/button";
 import { Map as MapIcon, Swords, Skull, ChevronRight, Crown, Zap, Shield, Heart, Sparkles, ArrowUp, Scroll, Star, CloudRain, Sun, Cloud, Wind, Snowflake } from "lucide-react";
-import { MiniMap } from "@/components/game/mini-map";
 import {
   Dialog,
   DialogContent,
@@ -109,114 +108,88 @@ export default function MapPage() {
 
   return (
     <MainLayout>
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 max-w-7xl mx-auto">
-        <div className="lg:col-span-3 space-y-6">
-          <div className="border-b border-border/50 pb-4 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <MapIcon className="text-accent" size={32} />
-              <div>
-                <h1 className="text-3xl font-display font-bold text-white" data-testid="text-page-title">Campaign Map</h1>
-                <p className="text-muted-foreground">Journey through the Sengoku era. Historical events will shape your destiny.</p>
-              </div>
+      <div className="space-y-6 max-w-5xl mx-auto">
+        <div className="border-b border-border/50 pb-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <MapIcon className="text-accent" size={32} />
+            <div>
+              <h1 className="text-3xl font-display font-bold text-white" data-testid="text-page-title">Campaign Map</h1>
+              <p className="text-muted-foreground">Journey through the Sengoku era. Historical events will shape your destiny.</p>
             </div>
-            {player && 'weather' in player && (
-              <div className="flex flex-col items-end bg-black/40 p-3 rounded-lg border border-border/50">
-                <div className="flex items-center gap-2 text-gold">
-                  <WeatherIcon weather={(player as any).weather as string} />
-                  <span className="font-display font-bold uppercase tracking-widest text-sm">{(player as any).weather}</span>
-                </div>
-                <p className="text-[10px] text-zinc-500 mt-1 max-w-[150px] text-right leading-tight italic">
-                  {(player as any).weather === 'rain' && "Gunpowder dampens... Speed & Attack down."}
-                  {(player as any).weather === 'storm' && "Violent winds! Major Speed & Attack penalties."}
-                  {(player as any).weather === 'fog' && "Vision obscured. Defense up, Speed down."}
-                  {(player as any).weather === 'snow' && "Biting cold. Speed & Defense reduced."}
-                  {(player as any).weather === 'clear' && "Perfect day for battle."}
-                </p>
-              </div>
-            )}
           </div>
-
-          <div className="space-y-4 mt-8">
-            {LOCATIONS.map((loc) => (
-              <div
-                key={loc.id}
-                id={`location-${loc.id}`}
-                className={`bg-card border rounded-lg p-1 flex flex-col md:flex-row bg-washi hover:border-border transition-colors ${loc.id === 4 ? 'border-purple-700/50 shadow-[0_0_20px_rgba(128,0,255,0.15)]' : 'border-border/50'} ${player?.currentLocationId === loc.id ? 'ring-2 ring-primary/40' : ''}`}
-              >
-                <div
-                  className="h-32 md:h-auto md:w-48 bg-cover bg-center rounded-md m-1 opacity-80"
-                  style={{ backgroundImage: `url(https://images.unsplash.com/photo-1578469645742-46cae010e5d4?q=80&w=800&auto=format&fit=crop)` }}
-                />
-
-                <div className="p-4 flex-1 flex flex-col justify-between">
-                  <div>
-                    <div className="flex items-center gap-3 mb-1">
-                      <h2 className="text-xl font-display font-bold text-white">{loc.name}</h2>
-                      <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded font-bold">Rec. Lv {loc.level}</span>
-                      {loc.id === 4 && <span className="text-xs bg-purple-900/50 text-purple-300 px-2 py-0.5 rounded font-bold border border-purple-700/30">Special</span>}
-                    </div>
-                    <p className="text-sm text-zinc-400 mb-4">{loc.desc}</p>
-                  </div>
-
-                  <div className="flex flex-wrap gap-3 mt-auto">
-                    <Button
-                      onClick={() => handleBattle('field', loc.id)}
-                      disabled={isPending}
-                      variant="outline"
-                      className="border-primary/50 hover:bg-primary/10 text-zinc-200"
-                      data-testid={`battle-field-${loc.id}`}
-                    >
-                      <Swords size={16} className="mr-2 text-primary" />
-                      Field Skirmish
-                    </Button>
-                    <Button
-                      onClick={() => handleBattle('boss', loc.id)}
-                      disabled={isPending}
-                      className="bg-secondary hover:bg-secondary/80 text-white"
-                      data-testid={`battle-boss-${loc.id}`}
-                    >
-                      <Skull size={16} className="mr-2 text-accent" />
-                      Assault Castle
-                    </Button>
-                    {loc.id === 4 && (
-                      <Button
-                        onClick={() => handleBattle('special', loc.id)}
-                        disabled={isPending}
-                        className="bg-purple-900/50 hover:bg-purple-900/80 text-purple-200 border border-purple-700/40 shadow-[0_0_12px_rgba(128,0,255,0.2)]"
-                        data-testid={`battle-special-${loc.id}`}
-                      >
-                        <Crown size={16} className="mr-2 text-purple-400" />
-                        Challenge Demon Lord
-                      </Button>
-                    )}
-                  </div>
-                </div>
+          {player?.weather && (
+            <div className="flex flex-col items-end bg-black/40 p-3 rounded-lg border border-border/50">
+              <div className="flex items-center gap-2 text-gold">
+                <WeatherIcon weather={player.weather as string} />
+                <span className="font-display font-bold uppercase tracking-widest text-sm">{player.weather}</span>
               </div>
-            ))}
-          </div>
+              <p className="text-[10px] text-zinc-500 mt-1 max-w-[150px] text-right leading-tight italic">
+                {player.weather === 'rain' && "Gunpowder dampens... Speed & Attack down."}
+                {player.weather === 'storm' && "Violent winds! Major Speed & Attack penalties."}
+                {player.weather === 'fog' && "Vision obscured. Defense up, Speed down."}
+                {player.weather === 'snow' && "Biting cold. Speed & Defense reduced."}
+                {player.weather === 'clear' && "Perfect day for battle."}
+              </p>
+            </div>
+          )}
         </div>
 
-        <div className="space-y-6">
-          <MiniMap 
-            locations={LOCATIONS} 
-            currentLocationId={player?.currentLocationId || 1}
-            onLocationSelect={(id) => {
-              const el = document.getElementById(`location-${id}`);
-              if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }}
-          />
-          
-          <div className="bg-card/50 border border-border/50 rounded-lg p-4 bg-washi">
-            <h3 className="text-xs font-display font-bold text-white uppercase tracking-widest mb-3 flex items-center gap-2">
-              <Scroll size={14} className="text-accent" />
-              Traveler's Log
-            </h3>
-            <div className="space-y-2 text-[11px] text-zinc-400 italic">
-              <p>• Owari is your home base.</p>
-              <p>• Higher provinces yield better rewards.</p>
-              <p>• Demon Gate requires absolute focus.</p>
+        <div className="space-y-4 mt-8">
+          {LOCATIONS.map((loc) => (
+            <div
+              key={loc.id}
+              className={`bg-card border rounded-lg p-1 flex flex-col md:flex-row bg-washi hover:border-border transition-colors ${loc.id === 4 ? 'border-purple-700/50 shadow-[0_0_20px_rgba(128,0,255,0.1)]' : 'border-border/50'}`}
+            >
+              <div
+                className="h-32 md:h-auto md:w-48 bg-cover bg-center rounded-md m-1 opacity-80"
+                style={{ backgroundImage: `url(https://images.unsplash.com/photo-1578469645742-46cae010e5d4?q=80&w=800&auto=format&fit=crop)` }}
+              />
+
+              <div className="p-4 flex-1 flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center gap-3 mb-1">
+                    <h2 className="text-xl font-display font-bold text-white">{loc.name}</h2>
+                    <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded font-bold">Rec. Lv {loc.level}</span>
+                    {loc.id === 4 && <span className="text-xs bg-purple-900/50 text-purple-300 px-2 py-0.5 rounded font-bold border border-purple-700/30">Special</span>}
+                  </div>
+                  <p className="text-sm text-zinc-400 mb-4">{loc.desc}</p>
+                </div>
+
+                <div className="flex flex-wrap gap-3 mt-auto">
+                  <Button
+                    onClick={() => handleBattle('field', loc.id)}
+                    disabled={isPending}
+                    variant="outline"
+                    className="border-primary/50 hover:bg-primary/10 text-zinc-200"
+                    data-testid={`battle-field-${loc.id}`}
+                  >
+                    <Swords size={16} className="mr-2 text-primary" />
+                    Field Skirmish
+                  </Button>
+                  <Button
+                    onClick={() => handleBattle('boss', loc.id)}
+                    disabled={isPending}
+                    className="bg-secondary hover:bg-secondary/80 text-white"
+                    data-testid={`battle-boss-${loc.id}`}
+                  >
+                    <Skull size={16} className="mr-2 text-accent" />
+                    Assault Castle
+                  </Button>
+                  {loc.id === 4 && (
+                    <Button
+                      onClick={() => handleBattle('special', loc.id)}
+                      disabled={isPending}
+                      className="bg-purple-900/50 hover:bg-purple-900/80 text-purple-200 border border-purple-700/40 shadow-[0_0_12px_rgba(128,0,255,0.2)]"
+                      data-testid={`battle-special-${loc.id}`}
+                    >
+                      <Crown size={16} className="mr-2 text-purple-400" />
+                      Challenge Demon Lord
+                    </Button>
+                  )}
+                </div>
+              </div>
             </div>
-          </div>
+          ))}
         </div>
       </div>
 
