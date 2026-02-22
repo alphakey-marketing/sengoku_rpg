@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useCompanions, useSetParty, useEquipment, Companion } from "@/hooks/use-game";
 import { MainLayout } from "@/components/layout/main-layout";
 import { Button } from "@/components/ui/button";
-import { Users, Star, Sword, Shield, Zap, Heart } from "lucide-react";
+import { Users, Star, Sword, Shield, Zap, Heart, Sparkles } from "lucide-react";
 import { motion } from "framer-motion";
 
 export default function Party() {
