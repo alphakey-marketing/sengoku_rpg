@@ -34,11 +34,6 @@ export const api = {
       path: '/api/player/status' as const,
       responses: { 200: z.any(), 401: errorSchemas.unauthorized },
     },
-    upgradePassive: {
-      method: 'POST' as const,
-      path: '/api/player/passive/:stat' as const,
-      responses: { 200: z.any(), 400: errorSchemas.validation, 401: errorSchemas.unauthorized },
-    },
   },
   companions: {
     list: {
@@ -51,17 +46,7 @@ export const api = {
       path: '/api/companions/party' as const,
       input: z.object({ companionIds: z.array(z.number()) }),
       responses: { 200: z.array(z.any()), 400: errorSchemas.validation, 401: errorSchemas.unauthorized },
-    },
-    recycle: {
-      method: 'POST' as const,
-      path: '/api/companions/:id/recycle' as const,
-      responses: { 200: z.any(), 401: errorSchemas.unauthorized, 404: errorSchemas.notFound },
-    },
-    upgrade: {
-      method: 'POST' as const,
-      path: '/api/companions/:id/upgrade' as const,
-      responses: { 200: z.any(), 401: errorSchemas.unauthorized, 404: errorSchemas.notFound },
-    },
+    }
   },
   equipment: {
     list: {

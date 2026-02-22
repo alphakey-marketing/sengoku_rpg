@@ -1,20 +1,14 @@
 import { useState } from "react";
-import { useCompanions, useSetParty, useEquipment, useRecycleCompanion, useUpgradeCompanion, usePlayer, Companion } from "@/hooks/use-game";
+import { useCompanions, useSetParty, useEquipment, Companion } from "@/hooks/use-game";
 import { MainLayout } from "@/components/layout/main-layout";
 import { Button } from "@/components/ui/button";
-import { Users, Star, Sword, Shield, Zap, Heart, Sparkles, Trash2, ArrowUpCircle } from "lucide-react";
+import { Users, Star, Sword, Shield, Zap, Heart } from "lucide-react";
 import { motion } from "framer-motion";
-import { Badge } from "@/components/ui/badge";
-import { useToast } from "@/hooks/use-toast";
 
 export default function Party() {
-  const { data: player } = usePlayer();
   const { data: companions, isLoading } = useCompanions();
   const { data: equipment } = useEquipment();
   const { mutate: setParty, isPending } = useSetParty();
-  const { mutate: recycle, isPending: isRecycling } = useRecycleCompanion();
-  const { mutate: upgrade, isPending: isUpgrading } = useUpgradeCompanion();
-  const { toast } = useToast();
 
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
 
@@ -32,23 +26,6 @@ export default function Party() {
 
   const handleSave = () => setParty(selectedIds);
 
-  const handleRecycle = (e: React.MouseEvent, id: number) => {
-    e.stopPropagation();
-    if (window.confirm("Are you sure you want to dismiss this companion? You will receive upgrade stones.")) {
-      recycle(id, {
-        onSuccess: () => toast({ title: "Companion dismissed", description: "You received upgrade stones." })
-      });
-    }
-  };
-
-  const handleUpgrade = (e: React.MouseEvent, id: number) => {
-    e.stopPropagation();
-    upgrade(id, {
-      onSuccess: () => toast({ title: "Companion strengthened", description: "Level and stats increased!" }),
-      onError: (err) => toast({ title: "Failed to upgrade", description: err.message, variant: "destructive" })
-    });
-  };
-
   const getCompEquipped = (compId: number) => equipment?.filter(e => e.isEquipped && e.equippedToType === 'companion' && e.equippedToId === compId) || [];
 
   if (isLoading) return <MainLayout><div className="p-8">Loading companions...</div></MainLayout>;
@@ -62,10 +39,6 @@ export default function Party() {
             <p className="text-muted-foreground">Select up to 5 companions for your active party.</p>
           </div>
           <div className="flex items-center gap-4">
-            <div className="flex flex-col items-end mr-4">
-              <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest">Upgrade Stones</span>
-              <span className="text-gold font-display font-bold text-xl">{player?.upgradeStones || 0}</span>
-            </div>
             <span className="text-sm font-medium bg-secondary/30 px-3 py-1 rounded border border-secondary text-secondary-foreground">
               {selectedIds.length} / 5 Selected
             </span>
@@ -117,32 +90,8 @@ export default function Party() {
                       <Users className={isSelected ? 'text-primary' : 'text-muted-foreground'} size={32} />
                     </div>
                     <div className="flex-1">
-                      <div className="flex items-center justify-between gap-2 mb-1">
+                      <div className="flex items-center gap-2 mb-1">
                         <h3 className="font-bold font-display text-lg text-white">{comp.name}</h3>
-                        <div className="flex gap-2">
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            className="h-8 w-8 text-gold hover:text-gold hover:bg-gold/10"
-                            onClick={(e) => handleUpgrade(e, comp.id)}
-                            disabled={isUpgrading || (player?.upgradeStones || 0) < 10}
-                            title="Upgrade Companion (10 Stones)"
-                          >
-                            <ArrowUpCircle size={18} />
-                          </Button>
-                          {!comp.isInParty && (
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              className="h-8 w-8 text-red-500 hover:text-red-400 hover:bg-red-500/10"
-                              onClick={(e) => handleRecycle(e, comp.id)}
-                              disabled={isRecycling}
-                              title="Recycle Companion"
-                            >
-                              <Trash2 size={18} />
-                            </Button>
-                          )}
-                        </div>
                       </div>
                       <div className="flex text-accent mb-3">
                         {Array.from({ length: comp.rarity }).map((_, j) => (
@@ -175,34 +124,22 @@ export default function Party() {
                     </div>
                   </div>
 
-                  {comp.skill && (
-                    <div className="mt-4 p-3 bg-primary/5 border border-primary/20 rounded-lg">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Sparkles size={16} className="text-accent" />
-                        <span className="text-sm font-bold text-accent uppercase tracking-widest">{comp.skill}</span>
-                        <Badge variant="outline" className="text-[10px] ml-auto uppercase border-accent/30 text-accent/80">{(comp as any).skillType}</Badge>
-                      </div>
-                      <p className="text-xs text-zinc-300 leading-relaxed italic">
-                        {(comp as any).skillEffect === 'atk_buff' && `Tactical Insight: Increases party attack by ${(comp as any).skillValue}% through superior formation.`}
-                        {(comp as any).skillEffect === 'def_buff' && `Iron Resolve: Increases party defense by ${(comp as any).skillValue}% by bracing for impact.`}
-                        {(comp as any).skillEffect === 'spd_debuff' && `Cunning Ruse: Reduces enemy speed by ${(comp as any).skillValue}% using terrain advantages.`}
-                        {!(comp as any).skillEffect && "A secret technique passed down through generations."}
-                      </p>
+                  {compEquip.length > 0 && (
+                    <div className="mt-3 p-2 bg-background/50 rounded border border-border/30 text-xs text-zinc-400 space-y-1">
+                      <span className="text-muted-foreground uppercase tracking-wider font-bold text-[10px]">Equipped</span>
+                      {compEquip.map(e => (
+                        <div key={e.id} className="flex justify-between">
+                          <span>{e.name} (Lv{e.level})</span>
+                          <span className="text-zinc-500">{e.type}</span>
+                        </div>
+                      ))}
                     </div>
                   )}
 
-                  {compEquip.length > 0 && (
-                    <div className="mt-4 p-3 bg-background/50 rounded border border-border/30 text-xs text-zinc-400 space-y-2">
-                      <div className="flex items-center justify-between border-b border-border/20 pb-1 mb-1">
-                        <span className="text-muted-foreground uppercase tracking-wider font-bold text-[10px]">Arsenal</span>
-                        <span className="text-[9px] text-zinc-500">{compEquip.length} Items</span>
-                      </div>
-                      {compEquip.map(e => (
-                        <div key={e.id} className="flex justify-between items-center">
-                          <span className="text-zinc-200 font-medium">{e.name}</span>
-                          <span className="text-[10px] px-1.5 py-0.5 bg-zinc-800 rounded text-zinc-400 border border-zinc-700/50">Lv{e.level}</span>
-                        </div>
-                      ))}
+                  {comp.skill && (
+                    <div className="mt-3 p-2 bg-background/50 rounded text-xs text-zinc-400 border border-border/30">
+                      <span className="text-accent mr-2">Skill:</span>
+                      {comp.skill}
                     </div>
                   )}
                 </motion.div>

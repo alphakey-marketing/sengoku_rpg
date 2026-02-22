@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
-import { useFieldBattle, useBossBattle, useSpecialBossBattle, BattleResult, useCampaignEvents, useTriggerCampaignEvent, usePlayer } from "@/hooks/use-game";
+import { useFieldBattle, useBossBattle, useSpecialBossBattle, BattleResult, useCampaignEvents, useTriggerCampaignEvent } from "@/hooks/use-game";
 import { MainLayout } from "@/components/layout/main-layout";
 import { Button } from "@/components/ui/button";
-import { Map as MapIcon, Swords, Skull, ChevronRight, Crown, Zap, Shield, Heart, Sparkles, ArrowUp, Scroll, Star, CloudRain, Sun, Cloud, Wind, Snowflake } from "lucide-react";
+import { Map as MapIcon, Swords, Skull, ChevronRight, Crown, Zap, Shield, Heart, Sparkles, ArrowUp, Scroll, Star } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -49,18 +49,7 @@ const STORY_EVENTS = [
   }
 ];
 
-const WeatherIcon = ({ weather }: { weather: string }) => {
-  switch (weather) {
-    case 'rain': return <CloudRain className="w-5 h-5 text-blue-400" />;
-    case 'storm': return <Wind className="w-5 h-5 text-slate-400" />;
-    case 'fog': return <Cloud className="w-5 h-5 text-gray-300" />;
-    case 'snow': return <Snowflake className="w-5 h-5 text-blue-100" />;
-    default: return <Sun className="w-5 h-5 text-yellow-400" />;
-  }
-};
-
 export default function MapPage() {
-  const { data: player } = usePlayer();
   const { mutate: doFieldBattle, isPending: fieldPending } = useFieldBattle();
   const { mutate: doBossBattle, isPending: bossPending } = useBossBattle();
   const { mutate: doSpecialBoss, isPending: specialPending } = useSpecialBossBattle();
@@ -109,29 +98,12 @@ export default function MapPage() {
   return (
     <MainLayout>
       <div className="space-y-6 max-w-5xl mx-auto">
-        <div className="border-b border-border/50 pb-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <MapIcon className="text-accent" size={32} />
-            <div>
-              <h1 className="text-3xl font-display font-bold text-white" data-testid="text-page-title">Campaign Map</h1>
-              <p className="text-muted-foreground">Journey through the Sengoku era. Historical events will shape your destiny.</p>
-            </div>
+        <div className="border-b border-border/50 pb-4 flex items-center gap-3">
+          <MapIcon className="text-accent" size={32} />
+          <div>
+            <h1 className="text-3xl font-display font-bold text-white" data-testid="text-page-title">Campaign Map</h1>
+            <p className="text-muted-foreground">Journey through the Sengoku era. Historical events will shape your destiny.</p>
           </div>
-          {player?.weather && (
-            <div className="flex flex-col items-end bg-black/40 p-3 rounded-lg border border-border/50">
-              <div className="flex items-center gap-2 text-gold">
-                <WeatherIcon weather={player.weather as string} />
-                <span className="font-display font-bold uppercase tracking-widest text-sm">{player.weather}</span>
-              </div>
-              <p className="text-[10px] text-zinc-500 mt-1 max-w-[150px] text-right leading-tight italic">
-                {player.weather === 'rain' && "Gunpowder dampens... Speed & Attack down."}
-                {player.weather === 'storm' && "Violent winds! Major Speed & Attack penalties."}
-                {player.weather === 'fog' && "Vision obscured. Defense up, Speed down."}
-                {player.weather === 'snow' && "Biting cold. Speed & Defense reduced."}
-                {player.weather === 'clear' && "Perfect day for battle."}
-              </p>
-            </div>
-          )}
         </div>
 
         <div className="space-y-4 mt-8">

@@ -17,10 +17,6 @@ export interface PlayerData {
   currentLocationId: number;
   activeTransformId: number | null;
   upgradeStones: number;
-  skillPoints: number;
-  passiveAtkLevel: number;
-  passiveDefLevel: number;
-  passiveSpdLevel: number;
 }
 
 export interface Companion {
@@ -36,7 +32,6 @@ export interface Companion {
   defense: number;
   speed: number;
   skill: string | null;
-  expToNext: number;
   isInParty: boolean;
 }
 
@@ -178,25 +173,6 @@ export function usePlayerFullStatus() {
   });
 }
 
-export function useUpgradePassive() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (stat: 'atk' | 'def' | 'spd') => {
-      const url = buildUrl(api.player.upgradePassive.path, { stat });
-      const res = await fetchWithAuth(url, { method: "POST" });
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.message || "Failed to upgrade passive");
-      }
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [api.player.get.path] });
-      queryClient.invalidateQueries({ queryKey: [api.player.fullStatus.path] });
-    },
-  });
-}
-
 export function useCompanions() {
   return useQuery<Companion[]>({
     queryKey: [api.companions.list.path],
@@ -222,39 +198,6 @@ export function useSetParty() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [api.companions.list.path] });
-      queryClient.invalidateQueries({ queryKey: [api.player.fullStatus.path] });
-    },
-  });
-}
-
-export function useRecycleCompanion() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (companionId: number) => {
-      const url = buildUrl(api.companions.recycle.path, { id: companionId });
-      const res = await fetchWithAuth(url, { method: "POST" });
-      if (!res.ok) throw new Error("Failed to recycle companion");
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [api.companions.list.path] });
-      queryClient.invalidateQueries({ queryKey: [api.player.get.path] });
-    },
-  });
-}
-
-export function useUpgradeCompanion() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (companionId: number) => {
-      const url = buildUrl(api.companions.upgrade.path, { id: companionId });
-      const res = await fetchWithAuth(url, { method: "POST" });
-      if (!res.ok) throw new Error("Failed to upgrade companion");
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [api.companions.list.path] });
-      queryClient.invalidateQueries({ queryKey: [api.player.get.path] });
       queryClient.invalidateQueries({ queryKey: [api.player.fullStatus.path] });
     },
   });

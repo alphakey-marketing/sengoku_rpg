@@ -28,12 +28,6 @@ export const users = pgTable("users", {
   currentLocationId: integer("current_location_id").notNull().default(1),
   activeTransformId: integer("active_transform_id"),
   upgradeStones: integer("upgrade_stones").notNull().default(0),
-  skillPoints: integer("skill_points").notNull().default(0),
-  passiveAtkLevel: integer("passive_atk_level").notNull().default(0),
-  passiveDefLevel: integer("passive_def_level").notNull().default(0),
-  passiveSpdLevel: integer("passive_spd_level").notNull().default(0),
-  weather: text("weather").notNull().default("clear"),
-  lastWeatherUpdate: timestamp("last_weather_update").defaultNow(),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -54,11 +48,6 @@ export const companions = pgTable("companions", {
   defense: integer("defense").notNull(),
   speed: integer("speed").notNull().default(10),
   skill: text("skill"),
-  skillType: text("skill_type").notNull().default('active'),
-  skillEffect: text("skill_effect"),
-  skillValue: integer("skill_value").notNull().default(0),
-  experience: integer("experience").notNull().default(0),
-  expToNext: integer("exp_to_next").notNull().default(100),
   isInParty: boolean("is_in_party").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow(),
 });
@@ -94,8 +83,6 @@ export const pets = pgTable("pets", {
   defense: integer("defense").notNull().default(5),
   speed: integer("speed").notNull().default(15),
   skill: text("skill"),
-  skillType: text("skill_type").notNull().default('active'),
-  skillValue: integer("skill_value").notNull().default(0),
   isActive: boolean("is_active").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow(),
 });

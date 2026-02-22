@@ -23,15 +23,7 @@ const PET_NAMES = [
   { name: "War Hawk (鷹)", skill: "Scout (偵察)" },
   { name: "Shadow Cat (影猫)", skill: "Poison (毒)" },
 ];
-const HORSE_NAMES = ["Kiso Horse (木曽馬)", "Misaki Pony (御崎馬)", "Tokara Stallion (トカラ马)"];
-
-const WEATHER_EFFECTS: Record<string, { name: string, description: string, atkMod: number, defMod: number, spdMod: number }> = {
-  clear: { name: "Clear (晴れ)", description: "Standard conditions.", atkMod: 1.0, defMod: 1.0, spdMod: 1.0 },
-  rain: { name: "Rain (雨)", description: "Heavy rain dampens gunpowder and slowing movement. Speed -10%, Attack -5%.", atkMod: 0.95, defMod: 1.0, spdMod: 0.9 },
-  storm: { name: "Storm (嵐)", description: "Violent winds and rain. Attack -15%, Speed -20%.", atkMod: 0.85, defMod: 1.0, spdMod: 0.8 },
-  fog: { name: "Fog (霧)", description: "Dense mist obscures vision. Defense +10%, Speed -10%.", atkMod: 1.0, defMod: 1.1, spdMod: 0.9 },
-  snow: { name: "Snow (雪)", description: "Freezing cold biting at the warriors. Speed -15%, Defense -5%.", atkMod: 1.0, defMod: 0.95, spdMod: 0.85 },
-};
+const HORSE_NAMES = ["Kiso Horse (木曽馬)", "Misaki Pony (御崎馬)", "Tokara Stallion (トカラ馬)"];
 
 function pick<T>(arr: T[]): T { return arr[Math.floor(Math.random() * arr.length)]; }
 
@@ -62,14 +54,10 @@ async function getPlayerTeamStats(userId: string) {
   const activePet = allPets.find(p => p.isActive);
   const activeHorse = allHorses.find(h => h.isActive);
 
-  const passiveAtkBonus = (user.passiveAtkLevel || 0) * 5;
-  const passiveDefBonus = (user.passiveDefLevel || 0) * 5;
-  const passiveSpdBonus = (user.passiveSpdLevel || 0) * 5;
-
   const playerEquipped = equips.filter(e => e.isEquipped && e.equippedToType === 'player');
-  const totalAtkBonus = playerEquipped.reduce((s, e) => s + Math.floor(e.attackBonus * (1 + (e.level - 1) * 0.05)), 0) + passiveAtkBonus;
-  const totalDefBonus = playerEquipped.reduce((s, e) => s + Math.floor(e.defenseBonus * (1 + (e.level - 1) * 0.08)), 0) + passiveDefBonus;
-  const totalSpdBonus = playerEquipped.reduce((s, e) => s + Math.floor(e.speedBonus * (1 + (e.level - 1) * 0.1)), 0) + passiveSpdBonus;
+  const totalAtkBonus = playerEquipped.reduce((s, e) => s + Math.floor(e.attackBonus * (1 + (e.level - 1) * 0.05)), 0);
+  const totalDefBonus = playerEquipped.reduce((s, e) => s + Math.floor(e.defenseBonus * (1 + (e.level - 1) * 0.08)), 0);
+  const totalSpdBonus = playerEquipped.reduce((s, e) => s + Math.floor(e.speedBonus * (1 + (e.level - 1) * 0.1)), 0);
   const horseSpdBonus = activeHorse ? Math.floor(activeHorse.speedBonus * (1 + (activeHorse.level - 1) * 0.15)) : 0;
   const horseAtkBonus = activeHorse ? Math.floor(activeHorse.attackBonus * (1 + (activeHorse.level - 1) * 0.05)) : 0;
 
@@ -175,21 +163,7 @@ export async function registerRoutes(
   // Player routes
   app.get(api.player.get.path, isAuthenticated, async (req: any, res) => {
     const userId = req.user.claims.sub;
-    let user = await storage.getUser(userId);
-    if (!user) return res.status(401).json({ message: "Unauthorized" });
-
-    // Dynamic weather update (every 10 minutes)
-    const now = new Date();
-    const lastUpdate = user.lastWeatherUpdate ? new Date(user.lastWeatherUpdate) : new Date(0);
-    if (now.getTime() - lastUpdate.getTime() > 10 * 60 * 1000) {
-      const weathers = Object.keys(WEATHER_EFFECTS);
-      const newWeather = pick(weathers);
-      user = await storage.updateUser(userId, { 
-        weather: newWeather, 
-        lastWeatherUpdate: now 
-      });
-    }
-
+    const user = await storage.getUser(userId);
     res.json(user);
   });
 
@@ -198,26 +172,6 @@ export async function registerRoutes(
     const teamStats = await getPlayerTeamStats(userId);
     if (!teamStats) return res.status(401).json({ message: "Unauthorized" });
     res.json(teamStats);
-  });
-
-  app.post(api.player.upgradePassive.path, isAuthenticated, async (req: any, res) => {
-    const userId = req.user.claims.sub;
-    const { stat } = req.params;
-    const user = await storage.getUser(userId);
-    if (!user) return res.status(401).json({ message: "Unauthorized" });
-
-    if ((user.skillPoints || 0) < 1) {
-      return res.status(400).json({ message: "No skill points available" });
-    }
-
-    const updates: any = { skillPoints: user.skillPoints - 1 };
-    if (stat === 'atk') updates.passiveAtkLevel = (user.passiveAtkLevel || 0) + 1;
-    else if (stat === 'def') updates.passiveDefLevel = (user.passiveDefLevel || 0) + 1;
-    else if (stat === 'spd') updates.passiveSpdLevel = (user.passiveSpdLevel || 0) + 1;
-    else return res.status(400).json({ message: "Invalid stat" });
-
-    const updated = await storage.updateUser(userId, updates);
-    res.json(updated);
   });
 
   // Companions
@@ -240,76 +194,6 @@ export async function registerRoutes(
       }
     }
     res.json(await storage.getCompanions(userId));
-  });
-
-  app.post(api.companions.recycle.path, isAuthenticated, async (req: any, res) => {
-    const userId = req.user.claims.sub;
-    const compId = Number(req.params.id);
-    const companions = await storage.getCompanions(userId);
-    const targetComp = companions.find(c => c.id === compId);
-
-    if (!targetComp) return res.status(404).json({ message: "Companion not found" });
-    if (targetComp.isInParty) return res.status(400).json({ message: "Cannot recycle companion in party" });
-
-    const rarityStones: Record<number, number> = { 1: 5, 2: 15, 3: 40, 4: 100, 5: 250 };
-    const stonesGained = rarityStones[targetComp.rarity] || 5;
-
-    const user = await storage.getUser(userId);
-    if (!user) return res.status(401).json({ message: "Unauthorized" });
-
-    await storage.updateUser(userId, { upgradeStones: (user.upgradeStones || 0) + stonesGained });
-    await storage.deleteCompanion(compId);
-
-    res.json({ stonesGained });
-  });
-
-  app.post(api.companions.upgrade.path, isAuthenticated, async (req: any, res) => {
-    const userId = req.user.claims.sub;
-    const compId = Number(req.params.id);
-    const user = await storage.getUser(userId);
-    if (!user) return res.status(401).json({ message: "Unauthorized" });
-
-    if ((user.upgradeStones || 0) < 10) return res.status(400).json({ message: "Not enough upgrade stones (Need 10)" });
-
-    const companions = await storage.getCompanions(userId);
-    const comp = companions.find(c => c.id === compId);
-    if (!comp) return res.status(404).json({ message: "Companion not found" });
-
-    await storage.updateUser(userId, { upgradeStones: user.upgradeStones - 10 });
-
-    const expAmount = 100;
-    let newExp = comp.experience + expAmount;
-    let newLevel = comp.level;
-    let newExpToNext = comp.expToNext;
-    let hp = comp.hp;
-    let maxHp = comp.maxHp;
-    let atk = comp.attack;
-    let def = comp.defense;
-    let spd = comp.speed;
-
-    while (newExp >= newExpToNext) {
-      newExp -= newExpToNext;
-      newLevel++;
-      newExpToNext = Math.floor(100 * Math.pow(1.2, newLevel - 1));
-      maxHp = Math.floor(maxHp * 1.1) + 10;
-      hp = maxHp;
-      atk = Math.floor(atk * 1.05) + 2;
-      def = Math.floor(def * 1.05) + 2;
-      spd = Math.floor(spd * 1.02) + 1;
-    }
-
-    const updated = await storage.updateCompanion(compId, {
-      experience: newExp,
-      level: newLevel,
-      expToNext: newExpToNext,
-      hp,
-      maxHp,
-      attack: atk,
-      defense: def,
-      speed: spd,
-    });
-
-    res.json(updated);
   });
 
   // Equipment
@@ -506,75 +390,12 @@ export async function registerRoutes(
 
     const teamStats = await getPlayerTeamStats(userId);
     const enemy = generateEnemyStats('field', user.level);
-    
-    // Skill Impacts
-    let playerAtkMult = 1.0;
-    let playerDefMult = 1.0;
-    let playerSpdMult = 1.0;
-    let enemyAtkMult = 1.0;
-    let enemyDefMult = 1.0;
-    let enemySpdMult = 1.0;
-
-    const weather = user.weather || 'clear';
-    const weatherEffect = WEATHER_EFFECTS[weather] || WEATHER_EFFECTS.clear;
-    playerAtkMult *= weatherEffect.atkMod;
-    playerDefMult *= weatherEffect.defMod;
-    playerSpdMult *= weatherEffect.spdMod;
+    const playerPower = (teamStats?.player.attack || user.attack) + (teamStats?.player.speed || user.speed);
+    const enemyPower = enemy.attack + enemy.speed;
+    const victory = playerPower + Math.random() * 30 > enemyPower;
 
     const logs: string[] = [];
     logs.push(`A wild ${enemy.name} (Lv${enemy.level}) appeared!`);
-    logs.push(`[Weather] ${weatherEffect.name}: ${weatherEffect.description}`);
-
-    if (teamStats) {
-      // Passive skills from companions
-      teamStats.companions.forEach(c => {
-        if ((c as any).skillType === 'passive') {
-          if ((c as any).skillEffect === 'atk_buff') {
-            const bonus = (c as any).skillValue;
-            playerAtkMult += bonus / 100;
-            logs.push(`[Skill] ${c.name} activates ${c.skill}: Party Attack +${bonus}%`);
-          }
-          if ((c as any).skillEffect === 'def_buff') {
-            const bonus = (c as any).skillValue;
-            playerDefMult += bonus / 100;
-            logs.push(`[Skill] ${c.name} activates ${c.skill}: Party Defense +${bonus}%`);
-          }
-        }
-      });
-
-      // Active skills (chance-based for simplification in field battles)
-      teamStats.companions.forEach(c => {
-        if ((c as any).skillType === 'active' && Math.random() > 0.7) {
-          if ((c as any).skillEffect === 'spd_debuff') {
-            const debuff = (c as any).skillValue;
-            enemySpdMult -= debuff / 100;
-            logs.push(`[Skill] ${c.name} uses ${c.skill}: Enemy Speed -${debuff}%`);
-          }
-        }
-      });
-    }
-
-    const basePlayerAtk = (teamStats?.player.attack || user.attack);
-    const basePlayerSpd = (teamStats?.player.speed || user.speed);
-    const finalPlayerAtk = Math.floor(basePlayerAtk * playerAtkMult);
-    const finalPlayerSpd = Math.floor(basePlayerSpd * playerSpdMult);
-    
-    const baseEnemyAtk = enemy.attack;
-    const baseEnemySpd = enemy.speed;
-    const finalEnemyAtk = Math.floor(baseEnemyAtk * enemyAtkMult);
-    const finalEnemySpd = Math.floor(baseEnemySpd * enemySpdMult);
-
-    logs.push(`[Combat] Player Power: ${finalPlayerAtk + finalPlayerSpd} (Atk: ${finalPlayerAtk}, Spd: ${finalPlayerSpd})`);
-    logs.push(`[Combat] Enemy Power: ${finalEnemyAtk + finalEnemySpd} (Atk: ${finalEnemyAtk}, Spd: ${finalEnemySpd})`);
-
-    const playerPower = finalPlayerAtk + finalPlayerSpd;
-    const enemyPower = finalEnemyAtk + finalEnemySpd;
-    
-    logs.push(`[Combat] Total Calculation: Player ${playerPower} vs Enemy ${enemyPower}`);
-    const roll = Math.floor(Math.random() * 30);
-    logs.push(`[Combat] Fortune Roll: +${roll}`);
-    
-    const victory = playerPower + roll > enemyPower;
     if (teamStats && teamStats.player.speed > enemy.speed) logs.push(`Your speed strikes first!`);
 
     const expGained = victory ? Math.floor(Math.random() * 20) + 10 + enemy.level * 2 : 0;
@@ -582,64 +403,16 @@ export async function registerRoutes(
 
     if (victory) {
       logs.push("Victory!");
-      
-      // Level up logic
-      let newLevel = user.level;
-      let newExp = user.experience + expGained;
-      let expToNext = user.level * 100;
-      let currentSkillPoints = user.skillPoints || 0;
-      
-      while (newExp >= expToNext) {
-        newExp -= expToNext;
-        newLevel++;
-        expToNext = newLevel * 100;
-        currentSkillPoints++;
-        logs.push(`[Level Up] You reached Level ${newLevel}! Skill Point Gained!`);
-      }
-
-      // Drop logic (15% chance for equipment in field battles)
-      let droppedEquip = null;
-      if (Math.random() < 0.15) {
-        const type = pick(EQUIP_TYPES);
-        const name = pick(type === 'weapon' ? WEAPON_NAMES : type === 'armor' ? ARMOR_NAMES : type === 'accessory' ? ACCESSORY_NAMES : HORSE_GEAR_NAMES);
-        const rarity = rarityFromRandom();
-        droppedEquip = await storage.createEquipment({
-          userId,
-          name,
-          type,
-          rarity,
-          level: 1,
-          experience: 0,
-          expToNext: 100,
-          attackBonus: Math.floor(Math.random() * 5) + 2,
-          defenseBonus: Math.floor(Math.random() * 5) + 2,
-          speedBonus: Math.floor(Math.random() * 5) + 2,
-          isEquipped: false,
-          equippedToId: null,
-          equippedToType: null,
-        });
-        logs.push(`[Drop] Found ${rarity} ${name}!`);
-      }
-
       await storage.updateUser(userId, {
-        level: newLevel,
-        experience: newExp,
+        experience: user.experience + expGained,
         gold: user.gold + goldGained,
-        skillPoints: currentSkillPoints,
       });
       await giveEquipmentExp(userId, 10);
-      
-      res.json({ 
-        victory, 
-        experienceGained: expGained, 
-        goldGained, 
-        logs,
-        equipmentDropped: droppedEquip ? [droppedEquip] : []
-      });
     } else {
       logs.push("Defeat!");
-      res.json({ victory, experienceGained: 0, goldGained: 0, logs });
     }
+
+    res.json({ victory, experienceGained: expGained, goldGained, logs });
   });
 
   app.post(api.battle.boss.path, isAuthenticated, async (req: any, res) => {
@@ -648,102 +421,17 @@ export async function registerRoutes(
     if (!user) return res.status(401).json({ message: "Unauthorized" });
     const teamStats = await getPlayerTeamStats(userId);
     const enemy = generateEnemyStats('boss', user.level);
-
-    // Skill Impacts
-    let playerAtkMult = 1.0;
-    let playerDefMult = 1.0;
-    let enemyAtkMult = 1.0;
+    const victory = (teamStats?.player.attack || user.attack) + Math.random() * 50 > enemy.attack;
 
     const logs: string[] = [];
-    logs.push(`You challenged ${enemy.name} (Lv${enemy.level}) at the Castle!`);
-
-    if (teamStats) {
-      teamStats.companions.forEach(c => {
-        if ((c as any).skillType === 'passive') {
-          if ((c as any).skillEffect === 'atk_buff') {
-            const bonus = (c as any).skillValue;
-            playerAtkMult += bonus / 100;
-            logs.push(`[Skill] ${c.name}: Party Attack +${bonus}%`);
-          }
-          if ((c as any).skillEffect === 'def_buff') {
-            const bonus = (c as any).skillValue;
-            playerDefMult += bonus / 100;
-            logs.push(`[Skill] ${c.name}: Party Defense +${bonus}%`);
-          }
-        }
-      });
-    }
-
-    const finalPlayerAtk = Math.floor((teamStats?.player.attack || user.attack) * playerAtkMult);
-    const finalEnemyAtk = Math.floor(enemy.attack * enemyAtkMult);
-
-    const weather = user.weather || 'clear';
-    const weatherEffect = WEATHER_EFFECTS[weather] || WEATHER_EFFECTS.clear;
-    const weatherFinalPlayerAtk = Math.floor(finalPlayerAtk * weatherEffect.atkMod);
-
-    logs.push(`[Weather] ${weatherEffect.name}: ${weatherEffect.description}`);
-    logs.push(`[Combat] Player Siege Power: ${weatherFinalPlayerAtk} (Base: ${finalPlayerAtk})`);
-    logs.push(`[Combat] Castle Defense Power: ${finalEnemyAtk}`);
-
-    const roll = Math.floor(Math.random() * 50);
-    logs.push(`[Combat] Battle Fortune: +${roll}`);
-
-    const victory = weatherFinalPlayerAtk + roll > finalEnemyAtk;
+    logs.push(`You challenged ${enemy.name}!`);
 
     if (victory) {
-      logs.push("The castle gates fall! Victory!");
-      
-      // Level up logic
-      let newLevel = user.level;
-      let newExp = user.experience + 100;
-      let expToNext = user.level * 100;
-      let currentSkillPoints = user.skillPoints || 0;
-      
-      while (newExp >= expToNext) {
-        newExp -= expToNext;
-        newLevel++;
-        expToNext = newLevel * 100;
-        currentSkillPoints++;
-        logs.push(`[Level Up] You reached Level ${newLevel}! Skill Point Gained!`);
-      }
-
-      // Guaranteed equipment drop for Bosses
-      const type = pick(EQUIP_TYPES);
-      const name = pick(type === 'weapon' ? WEAPON_NAMES : type === 'armor' ? ARMOR_NAMES : type === 'accessory' ? ACCESSORY_NAMES : HORSE_GEAR_NAMES);
-      const rarity = 'blue'; // Bosses drop at least blue
-      const droppedEquip = await storage.createEquipment({
-        userId,
-        name,
-        type,
-        rarity,
-        level: 1,
-        experience: 0,
-        expToNext: 100,
-        attackBonus: Math.floor(Math.random() * 10) + 5,
-        defenseBonus: Math.floor(Math.random() * 10) + 5,
-        speedBonus: Math.floor(Math.random() * 10) + 5,
-        isEquipped: false,
-        equippedToId: null,
-        equippedToType: null,
-      });
-      logs.push(`[Drop] Found ${rarity} ${name} from the vault!`);
-
-      await storage.updateUser(userId, { 
-        level: newLevel,
-        experience: newExp, 
-        rice: user.rice + 10,
-        skillPoints: currentSkillPoints,
-      });
-      res.json({ 
-        victory: true, 
-        experienceGained: 100, 
-        goldGained: 50, 
-        riceGained: 10, 
-        logs,
-        equipmentDropped: [droppedEquip]
-      });
+      logs.push("Victory!");
+      await storage.updateUser(userId, { experience: user.experience + 100, rice: user.rice + 10 });
+      res.json({ victory: true, experienceGained: 100, goldGained: 50, riceGained: 10, logs });
     } else {
-      logs.push("The siege failed... Retreat!");
+      logs.push("Defeat!");
       res.json({ victory: false, logs });
     }
   });
@@ -755,65 +443,13 @@ export async function registerRoutes(
     const teamStats = await getPlayerTeamStats(userId);
     const enemy = generateEnemyStats('special', user.level);
     const sb = pick(SPECIAL_BOSSES);
-
-    // Skill Impacts
-    let playerAtkMult = 1.0;
-    let playerDefMult = 1.0;
-    let enemyAtkMult = 1.0;
+    const victory = (teamStats?.player.attack || user.attack) + Math.random() * 100 > enemy.attack * 1.5;
 
     const logs: string[] = [];
-    logs.push(`The sky turns dark... ${enemy.name} (Lv${enemy.level}) descends!`);
-
-    if (teamStats) {
-      teamStats.companions.forEach(c => {
-        if ((c as any).skillType === 'passive') {
-          if ((c as any).skillEffect === 'atk_buff') {
-            const bonus = (c as any).skillValue;
-            playerAtkMult += bonus / 100;
-            logs.push(`[Skill] ${c.name}: Divine Attack +${bonus}%`);
-          }
-          if ((c as any).skillEffect === 'def_buff') {
-            const bonus = (c as any).skillValue;
-            playerDefMult += bonus / 100;
-            logs.push(`[Skill] ${c.name}: Divine Defense +${bonus}%`);
-          }
-        }
-      });
-    }
-
-    const finalPlayerAtk = Math.floor((teamStats?.player.attack || user.attack) * playerAtkMult);
-    const finalEnemyAtk = Math.floor(enemy.attack * enemyAtkMult);
-
-    const weather = user.weather || 'clear';
-    const weatherEffect = WEATHER_EFFECTS[weather] || WEATHER_EFFECTS.clear;
-    const weatherFinalPlayerAtk = Math.floor(finalPlayerAtk * weatherEffect.atkMod);
-
-    logs.push(`[Weather] ${weatherEffect.name}: ${weatherEffect.description}`);
-    logs.push(`[Combat] Total Heroic Power: ${weatherFinalPlayerAtk} (Base: ${finalPlayerAtk})`);
-    logs.push(`[Combat] Calamity Power: ${finalEnemyAtk}`);
-
-    const roll = Math.floor(Math.random() * 100);
-    logs.push(`[Combat] Destiny Roll: +${roll}`);
-
-    const victory = weatherFinalPlayerAtk + roll > finalEnemyAtk * 1.5;
+    logs.push(`${enemy.name} appears!`);
 
     if (victory) {
-      logs.push(`The legend is written! ${enemy.name} is sealed!`);
-      
-      // Level up logic
-      let newLevel = user.level;
-      let newExp = user.experience + 200;
-      let expToNext = user.level * 100;
-      let currentSkillPoints = user.skillPoints || 0;
-      
-      while (newExp >= expToNext) {
-        newExp -= expToNext;
-        newLevel++;
-        expToNext = newLevel * 100;
-        currentSkillPoints++;
-        logs.push(`[Level Up] You reached Level ${newLevel}! Skill Point Gained!`);
-      }
-
+      logs.push("A mystical stone drops!");
       const trans = await storage.createTransformation({
         userId,
         name: sb.transformName,
@@ -828,48 +464,9 @@ export async function registerRoutes(
         cooldownSeconds: 60,
         durationSeconds: 30,
       });
-
-      // Special Boss drops 2 pieces of high quality equipment
-      const drops = [];
-      for (let i = 0; i < 2; i++) {
-        const type = pick(EQUIP_TYPES);
-        const name = pick(type === 'weapon' ? WEAPON_NAMES : type === 'armor' ? ARMOR_NAMES : type === 'accessory' ? ACCESSORY_NAMES : HORSE_GEAR_NAMES);
-        const rarity = pick(['purple', 'gold']);
-        const drop = await storage.createEquipment({
-          userId,
-          name,
-          type,
-          rarity,
-          level: 1,
-          experience: 0,
-          expToNext: 100,
-          attackBonus: Math.floor(Math.random() * 20) + 15,
-          defenseBonus: Math.floor(Math.random() * 20) + 15,
-          speedBonus: Math.floor(Math.random() * 20) + 15,
-          isEquipped: false,
-          equippedToId: null,
-          equippedToType: null,
-        });
-        drops.push(drop);
-        logs.push(`[Drop] Found legendary ${rarity} ${name}!`);
-      }
-
-      await storage.updateUser(userId, { 
-        level: newLevel,
-        experience: newExp, 
-        gold: user.gold + 100,
-        skillPoints: currentSkillPoints,
-      });
-      res.json({ 
-        victory: true, 
-        transformationDropped: trans, 
-        logs, 
-        experienceGained: 200, 
-        goldGained: 100,
-        equipmentDropped: drops
-      });
+      res.json({ victory: true, transformationDropped: trans, logs, experienceGained: 200, goldGained: 100 });
     } else {
-      logs.push("The divine presence was too strong... Retreat!");
+      logs.push("Defeat!");
       res.json({ victory: false, logs });
     }
   });
@@ -891,66 +488,23 @@ export async function registerRoutes(
 
     if (eventKey === 'onin_war') {
       if (choice === 'nobunaga') {
-        logs.push("You supported the Oda clan in Owari. Your loyalty is rewarded with gold and a new strategist.");
+        logs.push("You supported the Oda clan in Owari.");
         await storage.updateUser(userId, { gold: user.gold + 500 });
         reward = { type: 'gold', amount: 500 };
-        
-        // Add a special companion for Onin War (Nobunaga path)
-        await storage.createCompanion({
-          userId,
-          name: "Young Nobunaga",
-          type: 'historical',
-          rarity: 5,
-          level: 1,
-          hp: 120,
-          maxHp: 120,
-          attack: 35,
-          defense: 25,
-          speed: 30,
-          skill: "Ambition's Fire",
-          skillType: "passive",
-          skillEffect: "atk_buff",
-          skillValue: 25,
-          isInParty: false,
-        });
       } else {
-        logs.push("You chose to walk your own path. Your independence strengthens your resolve.");
-        await storage.updateUser(userId, { defense: user.defense + 5 });
-        reward = { type: 'stat', stat: 'defense', amount: 5 };
+        logs.push("You chose to walk your own path.");
       }
     } else if (eventKey === 'honnoji') {
         if (choice === 'rescue') {
-            logs.push("You fought through the fire to save the Lord. Your bravery is legendary.");
-            await storage.updateUser(userId, { attack: user.attack + 15, hp: user.hp + 50 });
-            reward = { type: 'stat', stat: 'attack/hp', amount: '15/50' };
-            
-            // Add a loyal guard for Honnoji Rescue
-            await storage.createCompanion({
-              userId,
-              name: "Mori Ranmaru",
-              type: 'historical',
-              rarity: 4,
-              level: 1,
-              hp: 150,
-              maxHp: 150,
-              attack: 25,
-              defense: 30,
-              speed: 40,
-              skill: "Shadow Guard",
-              skillType: "passive",
-              skillEffect: "def_buff",
-              skillValue: 20,
-              isInParty: false,
-            });
+            logs.push("You fought through the fire to save the Lord.");
+            await storage.updateUser(userId, { attack: user.attack + 10 });
+            reward = { type: 'stat', stat: 'attack', amount: 10 };
         } else {
-            logs.push("You joined the rebellion. Your cunning grows as you navigate the chaos.");
-            await storage.updateUser(userId, { speed: user.speed + 10, gold: user.gold + 300 });
-            reward = { type: 'stat', stat: 'speed/gold', amount: '10/300' };
+            logs.push("You joined the rebellion. The course of history changes.");
         }
     } else if (eventKey === 'yokai_random') {
         if (choice === 'ally') {
-            logs.push("You formed an alliance with the fox spirit. It grants you its power.");
-            await storage.updateUser(userId, { speed: user.speed + 5 });
+            logs.push("You formed an alliance with the fox spirit.");
             reward = await storage.createPet({
                 userId,
                 name: "Heavenly Fox",
@@ -966,9 +520,7 @@ export async function registerRoutes(
                 isActive: false
             });
         } else {
-            logs.push("You rejected the spirit's offer. The experience hardens your soul.");
-            await storage.updateUser(userId, { experience: user.experience + 50 });
-            reward = { type: 'exp', amount: 50 };
+            logs.push("The spirit vanishes into the mist.");
         }
     }
 
@@ -990,17 +542,9 @@ export async function registerRoutes(
     if (!user) return res.status(401).json({ message: "Unauthorized" });
     if (user.rice < 10) return res.status(400).json({ message: "Not enough rice" });
     await storage.updateUser(userId, { rice: user.rice - 10 });
-    
-    const pool = [
-      { name: "Oda Nobunaga", skill: "Innovative Fire", skillType: "passive", skillEffect: "atk_buff", skillValue: 20 },
-      { name: "Toyotomi Hideyoshi", skill: "Monkey's Scheme", skillType: "active", skillEffect: "spd_debuff", skillValue: 25 },
-      { name: "Tokugawa Ieyasu", skill: "Turtle Shield", skillType: "passive", skillEffect: "def_buff", skillValue: 15 },
-    ];
-    const rolled = pick(pool);
-
     const companion = await storage.createCompanion({
       userId,
-      name: rolled.name,
+      name: pick(["Oda Nobunaga", "Kunoichi", "Ronin"]),
       type: 'historical',
       rarity: 5,
       level: 1,
@@ -1009,10 +553,7 @@ export async function registerRoutes(
       attack: 20,
       defense: 20,
       speed: 15,
-      skill: rolled.skill,
-      skillType: rolled.skillType,
-      skillEffect: rolled.skillEffect,
-      skillValue: rolled.skillValue,
+      skill: "Slash",
       isInParty: false,
     });
     res.json({ companion });

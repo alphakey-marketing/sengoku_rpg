@@ -1,30 +1,14 @@
-import { usePlayer, usePlayerFullStatus, useEquipment, useTransformations, useUpgradePassive } from "@/hooks/use-game";
+import { usePlayer, usePlayerFullStatus, useEquipment, useTransformations } from "@/hooks/use-game";
 import { MainLayout } from "@/components/layout/main-layout";
-import { Shield, Sword, Coins, Wheat, Trophy, Zap, Heart, Sparkles, CloudRain, Sun, Cloud, Wind, Snowflake, Plus } from "lucide-react";
+import { Shield, Sword, Coins, Wheat, Trophy, Zap, Heart, Sparkles } from "lucide-react";
 import { motion } from "framer-motion";
 import { Progress } from "@/components/ui/progress";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { useToast } from "@/hooks/use-toast";
-
-const WeatherIcon = ({ weather }: { weather: string }) => {
-  switch (weather) {
-    case 'rain': return <CloudRain className="w-5 h-5 text-blue-400" />;
-    case 'storm': return <Wind className="w-5 h-5 text-slate-400" />;
-    case 'fog': return <Cloud className="w-5 h-5 text-gray-300" />;
-    case 'snow': return <Snowflake className="w-5 h-5 text-blue-100" />;
-    default: return <Sun className="w-5 h-5 text-yellow-400" />;
-  }
-};
 
 export default function Home() {
   const { data: player, isLoading } = usePlayer();
   const { data: teamStatus } = usePlayerFullStatus();
   const { data: equipment } = useEquipment();
   const { data: transforms } = useTransformations();
-  const { mutate: upgradePassive, isPending: isUpgrading } = useUpgradePassive();
-  const { toast } = useToast();
 
   if (isLoading) {
     return (
@@ -40,13 +24,6 @@ export default function Home() {
   }
 
   if (!player) return null;
-
-  const handleUpgrade = (stat: 'atk' | 'def' | 'spd') => {
-    upgradePassive(stat, {
-      onSuccess: () => toast({ title: "Skill Learned", description: `Your passive ${stat.toUpperCase()} has increased.` }),
-      onError: (err) => toast({ title: "Meditation Interrupted", description: err.message, variant: "destructive" })
-    });
-  };
 
   const statCards = [
     { label: "Level", value: player.level, icon: Trophy, color: "text-purple-400" },
@@ -104,12 +81,6 @@ export default function Home() {
             <div className="inline-block px-3 py-1 bg-primary/20 border border-primary/30 rounded text-primary text-xs font-bold uppercase tracking-widest mb-3 backdrop-blur-md">
               Lord of the Realm
             </div>
-            {player.weather && (
-              <div className="flex items-center gap-2 mb-2 bg-black/40 w-fit px-2 py-1 rounded border border-border/30">
-                <WeatherIcon weather={player.weather as string} />
-                <span className="text-[10px] text-gold font-bold uppercase tracking-wider">{player.weather}</span>
-              </div>
-            )}
             <h2 className="text-4xl font-display font-bold text-white text-shadow-sm mb-2" data-testid="text-player-name">{player.firstName || 'Wandering Samurai'}</h2>
             <p className="text-accent text-lg font-medium text-shadow">Level {player.level}</p>
             <div className="mt-2 w-48">
@@ -142,91 +113,48 @@ export default function Home() {
           ))}
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
-          <Card className="bg-card border-border/50 bg-washi">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-lg font-display flex items-center justify-between">
-                <span>Passive Skills</span>
-                <Badge variant="outline" className="text-gold border-gold/30">
-                  {player.skillPoints} Points
-                </Badge>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {[
-                { id: 'atk', label: 'Bushido Might', level: player.passiveAtkLevel, icon: Sword, color: 'text-orange-400' },
-                { id: 'def', label: 'Iron Wall', level: player.passiveDefLevel, icon: Shield, color: 'text-blue-400' },
-                { id: 'spd', label: 'Swift Wind', level: player.passiveSpdLevel, icon: Zap, color: 'text-cyan-400' },
-              ].map((skill) => (
-                <div key={skill.id} className="flex items-center justify-between p-3 rounded-lg bg-background/50 border border-border/30">
-                  <div className="flex items-center gap-3">
-                    <div className={`p-2 rounded-full bg-background border border-border ${skill.color}`}>
-                      <skill.icon size={16} />
-                    </div>
-                    <div>
-                      <p className="text-sm font-bold text-white">{skill.label}</p>
-                      <p className="text-[10px] text-muted-foreground">Level {skill.level} (+{skill.level * 5} Bonus)</p>
-                    </div>
+        <h3 className="text-xl font-display font-semibold border-b border-border/50 pb-2 mt-8 mb-4">Equipped Gear</h3>
+        {equippedItems.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No equipment is currently worn. Visit the Armory to equip items.</p>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            {['weapon', 'armor', 'accessory', 'horse_gear'].map(type => {
+              const item = equippedItems.find(e => e.type === type);
+              const TypeIcon = getTypeIcon(type);
+              const typeLabel = type === 'horse_gear' ? 'Horse Gear' : type.charAt(0).toUpperCase() + type.slice(1);
+              return (
+                <div
+                  key={type}
+                  className={`rounded-lg border p-4 bg-card bg-washi flex items-center gap-3 ${item ? getRarityColor(item.rarity) : 'border-border/30 opacity-50'}`}
+                  data-testid={`equipped-${type}`}
+                >
+                  <div className="p-2 bg-background/50 rounded border border-border/50">
+                    <TypeIcon size={20} />
                   </div>
-                  <Button
-                    size="icon"
-                    variant="outline"
-                    className="h-8 w-8 rounded-full border-primary/30 hover:bg-primary/10"
-                    onClick={() => handleUpgrade(skill.id as any)}
-                    disabled={isUpgrading || player.skillPoints < 1}
-                  >
-                    <Plus size={14} className="text-primary" />
-                  </Button>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs text-muted-foreground uppercase tracking-wide">{typeLabel}</p>
+                    {item ? (
+                      <>
+                        <p className="font-bold text-sm truncate">{item.name}</p>
+                        <div className="flex gap-2 text-xs mt-1">
+                          <span>Lv{item.level}</span>
+                          {item.attackBonus > 0 && <span className="text-red-400">+{item.attackBonus} ATK</span>}
+                          {item.defenseBonus > 0 && <span className="text-blue-400">+{item.defenseBonus} DEF</span>}
+                          {item.speedBonus > 0 && <span className="text-cyan-400">+{item.speedBonus} SPD</span>}
+                        </div>
+                        <div className="mt-1">
+                          <Progress value={(item.experience / item.expToNext) * 100} className="h-1" />
+                        </div>
+                      </>
+                    ) : (
+                      <p className="text-sm text-zinc-500">Empty</p>
+                    )}
+                  </div>
                 </div>
-              ))}
-            </CardContent>
-          </Card>
-
-          <div className="md:col-span-2">
-            <h3 className="text-xl font-display font-semibold border-b border-border/50 pb-2 mb-4">Equipped Gear</h3>
-            {equippedItems.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No equipment is currently worn. Visit the Armory to equip items.</p>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {['weapon', 'armor', 'accessory', 'horse_gear'].map(type => {
-                  const item = equippedItems.find(e => e.type === type);
-                  const TypeIcon = getTypeIcon(type);
-                  const typeLabel = type === 'horse_gear' ? 'Horse Gear' : type.charAt(0).toUpperCase() + type.slice(1);
-                  return (
-                    <div
-                      key={type}
-                      className={`rounded-lg border p-4 bg-card bg-washi flex items-center gap-3 ${item ? getRarityColor(item.rarity) : 'border-border/30 opacity-50'}`}
-                      data-testid={`equipped-${type}`}
-                    >
-                      <div className="p-2 bg-background/50 rounded border border-border/50">
-                        <TypeIcon size={20} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs text-muted-foreground uppercase tracking-wide">{typeLabel}</p>
-                        {item ? (
-                          <>
-                            <p className="font-bold text-sm truncate">{item.name}</p>
-                            <div className="flex gap-2 text-xs mt-1">
-                              <span>Lv{item.level}</span>
-                              {item.attackBonus > 0 && <span className="text-red-400">+{item.attackBonus} ATK</span>}
-                              {item.defenseBonus > 0 && <span className="text-blue-400">+{item.defenseBonus} DEF</span>}
-                              {item.speedBonus > 0 && <span className="text-cyan-400">+{item.speedBonus} SPD</span>}
-                            </div>
-                            <div className="mt-1">
-                              <Progress value={(item.experience / item.expToNext) * 100} className="h-1" />
-                            </div>
-                          </>
-                        ) : (
-                          <p className="text-sm text-zinc-500">Empty</p>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+              );
+            })}
           </div>
-        </div>
+        )}
 
         {teamStatus?.pet && (
           <div className="mt-4">
