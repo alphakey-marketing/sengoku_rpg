@@ -28,6 +28,8 @@ export const users = pgTable("users", {
   currentLocationId: integer("current_location_id").notNull().default(1),
   activeTransformId: integer("active_transform_id"),
   upgradeStones: integer("upgrade_stones").notNull().default(0),
+  weather: text("weather").notNull().default("clear"),
+  lastWeatherUpdate: timestamp("last_weather_update").defaultNow(),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

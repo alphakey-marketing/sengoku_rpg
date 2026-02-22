@@ -1,8 +1,18 @@
 import { usePlayer, usePlayerFullStatus, useEquipment, useTransformations } from "@/hooks/use-game";
 import { MainLayout } from "@/components/layout/main-layout";
-import { Shield, Sword, Coins, Wheat, Trophy, Zap, Heart, Sparkles } from "lucide-react";
+import { Shield, Sword, Coins, Wheat, Trophy, Zap, Heart, Sparkles, CloudRain, Sun, Cloud, Wind, Snowflake } from "lucide-react";
 import { motion } from "framer-motion";
 import { Progress } from "@/components/ui/progress";
+
+const WeatherIcon = ({ weather }: { weather: string }) => {
+  switch (weather) {
+    case 'rain': return <CloudRain className="w-5 h-5 text-blue-400" />;
+    case 'storm': return <Wind className="w-5 h-5 text-slate-400" />;
+    case 'fog': return <Cloud className="w-5 h-5 text-gray-300" />;
+    case 'snow': return <Snowflake className="w-5 h-5 text-blue-100" />;
+    default: return <Sun className="w-5 h-5 text-yellow-400" />;
+  }
+};
 
 export default function Home() {
   const { data: player, isLoading } = usePlayer();
@@ -81,6 +91,12 @@ export default function Home() {
             <div className="inline-block px-3 py-1 bg-primary/20 border border-primary/30 rounded text-primary text-xs font-bold uppercase tracking-widest mb-3 backdrop-blur-md">
               Lord of the Realm
             </div>
+            {player.weather && (
+              <div className="flex items-center gap-2 mb-2 bg-black/40 w-fit px-2 py-1 rounded border border-border/30">
+                <WeatherIcon weather={player.weather as string} />
+                <span className="text-[10px] text-gold font-bold uppercase tracking-wider">{player.weather}</span>
+              </div>
+            )}
             <h2 className="text-4xl font-display font-bold text-white text-shadow-sm mb-2" data-testid="text-player-name">{player.firstName || 'Wandering Samurai'}</h2>
             <p className="text-accent text-lg font-medium text-shadow">Level {player.level}</p>
             <div className="mt-2 w-48">

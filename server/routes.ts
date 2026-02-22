@@ -23,7 +23,15 @@ const PET_NAMES = [
   { name: "War Hawk (鷹)", skill: "Scout (偵察)" },
   { name: "Shadow Cat (影猫)", skill: "Poison (毒)" },
 ];
-const HORSE_NAMES = ["Kiso Horse (木曽馬)", "Misaki Pony (御崎馬)", "Tokara Stallion (トカラ馬)"];
+const HORSE_NAMES = ["Kiso Horse (木曽馬)", "Misaki Pony (御崎馬)", "Tokara Stallion (トカラ马)"];
+
+const WEATHER_EFFECTS: Record<string, { name: string, description: string, atkMod: number, defMod: number, spdMod: number }> = {
+  clear: { name: "Clear (晴れ)", description: "Standard conditions.", atkMod: 1.0, defMod: 1.0, spdMod: 1.0 },
+  rain: { name: "Rain (雨)", description: "Heavy rain dampens gunpowder and slowing movement. Speed -10%, Attack -5%.", atkMod: 0.95, defMod: 1.0, spdMod: 0.9 },
+  storm: { name: "Storm (嵐)", description: "Violent winds and rain. Attack -15%, Speed -20%.", atkMod: 0.85, defMod: 1.0, spdMod: 0.8 },
+  fog: { name: "Fog (霧)", description: "Dense mist obscures vision. Defense +10%, Speed -10%.", atkMod: 1.0, defMod: 1.1, spdMod: 0.9 },
+  snow: { name: "Snow (雪)", description: "Freezing cold biting at the warriors. Speed -15%, Defense -5%.", atkMod: 1.0, defMod: 0.95, spdMod: 0.85 },
+};
 
 function pick<T>(arr: T[]): T { return arr[Math.floor(Math.random() * arr.length)]; }
 
@@ -163,7 +171,21 @@ export async function registerRoutes(
   // Player routes
   app.get(api.player.get.path, isAuthenticated, async (req: any, res) => {
     const userId = req.user.claims.sub;
-    const user = await storage.getUser(userId);
+    let user = await storage.getUser(userId);
+    if (!user) return res.status(401).json({ message: "Unauthorized" });
+
+    // Dynamic weather update (every 10 minutes)
+    const now = new Date();
+    const lastUpdate = user.lastWeatherUpdate ? new Date(user.lastWeatherUpdate) : new Date(0);
+    if (now.getTime() - lastUpdate.getTime() > 10 * 60 * 1000) {
+      const weathers = Object.keys(WEATHER_EFFECTS);
+      const newWeather = pick(weathers);
+      user = await storage.updateUser(userId, { 
+        weather: newWeather, 
+        lastWeatherUpdate: now 
+      });
+    }
+
     res.json(user);
   });
 
@@ -399,8 +421,15 @@ export async function registerRoutes(
     let enemyDefMult = 1.0;
     let enemySpdMult = 1.0;
 
+    const weather = user.weather || 'clear';
+    const weatherEffect = WEATHER_EFFECTS[weather] || WEATHER_EFFECTS.clear;
+    playerAtkMult *= weatherEffect.atkMod;
+    playerDefMult *= weatherEffect.defMod;
+    playerSpdMult *= weatherEffect.spdMod;
+
     const logs: string[] = [];
     logs.push(`A wild ${enemy.name} (Lv${enemy.level}) appeared!`);
+    logs.push(`[Weather] ${weatherEffect.name}: ${weatherEffect.description}`);
 
     if (teamStats) {
       // Passive skills from companions
@@ -506,13 +535,18 @@ export async function registerRoutes(
     const finalPlayerAtk = Math.floor((teamStats?.player.attack || user.attack) * playerAtkMult);
     const finalEnemyAtk = Math.floor(enemy.attack * enemyAtkMult);
 
-    logs.push(`[Combat] Player Siege Power: ${finalPlayerAtk}`);
+    const weather = user.weather || 'clear';
+    const weatherEffect = WEATHER_EFFECTS[weather] || WEATHER_EFFECTS.clear;
+    const weatherFinalPlayerAtk = Math.floor(finalPlayerAtk * weatherEffect.atkMod);
+
+    logs.push(`[Weather] ${weatherEffect.name}: ${weatherEffect.description}`);
+    logs.push(`[Combat] Player Siege Power: ${weatherFinalPlayerAtk} (Base: ${finalPlayerAtk})`);
     logs.push(`[Combat] Castle Defense Power: ${finalEnemyAtk}`);
 
     const roll = Math.floor(Math.random() * 50);
     logs.push(`[Combat] Battle Fortune: +${roll}`);
 
-    const victory = finalPlayerAtk + roll > finalEnemyAtk;
+    const victory = weatherFinalPlayerAtk + roll > finalEnemyAtk;
 
     if (victory) {
       logs.push("The castle gates fall! Victory!");
@@ -560,13 +594,18 @@ export async function registerRoutes(
     const finalPlayerAtk = Math.floor((teamStats?.player.attack || user.attack) * playerAtkMult);
     const finalEnemyAtk = Math.floor(enemy.attack * enemyAtkMult);
 
-    logs.push(`[Combat] Total Heroic Power: ${finalPlayerAtk}`);
+    const weather = user.weather || 'clear';
+    const weatherEffect = WEATHER_EFFECTS[weather] || WEATHER_EFFECTS.clear;
+    const weatherFinalPlayerAtk = Math.floor(finalPlayerAtk * weatherEffect.atkMod);
+
+    logs.push(`[Weather] ${weatherEffect.name}: ${weatherEffect.description}`);
+    logs.push(`[Combat] Total Heroic Power: ${weatherFinalPlayerAtk} (Base: ${finalPlayerAtk})`);
     logs.push(`[Combat] Calamity Power: ${finalEnemyAtk}`);
 
     const roll = Math.floor(Math.random() * 100);
     logs.push(`[Combat] Destiny Roll: +${roll}`);
 
-    const victory = finalPlayerAtk + roll > finalEnemyAtk * 1.5;
+    const victory = weatherFinalPlayerAtk + roll > finalEnemyAtk * 1.5;
 
     if (victory) {
       logs.push(`The legend is written! ${enemy.name} is sealed!`);
