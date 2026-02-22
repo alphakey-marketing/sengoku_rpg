@@ -31,14 +31,14 @@ export default function Home() {
       await apiRequest('POST', '/api/restart');
       queryClient.invalidateQueries();
       toast({
-        title: "Game Restarted",
-        description: "Your journey begins anew, Samurai.",
+        title: "Ascension Complete",
+        description: "Your spirit has passed its strength to the next generation.",
       });
     } catch (error) {
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Failed to restart the game.",
+        description: "The ritual was interrupted. Try again.",
       });
     }
   };
@@ -60,10 +60,10 @@ export default function Home() {
 
   const statCards = [
     { label: "Level", value: player.level, icon: Trophy, color: "text-purple-400" },
-    { label: "HP", value: `${player.hp}/${player.maxHp}`, icon: Heart, color: "text-red-400" },
-    { label: "ATK", value: teamStatus?.player.attack || player.attack, icon: Sword, color: "text-orange-400" },
-    { label: "DEF", value: teamStatus?.player.defense || player.defense, icon: Shield, color: "text-blue-400" },
-    { label: "SPD", value: teamStatus?.player.speed || player.speed, icon: Zap, color: "text-cyan-400" },
+    { label: "HP", value: `${player.hp}/${player.maxHp}`, icon: Heart, color: "text-red-400", bonus: teamStatus?.player.permStats?.hp },
+    { label: "ATK", value: teamStatus?.player.attack || player.attack, icon: Sword, color: "text-orange-400", bonus: teamStatus?.player.permStats?.attack },
+    { label: "DEF", value: teamStatus?.player.defense || player.defense, icon: Shield, color: "text-blue-400", bonus: teamStatus?.player.permStats?.defense },
+    { label: "SPD", value: teamStatus?.player.speed || player.speed, icon: Zap, color: "text-cyan-400", bonus: teamStatus?.player.permStats?.speed },
     { label: "Gold", value: player.gold.toLocaleString(), icon: Coins, color: "text-yellow-400" },
     { label: "Rice", value: player.rice.toLocaleString(), icon: Wheat, color: "text-green-400" },
   ];
@@ -179,6 +179,11 @@ export default function Home() {
               </div>
               <p className="text-xs text-muted-foreground mb-1 font-medium">{stat.label}</p>
               <p className="text-lg font-bold font-display text-white">{stat.value}</p>
+              {stat.bonus && stat.bonus > 0 && (
+                <span className="text-[10px] text-accent font-bold mt-1">
+                  +{stat.bonus} Ancestral
+                </span>
+              )}
             </motion.div>
           ))}
         </div>
