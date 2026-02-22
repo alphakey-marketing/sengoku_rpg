@@ -612,23 +612,66 @@ export async function registerRoutes(
 
     if (eventKey === 'onin_war') {
       if (choice === 'nobunaga') {
-        logs.push("You supported the Oda clan in Owari.");
+        logs.push("You supported the Oda clan in Owari. Your loyalty is rewarded with gold and a new strategist.");
         await storage.updateUser(userId, { gold: user.gold + 500 });
         reward = { type: 'gold', amount: 500 };
+        
+        // Add a special companion for Onin War (Nobunaga path)
+        await storage.createCompanion({
+          userId,
+          name: "Young Nobunaga",
+          type: 'historical',
+          rarity: 5,
+          level: 1,
+          hp: 120,
+          maxHp: 120,
+          attack: 35,
+          defense: 25,
+          speed: 30,
+          skill: "Ambition's Fire",
+          skillType: "passive",
+          skillEffect: "atk_buff",
+          skillValue: 25,
+          isInParty: false,
+        });
       } else {
-        logs.push("You chose to walk your own path.");
+        logs.push("You chose to walk your own path. Your independence strengthens your resolve.");
+        await storage.updateUser(userId, { defense: user.defense + 5 });
+        reward = { type: 'stat', stat: 'defense', amount: 5 };
       }
     } else if (eventKey === 'honnoji') {
         if (choice === 'rescue') {
-            logs.push("You fought through the fire to save the Lord.");
-            await storage.updateUser(userId, { attack: user.attack + 10 });
-            reward = { type: 'stat', stat: 'attack', amount: 10 };
+            logs.push("You fought through the fire to save the Lord. Your bravery is legendary.");
+            await storage.updateUser(userId, { attack: user.attack + 15, hp: user.hp + 50 });
+            reward = { type: 'stat', stat: 'attack/hp', amount: '15/50' };
+            
+            // Add a loyal guard for Honnoji Rescue
+            await storage.createCompanion({
+              userId,
+              name: "Mori Ranmaru",
+              type: 'historical',
+              rarity: 4,
+              level: 1,
+              hp: 150,
+              maxHp: 150,
+              attack: 25,
+              defense: 30,
+              speed: 40,
+              skill: "Shadow Guard",
+              skillType: "passive",
+              skillEffect: "def_buff",
+              skillValue: 20,
+              isInParty: false,
+            });
         } else {
-            logs.push("You joined the rebellion. The course of history changes.");
+            logs.push("You joined the rebellion. Your cunning grows as you navigate the chaos.");
+            await storage.updateUser(userId, { speed: user.speed + 10, gold: user.gold + 300 });
+            reward = { type: 'stat', stat: 'speed/gold', amount: '10/300' };
         }
     } else if (eventKey === 'yokai_random') {
         if (choice === 'ally') {
-            logs.push("You formed an alliance with the fox spirit.");
+            logs.push("You formed an alliance with the fox spirit. It grants you its power.");
+            await storage.updateUser(userId, { speed: user.speed + 5 });
             reward = await storage.createPet({
                 userId,
                 name: "Heavenly Fox",
@@ -644,7 +687,9 @@ export async function registerRoutes(
                 isActive: false
             });
         } else {
-            logs.push("The spirit vanishes into the mist.");
+            logs.push("You rejected the spirit's offer. The experience hardens your soul.");
+            await storage.updateUser(userId, { experience: user.experience + 50 });
+            reward = { type: 'exp', amount: 50 };
         }
     }
 
