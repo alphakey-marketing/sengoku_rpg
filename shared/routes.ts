@@ -135,6 +135,11 @@ export const api = {
       method: 'POST' as const,
       path: '/api/gacha/pull' as const,
       responses: { 200: z.any(), 400: errorSchemas.validation, 401: errorSchemas.unauthorized },
+    },
+    pullEquipment: {
+      method: 'POST' as const,
+      path: '/api/gacha/pull-equipment' as const,
+      responses: { 200: z.any(), 400: errorSchemas.validation, 401: errorSchemas.unauthorized },
     }
   }
 };

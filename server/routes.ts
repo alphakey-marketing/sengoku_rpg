@@ -690,5 +690,44 @@ export async function registerRoutes(
     res.json({ companion });
   });
 
+  app.post(api.gacha.pullEquipment.path, isAuthenticated, async (req: any, res) => {
+    const userId = req.user.claims.sub;
+    const user = await storage.getUser(userId);
+    if (!user) return res.status(401).json({ message: "Unauthorized" });
+
+    if (user.rice < 15) {
+      return res.status(400).json({ message: "Not enough rice (need 15)" });
+    }
+
+    await storage.updateUser(userId, { rice: user.rice - 15 });
+
+    const r = Math.random();
+    let rarity = 'white';
+    if (r > 0.9) rarity = 'gold';
+    else if (r > 0.75) rarity = 'purple';
+    else if (r > 0.5) rarity = 'blue';
+    else if (r > 0.25) rarity = 'green';
+
+    const eqType = pick(EQUIP_TYPES);
+    const names = eqType === 'weapon' ? WEAPON_NAMES : eqType === 'armor' ? ARMOR_NAMES : eqType === 'accessory' ? ACCESSORY_NAMES : HORSE_GEAR_NAMES;
+    const rarityMult: Record<string, number> = { white: 1, green: 1.3, blue: 1.8, purple: 2.5, gold: 4 };
+    const m = rarityMult[rarity] || 1;
+
+    const equipment = await storage.createEquipment({
+      userId,
+      name: `Special ${pick(names)}`,
+      type: eqType,
+      rarity,
+      level: 1,
+      experience: 0,
+      expToNext: 100,
+      attackBonus: Math.floor((eqType === 'weapon' ? 10 : 3) * m),
+      defenseBonus: Math.floor((eqType === 'armor' ? 10 : 3) * m),
+      speedBonus: Math.floor((eqType === 'accessory' ? 8 : eqType === 'horse_gear' ? 12 : 3) * m),
+    });
+
+    res.json({ equipment });
+  });
+
   return httpServer;
 }

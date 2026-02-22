@@ -426,3 +426,18 @@ export function useGachaPull() {
     },
   });
 }
+
+export function useEquipmentGachaPull() {
+  const queryClient = useQueryClient();
+  return useMutation<{ equipment: Equipment }, Error, void>({
+    mutationFn: async () => {
+      const res = await fetchWithAuth(api.gacha.pullEquipment.path, { method: "POST" });
+      if (!res.ok) throw new Error("Equipment pull failed. Not enough rice?");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [api.player.get.path] });
+      queryClient.invalidateQueries({ queryKey: [api.equipment.list.path] });
+    },
+  });
+}
