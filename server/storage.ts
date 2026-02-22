@@ -19,6 +19,7 @@ export interface IStorage {
   getEquipment(userId: string): Promise<Equipment[]>;
   createEquipment(equip: InsertEquipment): Promise<Equipment>;
   updateEquipment(id: number, updates: Partial<Equipment>): Promise<Equipment>;
+  deleteEquipment(id: number): Promise<void>;
 
   getPets(userId: string): Promise<Pet[]>;
   createPet(pet: InsertPet): Promise<Pet>;
@@ -65,7 +66,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createCompanion(companion: InsertCompanion): Promise<Companion> {
-    const [comp] = await db.insert(companions).values(companion).returning();
+    const [comp] = await db.insert(companions).values(companion as any).returning();
     return comp;
   }
 
@@ -79,7 +80,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createEquipment(equip: InsertEquipment): Promise<Equipment> {
-    const [eqp] = await db.insert(equipment).values(equip).returning();
+    const [eqp] = await db.insert(equipment).values(equip as any).returning();
     return eqp;
   }
 
@@ -88,12 +89,16 @@ export class DatabaseStorage implements IStorage {
     return eqp;
   }
 
+  async deleteEquipment(id: number): Promise<void> {
+    await db.delete(equipment).where(eq(equipment.id, id));
+  }
+
   async getPets(userId: string): Promise<Pet[]> {
     return await db.select().from(pets).where(eq(pets.userId, userId));
   }
 
   async createPet(pet: InsertPet): Promise<Pet> {
-    const [p] = await db.insert(pets).values(pet).returning();
+    const [p] = await db.insert(pets).values(pet as any).returning();
     return p;
   }
 
@@ -107,7 +112,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createHorse(horse: InsertHorse): Promise<Horse> {
-    const [h] = await db.insert(horses).values(horse).returning();
+    const [h] = await db.insert(horses).values(horse as any).returning();
     return h;
   }
 
@@ -121,7 +126,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createTransformation(t: InsertTransformation): Promise<Transformation> {
-    const [tr] = await db.insert(transformations).values(t).returning();
+    const [tr] = await db.insert(transformations).values(t as any).returning();
     return tr;
   }
 

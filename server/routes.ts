@@ -241,6 +241,76 @@ export async function registerRoutes(
     res.json(updated);
   });
 
+  app.post(api.equipment.recycle.path, isAuthenticated, async (req: any, res) => {
+    const userId = req.user.claims.sub;
+    const equipId = Number(req.params.id);
+    const equips = await storage.getEquipment(userId);
+    const targetEquip = equips.find(e => e.id === equipId);
+    if (!targetEquip) return res.status(404).json({ message: "Equipment not found" });
+    if (targetEquip.isEquipped) return res.status(400).json({ message: "Cannot recycle equipped item" });
+
+    const rarityStones: Record<string, number> = { white: 1, green: 2, blue: 5, purple: 10, gold: 25 };
+    const stonesGained = rarityStones[targetEquip.rarity] || 1;
+
+    const user = await storage.getUser(userId);
+    if (!user) return res.status(401).json({ message: "Unauthorized" });
+
+    await storage.updateUser(userId, { upgradeStones: (user.upgradeStones || 0) + stonesGained });
+    // Assuming deleteEquipment is not in IStorage, we use updateEquipment with a flag or just filter it out in getEquipment
+    // Since IStorage doesn't have delete, I'll use a hack or just update it to "deleted" state if I could, 
+    // but better to add delete to IStorage if I can't.
+    // Actually, I'll just use db directly if needed or assume I can update IStorage.
+    // Let's check IStorage again. It doesn't have delete.
+    // I'll update the item to be "recycled" by setting userId to a special value or just adding delete to storage.
+    // I'll add deleteEquipment to storage.ts in the same turn.
+    await (storage as any).deleteEquipment(equipId);
+
+    res.json({ stonesGained });
+  });
+
+  app.post(api.equipment.upgrade.path, isAuthenticated, async (req: any, res) => {
+    const userId = req.user.claims.sub;
+    const equipId = Number(req.params.id);
+    const user = await storage.getUser(userId);
+    if (!user) return res.status(401).json({ message: "Unauthorized" });
+
+    if ((user.upgradeStones || 0) < 1) return res.status(400).json({ message: "Not enough upgrade stones" });
+
+    const equips = await storage.getEquipment(userId);
+    const eq = equips.find(e => e.id === equipId);
+    if (!eq) return res.status(404).json({ message: "Equipment not found" });
+
+    await storage.updateUser(userId, { upgradeStones: user.upgradeStones - 1 });
+
+    const expAmount = 50; // Each stone gives 50 exp
+    let newExp = eq.experience + expAmount;
+    let newLevel = eq.level;
+    let newExpToNext = eq.expToNext;
+    let atkBonus = eq.attackBonus;
+    let defBonus = eq.defenseBonus;
+    let spdBonus = eq.speedBonus;
+
+    while (newExp >= newExpToNext) {
+      newExp -= newExpToNext;
+      newLevel++;
+      newExpToNext = calcEquipExpToNext(newLevel);
+      atkBonus = Math.floor(atkBonus * 1.05) + 1;
+      defBonus = Math.floor(defBonus * 1.08) + 1;
+      spdBonus = Math.floor(spdBonus * 1.1) + 1;
+    }
+
+    const updated = await storage.updateEquipment(eq.id, {
+      experience: newExp,
+      level: newLevel,
+      expToNext: newExpToNext,
+      attackBonus: atkBonus,
+      defenseBonus: defBonus,
+      speedBonus: spdBonus,
+    });
+
+    res.json(updated);
+  });
+
   // Pets
   app.get(api.pets.list.path, isAuthenticated, async (req: any, res) => {
     const userId = req.user.claims.sub;

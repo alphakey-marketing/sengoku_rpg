@@ -68,6 +68,16 @@ export const api = {
       path: '/api/equipment/:id/unequip' as const,
       responses: { 200: z.any(), 401: errorSchemas.unauthorized, 404: errorSchemas.notFound },
     },
+    recycle: {
+      method: 'POST' as const,
+      path: '/api/equipment/:id/recycle' as const,
+      responses: { 200: z.any(), 401: errorSchemas.unauthorized, 404: errorSchemas.notFound },
+    },
+    upgrade: {
+      method: 'POST' as const,
+      path: '/api/equipment/:id/upgrade' as const,
+      responses: { 200: z.any(), 401: errorSchemas.unauthorized, 404: errorSchemas.notFound },
+    },
   },
   pets: {
     list: {

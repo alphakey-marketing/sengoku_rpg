@@ -27,6 +27,7 @@ export const users = pgTable("users", {
   speed: integer("speed").notNull().default(10),
   currentLocationId: integer("current_location_id").notNull().default(1),
   activeTransformId: integer("active_transform_id"),
+  upgradeStones: integer("upgrade_stones").notNull().default(0),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

@@ -16,6 +16,7 @@ export interface PlayerData {
   speed: number;
   currentLocationId: number;
   activeTransformId: number | null;
+  upgradeStones: number;
 }
 
 export interface Companion {
@@ -245,6 +246,39 @@ export function useUnequip() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [api.equipment.list.path] });
+      queryClient.invalidateQueries({ queryKey: [api.player.fullStatus.path] });
+    },
+  });
+}
+
+export function useRecycleEquipment() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (equipmentId: number) => {
+      const url = buildUrl(api.equipment.recycle.path, { id: equipmentId });
+      const res = await fetchWithAuth(url, { method: "POST" });
+      if (!res.ok) throw new Error("Failed to recycle");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [api.equipment.list.path] });
+      queryClient.invalidateQueries({ queryKey: [api.player.get.path] });
+    },
+  });
+}
+
+export function useUpgradeEquipment() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (equipmentId: number) => {
+      const url = buildUrl(api.equipment.upgrade.path, { id: equipmentId });
+      const res = await fetchWithAuth(url, { method: "POST" });
+      if (!res.ok) throw new Error("Failed to upgrade");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [api.equipment.list.path] });
+      queryClient.invalidateQueries({ queryKey: [api.player.get.path] });
       queryClient.invalidateQueries({ queryKey: [api.player.fullStatus.path] });
     },
   });

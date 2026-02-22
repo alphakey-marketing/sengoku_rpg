@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { useEquipment, useEquip, useUnequip, useCompanions } from "@/hooks/use-game";
+import { useEquipment, useEquip, useUnequip, useCompanions, usePlayer, useRecycleEquipment, useUpgradeEquipment } from "@/hooks/use-game";
 import { MainLayout } from "@/components/layout/main-layout";
 import { Button } from "@/components/ui/button";
-import { Sword, Shield, Crosshair, Zap, Sparkles, ArrowUp } from "lucide-react";
+import { Sword, Shield, Crosshair, Zap, Sparkles, ArrowUp, Trash2, Hammer, Gem } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import {
   Dialog,
@@ -12,10 +12,13 @@ import {
 } from "@/components/ui/dialog";
 
 export default function EquipmentPage() {
+  const { data: player } = usePlayer();
   const { data: equipment, isLoading: eqLoading } = useEquipment();
   const { data: companions } = useCompanions();
   const { mutate: equipItem, isPending } = useEquip();
   const { mutate: unequipItem, isPending: unequipPending } = useUnequip();
+  const { mutate: recycleItem, isPending: recyclePending } = useRecycleEquipment();
+  const { mutate: upgradeItem, isPending: upgradePending } = useUpgradeEquipment();
 
   const [selectedEqId, setSelectedEqId] = useState<number | null>(null);
   const [filterType, setFilterType] = useState<string>('all');
@@ -64,9 +67,18 @@ export default function EquipmentPage() {
   return (
     <MainLayout>
       <div className="space-y-6">
-        <div className="border-b border-border/50 pb-4">
-          <h1 className="text-3xl font-display font-bold text-white mb-2" data-testid="text-page-title">Armory</h1>
-          <p className="text-muted-foreground">Manage weapons, armor, and gear. Only one item per type can be equipped.</p>
+        <div className="border-b border-border/50 pb-4 flex justify-between items-end">
+          <div>
+            <h1 className="text-3xl font-display font-bold text-white mb-2" data-testid="text-page-title">Armory</h1>
+            <p className="text-muted-foreground">Manage weapons, armor, and gear. Only one item per type can be equipped.</p>
+          </div>
+          <div className="flex items-center gap-2 bg-purple-900/20 border border-purple-700/30 px-4 py-2 rounded-lg">
+            <Gem size={18} className="text-purple-400" />
+            <div className="flex flex-col">
+              <span className="text-[10px] text-purple-300 uppercase font-bold tracking-wider">Upgrade Stones</span>
+              <span className="text-lg font-bold text-white leading-none">{player?.upgradeStones || 0}</span>
+            </div>
+          </div>
         </div>
 
         <div className="flex flex-wrap gap-2">
@@ -150,6 +162,30 @@ export default function EquipmentPage() {
                       <span className="text-xs text-muted-foreground">In Inventory</span>
                     )}
                     <div className="flex gap-1">
+                      {!item.isEquipped && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="border-red-900/30 text-red-400 h-7 text-xs px-2 hover:bg-red-900/20"
+                          onClick={() => recycleItem(item.id)}
+                          disabled={recyclePending}
+                          title="Recycle for stones"
+                          data-testid={`recycle-${item.id}`}
+                        >
+                          <Trash2 size={14} />
+                        </Button>
+                      )}
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="border-purple-900/30 text-purple-400 h-7 text-xs px-2 hover:bg-purple-900/20"
+                        onClick={() => upgradeItem(item.id)}
+                        disabled={upgradePending || (player?.upgradeStones || 0) < 1}
+                        title="Upgrade with stone"
+                        data-testid={`upgrade-${item.id}`}
+                      >
+                        <Hammer size={14} />
+                      </Button>
                       {item.isEquipped && (
                         <Button
                           size="sm"
