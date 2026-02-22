@@ -53,6 +53,8 @@ export const companions = pgTable("companions", {
   skillType: text("skill_type").notNull().default('active'),
   skillEffect: text("skill_effect"),
   skillValue: integer("skill_value").notNull().default(0),
+  experience: integer("experience").notNull().default(0),
+  expToNext: integer("exp_to_next").notNull().default(100),
   isInParty: boolean("is_in_party").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow(),
 });

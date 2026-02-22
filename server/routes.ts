@@ -218,6 +218,76 @@ export async function registerRoutes(
     res.json(await storage.getCompanions(userId));
   });
 
+  app.post(api.companions.recycle.path, isAuthenticated, async (req: any, res) => {
+    const userId = req.user.claims.sub;
+    const compId = Number(req.params.id);
+    const companions = await storage.getCompanions(userId);
+    const targetComp = companions.find(c => c.id === compId);
+
+    if (!targetComp) return res.status(404).json({ message: "Companion not found" });
+    if (targetComp.isInParty) return res.status(400).json({ message: "Cannot recycle companion in party" });
+
+    const rarityStones: Record<number, number> = { 1: 5, 2: 15, 3: 40, 4: 100, 5: 250 };
+    const stonesGained = rarityStones[targetComp.rarity] || 5;
+
+    const user = await storage.getUser(userId);
+    if (!user) return res.status(401).json({ message: "Unauthorized" });
+
+    await storage.updateUser(userId, { upgradeStones: (user.upgradeStones || 0) + stonesGained });
+    await storage.deleteCompanion(compId);
+
+    res.json({ stonesGained });
+  });
+
+  app.post(api.companions.upgrade.path, isAuthenticated, async (req: any, res) => {
+    const userId = req.user.claims.sub;
+    const compId = Number(req.params.id);
+    const user = await storage.getUser(userId);
+    if (!user) return res.status(401).json({ message: "Unauthorized" });
+
+    if ((user.upgradeStones || 0) < 10) return res.status(400).json({ message: "Not enough upgrade stones (Need 10)" });
+
+    const companions = await storage.getCompanions(userId);
+    const comp = companions.find(c => c.id === compId);
+    if (!comp) return res.status(404).json({ message: "Companion not found" });
+
+    await storage.updateUser(userId, { upgradeStones: user.upgradeStones - 10 });
+
+    const expAmount = 100;
+    let newExp = comp.experience + expAmount;
+    let newLevel = comp.level;
+    let newExpToNext = comp.expToNext;
+    let hp = comp.hp;
+    let maxHp = comp.maxHp;
+    let atk = comp.attack;
+    let def = comp.defense;
+    let spd = comp.speed;
+
+    while (newExp >= newExpToNext) {
+      newExp -= newExpToNext;
+      newLevel++;
+      newExpToNext = Math.floor(100 * Math.pow(1.2, newLevel - 1));
+      maxHp = Math.floor(maxHp * 1.1) + 10;
+      hp = maxHp;
+      atk = Math.floor(atk * 1.05) + 2;
+      def = Math.floor(def * 1.05) + 2;
+      spd = Math.floor(spd * 1.02) + 1;
+    }
+
+    const updated = await storage.updateCompanion(compId, {
+      experience: newExp,
+      level: newLevel,
+      expToNext: newExpToNext,
+      hp,
+      maxHp,
+      attack: atk,
+      defense: def,
+      speed: spd,
+    });
+
+    res.json(updated);
+  });
+
   // Equipment
   app.get(api.equipment.list.path, isAuthenticated, async (req: any, res) => {
     const userId = req.user.claims.sub;
