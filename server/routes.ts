@@ -290,13 +290,23 @@ export async function registerRoutes(
     let defBonus = eq.defenseBonus;
     let spdBonus = eq.speedBonus;
 
+    const RARITY_GROWTH: Record<string, { atk: number, def: number, spd: number }> = {
+      white: { atk: 1.02, def: 1.03, spd: 1.05 },
+      green: { atk: 1.04, def: 1.06, spd: 1.08 },
+      blue: { atk: 1.06, def: 1.09, spd: 1.12 },
+      purple: { atk: 1.08, def: 1.12, spd: 1.15 },
+      gold: { atk: 1.12, def: 1.18, spd: 1.25 }
+    };
+
+    const growth = RARITY_GROWTH[eq.rarity] || RARITY_GROWTH.white;
+
     while (newExp >= newExpToNext) {
       newExp -= newExpToNext;
       newLevel++;
       newExpToNext = calcEquipExpToNext(newLevel);
-      atkBonus = Math.floor(atkBonus * 1.05) + 1;
-      defBonus = Math.floor(defBonus * 1.08) + 1;
-      spdBonus = Math.floor(spdBonus * 1.1) + 1;
+      atkBonus = Math.floor(atkBonus * growth.atk) + 1;
+      defBonus = Math.floor(defBonus * growth.def) + 1;
+      spdBonus = Math.floor(spdBonus * growth.spd) + 1;
     }
 
     const updated = await storage.updateEquipment(eq.id, {
@@ -367,13 +377,23 @@ export async function registerRoutes(
       let defBonus = eq.defenseBonus;
       let spdBonus = eq.speedBonus;
 
+      const RARITY_GROWTH: Record<string, { atk: number, def: number, spd: number }> = {
+        white: { atk: 1.02, def: 1.03, spd: 1.05 },
+        green: { atk: 1.04, def: 1.06, spd: 1.08 },
+        blue: { atk: 1.06, def: 1.09, spd: 1.12 },
+        purple: { atk: 1.08, def: 1.12, spd: 1.15 },
+        gold: { atk: 1.12, def: 1.18, spd: 1.25 }
+      };
+
+      const growth = RARITY_GROWTH[eq.rarity] || RARITY_GROWTH.white;
+
       while (newExp >= newExpToNext) {
         newExp -= newExpToNext;
         newLevel++;
         newExpToNext = calcEquipExpToNext(newLevel);
-        atkBonus = Math.floor(atkBonus * 1.05) + 1;
-        defBonus = Math.floor(defBonus * 1.08) + 1;
-        spdBonus = Math.floor(spdBonus * 1.1) + 1;
+        atkBonus = Math.floor(atkBonus * growth.atk) + 1;
+        defBonus = Math.floor(defBonus * growth.def) + 1;
+        spdBonus = Math.floor(spdBonus * growth.spd) + 1;
       }
 
       if (newLevel !== eq.level) {
