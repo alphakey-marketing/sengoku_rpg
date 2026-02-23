@@ -406,19 +406,12 @@ export async function registerRoutes(
     const logs = battleResult.logs;
 
     const expGained = victory ? Math.floor(Math.random() * 20) + 10 + enemy.level * 2 : 0;
-    if (battleResult.timeout) {
-      // 50% penalty
-      // (Simplified logic for now)
-    }
-
-    const expGained = victory ? Math.floor(Math.random() * 20) + 10 + enemy.level * 2 : 0;
     const goldGained = victory ? Math.floor(Math.random() * 10) + 5 + enemy.level : 0;
     const equipmentDropped = [];
     let petDropped = null;
     let horseDropped = null;
 
     if (victory) {
-      logs.push("Victory!");
       await storage.updateUser(userId, {
         experience: user.experience + expGained,
         gold: user.gold + goldGained,
@@ -481,8 +474,6 @@ export async function registerRoutes(
         });
         logs.push(`Tamed ${hName}!`);
       }
-    } else {
-      logs.push("Defeat!");
     }
 
     res.json({ victory, experienceGained: expGained, goldGained, equipmentDropped, petDropped, horseDropped, logs });
@@ -494,13 +485,14 @@ export async function registerRoutes(
     if (!user) return res.status(401).json({ message: "Unauthorized" });
     const teamStats = await getPlayerTeamStats(userId);
     const enemy = generateEnemyStats('boss', user.level);
-    const victory = (teamStats?.player.attack || user.attack) + Math.random() * 50 > enemy.attack;
+    
+    if (!teamStats) return res.status(400).json({ message: "Team not found" });
 
-    const logs: string[] = [];
-    logs.push(`You challenged ${enemy.name}!`);
+    const battleResult = runTurnBasedCombat(teamStats, [enemy]);
+    const victory = battleResult.victory;
+    const logs = battleResult.logs;
 
     if (victory) {
-      logs.push("Victory!");
       await storage.updateUser(userId, { experience: user.experience + 100, rice: user.rice + 10 });
       
       // Boss guaranteed equipment drop
@@ -541,10 +533,12 @@ export async function registerRoutes(
     const teamStats = await getPlayerTeamStats(userId);
     const enemy = generateEnemyStats('special', user.level);
     const sb = pick(SPECIAL_BOSSES);
-    const victory = (teamStats?.player.attack || user.attack) + Math.random() * 100 > enemy.attack * 1.5;
+    
+    if (!teamStats) return res.status(400).json({ message: "Team not found" });
 
-    const logs: string[] = [];
-    logs.push(`${enemy.name} appears!`);
+    const battleResult = runTurnBasedCombat(teamStats, [enemy]);
+    const victory = battleResult.victory;
+    const logs = battleResult.logs;
 
     if (victory) {
       logs.push("A mystical stone drops!");
