@@ -237,12 +237,29 @@ export default function MapPage() {
               <div className="space-y-2 bg-blue-950/20 p-3 rounded border border-blue-900/30">
                 <h4 className="text-xs font-bold text-blue-400 uppercase tracking-widest text-center">Your Team</h4>
                 <div className="space-y-1 text-sm">
-                  <p className="font-bold text-white truncate">{playerStatus?.player.name}</p>
+                  <div className="flex justify-between items-center mb-1">
+                    <p className="font-bold text-white truncate">{playerStatus?.player.name}</p>
+                    {playerStatus?.companions && playerStatus.companions.length > 0 && (
+                      <span className="text-[10px] bg-blue-900/50 px-1 rounded">+{playerStatus.companions.length} Allies</span>
+                    )}
+                  </div>
                   <div className="grid grid-cols-2 gap-x-2 text-xs">
-                    <span className="text-zinc-500">HP:</span> <span className="text-red-400">{playerStatus?.player.hp}</span>
-                    <span className="text-zinc-500">ATK:</span> <span className="text-orange-400">{playerStatus?.player.attack}</span>
-                    <span className="text-zinc-500">DEF:</span> <span className="text-blue-400">{playerStatus?.player.defense}</span>
-                    <span className="text-zinc-500">SPD:</span> <span className="text-cyan-400">{playerStatus?.player.speed}</span>
+                    <span className="text-zinc-500">HP:</span> 
+                    <span className="text-red-400">
+                      {playerStatus?.player.hp + (playerStatus?.companions?.reduce((sum, c) => sum + c.hp, 0) || 0)}
+                    </span>
+                    <span className="text-zinc-500">ATK:</span> 
+                    <span className="text-orange-400">
+                      {playerStatus?.player.attack + (playerStatus?.companions?.reduce((sum, c) => sum + c.attack, 0) || 0)}
+                    </span>
+                    <span className="text-zinc-500">DEF:</span> 
+                    <span className="text-blue-400">
+                      {playerStatus?.player.defense + (playerStatus?.companions?.reduce((sum, c) => sum + c.defense, 0) || 0)}
+                    </span>
+                    <span className="text-zinc-500">SPD:</span> 
+                    <span className="text-cyan-400">
+                      {playerStatus?.player.speed + (playerStatus?.companions?.reduce((sum, c) => sum + c.speed, 0) || 0)}
+                    </span>
                   </div>
                 </div>
               </div>
