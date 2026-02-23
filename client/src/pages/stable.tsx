@@ -55,7 +55,9 @@ export default function StablePage() {
                       <div>
                         <h3 className="font-bold text-lg font-display text-white">{pet.name}</h3>
                         <div className="flex text-accent">
-                          {Array.from({ length: pet.rarity }).map((_, j) => <Star key={j} size={12} fill="currentColor" />)}
+                          <span className="text-[10px] uppercase font-bold px-1.5 py-0.5 rounded bg-accent/20 border border-accent/30">
+                            {pet.rarity}
+                          </span>
                         </div>
                       </div>
                       {pet.isActive && <span className="text-xs bg-accent/20 text-accent px-2 py-1 rounded font-bold">ACTIVE</span>}

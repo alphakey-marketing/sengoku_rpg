@@ -117,9 +117,9 @@ export default function Party() {
                         </div>
                       </div>
                       <div className="flex text-accent mb-3">
-                        {Array.from({ length: comp.rarity }).map((_, j) => (
-                          <Star key={j} size={14} fill="currentColor" />
-                        ))}
+                        <span className="text-[10px] uppercase font-bold px-1.5 py-0.5 rounded bg-accent/20 border border-accent/30">
+                          {comp.rarity}-Star
+                        </span>
                       </div>
 
                       <div className="grid grid-cols-2 gap-2 text-sm">

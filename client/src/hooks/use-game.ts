@@ -80,10 +80,11 @@ export interface Horse {
   id: number;
   userId: string;
   name: string;
-  rarity: number;
+  rarity: string;
   level: number;
   speedBonus: number;
   attackBonus: number;
+  defenseBonus: number;
   skill: string | null;
   isActive: boolean;
 }
@@ -121,7 +122,7 @@ export interface TeamStats {
   player: TeamMemberStats;
   companions: TeamMemberStats[];
   pet: { name: string; level: number; hp: number; maxHp: number; attack: number; defense: number; speed: number; skill: string | null } | null;
-  horse: { name: string; level: number; speedBonus: number; attackBonus: number; skill: string | null } | null;
+  horse: { name: string; level: number; speedBonus: number; attackBonus: number; defenseBonus: number; skill: string | null } | null;
 }
 
 export interface EnemyStats {
