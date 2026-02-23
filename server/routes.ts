@@ -353,6 +353,93 @@ export async function registerRoutes(
     res.json(updated);
   });
 
+  app.post("/api/pets/:id/recycle", isAuthenticated, async (req: any, res) => {
+    const userId = req.user.claims.sub;
+    const petId = Number(req.params.id);
+    const pets = await storage.getPets(userId);
+    const targetPet = pets.find(p => p.id === petId);
+    if (!targetPet) return res.status(404).json({ message: "Pet not found" });
+    if (targetPet.isActive) return res.status(400).json({ message: "Cannot recycle active pet" });
+
+    const rarityEssence: Record<string, number> = { 
+      white: 5, green: 10, blue: 25, purple: 50, gold: 125,
+      mythic: 250, exotic: 500, transcendent: 1000, celestial: 2500, primal: 5000
+    };
+    const essenceGained = rarityEssence[targetPet.rarity] || 5;
+
+    const user = await storage.getUser(userId);
+    if (!user) return res.status(401).json({ message: "Unauthorized" });
+
+    await storage.updateUser(userId, { petEssence: (user.petEssence || 0) + essenceGained });
+    await storage.deletePet(petId);
+
+    res.json({ essenceGained });
+  });
+
+  app.post("/api/pets/:id/upgrade", isAuthenticated, async (req: any, res) => {
+    const userId = req.user.claims.sub;
+    const petId = Number(req.params.id);
+    const user = await storage.getUser(userId);
+    if (!user) return res.status(401).json({ message: "Unauthorized" });
+
+    if ((user.petEssence || 0) < 10) return res.status(400).json({ message: "Not enough pet essence" });
+
+    const allPets = await storage.getPets(userId);
+    const pet = allPets.find(p => p.id === petId);
+    if (!pet) return res.status(404).json({ message: "Pet not found" });
+
+    await storage.updateUser(userId, { petEssence: user.petEssence - 10 });
+
+    const expAmount = 50;
+    let newExp = pet.experience + expAmount;
+    let newLevel = pet.level;
+    let newExpToNext = pet.expToNext;
+    let hp = pet.hp;
+    let maxHp = pet.maxHp;
+    let atk = pet.attack;
+    let def = pet.defense;
+    let spd = pet.speed;
+
+    const RARITY_GROWTH: Record<string, { hp: number, atk: number, def: number, spd: number }> = {
+      white: { hp: 1.05, atk: 1.02, def: 1.03, spd: 1.05 },
+      green: { hp: 1.08, atk: 1.04, def: 1.06, spd: 1.08 },
+      blue: { hp: 1.12, atk: 1.06, def: 1.09, spd: 1.12 },
+      purple: { hp: 1.15, atk: 1.08, def: 1.12, spd: 1.15 },
+      gold: { hp: 1.25, atk: 1.12, def: 1.18, spd: 1.25 },
+      mythic: { hp: 1.35, atk: 1.16, def: 1.25, spd: 1.35 },
+      exotic: { hp: 1.50, atk: 1.22, def: 1.35, spd: 1.50 },
+      transcendent: { hp: 1.75, atk: 1.30, def: 1.50, spd: 1.75 },
+      celestial: { hp: 2.10, atk: 1.45, def: 1.75, spd: 2.10 },
+      primal: { hp: 3.00, atk: 1.75, def: 2.25, spd: 3.00 }
+    };
+
+    const growth = RARITY_GROWTH[pet.rarity] || RARITY_GROWTH.white;
+
+    while (newExp >= newExpToNext) {
+      newExp -= newExpToNext;
+      newLevel++;
+      newExpToNext = Math.floor(100 * Math.pow(1.3, newLevel - 1));
+      maxHp = Math.floor(maxHp * growth.hp) + 5;
+      hp = maxHp;
+      atk = Math.floor(atk * growth.atk) + 2;
+      def = Math.floor(def * growth.def) + 2;
+      spd = Math.floor(spd * growth.spd) + 3;
+    }
+
+    const updated = await storage.updatePet(pet.id, {
+      experience: newExp,
+      level: newLevel,
+      expToNext: newExpToNext,
+      hp,
+      maxHp,
+      attack: atk,
+      defense: def,
+      speed: spd,
+    });
+
+    res.json(updated);
+  });
+
   // Horses
   app.get(api.horses.list.path, isAuthenticated, async (req: any, res) => {
     const userId = req.user.claims.sub;
@@ -499,12 +586,15 @@ export async function registerRoutes(
         // Pet Drop (10% chance)
         if (Math.random() < 0.1) {
           const pInfo = pick(PET_NAMES);
+          const rarity = rarityFromRandom();
           const petDropped = await storage.createPet({
             userId,
             name: pInfo.name,
             type: 'spirit',
-            rarity: 3,
+            rarity,
             level: 1,
+            experience: 0,
+            expToNext: 100,
             hp: 30,
             maxHp: 30,
             attack: 5,
@@ -514,7 +604,7 @@ export async function registerRoutes(
             isActive: false,
           });
           allPetsDropped.push(petDropped);
-          allLogs.push(`A ${pInfo.name} joined you!`);
+          allLogs.push(`A ${rarity.toUpperCase()} ${pInfo.name} joined you!`);
         }
 
         // Horse Drop (5% chance)

@@ -13,6 +13,8 @@ import GachaPage from "@/pages/gacha";
 import MapPage from "@/pages/map";
 import StablePage from "@/pages/stable";
 
+import PetsPage from "@/pages/pets";
+
 function Router() {
   return (
     <Switch>
@@ -20,6 +22,7 @@ function Router() {
       <Route path="/" component={Home} />
       <Route path="/party" component={Party} />
       <Route path="/equipment" component={EquipmentPage} />
+      <Route path="/pets" component={PetsPage} />
       <Route path="/gacha" component={GachaPage} />
       <Route path="/map" component={MapPage} />
       <Route path="/stable" component={StablePage} />

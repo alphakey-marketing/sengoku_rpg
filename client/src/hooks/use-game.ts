@@ -19,6 +19,7 @@ export interface PlayerData {
   currentLocationId: number;
   activeTransformId: number | null;
   upgradeStones: number;
+  petEssence: number;
 }
 
 export interface Companion {
@@ -59,8 +60,10 @@ export interface Pet {
   userId: string;
   name: string;
   type: string;
-  rarity: number;
+  rarity: string;
   level: number;
+  experience: number;
+  expToNext: number;
   hp: number;
   maxHp: number;
   attack: number;
@@ -310,6 +313,37 @@ export function useSetActivePet() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [api.pets.list.path] });
+      queryClient.invalidateQueries({ queryKey: [api.player.fullStatus.path] });
+    },
+  });
+}
+
+export function useRecyclePet() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (petId: number) => {
+      const res = await fetchWithAuth(`/api/pets/${petId}/recycle`, { method: "POST" });
+      if (!res.ok) throw new Error("Failed to recycle pet");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [api.pets.list.path] });
+      queryClient.invalidateQueries({ queryKey: [api.player.get.path] });
+    },
+  });
+}
+
+export function useUpgradePet() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (petId: number) => {
+      const res = await fetchWithAuth(`/api/pets/${petId}/upgrade`, { method: "POST" });
+      if (!res.ok) throw new Error("Failed to upgrade pet");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [api.pets.list.path] });
+      queryClient.invalidateQueries({ queryKey: [api.player.get.path] });
       queryClient.invalidateQueries({ queryKey: [api.player.fullStatus.path] });
     },
   });

@@ -24,6 +24,7 @@ export interface IStorage {
   getPets(userId: string): Promise<Pet[]>;
   createPet(pet: InsertPet): Promise<Pet>;
   updatePet(id: number, updates: Partial<Pet>): Promise<Pet>;
+  deletePet(id: number): Promise<void>;
 
   getHorses(userId: string): Promise<Horse[]>;
   createHorse(horse: InsertHorse): Promise<Horse>;
@@ -108,6 +109,10 @@ export class DatabaseStorage implements IStorage {
   async updatePet(id: number, updates: Partial<Pet>): Promise<Pet> {
     const [p] = await db.update(pets).set(updates).where(eq(pets.id, id)).returning();
     return p;
+  }
+
+  async deletePet(id: number): Promise<void> {
+    await db.delete(pets).where(eq(pets.id, id));
   }
 
   async getHorses(userId: string): Promise<Horse[]> {
