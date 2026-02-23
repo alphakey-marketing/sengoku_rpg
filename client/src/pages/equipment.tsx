@@ -36,7 +36,12 @@ export default function EquipmentPage() {
       case 'green': return 'text-green-400 border-green-900 bg-green-900/10';
       case 'blue': return 'text-blue-400 border-blue-900 bg-blue-900/10';
       case 'purple': return 'text-purple-400 border-purple-900 bg-purple-900/10';
-      case 'gold': return 'text-yellow-400 border-yellow-700 bg-yellow-900/20 shadow-[inset_0_0_15px_rgba(234,179,8,0.1)]';
+      case 'gold': return 'text-yellow-400 border-yellow-700 bg-yellow-900/20 shadow-[0_0_15px_rgba(234,179,8,0.2)]';
+      case 'mythic': return 'text-pink-400 border-pink-900 bg-pink-900/10 shadow-[0_0_20px_rgba(236,72,153,0.3)]';
+      case 'exotic': return 'text-teal-400 border-teal-900 bg-teal-900/10 shadow-[0_0_25px_rgba(20,184,166,0.4)]';
+      case 'transcendent': return 'text-transparent bg-clip-text bg-gradient-to-r from-red-400 via-green-400 to-blue-400 border-white/20 bg-white/5 shadow-[0_0_30px_rgba(255,255,255,0.3)] font-black animate-pulse';
+      case 'celestial': return 'text-white border-zinc-200 bg-white/10 shadow-[0_0_40px_rgba(255,255,255,0.5)] font-bold';
+      case 'primal': return 'text-red-600 border-red-900 bg-black shadow-[0_0_50px_rgba(220,38,38,0.6)] font-black uppercase tracking-tighter';
       default: return 'text-white border-border bg-card';
     }
   };
@@ -61,6 +66,7 @@ export default function EquipmentPage() {
   const typeLabel = (type: string) => type === 'horse_gear' ? 'Horse Gear' : type.charAt(0).toUpperCase() + type.slice(1);
 
   const filtered = filterType === 'all' ? equipment : equipment?.filter(e => e.type === filterType);
+  const sortedEquipment = filtered ? [...filtered].sort((a, b) => a.id - b.id) : [];
 
   if (eqLoading) return <MainLayout><div className="p-8">Opening armory...</div></MainLayout>;
 
@@ -95,7 +101,7 @@ export default function EquipmentPage() {
           ))}
         </div>
 
-        {filtered?.length === 0 ? (
+        {sortedEquipment.length === 0 ? (
           <div className="text-center p-12 bg-card rounded-lg border border-border/50 border-dashed">
             <Sword className="w-12 h-12 mx-auto text-muted-foreground mb-4 opacity-50" />
             <h3 className="text-lg font-medium text-white mb-2">Armory Empty</h3>
@@ -103,7 +109,7 @@ export default function EquipmentPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {filtered?.map((item) => {
+            {sortedEquipment.map((item) => {
               const TypeIcon = getTypeIcon(item.type);
               const equippedTo = getEquippedName(item);
               return (
@@ -153,7 +159,12 @@ export default function EquipmentPage() {
                     </div>
                     <Progress value={(item.experience / item.expToNext) * 100} className="h-1.5" />
                     <p className="text-[10px] text-zinc-500 mt-1">
-                      {item.rarity === 'gold' ? '+12% ATK / +18% DEF / +25% SPD' :
+                      {item.rarity === 'primal' ? '+75% ATK / +125% DEF / +200% SPD' :
+                       item.rarity === 'celestial' ? '+45% ATK / +75% DEF / +110% SPD' :
+                       item.rarity === 'transcendent' ? '+30% ATK / +50% DEF / +75% SPD' :
+                       item.rarity === 'exotic' ? '+22% ATK / +35% DEF / +50% SPD' :
+                       item.rarity === 'mythic' ? '+16% ATK / +25% DEF / +35% SPD' :
+                       item.rarity === 'gold' ? '+12% ATK / +18% DEF / +25% SPD' :
                        item.rarity === 'purple' ? '+8% ATK / +12% DEF / +15% SPD' :
                        item.rarity === 'blue' ? '+6% ATK / +9% DEF / +12% SPD' :
                        item.rarity === 'green' ? '+4% ATK / +6% DEF / +8% SPD' :

@@ -30,11 +30,16 @@ function pick<T>(arr: T[]): T { return arr[Math.floor(Math.random() * arr.length
 
 function rarityFromRandom(): string {
   const r = Math.random();
-  if (r > 0.95) return 'gold';
-  if (r > 0.85) return 'purple';
-  if (r > 0.65) return 'blue';
-  if (r > 0.4) return 'green';
-  return 'white';
+  if (r > 0.999995) return 'primal';      // 0.0005%
+  if (r > 0.99998) return 'celestial';    // 0.0015%
+  if (r > 0.99995) return 'transcendent'; // 0.003%
+  if (r > 0.9998) return 'exotic';        // 0.015%
+  if (r > 0.999) return 'mythic';         // 0.08%
+  if (r > 0.991) return 'gold';           // 0.9%
+  if (r > 0.971) return 'purple';         // 2%
+  if (r > 0.901) return 'blue';           // 7%
+  if (r > 0.701) return 'green';          // 20%
+  return 'white';                         // 70%
 }
 
 function calcEquipExpToNext(level: number): number {
@@ -256,7 +261,10 @@ export async function registerRoutes(
     if (!targetEquip) return res.status(404).json({ message: "Equipment not found" });
     if (targetEquip.isEquipped) return res.status(400).json({ message: "Cannot recycle equipped item" });
 
-    const rarityStones: Record<string, number> = { white: 1, green: 2, blue: 5, purple: 10, gold: 25 };
+    const rarityStones: Record<string, number> = { 
+      white: 1, green: 2, blue: 5, purple: 10, gold: 25,
+      mythic: 50, exotic: 100, transcendent: 250, celestial: 500, primal: 1000
+    };
     const stonesGained = rarityStones[targetEquip.rarity] || 1;
 
     const user = await storage.getUser(userId);
@@ -295,7 +303,12 @@ export async function registerRoutes(
       green: { atk: 1.04, def: 1.06, spd: 1.08 },
       blue: { atk: 1.06, def: 1.09, spd: 1.12 },
       purple: { atk: 1.08, def: 1.12, spd: 1.15 },
-      gold: { atk: 1.12, def: 1.18, spd: 1.25 }
+      gold: { atk: 1.12, def: 1.18, spd: 1.25 },
+      mythic: { atk: 1.16, def: 1.25, spd: 1.35 },
+      exotic: { atk: 1.22, def: 1.35, spd: 1.50 },
+      transcendent: { atk: 1.30, def: 1.50, spd: 1.75 },
+      celestial: { atk: 1.45, def: 1.75, spd: 2.10 },
+      primal: { atk: 1.75, def: 2.25, spd: 3.00 }
     };
 
     const growth = RARITY_GROWTH[eq.rarity] || RARITY_GROWTH.white;
@@ -382,7 +395,12 @@ export async function registerRoutes(
         green: { atk: 1.04, def: 1.06, spd: 1.08 },
         blue: { atk: 1.06, def: 1.09, spd: 1.12 },
         purple: { atk: 1.08, def: 1.12, spd: 1.15 },
-        gold: { atk: 1.12, def: 1.18, spd: 1.25 }
+        gold: { atk: 1.12, def: 1.18, spd: 1.25 },
+        mythic: { atk: 1.16, def: 1.25, spd: 1.35 },
+        exotic: { atk: 1.22, def: 1.35, spd: 1.50 },
+        transcendent: { atk: 1.30, def: 1.50, spd: 1.75 },
+        celestial: { atk: 1.45, def: 1.75, spd: 2.10 },
+        primal: { atk: 1.75, def: 2.25, spd: 3.00 }
       };
 
       const growth = RARITY_GROWTH[eq.rarity] || RARITY_GROWTH.white;
@@ -447,6 +465,21 @@ export async function registerRoutes(
           const type = pick(EQUIP_TYPES);
           const rarity = rarityFromRandom();
           const name = pick(type === 'weapon' ? WEAPON_NAMES : type === 'armor' ? ARMOR_NAMES : type === 'accessory' ? ACCESSORY_NAMES : HORSE_GEAR_NAMES);
+          
+          const statsByRarity: Record<string, { atk: number, def: number, spd: number }> = {
+            white: { atk: 5, def: 5, spd: 2 },
+            green: { atk: 8, def: 8, spd: 4 },
+            blue: { atk: 12, def: 10, spd: 6 },
+            purple: { atk: 20, def: 15, spd: 10 },
+            gold: { atk: 35, def: 25, spd: 15 },
+            mythic: { atk: 60, def: 45, spd: 25 },
+            exotic: { atk: 100, def: 75, spd: 45 },
+            transcendent: { atk: 200, def: 150, spd: 80 },
+            celestial: { atk: 450, def: 350, spd: 150 },
+            primal: { atk: 1000, def: 800, spd: 300 }
+          };
+          const baseStats = statsByRarity[rarity] || statsByRarity.white;
+
           const eq = await storage.createEquipment({
             userId,
             name,
@@ -455,12 +488,12 @@ export async function registerRoutes(
             level: 1,
             experience: 0,
             expToNext: 100,
-            attackBonus: rarity === 'gold' ? 20 : rarity === 'purple' ? 15 : rarity === 'blue' ? 10 : 5,
-            defenseBonus: rarity === 'gold' ? 10 : 5,
-            speedBonus: rarity === 'gold' ? 5 : 2,
+            attackBonus: baseStats.atk,
+            defenseBonus: baseStats.def,
+            speedBonus: baseStats.spd,
           });
           allEquipmentDropped.push(eq);
-          allLogs.push(`Found ${name}!`);
+          allLogs.push(`Found ${rarity.toUpperCase()} ${name}!`);
         }
 
         // Pet Drop (10% chance)
