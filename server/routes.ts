@@ -1085,7 +1085,17 @@ export async function registerRoutes(
     await storage.updateUser(userId, { rice: user.rice - 15 });
     
     const type = pick(EQUIP_TYPES);
-    const rarity = rarityFromRandom();
+    
+    // Improved Rates for Special Gacha: No more common (white) to epic (purple)
+    // Only Gold and above
+    const r = Math.random();
+    let rarity = 'gold';
+    if (r > 0.999) rarity = 'primal';           // 0.1%
+    else if (r > 0.995) rarity = 'celestial';  // 0.4%
+    else if (r > 0.985) rarity = 'transcendent'; // 1.0%
+    else if (r > 0.965) rarity = 'exotic';      // 2.0%
+    else if (r > 0.90) rarity = 'mythic';       // 6.5%
+    else rarity = 'gold';                       // 90%
 
     const weaponNames = [
       "Masamune Katana", "Muramasa Blade", "Dragon Naginata", "Shadow Tanto", "Imperial Yari",
@@ -1116,10 +1126,6 @@ export async function registerRoutes(
     );
 
     const statsByRarity: Record<string, { atk: number, def: number, spd: number }> = {
-      white: { atk: 5, def: 5, spd: 2 },
-      green: { atk: 8, def: 8, spd: 4 },
-      blue: { atk: 12, def: 10, spd: 6 },
-      purple: { atk: 20, def: 15, spd: 10 },
       gold: { atk: 35, def: 25, spd: 15 },
       mythic: { atk: 60, def: 45, spd: 25 },
       exotic: { atk: 100, def: 75, spd: 45 },
@@ -1127,7 +1133,7 @@ export async function registerRoutes(
       celestial: { atk: 450, def: 350, spd: 150 },
       primal: { atk: 1000, def: 800, spd: 300 }
     };
-    const baseStats = statsByRarity[rarity] || statsByRarity.white;
+    const baseStats = statsByRarity[rarity];
 
     const equipment = await storage.createEquipment({
       userId,
