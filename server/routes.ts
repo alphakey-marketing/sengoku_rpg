@@ -28,7 +28,21 @@ const HORSE_NAMES = ["Kiso Horse (木曽馬)", "Misaki Pony (御崎馬)", "Tokar
 
 function pick<T>(arr: T[]): T { return arr[Math.floor(Math.random() * arr.length)]; }
 
-function rarityFromRandom(): string {
+function rarityFromRandom(): number {
+  const r = Math.random();
+  if (r > 0.999995) return 5;
+  if (r > 0.99998) return 5;
+  if (r > 0.99995) return 5;
+  if (r > 0.9998) return 4;
+  if (r > 0.999) return 4;
+  if (r > 0.991) return 3;
+  if (r > 0.971) return 3;
+  if (r > 0.901) return 2;
+  if (r > 0.701) return 2;
+  return 1;
+}
+
+function equipRarityFromRandom(): string {
   const r = Math.random();
   if (r > 0.999995) return 'primal';      // 0.0005%
   if (r > 0.99998) return 'celestial';    // 0.0015%
@@ -685,7 +699,7 @@ export async function registerRoutes(
         await storage.updateUser(userId, userUpdate);
         if (Math.random() < 0.3) {
           const type = pick(EQUIP_TYPES);
-          const rarity = rarityFromRandom();
+          const rarity = equipRarityFromRandom();
           const name = pick(type === 'weapon' ? WEAPON_NAMES : type === 'armor' ? ARMOR_NAMES : type === 'accessory' ? ACCESSORY_NAMES : HORSE_GEAR_NAMES);
           
           const statsByRarity: Record<string, { atk: number, def: number, spd: number }> = {
@@ -721,12 +735,12 @@ export async function registerRoutes(
         // Pet Drop (15% chance)
         if (Math.random() < 0.15) {
           const pInfo = pick(PET_NAMES);
-          const rStr = rarityFromRandom();
+          const rarityStr = equipRarityFromRandom();
           const petDropped = await storage.createPet({
             userId,
             name: pInfo.name,
             type: 'spirit',
-            rarity: rStr,
+            rarity: rarityStr,
             level: 1,
             experience: 0,
             expToNext: 100,
@@ -739,7 +753,7 @@ export async function registerRoutes(
             isActive: false,
           });
           allPetsDropped.push(petDropped);
-          allLogs.push(`Captured ${rStr.toUpperCase()} ${pInfo.name}!`);
+          allLogs.push(`Captured ${rarityStr.toUpperCase()} ${pInfo.name}!`);
         }
 
         // Horse Drop (10% chance)
@@ -1047,12 +1061,7 @@ export async function registerRoutes(
     ];
 
     const warrior = pick(warriorPool);
-    const r = Math.random();
-    let rarity = 1;
-    if (r > 0.95) rarity = 5;
-    else if (r > 0.85) rarity = 4;
-    else if (r > 0.65) rarity = 3;
-    else if (r > 0.4) rarity = 2;
+    const rarity = rarityFromRandom();
 
     const baseStats = {
       1: { hp: 60, atk: 12, def: 10, spd: 10 },
