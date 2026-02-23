@@ -59,6 +59,9 @@ export default function MapPage() {
   const [result, setResult] = useState<BattleResult | null>(null);
   const [activeEvent, setActiveEvent] = useState<any>(null);
   const [eventLogs, setEventLogs] = useState<string[]>([]);
+  const [preBattleInfo, setPreBattleInfo] = useState<{ type: 'field' | 'boss' | 'special', locationId: number, enemy: any } | null>(null);
+
+  const { data: playerStatus } = usePlayerFullStatus();
 
   useEffect(() => {
     // Random IF trigger check
@@ -68,8 +71,56 @@ export default function MapPage() {
     }
   }, [events]);
 
-  const handleBattle = (type: 'field' | 'boss' | 'special', locationId: number) => {
+  const initiateBattle = (type: 'field' | 'boss' | 'special', locationId: number) => {
+    // Generate a preview of the enemy based on location and type
+    // Since the actual enemy is generated on the server, we'll simulate the preview here
+    // or we could add an endpoint for this. For now, let's calculate it client-side
+    // matching the server's logic for the preview.
+    const loc = LOCATIONS.find(l => l.id === locationId);
+    const pLevel = playerStatus?.player.level || 1;
+    
+    let enemyPreview: any;
+    if (type === 'field') {
+      const lvl = Math.max(1, pLevel + 1);
+      enemyPreview = {
+        name: "Yokai Scout",
+        level: lvl,
+        hp: lvl * 30 + 50,
+        attack: lvl * 8 + 10,
+        defense: lvl * 5 + 5,
+        speed: lvl * 4 + 8,
+      };
+    } else if (type === 'boss') {
+      const lvl = pLevel + 3;
+      enemyPreview = {
+        name: "Castle Guardian",
+        level: lvl,
+        hp: lvl * 80 + 200,
+        attack: lvl * 15 + 30,
+        defense: lvl * 12 + 25,
+        speed: lvl * 6 + 10,
+      };
+    } else {
+      const lvl = pLevel + 8;
+      enemyPreview = {
+        name: "Legendary Demon",
+        level: lvl,
+        hp: lvl * 120 + 500,
+        attack: lvl * 25 + 80,
+        defense: lvl * 20 + 60,
+        speed: lvl * 10 + 20,
+      };
+    }
+    
+    setPreBattleInfo({ type, locationId, enemy: enemyPreview });
+  };
+
+  const handleBattle = () => {
+    if (!preBattleInfo) return;
+    const { type, locationId } = preBattleInfo;
     const action = type === 'field' ? doFieldBattle : type === 'boss' ? doBossBattle : doSpecialBoss;
+    
+    setPreBattleInfo(null);
     action(locationId, {
       onSuccess: (data) => {
         setResult(data);
@@ -129,7 +180,7 @@ export default function MapPage() {
 
                 <div className="flex flex-wrap gap-3 mt-auto">
                   <Button
-                    onClick={() => handleBattle('field', loc.id)}
+                    onClick={() => initiateBattle('field', loc.id)}
                     disabled={isPending}
                     variant="outline"
                     className="border-primary/50 hover:bg-primary/10 text-zinc-200"
@@ -139,7 +190,7 @@ export default function MapPage() {
                     Field Skirmish
                   </Button>
                   <Button
-                    onClick={() => handleBattle('boss', loc.id)}
+                    onClick={() => initiateBattle('boss', loc.id)}
                     disabled={isPending}
                     className="bg-secondary hover:bg-secondary/80 text-white"
                     data-testid={`battle-boss-${loc.id}`}
@@ -149,7 +200,7 @@ export default function MapPage() {
                   </Button>
                   {loc.id === 4 && (
                     <Button
-                      onClick={() => handleBattle('special', loc.id)}
+                      onClick={() => initiateBattle('special', loc.id)}
                       disabled={isPending}
                       className="bg-purple-900/50 hover:bg-purple-900/80 text-purple-200 border border-purple-700/40 shadow-[0_0_12px_rgba(128,0,255,0.2)]"
                       data-testid={`battle-special-${loc.id}`}
@@ -164,6 +215,49 @@ export default function MapPage() {
           ))}
         </div>
       </div>
+
+      <Dialog open={preBattleInfo !== null} onOpenChange={(open) => !open && setPreBattleInfo(null)}>
+        <DialogContent className="bg-card border-border text-foreground sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="font-display text-2xl text-center text-white">Battle Preparation</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-6 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2 bg-blue-950/20 p-3 rounded border border-blue-900/30">
+                <h4 className="text-xs font-bold text-blue-400 uppercase tracking-widest text-center">Your Team</h4>
+                <div className="space-y-1 text-sm">
+                  <p className="font-bold text-white truncate">{playerStatus?.player.name}</p>
+                  <div className="grid grid-cols-2 gap-x-2 text-xs">
+                    <span className="text-zinc-500">HP:</span> <span className="text-red-400">{playerStatus?.player.hp}</span>
+                    <span className="text-zinc-500">ATK:</span> <span className="text-orange-400">{playerStatus?.player.attack}</span>
+                    <span className="text-zinc-500">DEF:</span> <span className="text-blue-400">{playerStatus?.player.defense}</span>
+                    <span className="text-zinc-500">SPD:</span> <span className="text-cyan-400">{playerStatus?.player.speed}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-2 bg-red-950/20 p-3 rounded border border-red-900/30">
+                <h4 className="text-xs font-bold text-red-400 uppercase tracking-widest text-center">Enemy</h4>
+                <div className="space-y-1 text-sm">
+                  <p className="font-bold text-white truncate">{preBattleInfo?.enemy.name}</p>
+                  <div className="grid grid-cols-2 gap-x-2 text-xs">
+                    <span className="text-zinc-500">HP:</span> <span className="text-red-400">{preBattleInfo?.enemy.hp}</span>
+                    <span className="text-zinc-500">ATK:</span> <span className="text-orange-400">{preBattleInfo?.enemy.attack}</span>
+                    <span className="text-zinc-500">DEF:</span> <span className="text-blue-400">{preBattleInfo?.enemy.defense}</span>
+                    <span className="text-zinc-500">SPD:</span> <span className="text-cyan-400">{preBattleInfo?.enemy.speed}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <p className="text-xs text-center text-zinc-500 italic">"The wind whispers of blood and iron. Shall you draw your steel?"</p>
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="ghost" onClick={() => setPreBattleInfo(null)} className="flex-1">Withdraw</Button>
+            <Button onClick={handleBattle} className="flex-1 bg-primary hover:bg-primary/80 text-black font-bold">Charge!</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={result !== null} onOpenChange={(open) => !open && setResult(null)}>
         <DialogContent className="bg-card border-border text-foreground sm:max-w-2xl max-h-[85vh] flex flex-col">
