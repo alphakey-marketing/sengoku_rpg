@@ -126,13 +126,12 @@ export default function MapPage() {
     
     const action = type === 'field' ? doFieldBattle : type === 'boss' ? doBossBattle : doSpecialBoss;
     
-    setPreBattleInfo(null);
-    
     // Important: boss and special battles expect just the number, field expects the object
     const params: any = type === 'field' ? { locationId: locIdNum, repeatCount: repeatNum } : locIdNum;
     
     action(params, {
       onSuccess: (data: any) => {
+        setPreBattleInfo(null);
         setResult(data);
         // Story event triggers
         if (data.victory) {
