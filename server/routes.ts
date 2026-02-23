@@ -701,13 +701,14 @@ export async function registerRoutes(
         // Pet Drop (10% chance)
         if (Math.random() < 0.1) {
           const pInfo = pick(PET_NAMES);
-          const rarityVal = rarityFromRandom();
-          const rarityStr = rarityVal >= 5 ? 'gold' : rarityVal >= 4 ? 'purple' : rarityVal >= 3 ? 'blue' : rarityVal >= 2 ? 'green' : 'white';
+          const rVal = rarityFromRandom() as number;
+          // rarityFromRandom returns a number, so we check that
+          const rStr = rVal >= 5 ? 'gold' : rVal >= 4 ? 'purple' : rVal >= 3 ? 'blue' : rVal >= 2 ? 'green' : 'white';
           const petDropped = await storage.createPet({
             userId,
             name: pInfo.name,
             type: 'spirit',
-            rarity: rarityStr,
+            rarity: rStr,
             level: 1,
             experience: 0,
             expToNext: 100,
@@ -720,7 +721,7 @@ export async function registerRoutes(
             isActive: false,
           });
           allPetsDropped.push(petDropped);
-          allLogs.push(`A ${rarityStr.toUpperCase()} ${pInfo.name} joined you!`);
+          allLogs.push(`Captured ${pInfo.name}!`);
         }
 
         // Horse Drop (5% chance)

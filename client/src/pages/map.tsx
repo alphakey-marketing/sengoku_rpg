@@ -145,6 +145,7 @@ export default function MapPage() {
       },
       onError: (err: any) => {
         console.error("Battle error:", err);
+        setPreBattleInfo(null); // Clear loading state if error occurs
       }
     });
   };
