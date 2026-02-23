@@ -15,6 +15,7 @@ export interface IStorage {
   getCompanions(userId: string): Promise<Companion[]>;
   createCompanion(companion: InsertCompanion): Promise<Companion>;
   updateCompanion(id: number, updates: Partial<Companion>): Promise<Companion>;
+  deleteCompanion(id: number): Promise<void>;
 
   getEquipment(userId: string): Promise<Equipment[]>;
   createEquipment(equip: InsertEquipment): Promise<Equipment>;
@@ -77,6 +78,10 @@ export class DatabaseStorage implements IStorage {
   async updateCompanion(id: number, updates: Partial<Companion>): Promise<Companion> {
     const [comp] = await db.update(companions).set(updates).where(eq(companions.id, id)).returning();
     return comp;
+  }
+
+  async deleteCompanion(id: number): Promise<void> {
+    await db.delete(companions).where(eq(companions.id, id));
   }
 
   async getEquipment(userId: string): Promise<Equipment[]> {

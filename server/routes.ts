@@ -200,6 +200,15 @@ export async function registerRoutes(
       return res.status(400).json({ message: "Max 5 companions in party" });
     }
     const allComps = await storage.getCompanions(userId);
+    
+    // Check for duplicate names in the selected companion IDs
+    const selectedComps = allComps.filter(c => companionIds.includes(c.id));
+    const names = selectedComps.map(c => c.name);
+    const uniqueNames = new Set(names);
+    if (uniqueNames.size !== names.length) {
+      return res.status(400).json({ message: "Cannot deploy the same warrior twice" });
+    }
+
     for (const comp of allComps) {
       const shouldBeInParty = companionIds.includes(comp.id);
       if (comp.isInParty !== shouldBeInParty) {
@@ -207,6 +216,85 @@ export async function registerRoutes(
       }
     }
     res.json(await storage.getCompanions(userId));
+  });
+
+  app.post("/api/companions/:id/recycle", isAuthenticated, async (req: any, res) => {
+    const userId = req.user.claims.sub;
+    const compId = Number(req.params.id);
+    const comps = await storage.getCompanions(userId);
+    const target = comps.find(c => c.id === compId);
+    if (!target) return res.status(404).json({ message: "Companion not found" });
+    if (target.isInParty) return res.status(400).json({ message: "Cannot dismiss active party member" });
+
+    const raritySouls: Record<number, number> = { 1: 5, 2: 10, 3: 25, 4: 50, 5: 125 };
+    const soulsGained = raritySouls[target.rarity] || 5;
+
+    const user = await storage.getUser(userId);
+    if (!user) return res.status(401).json({ message: "Unauthorized" });
+
+    await storage.updateUser(userId, { warriorSouls: (user.warriorSouls || 0) + soulsGained });
+    await storage.deleteCompanion(compId);
+
+    res.json({ soulsGained });
+  });
+
+  app.post("/api/companions/:id/upgrade", isAuthenticated, async (req: any, res) => {
+    const userId = req.user.claims.sub;
+    const compId = Number(req.params.id);
+    const user = await storage.getUser(userId);
+    if (!user) return res.status(401).json({ message: "Unauthorized" });
+
+    if ((user.warriorSouls || 0) < 10) return res.status(400).json({ message: "Not enough Warrior Souls" });
+
+    const allComps = await storage.getCompanions(userId);
+    const comp = allComps.find(c => c.id === compId);
+    if (!comp) return res.status(404).json({ message: "Companion not found" });
+
+    await storage.updateUser(userId, { warriorSouls: user.warriorSouls - 10 });
+
+    const expAmount = 50;
+    let newExp = comp.experience + expAmount;
+    let newLevel = comp.level;
+    let newExpToNext = comp.expToNext;
+    let hp = comp.hp;
+    let maxHp = comp.maxHp;
+    let atk = comp.attack;
+    let def = comp.defense;
+    let spd = comp.speed;
+
+    const RARITY_GROWTH: Record<number, { hp: number, atk: number, def: number, spd: number }> = {
+      1: { hp: 1.05, atk: 1.02, def: 1.03, spd: 1.05 },
+      2: { hp: 1.08, atk: 1.04, def: 1.06, spd: 1.08 },
+      3: { hp: 1.12, atk: 1.06, def: 1.09, spd: 1.12 },
+      4: { hp: 1.15, atk: 1.08, def: 1.12, spd: 1.15 },
+      5: { hp: 1.25, atk: 1.12, def: 1.18, spd: 1.25 }
+    };
+
+    const growth = RARITY_GROWTH[comp.rarity] || RARITY_GROWTH[1];
+
+    while (newExp >= newExpToNext) {
+      newExp -= newExpToNext;
+      newLevel++;
+      newExpToNext = Math.floor(100 * Math.pow(1.3, newLevel - 1));
+      maxHp = Math.floor(maxHp * growth.hp) + 10;
+      hp = maxHp;
+      atk = Math.floor(atk * growth.atk) + 3;
+      def = Math.floor(def * growth.def) + 3;
+      spd = Math.floor(spd * growth.spd) + 2;
+    }
+
+    const updated = await storage.updateCompanion(comp.id, {
+      experience: newExp,
+      level: newLevel,
+      expToNext: newExpToNext,
+      hp,
+      maxHp,
+      attack: atk,
+      defense: def,
+      speed: spd,
+    });
+
+    res.json(updated);
   });
 
   // Equipment
@@ -802,18 +890,52 @@ export async function registerRoutes(
     if (!user) return res.status(401).json({ message: "Unauthorized" });
     if (user.rice < 10) return res.status(400).json({ message: "Not enough rice" });
     await storage.updateUser(userId, { rice: user.rice - 10 });
+
+    const warriorPool = [
+      { name: "Oda Nobunaga", skill: "Demon King's Command", type: "General" },
+      { name: "Toyotomi Hideyoshi", skill: "Ape's Cunning", type: "Strategist" },
+      { name: "Tokugawa Ieyasu", skill: "Patient Turtle", type: "Defender" },
+      { name: "Hattori Hanzo", skill: "Shadow Strike", type: "Ninja" },
+      { name: "Sanada Yukimura", skill: "Crimson Charge", type: "Lancer" },
+      { name: "Date Masamune", skill: "One-Eyed Dragon", type: "Ronin" },
+      { name: "Uesugi Kenshin", skill: "God of War", type: "Monk" },
+      { name: "Takeda Shingen", skill: "Furin-kazan", type: "General" },
+      { name: "Miyamoto Musashi", skill: "Niten Ichi-ryu", type: "Samurai" },
+      { name: "Sasaki Kojiro", skill: "Swallow Cut", type: "Samurai" },
+      { name: "Honda Tadakatsu", skill: "Unscathed General", type: "Defender" },
+      { name: "Akechi Mitsuhide", skill: "Tenka Fubu", type: "Tactician" }
+    ];
+
+    const warrior = pick(warriorPool);
+    const r = Math.random();
+    let rarity = 1;
+    if (r > 0.95) rarity = 5;
+    else if (r > 0.85) rarity = 4;
+    else if (r > 0.65) rarity = 3;
+    else if (r > 0.4) rarity = 2;
+
+    const baseStats = {
+      1: { hp: 60, atk: 12, def: 10, spd: 10 },
+      2: { hp: 80, atk: 15, def: 12, spd: 12 },
+      3: { hp: 100, atk: 20, def: 15, spd: 15 },
+      4: { hp: 130, atk: 28, def: 22, spd: 20 },
+      5: { hp: 180, atk: 40, def: 35, spd: 30 }
+    }[rarity] || { hp: 60, atk: 12, def: 10, spd: 10 };
+
     const companion = await storage.createCompanion({
       userId,
-      name: pick(["Oda Nobunaga", "Kunoichi", "Ronin"]),
-      type: 'historical',
-      rarity: 5,
+      name: warrior.name,
+      type: warrior.type,
+      rarity,
       level: 1,
-      hp: 100,
-      maxHp: 100,
-      attack: 20,
-      defense: 20,
-      speed: 15,
-      skill: "Slash",
+      experience: 0,
+      expToNext: 100,
+      hp: baseStats.hp,
+      maxHp: baseStats.hp,
+      attack: baseStats.atk,
+      defense: baseStats.def,
+      speed: baseStats.spd,
+      skill: warrior.skill,
       isInParty: false,
     });
     res.json({ companion });

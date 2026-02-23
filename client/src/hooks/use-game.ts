@@ -20,6 +20,7 @@ export interface PlayerData {
   activeTransformId: number | null;
   upgradeStones: number;
   petEssence: number;
+  warriorSouls: number;
 }
 
 export interface Companion {
@@ -29,6 +30,8 @@ export interface Companion {
   type: string;
   rarity: number;
   level: number;
+  experience: number;
+  expToNext: number;
   hp: number;
   maxHp: number;
   attack: number;
@@ -200,11 +203,45 @@ export function useSetParty() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ companionIds }),
       });
-      if (!res.ok) throw new Error("Failed to set party");
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || "Failed to set party");
+      }
       return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [api.companions.list.path] });
+      queryClient.invalidateQueries({ queryKey: [api.player.fullStatus.path] });
+    },
+  });
+}
+
+export function useRecycleCompanion() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (compId: number) => {
+      const res = await fetchWithAuth(`/api/companions/${compId}/recycle`, { method: "POST" });
+      if (!res.ok) throw new Error("Failed to dismiss companion");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [api.companions.list.path] });
+      queryClient.invalidateQueries({ queryKey: [api.player.get.path] });
+    },
+  });
+}
+
+export function useUpgradeCompanion() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (compId: number) => {
+      const res = await fetchWithAuth(`/api/companions/${compId}/upgrade`, { method: "POST" });
+      if (!res.ok) throw new Error("Failed to upgrade companion");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [api.companions.list.path] });
+      queryClient.invalidateQueries({ queryKey: [api.player.get.path] });
       queryClient.invalidateQueries({ queryKey: [api.player.fullStatus.path] });
     },
   });
