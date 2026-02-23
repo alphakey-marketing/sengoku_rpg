@@ -3,6 +3,7 @@ import { type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, registerAuthRoutes, isAuthenticated } from "./replit_integrations/auth";
 import { api, buildUrl } from "@shared/routes";
+import { runTurnBasedCombat } from "./combat";
 
 const EQUIP_TYPES = ['weapon', 'armor', 'accessory', 'horse_gear'];
 
@@ -397,13 +398,18 @@ export async function registerRoutes(
 
     const teamStats = await getPlayerTeamStats(userId);
     const enemy = generateEnemyStats('field', user.level);
-    const playerPower = (teamStats?.player.attack || user.attack) + (teamStats?.player.speed || user.speed);
-    const enemyPower = enemy.attack + enemy.speed;
-    const victory = playerPower + Math.random() * 30 > enemyPower;
+    
+    if (!teamStats) return res.status(400).json({ message: "Team not found" });
 
-    const logs: string[] = [];
-    logs.push(`A wild ${enemy.name} (Lv${enemy.level}) appeared!`);
-    if (teamStats && teamStats.player.speed > enemy.speed) logs.push(`Your speed strikes first!`);
+    const battleResult = runTurnBasedCombat(teamStats, [enemy]);
+    const victory = battleResult.victory;
+    const logs = battleResult.logs;
+
+    const expGained = victory ? Math.floor(Math.random() * 20) + 10 + enemy.level * 2 : 0;
+    if (battleResult.timeout) {
+      // 50% penalty
+      // (Simplified logic for now)
+    }
 
     const expGained = victory ? Math.floor(Math.random() * 20) + 10 + enemy.level * 2 : 0;
     const goldGained = victory ? Math.floor(Math.random() * 10) + 5 + enemy.level : 0;

@@ -25,6 +25,8 @@ export const users = pgTable("users", {
   attack: integer("attack").notNull().default(10),
   defense: integer("defense").notNull().default(10),
   speed: integer("speed").notNull().default(10),
+  stamina: integer("stamina").notNull().default(100),
+  maxStamina: integer("max_stamina").notNull().default(100),
   currentLocationId: integer("current_location_id").notNull().default(1),
   activeTransformId: integer("active_transform_id"),
   upgradeStones: integer("upgrade_stones").notNull().default(0),

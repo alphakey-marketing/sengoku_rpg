@@ -192,18 +192,18 @@ export default function MapPage() {
               </div>
             )}
 
-            <div className="bg-background/80 rounded p-4 border border-border/30 font-mono text-sm space-y-2">
+            <div className="bg-background/80 rounded p-4 border border-border/30 font-mono text-sm space-y-2 h-64 overflow-y-auto">
               <AnimatePresence>
                 {result?.logs.map((log, i) => (
                   <motion.div
                     key={i}
                     initial={{ opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: i * 0.1 }}
-                    className="flex items-start gap-2"
+                    transition={{ delay: i * 0.05 }}
+                    className={`flex items-start gap-2 ${log.startsWith('---') ? 'text-accent font-bold mt-2 border-t border-border/20 pt-2' : ''}`}
                   >
                     <ChevronRight size={14} className="mt-0.5 shrink-0 text-primary" />
-                    <span className="text-zinc-300">{log}</span>
+                    <span className={log.includes('CRITICAL') ? 'text-orange-400 font-bold' : 'text-zinc-300'}>{log}</span>
                   </motion.div>
                 ))}
               </AnimatePresence>
