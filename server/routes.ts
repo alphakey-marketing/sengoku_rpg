@@ -718,8 +718,8 @@ export async function registerRoutes(
           allLogs.push(`Found ${rarity.toUpperCase()} ${name}!`);
         }
 
-        // Pet Drop (10% chance)
-        if (Math.random() < 0.1) {
+        // Pet Drop (15% chance)
+        if (Math.random() < 0.15) {
           const pInfo = pick(PET_NAMES);
           const rStr = rarityFromRandom();
           const petDropped = await storage.createPet({
@@ -742,8 +742,8 @@ export async function registerRoutes(
           allLogs.push(`Captured ${rStr.toUpperCase()} ${pInfo.name}!`);
         }
 
-        // Horse Drop (5% chance)
-        if (Math.random() < 0.05) {
+        // Horse Drop (10% chance)
+        if (Math.random() < 0.1) {
           const hName = pick(HORSE_NAMES);
           const r = Math.random();
           let rarity = "common";
