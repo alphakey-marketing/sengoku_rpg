@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useFieldBattle, useBossBattle, useSpecialBossBattle, BattleResult, useCampaignEvents, useTriggerCampaignEvent, usePlayerFullStatus } from "@/hooks/use-game";
 import { MainLayout } from "@/components/layout/main-layout";
 import { Button } from "@/components/ui/button";
+import { Slider } from "@/components/ui/slider";
 import { Map as MapIcon, Swords, Skull, ChevronRight, Crown, Zap, Shield, Heart, Sparkles, ArrowUp, Scroll, Star } from "lucide-react";
 import {
   Dialog,
