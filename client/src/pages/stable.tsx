@@ -20,15 +20,12 @@ export default function StablePage() {
     <MainLayout>
       <div className="space-y-6">
         <div className="border-b border-border/50 pb-4">
-          <h1 className="text-3xl font-display font-bold text-white mb-2" data-testid="text-page-title">Stable & Spirits</h1>
-          <p className="text-muted-foreground">Manage your pets, war horses, and transformation forms. Only one pet and one horse can be active at a time.</p>
+          <h1 className="text-3xl font-display font-bold text-white mb-2" data-testid="text-page-title">War Mounts</h1>
+          <p className="text-muted-foreground">Manage your war horses and transformation forms. Only one horse can be active at a time.</p>
         </div>
 
-        <Tabs defaultValue="pets" className="w-full">
+        <Tabs defaultValue="horses" className="w-full">
           <TabsList className="bg-card border border-border/50">
-            <TabsTrigger value="pets" className="data-[state=active]:bg-accent/20 data-[state=active]:text-accent" data-testid="tab-pets">
-              <Sparkles size={16} className="mr-2" /> Pets ({pets?.length || 0})
-            </TabsTrigger>
             <TabsTrigger value="horses" className="data-[state=active]:bg-cyan-900/30 data-[state=active]:text-cyan-400" data-testid="tab-horses">
               <Zap size={16} className="mr-2" /> Horses ({horses?.length || 0})
             </TabsTrigger>
@@ -36,62 +33,6 @@ export default function StablePage() {
               <Crown size={16} className="mr-2" /> Transformations ({transforms?.length || 0})
             </TabsTrigger>
           </TabsList>
-
-          <TabsContent value="pets" className="mt-6">
-            {!pets || pets.length === 0 ? (
-              <EmptyState icon={Sparkles} title="No Pets" desc="Defeat yokai in field battles to capture spirit companions." />
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                {pets.map((pet, i) => (
-                  <motion.div
-                    key={pet.id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: i * 0.05 }}
-                    className={`rounded-lg border p-5 bg-washi transition-all ${pet.isActive ? 'border-accent bg-accent/5 shadow-[0_0_15px_rgba(212,175,55,0.15)]' : 'border-border/50 bg-card'}`}
-                    data-testid={`pet-card-${pet.id}`}
-                  >
-                    <div className="flex justify-between items-start mb-3">
-                      <div>
-                        <h3 className="font-bold text-lg font-display text-white">{pet.name}</h3>
-                        <div className="flex text-accent">
-                          <span className="text-[10px] uppercase font-bold px-1.5 py-0.5 rounded bg-accent/20 border border-accent/30">
-                            {pet.rarity}
-                          </span>
-                        </div>
-                      </div>
-                      {pet.isActive && <span className="text-xs bg-accent/20 text-accent px-2 py-1 rounded font-bold">ACTIVE</span>}
-                    </div>
-
-                    <div className="grid grid-cols-3 gap-2 text-sm mb-3">
-                      <div className="flex items-center gap-1"><Heart size={14} className="text-red-400" /><span>{pet.hp}/{pet.maxHp}</span></div>
-                      <div className="flex items-center gap-1"><Sword size={14} className="text-orange-400" /><span>{pet.attack}</span></div>
-                      <div className="flex items-center gap-1"><Shield size={14} className="text-blue-400" /><span>{pet.defense}</span></div>
-                      <div className="flex items-center gap-1"><Zap size={14} className="text-cyan-400" /><span>{pet.speed}</span></div>
-                      <div className="col-span-2 text-xs text-muted-foreground">Lv {pet.level}</div>
-                    </div>
-
-                    {pet.skill && (
-                      <p className="text-xs text-accent mb-3">Skill: {pet.skill}</p>
-                    )}
-
-                    {!pet.isActive && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="w-full border-accent/30 text-accent hover:bg-accent/10"
-                        onClick={() => setActivePet(pet.id)}
-                        disabled={petPending}
-                        data-testid={`activate-pet-${pet.id}`}
-                      >
-                        Set Active
-                      </Button>
-                    )}
-                  </motion.div>
-                ))}
-              </div>
-            )}
-          </TabsContent>
 
           <TabsContent value="horses" className="mt-6">
             {!horses || horses.length === 0 ? (
