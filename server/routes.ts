@@ -630,42 +630,37 @@ export async function registerRoutes(
       allLogs.push(...battleResult.logs);
 
       if (victory) {
+        // Update user stats with level up logic
         const expGained = Math.floor(Math.random() * 20) + 10 + enemy.level * 2;
         const goldGained = Math.floor(Math.random() * 10) + 5 + enemy.level;
         totalExpGained += expGained;
         totalGoldGained += goldGained;
         
-      // Update user stats with level up logic
-      const expGained = Math.floor(Math.random() * 20) + 10 + enemy.level * 2;
-      const goldGained = Math.floor(Math.random() * 10) + 5 + enemy.level;
-      totalExpGained += expGained;
-      totalGoldGained += goldGained;
-      
-      let currentExp = user.experience + expGained;
-      let currentLevel = user.level;
-      let currentMaxHp = user.maxHp;
-      let currentAtk = user.attack;
-      let currentDef = user.defense;
-      let currentSpd = user.speed;
+        let currentExp = user.experience + expGained;
+        let currentLevel = user.level;
+        let currentMaxHp = user.maxHp;
+        let currentAtk = user.attack;
+        let currentDef = user.defense;
+        let currentSpd = user.speed;
 
-      while (currentExp >= Math.floor(100 * Math.pow(1.5, currentLevel - 1))) {
-        currentExp -= Math.floor(100 * Math.pow(1.5, currentLevel - 1));
-        currentLevel++;
-        currentMaxHp += 20;
-        currentAtk += 5;
-        currentDef += 3;
-        currentSpd += 2;
-      }
-      await storage.updateUser(userId, { 
-        level: currentLevel,
-        experience: currentExp, 
-        gold: user.gold + goldGained,
-        maxHp: currentMaxHp,
-        hp: currentMaxHp,
-        attack: currentAtk,
-        defense: currentDef,
-        speed: currentSpd
-      });
+        while (currentExp >= Math.floor(100 * Math.pow(1.5, currentLevel - 1))) {
+          currentExp -= Math.floor(100 * Math.pow(1.5, currentLevel - 1));
+          currentLevel++;
+          currentMaxHp += 20;
+          currentAtk += 5;
+          currentDef += 3;
+          currentSpd += 2;
+        }
+        await storage.updateUser(userId, { 
+          level: currentLevel,
+          experience: currentExp, 
+          gold: user.gold + goldGained,
+          maxHp: currentMaxHp,
+          hp: currentMaxHp,
+          attack: currentAtk,
+          defense: currentDef,
+          speed: currentSpd
+        });
         if (Math.random() < 0.3) {
           const type = pick(EQUIP_TYPES);
           const rarity = rarityFromRandom();
