@@ -656,7 +656,7 @@ export async function registerRoutes(
         totalExpGained += expGained;
         totalGoldGained += goldGained;
         
-        let currentExp = user.experience + expGained;
+        let currentExp = user.experience + totalExpGained;
         let currentLevel = user.level;
         let currentMaxHp = user.maxHp;
         let currentAtk = user.attack;
@@ -671,16 +671,18 @@ export async function registerRoutes(
           currentDef += 3;
           currentSpd += 2;
         }
-        await storage.updateUser(userId, { 
+        const userUpdate: any = {
           level: currentLevel,
-          experience: currentExp, 
-          gold: user.gold + goldGained,
+          experience: currentExp,
+          gold: user.gold + totalGoldGained,
           maxHp: currentMaxHp,
           hp: currentMaxHp,
           attack: currentAtk,
           defense: currentDef,
           speed: currentSpd
-        });
+        };
+
+        await storage.updateUser(userId, userUpdate);
         if (Math.random() < 0.3) {
           const type = pick(EQUIP_TYPES);
           const rarity = rarityFromRandom();
@@ -784,11 +786,16 @@ export async function registerRoutes(
       }
     }
 
-    if (totalExpGained > 0 || totalGoldGained > 0) {
+    if (totalExpGained > 0) {
+      // Handled in loop
+    } else if (totalGoldGained > 0) {
       await storage.updateUser(userId, {
-        experience: user.experience + totalExpGained,
         gold: user.gold + totalGoldGained,
       });
+    }
+    
+    // Always give equipment exp at the end
+    if (count > 0) {
       await giveEquipmentExp(userId, 10 * count);
     }
 
