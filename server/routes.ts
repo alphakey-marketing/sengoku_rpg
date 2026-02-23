@@ -139,28 +139,28 @@ function generateEnemyStats(type: 'field' | 'boss' | 'special', playerLevel: num
     };
   } else if (type === 'boss') {
     const name = pick(BOSS_NAMES);
-    const lvl = playerLevel + 3;
+    const lvl = playerLevel + 2 + (locationId * 3);
     return {
       name,
       level: lvl,
-      hp: lvl * 80 + 200,
-      maxHp: lvl * 80 + 200,
-      attack: lvl * 15 + 30,
-      defense: lvl * 12 + 25,
-      speed: lvl * 6 + 10,
+      hp: lvl * 100 + 300 + (locationId * 200),
+      maxHp: lvl * 100 + 300 + (locationId * 200),
+      attack: lvl * 18 + 40 + (locationId * 30),
+      defense: lvl * 15 + 35 + (locationId * 25),
+      speed: lvl * 8 + 15 + (locationId * 10),
       skills: ["War Cry", "Shield Wall", "Charge"],
     };
   } else {
     const sb = pick(SPECIAL_BOSSES);
-    const lvl = playerLevel + 8;
+    const lvl = playerLevel + 5 + (locationId * 5);
     return {
       name: sb.name,
       level: lvl,
-      hp: lvl * 120 + 500,
-      maxHp: lvl * 120 + 500,
-      attack: lvl * 25 + 80,
-      defense: lvl * 20 + 60,
-      speed: lvl * 10 + 20,
+      hp: lvl * 150 + 800 + (locationId * 500),
+      maxHp: lvl * 150 + 800 + (locationId * 500),
+      attack: lvl * 35 + 120 + (locationId * 80),
+      defense: lvl * 25 + 100 + (locationId * 60),
+      speed: lvl * 12 + 40 + (locationId * 25),
       skills: [sb.skill, "Roar", "Dark Aura"],
     };
   }
@@ -634,8 +634,27 @@ export async function registerRoutes(
         const goldGained = Math.floor(Math.random() * 10) + 5 + enemy.level;
         totalExpGained += expGained;
         totalGoldGained += goldGained;
+        
+        // Update user stats with level up logic
+        let newExp = user.experience + expGained;
+        let newLevel = user.level;
+        let expToNext = Math.floor(100 * Math.pow(1.5, newLevel - 1));
 
-        // Equipment Drop (30% chance)
+        while (newExp >= expToNext) {
+          newExp -= expToNext;
+          newLevel++;
+          expToNext = Math.floor(100 * Math.pow(1.5, newLevel - 1));
+          // Stat increases on level up
+          await storage.updateUser(userId, {
+            level: newLevel,
+            maxHp: user.maxHp + 20,
+            hp: user.maxHp + 20,
+            attack: user.attack + 5,
+            defense: user.defense + 3,
+            speed: user.speed + 2,
+          });
+        }
+        await storage.updateUser(userId, { experience: newExp, gold: user.gold + goldGained });
         if (Math.random() < 0.3) {
           const type = pick(EQUIP_TYPES);
           const rarity = rarityFromRandom();
