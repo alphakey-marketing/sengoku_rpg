@@ -101,10 +101,11 @@ export const horses = pgTable("horses", {
   id: serial("id").primaryKey(),
   userId: varchar("user_id").notNull(),
   name: text("name").notNull(),
-  rarity: integer("rarity").notNull(),
+  rarity: text("rarity").notNull(),
   level: integer("level").notNull().default(1),
-  speedBonus: integer("speed_bonus").notNull().default(20),
-  attackBonus: integer("attack_bonus").notNull().default(5),
+  speedBonus: integer("speed_bonus").notNull().default(10),
+  attackBonus: integer("attack_bonus").notNull().default(0),
+  defenseBonus: integer("defense_bonus").notNull().default(0),
   skill: text("skill"),
   isActive: boolean("is_active").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow(),
@@ -169,27 +170,17 @@ export const campaignEventsRelations = relations(campaignEvents, ({ one }) => ({
   user: one(users, { fields: [campaignEvents.userId], references: [users.id] }),
 }));
 
-export const insertCompanionSchema = createInsertSchema(companions, {
-  isInParty: z.boolean(),
-}).omit({ id: true, createdAt: true });
+export const insertCompanionSchema = createInsertSchema(companions).omit({ id: true, createdAt: true });
 
-export const insertEquipmentSchema = createInsertSchema(equipment, {
-  isEquipped: z.boolean(),
-}).omit({ id: true, createdAt: true });
+export const insertEquipmentSchema = createInsertSchema(equipment).omit({ id: true, createdAt: true });
 
-export const insertPetSchema = createInsertSchema(pets, {
-  isActive: z.boolean(),
-}).omit({ id: true, createdAt: true });
+export const insertPetSchema = createInsertSchema(pets).omit({ id: true, createdAt: true });
 
-export const insertHorseSchema = createInsertSchema(horses, {
-  isActive: z.boolean(),
-}).omit({ id: true, createdAt: true });
+export const insertHorseSchema = createInsertSchema(horses).omit({ id: true, createdAt: true });
 
 export const insertTransformationSchema = createInsertSchema(transformations).omit({ id: true, createdAt: true });
 
-export const insertCampaignEventSchema = createInsertSchema(campaignEvents, {
-  isTriggered: z.boolean(),
-}).omit({ id: true });
+export const insertCampaignEventSchema = createInsertSchema(campaignEvents).omit({ id: true });
 
 export type User = typeof users.$inferSelect;
 export type UpsertUser = typeof users.$inferInsert;

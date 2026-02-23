@@ -60,22 +60,16 @@ async function getPlayerTeamStats(userId: string) {
   const activePet = allPets.find(p => p.isActive);
   const activeHorse = allHorses.find(h => h.isActive);
 
-  const playerEquipped = equips.filter(e => e.isEquipped && e.equippedToType === 'player');
-  const totalAtkBonus = playerEquipped.reduce((s, e) => s + Math.floor(e.attackBonus * (1 + (e.level - 1) * 0.05)), 0);
-  const totalDefBonus = playerEquipped.reduce((s, e) => s + Math.floor(e.defenseBonus * (1 + (e.level - 1) * 0.08)), 0);
-  const totalSpdBonus = playerEquipped.reduce((s, e) => s + Math.floor(e.speedBonus * (1 + (e.level - 1) * 0.1)), 0);
-  const horseSpdBonus = activeHorse ? Math.floor(activeHorse.speedBonus * (1 + (activeHorse.level - 1) * 0.15)) : 0;
-  const horseAtkBonus = activeHorse ? Math.floor(activeHorse.attackBonus * (1 + (activeHorse.level - 1) * 0.05)) : 0;
-
-  return {
+  // Aggregate stats
+  const stats = {
     player: {
-      name: user.firstName || 'Wandering Samurai',
+      name: user.firstName || user.lastName || 'Warrior',
       level: user.level,
       hp: user.hp + (user.permHpBonus || 0),
       maxHp: user.maxHp + (user.permHpBonus || 0),
-      attack: user.attack + totalAtkBonus + horseAtkBonus + (user.permAttackBonus || 0),
+      attack: user.attack + totalAtkBonus + (user.permAttackBonus || 0),
       defense: user.defense + totalDefBonus + (user.permDefenseBonus || 0),
-      speed: user.speed + totalSpdBonus + horseSpdBonus + (user.permSpeedBonus || 0),
+      speed: user.speed + totalSpdBonus + (user.permSpeedBonus || 0),
       equipped: playerEquipped.map(e => ({ name: e.name, type: e.type, level: e.level, rarity: e.rarity })),
       canTransform: allTransforms.length > 0,
       seppukuCount: user.seppukuCount || 0,
@@ -85,7 +79,7 @@ async function getPlayerTeamStats(userId: string) {
         speed: user.permSpeedBonus || 0,
         hp: user.permHpBonus || 0,
       }
-    },
+    } as any,
     companions: partyCompanions.map(c => {
       const compEquipped = equips.filter(e => e.isEquipped && e.equippedToType === 'companion' && e.equippedToId === c.id);
       const cAtkBonus = compEquipped.reduce((s, e) => s + Math.floor(e.attackBonus * (1 + (e.level - 1) * 0.05)), 0);
@@ -101,7 +95,7 @@ async function getPlayerTeamStats(userId: string) {
         speed: c.speed + cSpdBonus,
         skill: c.skill,
         equipped: compEquipped.map(e => ({ name: e.name, type: e.type, level: e.level, rarity: e.rarity })),
-      };
+      } as any;
     }),
     pet: activePet ? {
       name: activePet.name,
@@ -118,9 +112,28 @@ async function getPlayerTeamStats(userId: string) {
       level: activeHorse.level,
       speedBonus: activeHorse.speedBonus,
       attackBonus: activeHorse.attackBonus,
+      defenseBonus: activeHorse.defenseBonus || 0,
       skill: activeHorse.skill,
     } : null,
   };
+
+  // Apply horse bonuses to the whole party if active
+  if (activeHorse) {
+    const party = [stats.player, ...stats.companions];
+    party.forEach(member => {
+      if (activeHorse.speedBonus > 0) {
+        member.speed = Math.floor(member.speed * (1 + activeHorse.speedBonus / 100));
+      }
+      if (activeHorse.attackBonus > 0) {
+        member.attack = Math.floor(member.attack * (1 + activeHorse.attackBonus / 100));
+      }
+      if ((activeHorse.defenseBonus || 0) > 0) {
+        member.defense = Math.floor(member.defense * (1 + (activeHorse.defenseBonus || 0) / 100));
+      }
+    });
+  }
+
+  return stats;
 }
 
 function generateEnemyStats(type: 'field' | 'boss' | 'special', playerLevel: number, locationId: number = 1) {
@@ -727,18 +740,43 @@ export async function registerRoutes(
         // Horse Drop (5% chance)
         if (Math.random() < 0.05) {
           const hName = pick(HORSE_NAMES);
+          const r = Math.random();
+          let rarity = "common";
+          let speedBonus = 10;
+          let attackBonus = 0;
+          let defenseBonus = 0;
+          let skill = "Swift Gallop";
+
+          if (r < 0.001) {
+            rarity = "mythic";
+            speedBonus = 40;
+            attackBonus = 25;
+            skill = "Divine Wind";
+          } else if (r < 0.005) {
+            rarity = "epic";
+            speedBonus = 25;
+            attackBonus = 15;
+            defenseBonus = 10;
+            skill = "Steel Charger";
+          } else if (r < 0.02) {
+            rarity = "rare";
+            speedBonus = 15;
+            attackBonus = 8;
+          }
+
           const horseDropped = await storage.createHorse({
             userId,
             name: hName,
-            rarity: 3,
+            rarity,
             level: 1,
-            speedBonus: 20,
-            attackBonus: 5,
-            skill: "Swift Gallop",
+            speedBonus,
+            attackBonus,
+            defenseBonus,
+            skill,
             isActive: false,
           });
           allHorsesDropped.push(horseDropped);
-          allLogs.push(`Tamed ${hName}!`);
+          allLogs.push(`Tamed ${rarity.toUpperCase()} ${hName}!`);
         }
       }
     }

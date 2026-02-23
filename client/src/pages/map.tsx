@@ -132,7 +132,7 @@ export default function MapPage() {
     const params: any = type === 'field' ? { locationId: locIdNum, repeatCount: repeatNum } : locIdNum;
     
     action(params, {
-      onSuccess: (data) => {
+      onSuccess: (data: any) => {
         setResult(data);
         // Story event triggers
         if (data.victory) {
@@ -147,7 +147,7 @@ export default function MapPage() {
         console.error("Battle error:", err);
         setPreBattleInfo(null); // Clear loading state if error occurs
       }
-    });
+    } as any);
   };
 
   const handleEventChoice = (eventKey: string, choice: string) => {
@@ -241,7 +241,7 @@ export default function MapPage() {
                 <h4 className="text-xs font-bold text-blue-400 uppercase tracking-widest text-center">Your Team</h4>
                 <div className="space-y-1 text-sm">
                   <div className="flex justify-between items-center mb-1">
-                    <p className="font-bold text-white truncate">{playerStatus?.player?.firstName || playerStatus?.player?.lastName || 'Warrior'}</p>
+                    <p className="font-bold text-white truncate">{(playerStatus?.player as any)?.firstName || (playerStatus?.player as any)?.lastName || 'Warrior'}</p>
                     {playerStatus?.companions && playerStatus.companions.length > 0 && (
                       <span className="text-[10px] bg-blue-900/50 px-1 rounded">+{playerStatus.companions.length} Allies</span>
                     )}
