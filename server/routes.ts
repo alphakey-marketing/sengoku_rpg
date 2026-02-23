@@ -701,12 +701,13 @@ export async function registerRoutes(
         // Pet Drop (10% chance)
         if (Math.random() < 0.1) {
           const pInfo = pick(PET_NAMES);
-          const rarity = rarityFromRandom();
+          const rarityVal = rarityFromRandom();
+          const rarityStr = rarityVal >= 5 ? 'gold' : rarityVal >= 4 ? 'purple' : rarityVal >= 3 ? 'blue' : rarityVal >= 2 ? 'green' : 'white';
           const petDropped = await storage.createPet({
             userId,
             name: pInfo.name,
             type: 'spirit',
-            rarity,
+            rarity: rarityStr,
             level: 1,
             experience: 0,
             expToNext: 100,
@@ -719,7 +720,7 @@ export async function registerRoutes(
             isActive: false,
           });
           allPetsDropped.push(petDropped);
-          allLogs.push(`A ${rarity.toUpperCase()} ${pInfo.name} joined you!`);
+          allLogs.push(`A ${rarityStr.toUpperCase()} ${pInfo.name} joined you!`);
         }
 
         // Horse Drop (5% chance)
@@ -945,8 +946,10 @@ export async function registerRoutes(
                 userId,
                 name: "Heavenly Fox",
                 type: "yokai",
-                rarity: 5,
+                rarity: "gold",
                 level: 1,
+                experience: 0,
+                expToNext: 100,
                 hp: 50,
                 maxHp: 50,
                 attack: 15,
