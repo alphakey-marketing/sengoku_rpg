@@ -355,12 +355,13 @@ export function useTransformations() {
 
 export function useFieldBattle() {
   const queryClient = useQueryClient();
-  return useMutation<BattleResult, Error, number>({
-    mutationFn: async (locationId: number) => {
+  return useMutation<BattleResult, Error, number | { locationId: number; repeatCount: number }>({
+    mutationFn: async (params) => {
+      const body = typeof params === 'number' ? { locationId: params } : params;
       const res = await fetchWithAuth(api.battle.field.path, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ locationId }),
+        body: JSON.stringify(body),
       });
       if (!res.ok) throw new Error("Battle failed");
       return res.json();

@@ -59,7 +59,7 @@ export default function MapPage() {
   const [result, setResult] = useState<BattleResult | null>(null);
   const [activeEvent, setActiveEvent] = useState<any>(null);
   const [eventLogs, setEventLogs] = useState<string[]>([]);
-  const [preBattleInfo, setPreBattleInfo] = useState<{ type: 'field' | 'boss' | 'special', locationId: number, enemy: any } | null>(null);
+  const [preBattleInfo, setPreBattleInfo] = useState<{ type: 'field' | 'boss' | 'special', locationId: number, enemy: any, repeatCount: number } | null>(null);
 
   const { data: playerStatus } = usePlayerFullStatus();
 
@@ -112,16 +112,26 @@ export default function MapPage() {
       };
     }
     
-    setPreBattleInfo({ type, locationId, enemy: enemyPreview });
+    setPreBattleInfo({ type, locationId, enemy: enemyPreview, repeatCount: 1 });
   };
 
   const handleBattle = () => {
     if (!preBattleInfo) return;
-    const { type, locationId } = preBattleInfo;
+    const { type, locationId, repeatCount } = preBattleInfo;
     const action = type === 'field' ? doFieldBattle : type === 'boss' ? doBossBattle : doSpecialBoss;
     
     setPreBattleInfo(null);
-    action(locationId, {
+    const params: any = type === 'field' ? { locationId, repeatCount } : locationId;
+    
+    // Note: useFieldBattle hook might need to be updated to accept an object for field battles
+    // or we can adjust how we call it if we update the hook.
+    // For now, let's assume we update the hook or the server route handles it via the body.
+    
+    // We need to check if useFieldBattle's mutationFn supports the new structure.
+    // Looking at use-game.ts, useFieldBattle takes locationId: number.
+    // We'll need to update use-game.ts as well.
+    
+    action(params, {
       onSuccess: (data) => {
         setResult(data);
         // Story event triggers
@@ -251,6 +261,24 @@ export default function MapPage() {
             </div>
             
             <p className="text-xs text-center text-zinc-500 italic">"The wind whispers of blood and iron. Shall you draw your steel?"</p>
+
+            {preBattleInfo?.type === 'field' && (
+              <div className="space-y-2 border-t border-border/50 pt-4">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-bold text-white">Repeat Battle</span>
+                  <span className="text-sm font-bold text-primary">{preBattleInfo.repeatCount}x</span>
+                </div>
+                <Slider
+                  defaultValue={[1]}
+                  max={10}
+                  min={1}
+                  step={1}
+                  onValueChange={(val) => setPreBattleInfo({ ...preBattleInfo, repeatCount: val[0] })}
+                  className="py-4"
+                />
+                <p className="text-[10px] text-zinc-500 text-center">Auto-repeat up to 10 skirmishes for multiplied rewards.</p>
+              </div>
+            )}
           </div>
           <DialogFooter className="gap-2 sm:gap-0">
             <Button variant="ghost" onClick={() => setPreBattleInfo(null)} className="flex-1">Withdraw</Button>

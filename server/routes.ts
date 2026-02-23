@@ -396,87 +396,112 @@ export async function registerRoutes(
     const user = await storage.getUser(userId);
     if (!user) return res.status(401).json({ message: "Unauthorized" });
 
+    const { locationId, repeatCount = 1 } = req.body;
+    const count = Math.min(Math.max(1, Number(repeatCount)), 10);
+
     const teamStats = await getPlayerTeamStats(userId);
-    const enemy = generateEnemyStats('field', user.level);
-    
     if (!teamStats) return res.status(400).json({ message: "Team not found" });
 
-    const battleResult = runTurnBasedCombat(teamStats, [enemy]);
-    const victory = battleResult.victory;
-    const logs = battleResult.logs;
+    let totalExpGained = 0;
+    let totalGoldGained = 0;
+    const allEquipmentDropped = [];
+    const allPetsDropped = [];
+    const allHorsesDropped = [];
+    const allLogs: string[] = [];
 
-    const expGained = victory ? Math.floor(Math.random() * 20) + 10 + enemy.level * 2 : 0;
-    const goldGained = victory ? Math.floor(Math.random() * 10) + 5 + enemy.level : 0;
-    const equipmentDropped = [];
-    let petDropped = null;
-    let horseDropped = null;
+    for (let i = 0; i < count; i++) {
+      if (count > 1) allLogs.push(`--- BATTLE ${i + 1} ---`);
+      const enemy = generateEnemyStats('field', user.level);
+      const battleResult = runTurnBasedCombat(teamStats, [enemy]);
+      const victory = battleResult.victory;
+      allLogs.push(...battleResult.logs);
 
-    if (victory) {
-      await storage.updateUser(userId, {
-        experience: user.experience + expGained,
-        gold: user.gold + goldGained,
-      });
-      await giveEquipmentExp(userId, 10);
+      if (victory) {
+        const expGained = Math.floor(Math.random() * 20) + 10 + enemy.level * 2;
+        const goldGained = Math.floor(Math.random() * 10) + 5 + enemy.level;
+        totalExpGained += expGained;
+        totalGoldGained += goldGained;
 
-      // Equipment Drop (30% chance)
-      if (Math.random() < 0.3) {
-        const type = pick(EQUIP_TYPES);
-        const rarity = rarityFromRandom();
-        const name = pick(type === 'weapon' ? WEAPON_NAMES : type === 'armor' ? ARMOR_NAMES : type === 'accessory' ? ACCESSORY_NAMES : HORSE_GEAR_NAMES);
-        const eq = await storage.createEquipment({
-          userId,
-          name,
-          type,
-          rarity,
-          level: 1,
-          experience: 0,
-          expToNext: 100,
-          attackBonus: rarity === 'gold' ? 20 : rarity === 'purple' ? 15 : rarity === 'blue' ? 10 : 5,
-          defenseBonus: rarity === 'gold' ? 10 : 5,
-          speedBonus: rarity === 'gold' ? 5 : 2,
-        });
-        equipmentDropped.push(eq);
-        logs.push(`Found ${name}!`);
-      }
+        // Equipment Drop (30% chance)
+        if (Math.random() < 0.3) {
+          const type = pick(EQUIP_TYPES);
+          const rarity = rarityFromRandom();
+          const name = pick(type === 'weapon' ? WEAPON_NAMES : type === 'armor' ? ARMOR_NAMES : type === 'accessory' ? ACCESSORY_NAMES : HORSE_GEAR_NAMES);
+          const eq = await storage.createEquipment({
+            userId,
+            name,
+            type,
+            rarity,
+            level: 1,
+            experience: 0,
+            expToNext: 100,
+            attackBonus: rarity === 'gold' ? 20 : rarity === 'purple' ? 15 : rarity === 'blue' ? 10 : 5,
+            defenseBonus: rarity === 'gold' ? 10 : 5,
+            speedBonus: rarity === 'gold' ? 5 : 2,
+          });
+          allEquipmentDropped.push(eq);
+          allLogs.push(`Found ${name}!`);
+        }
 
-      // Pet Drop (10% chance)
-      if (Math.random() < 0.1) {
-        const pInfo = pick(PET_NAMES);
-        petDropped = await storage.createPet({
-          userId,
-          name: pInfo.name,
-          type: 'spirit',
-          rarity: 3,
-          level: 1,
-          hp: 30,
-          maxHp: 30,
-          attack: 5,
-          defense: 5,
-          speed: 15,
-          skill: pInfo.skill,
-          isActive: false,
-        });
-        logs.push(`A ${pInfo.name} joined you!`);
-      }
+        // Pet Drop (10% chance)
+        if (Math.random() < 0.1) {
+          const pInfo = pick(PET_NAMES);
+          const petDropped = await storage.createPet({
+            userId,
+            name: pInfo.name,
+            type: 'spirit',
+            rarity: 3,
+            level: 1,
+            hp: 30,
+            maxHp: 30,
+            attack: 5,
+            defense: 5,
+            speed: 15,
+            skill: pInfo.skill,
+            isActive: false,
+          });
+          allPetsDropped.push(petDropped);
+          allLogs.push(`A ${pInfo.name} joined you!`);
+        }
 
-      // Horse Drop (5% chance)
-      if (Math.random() < 0.05) {
-        const hName = pick(HORSE_NAMES);
-        horseDropped = await storage.createHorse({
-          userId,
-          name: hName,
-          rarity: 3,
-          level: 1,
-          speedBonus: 20,
-          attackBonus: 5,
-          skill: "Swift Gallop",
-          isActive: false,
-        });
-        logs.push(`Tamed ${hName}!`);
+        // Horse Drop (5% chance)
+        if (Math.random() < 0.05) {
+          const hName = pick(HORSE_NAMES);
+          const horseDropped = await storage.createHorse({
+            userId,
+            name: hName,
+            rarity: 3,
+            level: 1,
+            speedBonus: 20,
+            attackBonus: 5,
+            skill: "Swift Gallop",
+            isActive: false,
+          });
+          allHorsesDropped.push(horseDropped);
+          allLogs.push(`Tamed ${hName}!`);
+        }
       }
     }
 
-    res.json({ victory, experienceGained: expGained, goldGained, equipmentDropped, petDropped, horseDropped, logs });
+    if (totalExpGained > 0 || totalGoldGained > 0) {
+      await storage.updateUser(userId, {
+        experience: user.experience + totalExpGained,
+        gold: user.gold + totalGoldGained,
+      });
+      await giveEquipmentExp(userId, 10 * count);
+    }
+
+    res.json({
+      victory: totalExpGained > 0,
+      experienceGained: totalExpGained,
+      goldGained: totalGoldGained,
+      equipmentDropped: allEquipmentDropped,
+      petDropped: allPetsDropped[0] || null,
+      allPetsDropped,
+      horseDropped: allHorsesDropped[0] || null,
+      allHorsesDropped,
+      logs: allLogs
+    });
   });
 
   app.post(api.battle.boss.path, isAuthenticated, async (req: any, res) => {
