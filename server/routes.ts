@@ -824,18 +824,65 @@ export async function registerRoutes(
     const user = await storage.getUser(userId);
     if (!user) return res.status(401).json({ message: "Unauthorized" });
     if (user.rice < 15) return res.status(400).json({ message: "Not enough rice" });
+    
     await storage.updateUser(userId, { rice: user.rice - 15 });
+    
+    const type = pick(EQUIP_TYPES);
+    const rarity = rarityFromRandom();
+
+    const weaponNames = [
+      "Masamune Katana", "Muramasa Blade", "Dragon Naginata", "Shadow Tanto", "Imperial Yari",
+      "Honjo Masamune", "Kusanagi-no-Tsurugi", "Onimaru", "Mikazuki Munechika", "Tombstone Cutter",
+      "Nihongo Spear", "Otegine", "Heshikiri Hasebe", "Azai Ichimonji", "Dragon Slaying Odachi"
+    ];
+    const armorNames = [
+      "Oda Clan Do", "Red Thread Kabuto", "Shinobi Shozoku", "Iron Suneate", "Golden Menpo",
+      "Nanban-do Armor", "Yukimura's Crimson Kabuto", "Date's Crescent Helm", "Dragon Scale Do",
+      "Golden Lacquer Hara-ate", "Iron Menpo of Terror", "Shogun's Great Armor", "Shadow Stalker Garb"
+    ];
+    const accessoryNames = [
+      "Magatama of Luck", "War Fan of Strategy", "Ninja Kunai Set", "Omamori of Health", "Smoke Bomb Belt",
+      "Scroll of Hidden Mist", "Sacred Mirror", "Talisman of Elements", "Vengeful Spirit Mask",
+      "Heirloom Inro", "Dragon Bone Rosary", "Jade Amulet", "Phoenix Feather"
+    ];
+    const horseGearNames = [
+      "War Saddle", "Iron Stirrups", "Silk Reins", "Steel Barding", "Speed Spurs",
+      "Imperial Gold Saddle", "Jade-Inlaid Stirrups", "Wind-Step Horseshoes", "Ceremonial Crest",
+      "Takeda War Banner", "Thunder-Hoof Spurs", "Celestial Bridle", "Ebony Stirrups"
+    ];
+
+    const name = pick(
+      type === 'weapon' ? weaponNames : 
+      type === 'armor' ? armorNames : 
+      type === 'accessory' ? accessoryNames : 
+      horseGearNames
+    );
+
+    const statsByRarity: Record<string, { atk: number, def: number, spd: number }> = {
+      white: { atk: 5, def: 5, spd: 2 },
+      green: { atk: 8, def: 8, spd: 4 },
+      blue: { atk: 12, def: 10, spd: 6 },
+      purple: { atk: 20, def: 15, spd: 10 },
+      gold: { atk: 35, def: 25, spd: 15 },
+      mythic: { atk: 60, def: 45, spd: 25 },
+      exotic: { atk: 100, def: 75, spd: 45 },
+      transcendent: { atk: 200, def: 150, spd: 80 },
+      celestial: { atk: 450, def: 350, spd: 150 },
+      primal: { atk: 1000, def: 800, spd: 300 }
+    };
+    const baseStats = statsByRarity[rarity] || statsByRarity.white;
+
     const equipment = await storage.createEquipment({
       userId,
-      name: "Legendary Sword",
-      type: 'weapon',
-      rarity: 'gold',
+      name,
+      type,
+      rarity,
       level: 1,
       experience: 0,
       expToNext: 100,
-      attackBonus: 50,
-      defenseBonus: 0,
-      speedBonus: 0,
+      attackBonus: baseStats.atk,
+      defenseBonus: baseStats.def,
+      speedBonus: baseStats.spd,
     });
     res.json({ equipment });
   });
