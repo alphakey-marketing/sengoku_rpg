@@ -119,30 +119,32 @@ export default function MapPage() {
   const handleBattle = () => {
     if (!preBattleInfo) return;
     const { type, locationId, repeatCount } = preBattleInfo;
+    
+    // Convert to numbers explicitly
+    const locIdNum = Number(locationId);
+    const repeatNum = Number(repeatCount);
+    
     const action = type === 'field' ? doFieldBattle : type === 'boss' ? doBossBattle : doSpecialBoss;
     
     setPreBattleInfo(null);
-    const params: any = type === 'field' ? { locationId, repeatCount } : locationId;
     
-    // Note: useFieldBattle hook might need to be updated to accept an object for field battles
-    // or we can adjust how we call it if we update the hook.
-    // For now, let's assume we update the hook or the server route handles it via the body.
-    
-    // We need to check if useFieldBattle's mutationFn supports the new structure.
-    // Looking at use-game.ts, useFieldBattle takes locationId: number.
-    // We'll need to update use-game.ts as well.
+    // Important: boss and special battles expect just the number, field expects the object
+    const params: any = type === 'field' ? { locationId: locIdNum, repeatCount: repeatNum } : locIdNum;
     
     action(params, {
       onSuccess: (data) => {
         setResult(data);
         // Story event triggers
         if (data.victory) {
-          if (locationId === 1 && !events?.some(e => e.eventKey === 'onin_war')) {
+          if (locIdNum === 1 && !events?.some(e => e.eventKey === 'onin_war')) {
             setActiveEvent(STORY_EVENTS[0]);
-          } else if (locationId === 3 && !events?.some(e => e.eventKey === 'honnoji')) {
+          } else if (locIdNum === 3 && !events?.some(e => e.eventKey === 'honnoji')) {
             setActiveEvent(STORY_EVENTS[1]);
           }
         }
+      },
+      onError: (err: any) => {
+        console.error("Battle error:", err);
       }
     });
   };
@@ -238,7 +240,7 @@ export default function MapPage() {
                 <h4 className="text-xs font-bold text-blue-400 uppercase tracking-widest text-center">Your Team</h4>
                 <div className="space-y-1 text-sm">
                   <div className="flex justify-between items-center mb-1">
-                    <p className="font-bold text-white truncate">{playerStatus?.player.name}</p>
+                    <p className="font-bold text-white truncate">{playerStatus?.player?.firstName || playerStatus?.player?.lastName || 'Warrior'}</p>
                     {playerStatus?.companions && playerStatus.companions.length > 0 && (
                       <span className="text-[10px] bg-blue-900/50 px-1 rounded">+{playerStatus.companions.length} Allies</span>
                     )}
@@ -246,19 +248,19 @@ export default function MapPage() {
                   <div className="grid grid-cols-2 gap-x-2 text-xs">
                     <span className="text-zinc-500">HP:</span> 
                     <span className="text-red-400">
-                      {playerStatus?.player.hp + (playerStatus?.companions?.reduce((sum, c) => sum + c.hp, 0) || 0)}
+                      {(playerStatus?.player?.hp || 0) + (playerStatus?.companions?.reduce((sum, c) => sum + (c.hp || 0), 0) || 0)}
                     </span>
                     <span className="text-zinc-500">ATK:</span> 
                     <span className="text-orange-400">
-                      {playerStatus?.player.attack + (playerStatus?.companions?.reduce((sum, c) => sum + c.attack, 0) || 0)}
+                      {(playerStatus?.player?.attack || 0) + (playerStatus?.companions?.reduce((sum, c) => sum + (c.attack || 0), 0) || 0)}
                     </span>
                     <span className="text-zinc-500">DEF:</span> 
                     <span className="text-blue-400">
-                      {playerStatus?.player.defense + (playerStatus?.companions?.reduce((sum, c) => sum + c.defense, 0) || 0)}
+                      {(playerStatus?.player?.defense || 0) + (playerStatus?.companions?.reduce((sum, c) => sum + (c.defense || 0), 0) || 0)}
                     </span>
                     <span className="text-zinc-500">SPD:</span> 
                     <span className="text-cyan-400">
-                      {playerStatus?.player.speed + (playerStatus?.companions?.reduce((sum, c) => sum + c.speed, 0) || 0)}
+                      {(playerStatus?.player?.speed || 0) + (playerStatus?.companions?.reduce((sum, c) => sum + (c.speed || 0), 0) || 0)}
                     </span>
                   </div>
                 </div>
