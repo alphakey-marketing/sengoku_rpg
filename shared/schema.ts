@@ -37,9 +37,6 @@ export const users = pgTable("users", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-export type User = typeof users.$inferSelect;
-export type UpsertUser = typeof users.$inferInsert;
-
 export const companions = pgTable("companions", {
   id: serial("id").primaryKey(),
   userId: varchar("user_id").notNull(),
@@ -169,6 +166,8 @@ export const insertEquipmentSchema = createInsertSchema(equipment).omit({ id: tr
 export const insertPetSchema = createInsertSchema(pets).omit({ id: true, createdAt: true });
 export const insertHorseSchema = createInsertSchema(horses).omit({ id: true, createdAt: true });
 export const insertTransformationSchema = createInsertSchema(transformations).omit({ id: true, createdAt: true });
+
+export const insertCampaignEventSchema = createInsertSchema(campaignEvents).omit({ id: true });
 
 export type User = typeof users.$inferSelect;
 export type UpsertUser = typeof users.$inferInsert;

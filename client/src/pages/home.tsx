@@ -60,10 +60,10 @@ export default function Home() {
 
   const statCards = [
     { label: "Level", value: player.level, icon: Trophy, color: "text-purple-400" },
-    { label: "HP", value: `${player.hp}/${player.maxHp}`, icon: Heart, color: "text-red-400", bonus: (teamStatus?.player as any)?.permStats?.hp },
-    { label: "ATK", value: teamStatus?.player.attack || player.attack, icon: Sword, color: "text-orange-400", bonus: (teamStatus?.player as any)?.permStats?.attack },
-    { label: "DEF", value: teamStatus?.player.defense || player.defense, icon: Shield, color: "text-blue-400", bonus: (teamStatus?.player as any)?.permStats?.defense },
-    { label: "SPD", value: teamStatus?.player.speed || player.speed, icon: Zap, color: "text-cyan-400", bonus: (teamStatus?.player as any)?.permStats?.speed },
+    { label: "HP", value: `${player.hp}/${player.maxHp}`, icon: Heart, color: "text-red-400", bonus: (teamStatus?.player as any)?.permStats?.hp || 0 },
+    { label: "ATK", value: teamStatus?.player?.attack || player.attack, icon: Sword, color: "text-orange-400", bonus: (teamStatus?.player as any)?.permStats?.attack || 0 },
+    { label: "DEF", value: teamStatus?.player?.defense || player.defense, icon: Shield, color: "text-blue-400", bonus: (teamStatus?.player as any)?.permStats?.defense || 0 },
+    { label: "SPD", value: teamStatus?.player?.speed || player.speed, icon: Zap, color: "text-cyan-400", bonus: (teamStatus?.player as any)?.permStats?.speed || 0 },
     { label: "Gold", value: player.gold.toLocaleString(), icon: Coins, color: "text-yellow-400" },
     { label: "Rice", value: player.rice.toLocaleString(), icon: Wheat, color: "text-green-400" },
   ];
