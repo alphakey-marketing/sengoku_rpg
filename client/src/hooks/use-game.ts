@@ -14,6 +14,8 @@ export interface PlayerData {
   attack: number;
   defense: number;
   speed: number;
+  stamina: number;
+  maxStamina: number;
   currentLocationId: number;
   activeTransformId: number | null;
   upgradeStones: number;
@@ -125,6 +127,8 @@ export interface EnemyStats {
   defense: number;
   speed: number;
   skills: string[];
+  stamina?: number;
+  maxStamina?: number;
 }
 
 export interface BattleResult {
