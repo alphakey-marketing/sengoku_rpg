@@ -108,17 +108,20 @@ export default function StablePage() {
                     <div className="flex justify-between items-start mb-3">
                       <div>
                         <h3 className="font-bold text-lg font-display text-white">{horse.name}</h3>
-                        <div className="flex text-cyan-400">
-                          {Array.from({ length: horse.rarity }).map((_, j) => <Star key={j} size={12} fill="currentColor" />)}
+                        <div className="flex text-cyan-400 items-center gap-1">
+                          <span className="text-[10px] uppercase font-bold px-1.5 py-0.5 rounded bg-cyan-950/40 border border-cyan-800/30">
+                            {horse.rarity}
+                          </span>
                         </div>
                       </div>
                       {horse.isActive && <span className="text-xs bg-cyan-900/30 text-cyan-400 px-2 py-1 rounded font-bold border border-cyan-700/30">ACTIVE</span>}
                     </div>
 
                     <div className="grid grid-cols-2 gap-2 text-sm mb-3">
-                      <div className="flex items-center gap-1"><Zap size={14} className="text-cyan-400" /><span>+{horse.speedBonus} SPD</span></div>
-                      <div className="flex items-center gap-1"><Sword size={14} className="text-orange-400" /><span>+{horse.attackBonus} ATK</span></div>
-                      <div className="col-span-2 text-xs text-muted-foreground">Lv {horse.level}</div>
+                      <div className="flex items-center gap-1"><Zap size={14} className="text-cyan-400" /><span>+{horse.speedBonus}% SPD</span></div>
+                      <div className="flex items-center gap-1"><Sword size={14} className="text-orange-400" /><span>+{horse.attackBonus}% ATK</span></div>
+                      <div className="flex items-center gap-1"><Shield size={14} className="text-blue-400" /><span>+{horse.defenseBonus}% DEF</span></div>
+                      <div className="text-xs text-muted-foreground self-center">Lv {horse.level}</div>
                     </div>
 
                     {horse.skill && <p className="text-xs text-cyan-400 mb-3">Skill: {horse.skill}</p>}

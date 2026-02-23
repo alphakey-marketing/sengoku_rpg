@@ -249,19 +249,19 @@ export default function MapPage() {
                   <div className="grid grid-cols-2 gap-x-2 text-xs">
                     <span className="text-zinc-500">HP:</span> 
                     <span className="text-red-400">
-                      {(playerStatus?.player?.hp || 0) + (playerStatus?.companions?.reduce((sum, c) => sum + (c.hp || 0), 0) || 0)}
+                      {Math.floor(((playerStatus?.player?.hp || 0) + (playerStatus?.companions?.reduce((sum, c) => sum + (c.hp || 0), 0) || 0)))}
                     </span>
                     <span className="text-zinc-500">ATK:</span> 
                     <span className="text-orange-400">
-                      {(playerStatus?.player?.attack || 0) + (playerStatus?.companions?.reduce((sum, c) => sum + (c.attack || 0), 0) || 0)}
+                      {Math.floor(((playerStatus?.player?.attack || 0) + (playerStatus?.companions?.reduce((sum, c) => sum + (c.attack || 0), 0) || 0)))}
                     </span>
                     <span className="text-zinc-500">DEF:</span> 
                     <span className="text-blue-400">
-                      {(playerStatus?.player?.defense || 0) + (playerStatus?.companions?.reduce((sum, c) => sum + (c.defense || 0), 0) || 0)}
+                      {Math.floor(((playerStatus?.player?.defense || 0) + (playerStatus?.companions?.reduce((sum, c) => sum + (c.defense || 0), 0) || 0)))}
                     </span>
                     <span className="text-zinc-500">SPD:</span> 
                     <span className="text-cyan-400">
-                      {(playerStatus?.player?.speed || 0) + (playerStatus?.companions?.reduce((sum, c) => sum + (c.speed || 0), 0) || 0)}
+                      {Math.floor(((playerStatus?.player?.speed || 0) + (playerStatus?.companions?.reduce((sum, c) => sum + (c.speed || 0), 0) || 0)))}
                     </span>
                   </div>
                 </div>
@@ -414,7 +414,7 @@ export default function MapPage() {
                   <div className="mb-3 bg-cyan-900/10 border border-cyan-700/20 rounded p-3">
                     <span className="text-xs text-cyan-400 font-bold block mb-1">Horse Tamed!</span>
                     <span className="font-bold text-white">{result.horseDropped.name}</span>
-                    <span className="text-xs text-muted-foreground ml-2">+{result.horseDropped.speedBonus} SPD | +{result.horseDropped.attackBonus} ATK</span>
+                    <span className="text-xs text-muted-foreground ml-2">+{result.horseDropped.speedBonus}% SPD | +{result.horseDropped.attackBonus}% ATK | +{result.horseDropped.defenseBonus}% DEF</span>
                   </div>
                 )}
 
