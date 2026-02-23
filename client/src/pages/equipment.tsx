@@ -152,7 +152,13 @@ export default function EquipmentPage() {
                       <span>{item.experience}/{item.expToNext} EXP</span>
                     </div>
                     <Progress value={(item.experience / item.expToNext) * 100} className="h-1.5" />
-                    <p className="text-[10px] text-zinc-500 mt-1">+5% ATK / +8% DEF / +10% SPD per level</p>
+                    <p className="text-[10px] text-zinc-500 mt-1">
+                      {item.rarity === 'gold' ? '+12% ATK / +18% DEF / +25% SPD' :
+                       item.rarity === 'purple' ? '+8% ATK / +12% DEF / +15% SPD' :
+                       item.rarity === 'blue' ? '+6% ATK / +9% DEF / +12% SPD' :
+                       item.rarity === 'green' ? '+4% ATK / +6% DEF / +8% SPD' :
+                       '+2% ATK / +3% DEF / +5% SPD'} per level
+                    </p>
                   </div>
 
                   <div className="mt-auto pt-3 border-t border-white/10 flex items-center justify-between gap-2">
