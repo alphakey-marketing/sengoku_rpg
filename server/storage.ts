@@ -174,6 +174,8 @@ export class DatabaseStorage implements IStorage {
         attack: 10,
         defense: 10,
         speed: 10,
+        stamina: 100,
+        maxStamina: 100,
         currentLocationId: 1,
         activeTransformId: null,
         upgradeStones: 0,
