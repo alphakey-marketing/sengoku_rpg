@@ -123,7 +123,7 @@ async function getPlayerTeamStats(userId: string) {
   };
 }
 
-function generateEnemyStats(type: 'field' | 'boss' | 'special', playerLevel: number) {
+function generateEnemyStats(type: 'field' | 'boss' | 'special', playerLevel: number, locationId: number = 1) {
   if (type === 'field') {
     const name = pick(YOKAI_NAMES);
     const lvl = Math.max(1, playerLevel + Math.floor(Math.random() * 3) - 1);
@@ -624,7 +624,7 @@ export async function registerRoutes(
 
     for (let i = 0; i < count; i++) {
       if (count > 1) allLogs.push(`--- BATTLE ${i + 1} ---`);
-      const enemy = generateEnemyStats('field', user.level);
+      const enemy = generateEnemyStats('field', user.level, locationId);
       const battleResult = runTurnBasedCombat(teamStats, [enemy]);
       const victory = battleResult.victory;
       allLogs.push(...battleResult.logs);
@@ -635,26 +635,37 @@ export async function registerRoutes(
         totalExpGained += expGained;
         totalGoldGained += goldGained;
         
-        // Update user stats with level up logic
-        let newExp = user.experience + expGained;
-        let newLevel = user.level;
-        let expToNext = Math.floor(100 * Math.pow(1.5, newLevel - 1));
+      // Update user stats with level up logic
+      const expGained = Math.floor(Math.random() * 20) + 10 + enemy.level * 2;
+      const goldGained = Math.floor(Math.random() * 10) + 5 + enemy.level;
+      totalExpGained += expGained;
+      totalGoldGained += goldGained;
+      
+      let currentExp = user.experience + expGained;
+      let currentLevel = user.level;
+      let currentMaxHp = user.maxHp;
+      let currentAtk = user.attack;
+      let currentDef = user.defense;
+      let currentSpd = user.speed;
 
-        while (newExp >= expToNext) {
-          newExp -= expToNext;
-          newLevel++;
-          expToNext = Math.floor(100 * Math.pow(1.5, newLevel - 1));
-          // Stat increases on level up
-          await storage.updateUser(userId, {
-            level: newLevel,
-            maxHp: user.maxHp + 20,
-            hp: user.maxHp + 20,
-            attack: user.attack + 5,
-            defense: user.defense + 3,
-            speed: user.speed + 2,
-          });
-        }
-        await storage.updateUser(userId, { experience: newExp, gold: user.gold + goldGained });
+      while (currentExp >= Math.floor(100 * Math.pow(1.5, currentLevel - 1))) {
+        currentExp -= Math.floor(100 * Math.pow(1.5, currentLevel - 1));
+        currentLevel++;
+        currentMaxHp += 20;
+        currentAtk += 5;
+        currentDef += 3;
+        currentSpd += 2;
+      }
+      await storage.updateUser(userId, { 
+        level: currentLevel,
+        experience: currentExp, 
+        gold: user.gold + goldGained,
+        maxHp: currentMaxHp,
+        hp: currentMaxHp,
+        attack: currentAtk,
+        defense: currentDef,
+        speed: currentSpd
+      });
         if (Math.random() < 0.3) {
           const type = pick(EQUIP_TYPES);
           const rarity = rarityFromRandom();
@@ -758,8 +769,9 @@ export async function registerRoutes(
     const userId = req.user.claims.sub;
     const user = await storage.getUser(userId);
     if (!user) return res.status(401).json({ message: "Unauthorized" });
+    const { locationId } = req.body;
     const teamStats = await getPlayerTeamStats(userId);
-    const enemy = generateEnemyStats('boss', user.level);
+    const enemy = generateEnemyStats('boss', user.level, locationId);
     
     if (!teamStats) return res.status(400).json({ message: "Team not found" });
 
@@ -768,11 +780,41 @@ export async function registerRoutes(
     const logs = battleResult.logs;
 
     if (victory) {
-      await storage.updateUser(userId, { experience: user.experience + 100, rice: user.rice + 10 });
+      const expGained = 100 + (locationId * 50);
+      const goldGained = 50 + (locationId * 25);
+      const riceGained = 10 + (locationId * 5);
+
+      // Level up logic
+      let currentExp = user.experience + expGained;
+      let currentLevel = user.level;
+      let currentMaxHp = user.maxHp;
+      let currentAtk = user.attack;
+      let currentDef = user.defense;
+      let currentSpd = user.speed;
+
+      while (currentExp >= Math.floor(100 * Math.pow(1.5, currentLevel - 1))) {
+        currentExp -= Math.floor(100 * Math.pow(1.5, currentLevel - 1));
+        currentLevel++;
+        currentMaxHp += 20;
+        currentAtk += 5;
+        currentDef += 3;
+        currentSpd += 2;
+      }
+
+      await storage.updateUser(userId, { 
+        level: currentLevel,
+        experience: currentExp, 
+        gold: user.gold + goldGained, 
+        rice: user.rice + riceGained,
+        maxHp: currentMaxHp,
+        hp: currentMaxHp,
+        attack: currentAtk,
+        defense: currentDef,
+        speed: currentSpd
+      });
       
-      // Boss guaranteed equipment drop
       const type = pick(EQUIP_TYPES);
-      const rarity = 'purple';
+      const rarity = locationId >= 3 ? 'gold' : 'purple';
       const name = pick(type === 'weapon' ? WEAPON_NAMES : type === 'armor' ? ARMOR_NAMES : type === 'accessory' ? ACCESSORY_NAMES : HORSE_GEAR_NAMES);
       const eq = await storage.createEquipment({
         userId,
@@ -782,16 +824,16 @@ export async function registerRoutes(
         level: 1,
         experience: 0,
         expToNext: 100,
-        attackBonus: 25,
-        defenseBonus: 15,
-        speedBonus: 10,
+        attackBonus: 25 + (locationId * 10),
+        defenseBonus: 15 + (locationId * 5),
+        speedBonus: 10 + (locationId * 5),
       });
 
       res.json({ 
         victory: true, 
-        experienceGained: 100, 
-        goldGained: 50, 
-        riceGained: 10, 
+        experienceGained: expGained, 
+        goldGained: goldGained, 
+        riceGained: riceGained, 
         equipmentDropped: [eq],
         logs 
       });
@@ -805,9 +847,9 @@ export async function registerRoutes(
     const userId = req.user.claims.sub;
     const user = await storage.getUser(userId);
     if (!user) return res.status(401).json({ message: "Unauthorized" });
+    const { locationId } = req.body;
     const teamStats = await getPlayerTeamStats(userId);
-    const enemy = generateEnemyStats('special', user.level);
-    const sb = pick(SPECIAL_BOSSES);
+    const enemy = generateEnemyStats('special', user.level, locationId);
     
     if (!teamStats) return res.status(400).json({ message: "Team not found" });
 
@@ -816,7 +858,37 @@ export async function registerRoutes(
     const logs = battleResult.logs;
 
     if (victory) {
-      logs.push("A mystical stone drops!");
+      const expGained = 250 + (locationId * 100);
+      const goldGained = 150 + (locationId * 75);
+
+      let currentExp = user.experience + expGained;
+      let currentLevel = user.level;
+      let currentMaxHp = user.maxHp;
+      let currentAtk = user.attack;
+      let currentDef = user.defense;
+      let currentSpd = user.speed;
+
+      while (currentExp >= Math.floor(100 * Math.pow(1.5, currentLevel - 1))) {
+        currentExp -= Math.floor(100 * Math.pow(1.5, currentLevel - 1));
+        currentLevel++;
+        currentMaxHp += 20;
+        currentAtk += 5;
+        currentDef += 3;
+        currentSpd += 2;
+      }
+
+      await storage.updateUser(userId, { 
+        level: currentLevel,
+        experience: currentExp, 
+        gold: user.gold + goldGained,
+        maxHp: currentMaxHp,
+        hp: currentMaxHp,
+        attack: currentAtk,
+        defense: currentDef,
+        speed: currentSpd
+      });
+
+      const sb = pick(SPECIAL_BOSSES);
       const trans = await storage.createTransformation({
         userId,
         name: sb.transformName,
@@ -831,7 +903,7 @@ export async function registerRoutes(
         cooldownSeconds: 60,
         durationSeconds: 30,
       });
-      res.json({ victory: true, transformationDropped: trans, logs, experienceGained: 200, goldGained: 100 });
+      res.json({ victory: true, transformationDropped: trans, logs, experienceGained: expGained, goldGained: goldGained });
     } else {
       logs.push("Defeat!");
       res.json({ victory: false, logs });
