@@ -719,9 +719,7 @@ export async function registerRoutes(
         // Pet Drop (10% chance)
         if (Math.random() < 0.1) {
           const pInfo = pick(PET_NAMES);
-          const rVal = rarityFromRandom() as number;
-          // rarityFromRandom returns a number, so we check that
-          const rStr = rVal >= 5 ? 'gold' : rVal >= 4 ? 'purple' : rVal >= 3 ? 'blue' : rVal >= 2 ? 'green' : 'white';
+          const rStr = rarityFromRandom();
           const petDropped = await storage.createPet({
             userId,
             name: pInfo.name,
@@ -739,7 +737,7 @@ export async function registerRoutes(
             isActive: false,
           });
           allPetsDropped.push(petDropped);
-          allLogs.push(`Captured ${pInfo.name}!`);
+          allLogs.push(`Captured ${rStr.toUpperCase()} ${pInfo.name}!`);
         }
 
         // Horse Drop (5% chance)

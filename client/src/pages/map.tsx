@@ -131,8 +131,8 @@ export default function MapPage() {
     
     action(params, {
       onSuccess: (data: any) => {
-        setPreBattleInfo(null);
         setResult(data);
+        setPreBattleInfo(null);
         // Story event triggers
         if (data.victory) {
           if (locIdNum === 1 && !events?.some(e => e.eventKey === 'onin_war')) {
