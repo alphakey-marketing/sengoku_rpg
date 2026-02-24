@@ -608,6 +608,25 @@ export async function registerRoutes(
     res.json(updated);
   });
 
+  app.get(api.campaign.events.path, isAuthenticated, async (req: any, res) => {
+    const userId = req.user.claims.sub;
+    const events = await storage.getCampaignEvents(userId);
+    res.json(events);
+  });
+
+  app.post(api.campaign.triggerEvent.path, isAuthenticated, async (req: any, res) => {
+    const userId = req.user.claims.sub;
+    const { eventKey, choice } = req.body;
+    
+    try {
+      const result = await storage.triggerCampaignEvent(userId, eventKey, choice);
+      res.json(result);
+    } catch (error: any) {
+      console.error("Event trigger error:", error);
+      res.status(400).json({ message: error.message || "Failed to trigger event" });
+    }
+  });
+
   app.get(api.pets.list.path, isAuthenticated, async (req: any, res) => {
     const userId = req.user.claims.sub;
     res.json(await storage.getPets(userId));
