@@ -2,9 +2,11 @@ import { useState } from "react";
 import { usePlayer, useGachaPull, useEquipmentGachaPull, Companion, Equipment } from "@/hooks/use-game";
 import { MainLayout } from "@/components/layout/main-layout";
 import { Button } from "@/components/ui/button";
-import { Sparkles, Star, Wheat, Sword, Shield, Gem } from "lucide-react";
+import { Sparkles, Star, Wheat, Sword, Shield, Gem, RefreshCw } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 export default function GachaPage() {
   const { data: player } = usePlayer();
@@ -14,7 +16,8 @@ export default function GachaPage() {
   const [companionResult, setCompanionResult] = useState<Companion | null>(null);
   const [equipmentResult, setEquipmentResult] = useState<Equipment | null>(null);
   const [isAnimating, setIsAnimating] = useState(false);
-  const [activeTab, setActiveTab] = useState<'companion' | 'equipment'>('companion');
+  const [activeTab, setActiveTab] = useState<'companion' | 'equipment' | 'exchange'>('companion');
+  const { toast } = useToast();
 
   const handleCompanionPull = () => {
     setCompanionResult(null);
@@ -97,6 +100,13 @@ export default function GachaPage() {
             >
               Forge Equipment
             </Button>
+            <Button 
+              variant={activeTab === 'exchange' ? 'default' : 'outline'}
+              onClick={() => { setActiveTab('exchange'); setCompanionResult(null); setEquipmentResult(null); }}
+              className={activeTab === 'exchange' ? 'bg-primary border-accent text-white' : 'border-border'}
+            >
+              Sacred Exchange
+            </Button>
           </div>
 
           <div className="inline-flex items-center gap-3 mt-6 bg-card border border-border/50 px-6 py-3 rounded-full">
@@ -125,27 +135,51 @@ export default function GachaPage() {
                   <div className="w-24 h-24 rounded-full border-2 border-primary/50 flex items-center justify-center animate-[spin_5s_linear_infinite_reverse]">
                     {activeTab === 'companion' ? (
                       <Sparkles className="text-accent animate-pulse" size={32} />
-                    ) : (
+                    ) : activeTab === 'equipment' ? (
                       <Gem className="text-purple-400 animate-pulse" size={32} />
+                    ) : (
+                      <RefreshCw className="text-amber-400 animate-pulse" size={32} />
                     )}
                   </div>
                 </div>
                 
-                <Button 
-                  onClick={activeTab === 'companion' ? handleCompanionPull : handleEquipmentPull}
-                  disabled={activeTab === 'companion' ? (!canAffordCompanion || isPullingCompanion) : (!canAffordEquipment || isPullingEquipment)}
-                  className="bg-gradient-to-r from-primary to-secondary hover:from-primary/90 hover:to-secondary/90 text-white px-12 py-8 rounded-full text-xl font-bold border border-accent/50 shadow-[0_0_20px_rgba(220,38,38,0.4)] hover:shadow-[0_0_30px_rgba(212,175,55,0.4)] transition-all group"
-                >
-                  <span className="mr-3">{activeTab === 'companion' ? 'Summon Warrior' : 'Forge Special Gear'}</span>
-                  <div className="flex items-center text-accent group-hover:text-white transition-colors text-base bg-black/30 px-3 py-1 rounded-full">
-                    <Wheat size={16} className="mr-1" /> {activeTab === 'companion' ? companionCost : equipmentCost}
-                  </div>
-                </Button>
+                {activeTab !== 'exchange' ? (
+                  <Button 
+                    onClick={activeTab === 'companion' ? handleCompanionPull : handleEquipmentPull}
+                    disabled={activeTab === 'companion' ? (!canAffordCompanion || isPullingCompanion) : (!canAffordEquipment || isPullingEquipment)}
+                    className="bg-gradient-to-r from-primary to-secondary hover:from-primary/90 hover:to-secondary/90 text-white px-12 py-8 rounded-full text-xl font-bold border border-accent/50 shadow-[0_0_20px_rgba(220,38,38,0.4)] hover:shadow-[0_0_30px_rgba(212,175,55,0.4)] transition-all group"
+                  >
+                    <span className="mr-3">{activeTab === 'companion' ? 'Summon Warrior' : 'Forge Special Gear'}</span>
+                    <div className="flex items-center text-accent group-hover:text-white transition-colors text-base bg-black/30 px-3 py-1 rounded-full">
+                      <Wheat size={16} className="mr-1" /> {activeTab === 'companion' ? companionCost : equipmentCost}
+                    </div>
+                  </Button>
+                ) : (
+                  <Button 
+                    onClick={() => {
+                      if (player && player.rice >= 2000) {
+                        apiRequest("POST", "/api/player/exchange-stones", {}).then(() => {
+                          queryClient.invalidateQueries({ queryKey: ["/api/player"] });
+                          toast({ title: "Exchange Success", description: "Exchanged 2000 Rice for 1 Endowment Stone" });
+                        });
+                      }
+                    }}
+                    disabled={(player?.rice || 0) < 2000}
+                    className="bg-gradient-to-r from-amber-700 to-amber-900 hover:from-amber-600 hover:to-amber-800 text-white px-12 py-8 rounded-full text-xl font-bold border border-amber-500/50 shadow-[0_0_20px_rgba(180,83,9,0.4)] transition-all group"
+                  >
+                    <span className="mr-3">Exchange for Stone</span>
+                    <div className="flex items-center text-amber-200 group-hover:text-white transition-colors text-base bg-black/30 px-3 py-1 rounded-full">
+                      <Wheat size={16} className="mr-1" /> 2,000
+                    </div>
+                  </Button>
+                )}
                 
                 {activeTab === 'companion' ? (
                   !canAffordCompanion && <p className="text-destructive mt-4 text-sm font-medium">Need more rice.</p>
-                ) : (
+                ) : activeTab === 'equipment' ? (
                   !canAffordEquipment && <p className="text-destructive mt-4 text-sm font-medium">Need more rice.</p>
+                ) : (
+                  (player?.rice || 0) < 2000 && <p className="text-destructive mt-4 text-sm font-medium">Need more rice for exchange.</p>
                 )}
               </motion.div>
             )}

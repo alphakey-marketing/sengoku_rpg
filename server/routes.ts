@@ -680,8 +680,8 @@ export async function registerRoutes(
           currentMaxHp += 20;
           currentSpd += 2;
         }
-        const endowmentStoneGained = Math.random() < 0.2 ? 1 : 0;
-        const talismanGained = Math.random() < 0.05 ? 1 : 0;
+        const endowmentStoneGained = Math.random() < 0.4 ? 1 : 0;
+        const talismanGained = Math.random() < 0.1 ? 1 : 0;
 
         const userUpdate: any = {
           level: currentLevel,
@@ -854,6 +854,7 @@ export async function registerRoutes(
       const expGained = 100 + (locationId * 50);
       const goldGained = 50 + (locationId * 25);
       const riceGained = 10 + (locationId * 5);
+      const endowmentStones = 2 + Math.floor(Math.random() * 3); // 2-4 stones
 
       // Level up logic
       let currentExp = user.experience + expGained;
@@ -877,6 +878,7 @@ export async function registerRoutes(
         experience: currentExp, 
         gold: user.gold + goldGained, 
         rice: user.rice + riceGained,
+        endowmentStones: (user.endowmentStones || 0) + endowmentStones,
         maxHp: currentMaxHp,
         hp: currentMaxHp,
         attack: currentAtk,
@@ -931,6 +933,7 @@ export async function registerRoutes(
     if (victory) {
       const expGained = 250 + (locationId * 100);
       const goldGained = 150 + (locationId * 75);
+      const endowmentStones = 5 + Math.floor(Math.random() * 6); // 5-10 stones
 
       let currentExp = user.experience + expGained;
       let currentLevel = user.level;
@@ -952,6 +955,7 @@ export async function registerRoutes(
         level: currentLevel,
         experience: currentExp, 
         gold: user.gold + goldGained,
+        endowmentStones: (user.endowmentStones || 0) + endowmentStones,
         maxHp: currentMaxHp,
         hp: currentMaxHp,
         attack: currentAtk,
@@ -1172,6 +1176,22 @@ export async function registerRoutes(
       speedBonus: baseStats.spd,
     });
     res.json({ equipment });
+  });
+
+  app.post("/api/player/exchange-stones", isAuthenticated, async (req: any, res) => {
+    const userId = req.user.claims.sub;
+    const user = await storage.getUser(userId);
+    if (!user) return res.status(401).json({ message: "Unauthorized" });
+    
+    const riceCost = 2000;
+    if (user.rice < riceCost) return res.status(400).json({ message: "Not enough rice" });
+    
+    await storage.updateUser(userId, {
+      rice: user.rice - riceCost,
+      endowmentStones: (user.endowmentStones || 0) + 1
+    });
+    
+    res.json({ success: true });
   });
 
   app.post("/api/equipment/:id/endow", isAuthenticated, async (req: any, res) => {
