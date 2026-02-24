@@ -68,7 +68,7 @@ export default function QuartersPage() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/quarters"] });
       queryClient.invalidateQueries({ queryKey: ["/api/player"] });
-      const amount = data.riceGained ?? 0;
+      const amount = data?.riceGained ?? 0;
       toast({ title: "Income Collected", description: `Gained ${amount} Rice!` });
     },
   });

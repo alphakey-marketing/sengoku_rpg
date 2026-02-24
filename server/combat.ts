@@ -79,9 +79,28 @@ export function runTurnBasedCombat(playerTeam: TeamStats, enemies: EnemyStats[])
     });
   
   // Initialize enemies
-  enemies.forEach((e, i) => {
+  if (Array.isArray(enemies)) {
+    enemies.forEach((e, i) => {
+      units.push({
+        id: `enemy-${i}`,
+        name: e.name,
+        hp: Number(e.hp) || 0,
+        maxHp: Number(e.maxHp) || 0,
+        attack: Number(e.attack) || 0,
+        defense: Number(e.defense) || 0,
+        speed: Number(e.speed) || 0,
+        isPlayer: false,
+        statusEffects: [],
+        isGuarding: false,
+        critChance: 0,
+        critDamage: 0
+      });
+    });
+  } else if (enemies) {
+    // Single enemy case
+    const e = enemies as any;
     units.push({
-      id: `enemy-${i}`,
+      id: `enemy-0`,
       name: e.name,
       hp: Number(e.hp) || 0,
       maxHp: Number(e.maxHp) || 0,
@@ -94,7 +113,7 @@ export function runTurnBasedCombat(playerTeam: TeamStats, enemies: EnemyStats[])
       critChance: 0,
       critDamage: 0
     });
-  });
+  }
 
   let turn = 0;
   const maxTurns = 20;

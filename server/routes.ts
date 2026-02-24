@@ -117,9 +117,9 @@ async function getPlayerTeamStats(userId: string) {
       activeTransform = allTransforms.find(t => t.id === user.activeTransformId);
     }
 
-    const totalAtkBonus = playerEquipped.reduce((s, e) => s + Math.floor(e.attackBonus * (1 + (e.level - 1) * 0.05)), 0);
-    const totalDefBonus = playerEquipped.reduce((s, e) => s + Math.floor(e.defenseBonus * (1 + (e.level - 1) * 0.08)), 0);
-    const totalSpdBonus = playerEquipped.reduce((s, e) => s + Math.floor(e.speedBonus * (1 + (e.level - 1) * 0.1)), 0);
+    const totalAtkBonus = playerEquipped.reduce((s, e) => s + Math.floor((e.attackBonus || 0) * (1 + ((e.level || 1) - 1) * 0.05)), 0);
+    const totalDefBonus = playerEquipped.reduce((s, e) => s + Math.floor((e.defenseBonus || 0) * (1 + ((e.level || 1) - 1) * 0.08)), 0);
+    const totalSpdBonus = playerEquipped.reduce((s, e) => s + Math.floor((e.speedBonus || 0) * (1 + ((e.level || 1) - 1) * 0.1)), 0);
 
     let hp = user.hp + (user.permHpBonus || 0);
     let maxHp = user.maxHp + (user.permHpBonus || 0);
@@ -164,9 +164,9 @@ async function getPlayerTeamStats(userId: string) {
       } as any,
     companions: partyCompanions.map(c => {
       const compEquipped = equips.filter(e => e.isEquipped && e.equippedToType === 'companion' && Number(e.equippedToId) === Number(c.id));
-      const cAtkBonus = compEquipped.reduce((s, e) => s + Math.floor(e.attackBonus * (1 + (e.level - 1) * 0.05)), 0);
-      const cDefBonus = compEquipped.reduce((s, e) => s + Math.floor(e.defenseBonus * (1 + (e.level - 1) * 0.08)), 0);
-      const cSpdBonus = compEquipped.reduce((s, e) => s + Math.floor(e.speedBonus * (1 + (e.level - 1) * 0.1)), 0);
+      const cAtkBonus = compEquipped.reduce((s, e) => s + Math.floor((e.attackBonus || 0) * (1 + ((e.level || 1) - 1) * 0.05)), 0);
+      const cDefBonus = compEquipped.reduce((s, e) => s + Math.floor((e.defenseBonus || 0) * (1 + ((e.level || 1) - 1) * 0.08)), 0);
+      const cSpdBonus = compEquipped.reduce((s, e) => s + Math.floor((e.speedBonus || 0) * (1 + ((e.level || 1) - 1) * 0.1)), 0);
       return {
         id: c.id,
         name: c.name,
@@ -591,8 +591,8 @@ export async function registerRoutes(
       newExp -= newExpToNext;
       newLevel++;
       newExpToNext = calcEquipExpToNext(newLevel);
-      atkBonus = Math.floor(atkBonus * growth.atk) + 1;
-      defBonus = Math.floor(defBonus * growth.def) + 1;
+      atkBonus = Math.floor(atkBonus * growth.atk) + 2;
+      defBonus = Math.floor(defBonus * growth.def) + 2;
       spdBonus = Math.floor(spdBonus * growth.spd) + 1;
     }
 
@@ -754,10 +754,11 @@ export async function registerRoutes(
     if (!user || user.stamina < 10) return res.status(400).json({ message: "Not enough stamina" });
 
     const team = await getPlayerTeamStats(userId);
+    if (!team) return res.status(401).json({ message: "Unauthorized" });
     const enemy = generateEnemyStats('field', user.level, user.currentLocationId);
-    const battleResult = runTurnBasedCombat(team, enemy);
+    const battleResult = runTurnBasedCombat(team, enemy) as any;
 
-    if (battleResult.winner === 'player') {
+    if (battleResult.victory) {
       const goldGained = Math.floor(user.level * 10 * (1 + (user.currentLocationId - 1) * 0.5));
       const riceGained = Math.floor(user.level * 5 * (1 + (user.currentLocationId - 1) * 0.5));
       const expGained = 20;
@@ -797,7 +798,7 @@ export async function registerRoutes(
       if (Math.random() > 0.95) updates.transformationStones = (user.transformationStones || 0) + 1;
 
       await storage.updateUser(userId, updates);
-      battleResult.rewards = { gold: goldGained, rice: riceGained, exp: expGained };
+      (battleResult as any).rewards = { gold: goldGained, rice: riceGained, exp: expGained };
     } else {
       await storage.updateUser(userId, { stamina: user.stamina - 10 });
     }
@@ -811,10 +812,11 @@ export async function registerRoutes(
     if (!user || user.stamina < 30) return res.status(400).json({ message: "Not enough stamina" });
 
     const team = await getPlayerTeamStats(userId);
+    if (!team) return res.status(401).json({ message: "Unauthorized" });
     const enemy = generateEnemyStats('boss', user.level, user.currentLocationId);
-    const battleResult = runTurnBasedCombat(team, enemy);
+    const battleResult = runTurnBasedCombat(team, enemy) as any;
 
-    if (battleResult.winner === 'player') {
+    if (battleResult.victory) {
       const goldGained = Math.floor(user.level * 100 * user.currentLocationId);
       const riceGained = Math.floor(user.level * 50 * user.currentLocationId);
       const stones = 5;
@@ -829,7 +831,7 @@ export async function registerRoutes(
       if (user.currentLocationId < 4) updates.currentLocationId = user.currentLocationId + 1;
 
       await storage.updateUser(userId, updates);
-      battleResult.rewards = { gold: goldGained, rice: riceGained, stones };
+      (battleResult as any).rewards = { gold: goldGained, rice: riceGained, stones };
     } else {
       await storage.updateUser(userId, { stamina: user.stamina - 30 });
     }
@@ -843,10 +845,11 @@ export async function registerRoutes(
     if (!user || user.stamina < 50) return res.status(400).json({ message: "Not enough stamina" });
 
     const team = await getPlayerTeamStats(userId);
+    if (!team) return res.status(401).json({ message: "Unauthorized" });
     const enemy = generateEnemyStats('special', user.level, user.currentLocationId);
-    const battleResult = runTurnBasedCombat(team, enemy);
+    const battleResult = runTurnBasedCombat(team, enemy) as any;
 
-    if (battleResult.winner === 'player') {
+    if (battleResult.victory) {
       const sb = SPECIAL_BOSSES.find(s => s.name === enemy.name);
       if (sb) {
         await storage.createTransformation({
@@ -865,7 +868,7 @@ export async function registerRoutes(
         });
       }
       await storage.updateUser(userId, { stamina: user.stamina - 50 });
-      battleResult.rewards = { transform: sb?.transformName };
+      (battleResult as any).rewards = { transform: sb?.transformName };
     } else {
       await storage.updateUser(userId, { stamina: user.stamina - 50 });
     }

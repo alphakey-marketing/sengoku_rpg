@@ -370,7 +370,7 @@ export default function EquipmentPage() {
                             }
                           }
                         }}
-                        disabled={upgradePending || (player?.upgradeStones || 0) < 1}
+                        disabled={upgradePending}
                         title="Upgrade with stone"
                         data-testid={`upgrade-${item.id}`}
                       >
