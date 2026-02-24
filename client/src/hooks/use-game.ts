@@ -555,3 +555,41 @@ export function useEquipmentGachaPull() {
     },
   });
 }
+
+export function useEndowEquipment() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  return useMutation({
+    mutationFn: async ({ id, type, protect }: { id: number, type: string, protect?: boolean }) => {
+      const res = await fetch(`/api/equipment/${id}/endow`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type, protect }),
+      });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || "Endowment failed");
+      }
+      return res.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: [api.player.get.path] });
+      queryClient.invalidateQueries({ queryKey: [api.equipment.list.path] });
+      queryClient.invalidateQueries({ queryKey: [api.player.fullStatus.path] });
+      toast({
+        title: data.success ? "Endowment Success!" : "Endowment Failed",
+        description: data.success 
+          ? `Added ${data.pointsGained} points. Total: ${data.newPoints}`
+          : `Lost points. Total: ${data.newPoints}`,
+        variant: data.success ? "default" : "destructive",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  });
+}
