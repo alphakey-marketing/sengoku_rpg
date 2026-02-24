@@ -29,7 +29,7 @@ const navItems = [
   { title: "Dojo (Home)", url: "/", icon: Home },
   { title: "War Council (Party)", url: "/party", icon: Users },
   { title: "Battle Prep (Gear)", url: "/gear", icon: ShieldAlert },
-  { title: "Armory (Equipment)", url: "/equipment", icon: Sword },
+  { title: "Gear Upgrade (Equipment)", url: "/equipment", icon: Sword },
   { title: "Stable (Horses)", url: "/stable", icon: Tent },
   { title: "Daimyo's Quarters", url: "/quarters", icon: Building2 },
   { title: "Spirits (Pets)", url: "/pets", icon: Sparkles },
