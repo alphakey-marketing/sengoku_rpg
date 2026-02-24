@@ -1,0 +1,52 @@
+Equipment Endowment System (Simplified Core Mechanics)
+
+The Equipment Endowment system enhances gear stats via incremental point boosts using endowment stones. Core loop: Apply stones to raise values (attack/defense/specials); success rates drop as values rise; failures deduct points unless protected. Max effective total: 70 points across armor for damage reduction formulas. Designed for RNG-balanced progression with risk mitigation.
+
+Core Components
+Endowment Types:
+
+Type	Increment	Success Odds	Failure Penalty	Notes
+Normal	+1	Displayed in UI (decreases per point)	-1 to -5 points	Basic, low-risk entry.
+Advanced	+1 to +5 (30/25/20/15/10% weighted)	Same as Normal	-1 to -5 points	Higher variance reward.
+Extreme	+1	Lower (UI-shown)	-1 to -5 (harsher odds)	Endgame push, high risk.
+Protection Items:
+
+Fire God Talisman: Blocks Normal failure loss.
+
+Flame Emperor Talisman: Blocks Extreme failure loss.
+
+Sources: Events, quests, mall (paywall optional).
+
+Gear Slots & Caps:
+
+Weapons: Attack type endowments (slash/pierce).
+
+Armor: Defense (6 slots total, e.g., helm, plate, shield).
+
+Total cap: 70 points (excess ignored).
+
+Formula: Crit-neutral damage reduction = Total Armor Endowment / 2 (e.g., 60 pts = 30% reduction).
+
+Implementation Flow
+text
+1. Player selects gear slot → UI shows current endowment, success %.
+2. Choose type (Normal/Adv/Extreme) + stone count.
+3. Roll success (server-side RNG based on current value curve).
+4. On success: Add points, refresh UI.
+5. On failure: Deduct (unless talisman consumed), notify.
+6. Persist: Endowment values transfer on refine/recast (not destroy).
+Dev Notes:
+
+Balance Curve: Success % = Base(90%) - (CurrentPts * DecayFactor, e.g., 2-5%/pt). Tune per gear tier.
+
+RNG Seed: Server-side, auditable logs for fairness.
+
+Progression Gates: Stones from dungeons/events; talismans rare (daily/weekly limits).
+
+Synergies: Pairs with refinement (fixed stats) and awakening (procs). Non-destructive on upgrades.
+
+Edge Cases: Cap enforcement client/server; UI warnings at 60+ pts; no endow on junk gear.
+
+Metrics Track: Avg endowment/session, failure rates for balance patches.
+
+This distills to 3 actions (apply/protect/risk), 1 formula, scalable for mobile/PC. Expand with visuals (progress bars) for UX.
