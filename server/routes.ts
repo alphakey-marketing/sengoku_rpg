@@ -882,49 +882,13 @@ export async function registerRoutes(
           }
         }
 
-        // Horse Drop (10% chance)
-        if (Math.random() < 0.1) {
-          const hName = pick(HORSE_NAMES);
-          const r = Math.random();
-          let rarity = "common";
-          let speedBonus = Math.floor(Math.random() * 6) + 5; // 5-10
-          let attackBonus = Math.floor(Math.random() * 4); // 0-3
-          let defenseBonus = Math.floor(Math.random() * 4); // 0-3
-          let skill = "Swift Gallop";
-
-          if (r < 0.001) {
-            rarity = "mythic";
-            speedBonus = Math.floor(Math.random() * 16) + 35; // 35-50
-            attackBonus = Math.floor(Math.random() * 11) + 20; // 20-30
-            defenseBonus = Math.floor(Math.random() * 11) + 15; // 15-25
-            skill = "Divine Wind";
-          } else if (r < 0.005) {
-            rarity = "epic";
-            speedBonus = Math.floor(Math.random() * 11) + 20; // 20-30
-            attackBonus = Math.floor(Math.random() * 8) + 12; // 12-19
-            defenseBonus = Math.floor(Math.random() * 8) + 8; // 8-15
-            skill = "Steel Charger";
-          } else if (r < 0.02) {
-            rarity = "rare";
-            speedBonus = Math.floor(Math.random() * 8) + 12; // 12-19
-            attackBonus = Math.floor(Math.random() * 6) + 5; // 5-10
-            defenseBonus = Math.floor(Math.random() * 6) + 4; // 4-9
-          }
-
+        // Horse Drop (5% chance)
+        if (Math.random() < 0.05) {
+          const horseData = generateHorse(userId);
           try {
-            const horseDropped = await storage.createHorse({
-              userId,
-              name: hName,
-              rarity,
-              level: 1,
-              speedBonus,
-              attackBonus,
-              defenseBonus,
-              skill,
-              isActive: false,
-            });
-            allHorsesDropped.push(horseDropped);
-            allLogs.push(`Tamed ${rarity.toUpperCase()} ${hName}!`);
+            const horse = await storage.createHorse(horseData as any);
+            allHorsesDropped.push(horse);
+            allLogs.push(`HORSES: You managed to tame a wild ${horse.name}!`);
           } catch (err) {
             console.error("Failed to create horse drop:", err);
           }
