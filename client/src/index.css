@@ -19,17 +19,21 @@
     --popover: 0 0% 9%;
     --popover-foreground: 46 20% 90%;
 
-    /* Crimson Red */
-    --primary: 355 78% 36%;
+    /* Crimson Red - Adjusted to be slightly lighter/warmer */
+    --primary: 355 70% 45%;
     --primary-foreground: 0 0% 100%;
 
-    /* Darker Red */
-    --secondary: 355 60% 20%;
+    /* Darker Red - Adjusted to be more visible */
+    --secondary: 355 50% 30%;
     --secondary-foreground: 46 20% 90%;
 
     /* Subdued dark */
     --muted: 0 0% 15%;
     --muted-foreground: 0 0% 60%;
+
+    /* Region Backgrounds */
+    --japan-bg: 355 30% 10%;
+    --china-bg: 200 30% 10%;
 
     /* Gold */
     --accent: 46 65% 52%;

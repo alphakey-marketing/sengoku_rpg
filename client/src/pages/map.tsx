@@ -242,7 +242,7 @@ export default function MapPage() {
 
   return (
     <MainLayout>
-      <div className="space-y-6 max-w-5xl mx-auto">
+      <div className={`space-y-6 max-w-5xl mx-auto p-6 rounded-xl transition-colors duration-500 ${selectedRegion === 'China' ? 'bg-blue-950/10' : 'bg-red-950/5'}`}>
         <div className="border-b border-border/50 pb-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <MapIcon className="text-accent" size={32} />
@@ -278,7 +278,8 @@ export default function MapPage() {
                 style={{ backgroundImage: `url(${loc.region === 'China' ? 'https://images.unsplash.com/photo-1547153760-18fc86324498?q=80&w=800&auto=format&fit=crop' : 'https://images.unsplash.com/photo-1578469645742-46cae010e5d4?q=80&w=800&auto=format&fit=crop'})` }}
               />
 
-              <div className="p-4 flex-1 flex flex-col justify-between">
+              <div className="p-4 flex-1 flex flex-col justify-between relative z-10">
+                <div className="absolute inset-0 bg-background/40 backdrop-blur-[2px] -z-10 rounded-lg" />
                 <div>
                   <div className="flex items-center gap-3 mb-1">
                     <h2 className="text-xl font-display font-bold text-white">{loc.name}</h2>

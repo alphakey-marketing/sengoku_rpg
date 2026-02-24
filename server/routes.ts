@@ -78,9 +78,24 @@ function rarityFromRandom(): string {
   return "1";
 }
 
-function equipRarityFromRandom(): string {
+function equipRarityFromRandom(locationId: number = 1): string {
   const r = Math.random();
-  // Significantly improved rarity rates for normal enemies
+  const isChina = locationId >= 100;
+  
+  // Significantly improved rarity rates for normal enemies, even better in China
+  if (isChina) {
+    if (r > 0.995) return 'primal';        // 0.5% (vs 0.1%)
+    if (r > 0.985) return 'celestial';     // 1.0% (vs 0.4%)
+    if (r > 0.965) return 'transcendent';  // 2.0% (vs 1.0%)
+    if (r > 0.92) return 'exotic';         // 4.5% (vs 3.5%)
+    if (r > 0.80) return 'mythic';         // 12% (vs 10%)
+    if (r > 0.60) return 'gold';           // 20% (vs 15%)
+    if (r > 0.40) return 'purple';         // 20% (vs 20%)
+    if (r > 0.20) return 'blue';           // 20% (vs 20%)
+    if (r > 0.10) return 'green';          // 10% (vs 15%)
+    return 'white';                       // 10% (vs 15%)
+  }
+
   if (r > 0.999) return 'primal';        // 0.1%
   if (r > 0.995) return 'celestial';     // 0.4%
   if (r > 0.985) return 'transcendent';  // 1.0%
@@ -815,10 +830,10 @@ export async function registerRoutes(
       if (count > 1) allLogs.push(`--- BATTLE ${i + 1} ---`);
 
       // 10% chance for a famous ninja encounter
-      if (Math.random() < 0.10) {
-        const ninjaNames = ["Hattori Hanzo", "Fuma Kotaro", "Ishikawa Goemon", "Mochizuki Chiyome"];
+      if (Math.random() < (locationId >= 100 ? 0.15 : 0.10)) {
+        const ninjaNames = locationId >= 100 ? ["Zhuge Liang (Ghost)", "Lu Bu's Spirit", "Empress Wu Zetian"] : ["Hattori Hanzo", "Fuma Kotaro", "Ishikawa Goemon", "Mochizuki Chiyome"];
         const ninjaName = pick(ninjaNames);
-        const isSuperStrong = Math.random() < 0.3;
+        const isSuperStrong = Math.random() < (locationId >= 100 ? 0.5 : 0.3);
         
         const ninjaStats = {
           name: ninjaName,
@@ -883,9 +898,9 @@ export async function registerRoutes(
         };
 
         await storage.updateUser(userId, userUpdate);
-        if (Math.random() < 0.3) {
+        if (Math.random() < (locationId >= 100 ? 0.5 : 0.3)) {
           const type = pick(EQUIP_TYPES);
-          const rarity = equipRarityFromRandom();
+          const rarity = equipRarityFromRandom(locationId);
           const name = pick(type === 'weapon' ? WEAPON_NAMES : type === 'armor' ? ARMOR_NAMES : type === 'accessory' ? ACCESSORY_NAMES : HORSE_GEAR_NAMES);
           
           const statsByRarity: Record<string, { atk: number, def: number, spd: number }> = {
@@ -902,6 +917,17 @@ export async function registerRoutes(
           };
           const baseStats = statsByRarity[rarity] || statsByRarity.white;
 
+          let atkBonus = baseStats.atk;
+          let defBonus = baseStats.def;
+          let spdBonus = baseStats.spd;
+
+          if (locationId >= 100) {
+            const chinaMult = 2 + ((locationId - 100) * 0.5);
+            atkBonus = Math.floor(atkBonus * chinaMult);
+            defBonus = Math.floor(defBonus * chinaMult);
+            spdBonus = Math.floor(spdBonus * chinaMult);
+          }
+
           const eq = await storage.createEquipment({
             userId,
             name,
@@ -910,9 +936,9 @@ export async function registerRoutes(
             level: 1,
             experience: 0,
             expToNext: 100,
-            attackBonus: baseStats.atk,
-            defenseBonus: baseStats.def,
-            speedBonus: baseStats.spd,
+            attackBonus: atkBonus,
+            defenseBonus: defBonus,
+            speedBonus: spdBonus,
           });
           allEquipmentDropped.push(eq);
           allLogs.push(`Found ${rarity.toUpperCase()} ${name}!`);
@@ -1059,10 +1085,7 @@ export async function registerRoutes(
         currentDef += 3;
         currentSpd += 2;
       }
-      
-      // Ensure the loop above continues until all excess EXP is consumed
-      // The current logic is correct but I'll ensure it persists correctly
-      
+
       await storage.updateUser(userId, { 
         level: currentLevel,
         experience: currentExp, 
@@ -1077,9 +1100,10 @@ export async function registerRoutes(
       });
       
       const type = pick(EQUIP_TYPES);
+      const isChina = locationId >= 100;
       
       // Significantly improved drop rates for field battles
-      const fieldRarity = equipRarityFromRandom();
+      const fieldRarity = equipRarityFromRandom(locationId);
       const name = pick(type === 'weapon' ? WEAPON_NAMES : type === 'armor' ? ARMOR_NAMES : type === 'accessory' ? ACCESSORY_NAMES : HORSE_GEAR_NAMES);
       
       const statsByRarity: Record<string, { atk: number, def: number, spd: number, critC: number, critD: number }> = {
@@ -1096,6 +1120,17 @@ export async function registerRoutes(
       };
       const baseStats = statsByRarity[fieldRarity] || statsByRarity.white;
 
+      let atkBonus = baseStats.atk + (locationId * 5);
+      let defBonus = baseStats.def + (locationId * 3);
+      let spdBonus = baseStats.spd + (locationId * 2);
+
+      if (isChina) {
+        const chinaMult = 2 + ((locationId - 100) * 0.5);
+        atkBonus = Math.floor(atkBonus * chinaMult);
+        defBonus = Math.floor(defBonus * chinaMult);
+        spdBonus = Math.floor(spdBonus * chinaMult);
+      }
+
       const itemData: any = {
         userId,
         name,
@@ -1104,9 +1139,9 @@ export async function registerRoutes(
         level: 1,
         experience: 0,
         expToNext: 100,
-        attackBonus: baseStats.atk + (locationId * 5),
-        defenseBonus: baseStats.def + (locationId * 3),
-        speedBonus: baseStats.spd + (locationId * 2),
+        attackBonus: atkBonus,
+        defenseBonus: defBonus,
+        speedBonus: spdBonus,
         critChance: 0,
         critDamage: 0,
       };
@@ -1114,9 +1149,9 @@ export async function registerRoutes(
       // Apply critical stats based on type and rarity
       if (['gold', 'mythic', 'exotic', 'transcendent', 'celestial', 'primal'].includes(fieldRarity)) {
         if (type === 'weapon') {
-          itemData.critDamage = baseStats.critD;
+          itemData.critDamage = isChina ? Math.floor(baseStats.critD * 1.5) : baseStats.critD;
         } else if (type === 'accessory') {
-          itemData.critChance = baseStats.critC;
+          itemData.critChance = isChina ? Math.floor(baseStats.critC * 1.5) : baseStats.critC;
         }
       }
 
