@@ -17,12 +17,19 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
 
 const LOCATIONS = [
-  { id: 1, name: "Owari Province", desc: "Starting grounds of the Oda clan. Bandits and minor yokai roam here.", level: 1 },
-  { id: 2, name: "Mino Province", desc: "Mountainous terrain hiding fierce warrior monks and elite guards.", level: 10 },
-  { id: 3, name: "Kyoto Approaches", desc: "The capital's outskirts. Heavily defended by the Shogun's remnants.", level: 25 },
-  { id: 4, name: "Edo Outskirts", desc: "The path to the new capital. Protected by elite samurai and treacherous traps.", level: 45 },
-  { id: 5, name: "Mount Fuji Pass", desc: "High altitude slopes where ancient spirits and frozen horrors await.", level: 70 },
-  { id: 6, name: "Demon Gate (鬼門)", desc: "A cursed portal where legendary yokai lurk. Special bosses drop transformation stones.", level: 100 },
+  // Japan (Region 1)
+  { id: 1, name: "Owari Province", desc: "Starting grounds of the Oda clan. Bandits and minor yokai roam here.", level: 1, region: "Japan" },
+  { id: 2, name: "Mino Province", desc: "Mountainous terrain hiding fierce warrior monks and elite guards.", level: 10, region: "Japan" },
+  { id: 3, name: "Kyoto Approaches", desc: "The capital's outskirts. Heavily defended by the Shogun's remnants.", level: 25, region: "Japan" },
+  { id: 4, name: "Edo Outskirts", desc: "The path to the new capital. Protected by elite samurai and treacherous traps.", level: 45, region: "Japan" },
+  { id: 5, name: "Mount Fuji Pass", desc: "High altitude slopes where ancient spirits and frozen horrors await.", level: 70, region: "Japan" },
+  { id: 6, name: "Demon Gate (鬼門)", desc: "A cursed portal where legendary yokai lurk. Special bosses drop transformation stones.", level: 100, region: "Japan" },
+  
+  // China (Region 2)
+  { id: 101, name: "Great Wall Pass", desc: "The legendary fortification. Guarded by ancient terracotta constructs and northern nomads.", level: 130, region: "China" },
+  { id: 102, name: "Yellow River Valley", desc: "The cradle of civilization. Water spirits and imperial deserters haunt these fertile lands.", level: 170, region: "China" },
+  { id: 103, name: "Forbidden City Gates", desc: "The entrance to the imperial heart. Elite palace guards and court sorcerers defend the perimeter.", level: 220, region: "China" },
+  { id: 104, name: "Kunlun Mountains", desc: "The dwelling of immortals. Mythical beasts and powerful cultivators test your resolve.", level: 280, region: "China" },
 ];
 
 const STORY_EVENTS = [
@@ -110,7 +117,12 @@ export default function MapPage() {
     // matching the server's logic for the preview.
     const loc = LOCATIONS.find(l => l.id === locationId);
     const pLevel = playerStatus?.player.level || 1;
-    const locationMultiplier = 1 + (locationId - 1) * 0.75;
+    let locationMultiplier = 1 + (locationId - 1) * 0.75;
+    
+    if (locationId >= 100) {
+      const chinaIndex = locationId - 100;
+      locationMultiplier = 5 + (chinaIndex * 2.5);
+    }
     
     let enemyPreview: any;
     if (type === 'field') {
@@ -121,7 +133,7 @@ export default function MapPage() {
       const baseSpd = lvl * 4 + 8;
 
       enemyPreview = {
-        name: "Yokai Scout",
+        name: locationId >= 100 ? "China Border Guard" : "Yokai Scout",
         level: lvl,
         hp: Math.floor(baseHp * Math.pow(locationMultiplier, 1.2)),
         attack: Math.floor(baseAtk * Math.pow(locationMultiplier, 1.1)),
@@ -129,11 +141,11 @@ export default function MapPage() {
         speed: Math.floor(baseSpd * locationMultiplier),
       };
     } else if (type === 'boss') {
-      const difficultyMultiplier = locationId * 1.5;
-      const lvl = Math.floor(pLevel + 5 + (locationId * 8));
+      const difficultyMultiplier = locationId >= 100 ? (locationId - 100 + 5) * 3 : locationId * 1.5;
+      const lvl = locationId >= 100 ? Math.floor(pLevel + 20 + ((locationId - 100) * 15)) : Math.floor(pLevel + 5 + (locationId * 8));
       
       enemyPreview = {
-        name: "Castle Guardian",
+        name: locationId >= 100 ? "China Stronghold General" : "Castle Guardian",
         level: lvl,
         hp: Math.floor((lvl * 150 + 500 + Math.floor(difficultyMultiplier * 1000)) * locationMultiplier),
         attack: Math.floor((lvl * 25 + 60 + Math.floor(difficultyMultiplier * 50)) * locationMultiplier),
@@ -141,14 +153,15 @@ export default function MapPage() {
         speed: Math.floor((lvl * 12 + 25 + Math.floor(difficultyMultiplier * 20)) * locationMultiplier),
       };
     } else {
-      const lvl = Math.floor(pLevel + 15 + (locationId * 12));
+      const difficultyMultiplier = locationId >= 100 ? (locationId - 100 + 10) * 5 : locationId;
+      const lvl = locationId >= 100 ? Math.floor(pLevel + 50 + ((locationId - 100) * 20)) : Math.floor(pLevel + 15 + (locationId * 12));
       enemyPreview = {
-        name: "Legendary Demon",
+        name: locationId >= 100 ? "Celestial Dragon Emperor" : "Legendary Demon",
         level: lvl,
-        hp: Math.floor((lvl * 250 + 2000 + (locationId * 3000)) * locationMultiplier),
-        attack: Math.floor((lvl * 50 + 250 + (locationId * 150)) * locationMultiplier),
-        defense: Math.floor((lvl * 40 + 200 + (locationId * 120)) * locationMultiplier),
-        speed: Math.floor((lvl * 20 + 80 + (locationId * 50)) * locationMultiplier),
+        hp: Math.floor((lvl * 250 + 2000 + (difficultyMultiplier * 3000)) * locationMultiplier),
+        attack: Math.floor((lvl * 50 + 250 + (difficultyMultiplier * 150)) * locationMultiplier),
+        defense: Math.floor((lvl * 40 + 200 + (difficultyMultiplier * 120)) * locationMultiplier),
+        speed: Math.floor((lvl * 20 + 80 + (difficultyMultiplier * 50)) * locationMultiplier),
       };
     }
     
@@ -224,26 +237,45 @@ export default function MapPage() {
 
   const isPending = fieldPending || bossPending || specialPending || eventPending;
 
+  const [selectedRegion, setSelectedRegion] = useState<string>("Japan");
+  const filteredLocations = LOCATIONS.filter(l => l.region === selectedRegion);
+
   return (
     <MainLayout>
       <div className="space-y-6 max-w-5xl mx-auto">
-        <div className="border-b border-border/50 pb-4 flex items-center gap-3">
-          <MapIcon className="text-accent" size={32} />
-          <div>
-            <h1 className="text-3xl font-display font-bold text-white" data-testid="text-page-title">Campaign Map</h1>
-            <p className="text-muted-foreground">Journey through the Sengoku era. Historical events will shape your destiny.</p>
+        <div className="border-b border-border/50 pb-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <MapIcon className="text-accent" size={32} />
+            <div>
+              <h1 className="text-3xl font-display font-bold text-white" data-testid="text-page-title">Campaign Map</h1>
+              <p className="text-muted-foreground">Journey through the Orient. Historical events will shape your destiny.</p>
+            </div>
+          </div>
+          
+          <div className="flex gap-2 bg-card/50 p-1 rounded-lg border border-border/30">
+            {["Japan", "China"].map(region => (
+              <Button
+                key={region}
+                variant={selectedRegion === region ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setSelectedRegion(region)}
+                className={selectedRegion === region ? "bg-primary text-black" : "text-muted-foreground"}
+              >
+                {region}
+              </Button>
+            ))}
           </div>
         </div>
 
         <div className="space-y-4 mt-8">
-          {LOCATIONS.map((loc) => (
+          {filteredLocations.map((loc) => (
             <div
               key={loc.id}
-              className={`bg-card border rounded-lg p-1 flex flex-col md:flex-row bg-washi hover:border-border transition-colors ${loc.id === 4 ? 'border-purple-700/50 shadow-[0_0_20px_rgba(128,0,255,0.1)]' : 'border-border/50'}`}
+              className={`bg-card border rounded-lg p-1 flex flex-col md:flex-row bg-washi hover:border-border transition-colors ${loc.id === 6 || loc.id === 104 ? 'border-purple-700/50 shadow-[0_0_20px_rgba(128,0,255,0.1)]' : 'border-border/50'}`}
             >
               <div
                 className="h-32 md:h-auto md:w-48 bg-cover bg-center rounded-md m-1 opacity-80"
-                style={{ backgroundImage: `url(https://images.unsplash.com/photo-1578469645742-46cae010e5d4?q=80&w=800&auto=format&fit=crop)` }}
+                style={{ backgroundImage: `url(${loc.region === 'China' ? 'https://images.unsplash.com/photo-1547153760-18fc86324498?q=80&w=800&auto=format&fit=crop' : 'https://images.unsplash.com/photo-1578469645742-46cae010e5d4?q=80&w=800&auto=format&fit=crop'})` }}
               />
 
               <div className="p-4 flex-1 flex flex-col justify-between">
@@ -251,7 +283,7 @@ export default function MapPage() {
                   <div className="flex items-center gap-3 mb-1">
                     <h2 className="text-xl font-display font-bold text-white">{loc.name}</h2>
                     <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded font-bold">Rec. Lv {loc.level}</span>
-                    {loc.id === 4 && <span className="text-xs bg-purple-900/50 text-purple-300 px-2 py-0.5 rounded font-bold border border-purple-700/30">Special</span>}
+                    {(loc.id === 6 || loc.id === 104) && <span className="text-xs bg-purple-900/50 text-purple-300 px-2 py-0.5 rounded font-bold border border-purple-700/30">Special</span>}
                   </div>
                   <p className="text-sm text-zinc-400 mb-4">{loc.desc}</p>
                 </div>
@@ -274,9 +306,9 @@ export default function MapPage() {
                     data-testid={`battle-boss-${loc.id}`}
                   >
                     <Skull size={16} className="mr-2 text-accent" />
-                    Assault Castle
+                    Assault {loc.region === 'China' ? 'Stronghold' : 'Castle'}
                   </Button>
-                  {loc.id === 4 && (
+                  {(loc.id === 6 || loc.id === 104) && (
                     <Button
                       onClick={() => initiateBattle('special', loc.id)}
                       disabled={isPending}
@@ -284,7 +316,7 @@ export default function MapPage() {
                       data-testid={`battle-special-${loc.id}`}
                     >
                       <Crown size={16} className="mr-2 text-purple-400" />
-                      Challenge Demon Lord
+                      Challenge {loc.region === 'China' ? 'Celestial Guardian' : 'Demon Lord'}
                     </Button>
                   )}
                 </div>

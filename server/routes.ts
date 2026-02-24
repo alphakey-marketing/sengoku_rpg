@@ -240,9 +240,16 @@ async function getPlayerTeamStats(userId: string) {
 }
 
 function generateEnemyStats(type: 'field' | 'boss' | 'special', playerLevel: number, locationId: number = 1) {
-  const locationMultiplier = 1 + (locationId - 1) * 0.75; // Increased scaling from 0.5 to 0.75
+  let locationMultiplier = 1 + (locationId - 1) * 0.75;
+  
+  // China Region (locationId >= 100) has significantly higher scaling
+  if (locationId >= 100) {
+    const chinaIndex = locationId - 100;
+    locationMultiplier = 5 + (chinaIndex * 2.5); // Start at 5x multiplier, grow by 2.5x per stage
+  }
+
   if (type === 'field') {
-    const name = pick(YOKAI_NAMES);
+    const name = locationId >= 100 ? pick(["Terracotta Guard", "Silk Road Bandit", "Mountain Cultivator"]) : pick(YOKAI_NAMES);
     const lvl = Math.max(1, playerLevel + Math.floor(Math.random() * 3) - 1);
     // Field enemies now scale much more aggressively in later maps
     const baseHp = lvl * 30 + 50;
@@ -261,10 +268,10 @@ function generateEnemyStats(type: 'field' | 'boss' | 'special', playerLevel: num
       skills: ["Scratch", "Bite"],
     };
   } else if (type === 'boss') {
-    const name = pick(BOSS_NAMES);
+    const name = locationId >= 100 ? pick(["General Lu Bu", "Imperial Sorcerer", "Terracotta Commander"]) : pick(BOSS_NAMES);
     // Bosses scale more significantly with location
-    const difficultyMultiplier = locationId * 1.5;
-    const lvl = Math.floor(playerLevel + 5 + (locationId * 8));
+    const difficultyMultiplier = locationId >= 100 ? (locationId - 100 + 5) * 3 : locationId * 1.5;
+    const lvl = locationId >= 100 ? Math.floor(playerLevel + 20 + ((locationId - 100) * 15)) : Math.floor(playerLevel + 5 + (locationId * 8));
     return {
       name,
       level: lvl,
@@ -277,16 +284,18 @@ function generateEnemyStats(type: 'field' | 'boss' | 'special', playerLevel: num
     };
   } else {
     const sb = pick(SPECIAL_BOSSES);
+    const name = locationId >= 100 ? "Celestial Dragon Emperor" : sb.name;
     // Special bosses are the ultimate challenge
-    const lvl = Math.floor(playerLevel + 15 + (locationId * 12));
+    const difficultyMultiplier = locationId >= 100 ? (locationId - 100 + 10) * 5 : locationId;
+    const lvl = locationId >= 100 ? Math.floor(playerLevel + 50 + ((locationId - 100) * 20)) : Math.floor(playerLevel + 15 + (locationId * 12));
     return {
-      name: sb.name,
+      name,
       level: lvl,
-      hp: Math.floor((lvl * 250 + 2000 + (locationId * 3000)) * locationMultiplier),
-      maxHp: Math.floor((lvl * 250 + 2000 + (locationId * 3000)) * locationMultiplier),
-      attack: Math.floor((lvl * 50 + 250 + (locationId * 150)) * locationMultiplier),
-      defense: Math.floor((lvl * 40 + 200 + (locationId * 120)) * locationMultiplier),
-      speed: Math.floor((lvl * 20 + 80 + (locationId * 50)) * locationMultiplier),
+      hp: Math.floor((lvl * 250 + 2000 + (difficultyMultiplier * 3000)) * locationMultiplier),
+      maxHp: Math.floor((lvl * 250 + 2000 + (difficultyMultiplier * 3000)) * locationMultiplier),
+      attack: Math.floor((lvl * 50 + 250 + (difficultyMultiplier * 150)) * locationMultiplier),
+      defense: Math.floor((lvl * 40 + 200 + (difficultyMultiplier * 120)) * locationMultiplier),
+      speed: Math.floor((lvl * 20 + 80 + (difficultyMultiplier * 50)) * locationMultiplier),
       skills: [sb.skill, "Roar", "Dark Aura", "Divine Intervention"],
     };
   }
