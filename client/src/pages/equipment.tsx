@@ -141,7 +141,7 @@ export default function EquipmentPage() {
     return a.id - b.id;
   }) : [];
 
-  if (eqLoading) return <MainLayout><div className="p-8">Opening gear upgrade forge...</div></MainLayout>;
+  if (eqLoading) return <MainLayout><div className="p-8">Opening armory...</div></MainLayout>;
 
   return (
     <MainLayout>
@@ -159,8 +159,8 @@ export default function EquipmentPage() {
         )}
         <div className="border-b border-border/50 pb-4 flex justify-between items-end">
           <div>
-            <h1 className="text-3xl font-display font-bold text-white mb-2" data-testid="text-page-title">Gear Upgrade & Armory</h1>
-            <p className="text-muted-foreground">Enhance your weapons and armor with upgrade stones, or manage your equipped gear.</p>
+            <h1 className="text-3xl font-display font-bold text-white mb-2" data-testid="text-page-title">Armory</h1>
+            <p className="text-muted-foreground">Manage weapons, armor, and gear. Only one item per type can be equipped.</p>
           </div>
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2 bg-purple-900/20 border border-purple-700/30 px-4 py-2 rounded-lg">
@@ -235,8 +235,8 @@ export default function EquipmentPage() {
         {sortedEquipment.length === 0 ? (
           <div className="text-center p-12 bg-card rounded-lg border border-border/50 border-dashed">
             <Sword className="w-12 h-12 mx-auto text-muted-foreground mb-4 opacity-50" />
-            <h3 className="text-lg font-medium text-white mb-2">Inventory Empty</h3>
-            <p className="text-muted-foreground">Defeat enemies in the field to loot equipment for upgrading.</p>
+            <h3 className="text-lg font-medium text-white mb-2">Armory Empty</h3>
+            <p className="text-muted-foreground">Defeat enemies in the field to loot equipment.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
@@ -370,7 +370,7 @@ export default function EquipmentPage() {
                             }
                           }
                         }}
-                        disabled={upgradePending}
+                        disabled={upgradePending || (player?.upgradeStones || 0) < 1}
                         title="Upgrade with stone"
                         data-testid={`upgrade-${item.id}`}
                       >

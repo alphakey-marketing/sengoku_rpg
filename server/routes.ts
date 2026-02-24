@@ -117,9 +117,9 @@ async function getPlayerTeamStats(userId: string) {
       activeTransform = allTransforms.find(t => t.id === user.activeTransformId);
     }
 
-    const totalAtkBonus = playerEquipped.reduce((s, e) => s + Math.floor((e.attackBonus || 0) * (1 + ((e.level || 1) - 1) * 0.05)), 0);
-    const totalDefBonus = playerEquipped.reduce((s, e) => s + Math.floor((e.defenseBonus || 0) * (1 + ((e.level || 1) - 1) * 0.08)), 0);
-    const totalSpdBonus = playerEquipped.reduce((s, e) => s + Math.floor((e.speedBonus || 0) * (1 + ((e.level || 1) - 1) * 0.1)), 0);
+    const totalAtkBonus = playerEquipped.reduce((s, e) => s + Math.floor(e.attackBonus * (1 + (e.level - 1) * 0.05)), 0);
+    const totalDefBonus = playerEquipped.reduce((s, e) => s + Math.floor(e.defenseBonus * (1 + (e.level - 1) * 0.08)), 0);
+    const totalSpdBonus = playerEquipped.reduce((s, e) => s + Math.floor(e.speedBonus * (1 + (e.level - 1) * 0.1)), 0);
 
     let hp = user.hp + (user.permHpBonus || 0);
     let maxHp = user.maxHp + (user.permHpBonus || 0);
@@ -164,9 +164,9 @@ async function getPlayerTeamStats(userId: string) {
       } as any,
     companions: partyCompanions.map(c => {
       const compEquipped = equips.filter(e => e.isEquipped && e.equippedToType === 'companion' && Number(e.equippedToId) === Number(c.id));
-      const cAtkBonus = compEquipped.reduce((s, e) => s + Math.floor((e.attackBonus || 0) * (1 + ((e.level || 1) - 1) * 0.05)), 0);
-      const cDefBonus = compEquipped.reduce((s, e) => s + Math.floor((e.defenseBonus || 0) * (1 + ((e.level || 1) - 1) * 0.08)), 0);
-      const cSpdBonus = compEquipped.reduce((s, e) => s + Math.floor((e.speedBonus || 0) * (1 + ((e.level || 1) - 1) * 0.1)), 0);
+      const cAtkBonus = compEquipped.reduce((s, e) => s + Math.floor(e.attackBonus * (1 + (e.level - 1) * 0.05)), 0);
+      const cDefBonus = compEquipped.reduce((s, e) => s + Math.floor(e.defenseBonus * (1 + (e.level - 1) * 0.08)), 0);
+      const cSpdBonus = compEquipped.reduce((s, e) => s + Math.floor(e.speedBonus * (1 + (e.level - 1) * 0.1)), 0);
       return {
         id: c.id,
         name: c.name,
@@ -356,22 +356,6 @@ export async function registerRoutes(
     const userId = req.user.claims.sub;
     const user = await storage.getUser(userId);
     res.json(user);
-  });
-
-  app.get(api.player.fullStatus.path, isAuthenticated, async (req: any, res) => {
-    const userId = req.user.claims.sub;
-    const user = await storage.getUser(userId);
-    const stats = await getPlayerTeamStats(userId);
-    const comps = await storage.getCompanions(userId);
-    const equips = await storage.getEquipment(userId);
-    const partyCompanions = comps.filter(c => c.isInParty);
-
-    res.json({
-      player: user,
-      stats: stats,
-      companions: partyCompanions,
-      equipment: equips
-    });
   });
 
   app.get(api.companions.list.path, isAuthenticated, async (req: any, res) => {
@@ -607,8 +591,8 @@ export async function registerRoutes(
       newExp -= newExpToNext;
       newLevel++;
       newExpToNext = calcEquipExpToNext(newLevel);
-      atkBonus = Math.floor(atkBonus * growth.atk) + 2;
-      defBonus = Math.floor(defBonus * growth.def) + 2;
+      atkBonus = Math.floor(atkBonus * growth.atk) + 1;
+      defBonus = Math.floor(defBonus * growth.def) + 1;
       spdBonus = Math.floor(spdBonus * growth.spd) + 1;
     }
 
@@ -622,25 +606,6 @@ export async function registerRoutes(
     });
 
     res.json(updated);
-  });
-
-  app.get(api.campaign.events.path, isAuthenticated, async (req: any, res) => {
-    const userId = req.user.claims.sub;
-    const events = await storage.getCampaignEvents(userId);
-    res.json(events);
-  });
-
-  app.post(api.campaign.triggerEvent.path, isAuthenticated, async (req: any, res) => {
-    const userId = req.user.claims.sub;
-    const { eventKey, choice } = req.body;
-    
-    try {
-      const result = await storage.triggerCampaignEvent(userId, eventKey, choice);
-      res.json(result);
-    } catch (error: any) {
-      console.error("Event trigger error:", error);
-      res.status(400).json({ message: error.message || "Failed to trigger event" });
-    }
   });
 
   app.get(api.pets.list.path, isAuthenticated, async (req: any, res) => {
@@ -786,70 +751,16 @@ export async function registerRoutes(
   app.post(api.battle.field.path, isAuthenticated, async (req: any, res) => {
     const userId = req.user.claims.sub;
     const user = await storage.getUser(userId);
-    if (!user) return res.status(401).json({ message: "Unauthorized" });
-    
-    const team = await getPlayerTeamStats(userId);
-    if (!team) return res.status(401).json({ message: "Unauthorized" });
-    const enemy = generateEnemyStats('field', user.level, user.currentLocationId);
-    const battleResult = runTurnBasedCombat(team, enemy) as any;
+    if (!user || user.stamina < 10) return res.status(400).json({ message: "Not enough stamina" });
 
-    if (battleResult.victory) {
+    const team = await getPlayerTeamStats(userId);
+    const enemy = generateEnemyStats('field', user.level, user.currentLocationId);
+    const battleResult = runTurnBasedCombat(team, enemy);
+
+    if (battleResult.winner === 'player') {
       const goldGained = Math.floor(user.level * 10 * (1 + (user.currentLocationId - 1) * 0.5));
       const riceGained = Math.floor(user.level * 5 * (1 + (user.currentLocationId - 1) * 0.5));
       const expGained = 20;
-
-      // Drop logic
-      const equipmentDropped = [];
-      if (Math.random() > 0.7) {
-        const type = pick(EQUIP_TYPES);
-        const name = pick(type === 'weapon' ? WEAPON_NAMES : type === 'armor' ? ARMOR_NAMES : type === 'accessory' ? ACCESSORY_NAMES : HORSE_GEAR_NAMES);
-        const rarity = equipRarityFromRandom();
-        const equip = await storage.createEquipment({
-          userId,
-          name,
-          type,
-          rarity,
-          level: 1,
-          experience: 0,
-          expToNext: 100,
-          attackBonus: 5,
-          defenseBonus: 5,
-          speedBonus: 5,
-          critChance: 5,
-          critDamage: 50,
-          endowmentPoints: 0,
-          isEquipped: false,
-          equippedToId: null,
-          equippedToType: null
-        });
-        equipmentDropped.push(equip);
-      }
-
-      let petDropped = null;
-      if (Math.random() > 0.95) {
-        const petData = pick(PET_NAMES);
-        petDropped = await storage.createPet({
-          userId,
-          name: petData.name,
-          type: "spirit",
-          rarity: equipRarityFromRandom(),
-          level: 1,
-          experience: 0,
-          expToNext: 100,
-          hp: 50,
-          maxHp: 50,
-          attack: 5,
-          defense: 5,
-          speed: 20,
-          skill: petData.skill,
-          isActive: false
-        });
-      }
-
-      let horseDropped = null;
-      if (Math.random() > 0.98) {
-        horseDropped = await storage.createHorse(generateHorse(userId));
-      }
 
       let newExp = user.experience + expGained;
       let newLevel = user.level;
@@ -886,14 +797,7 @@ export async function registerRoutes(
       if (Math.random() > 0.95) updates.transformationStones = (user.transformationStones || 0) + 1;
 
       await storage.updateUser(userId, updates);
-      (battleResult as any).victory = true;
-      (battleResult as any).experienceGained = expGained;
-      (battleResult as any).goldGained = goldGained;
-      (battleResult as any).riceGained = riceGained;
-      (battleResult as any).equipmentDropped = equipmentDropped;
-      (battleResult as any).petDropped = petDropped;
-      (battleResult as any).horseDropped = horseDropped;
-      (battleResult as any).rewards = { gold: goldGained, rice: riceGained, exp: expGained };
+      battleResult.rewards = { gold: goldGained, rice: riceGained, exp: expGained };
     } else {
       await storage.updateUser(userId, { stamina: user.stamina - 10 });
     }
@@ -904,63 +808,30 @@ export async function registerRoutes(
   app.post(api.battle.boss.path, isAuthenticated, async (req: any, res) => {
     const userId = req.user.claims.sub;
     const user = await storage.getUser(userId);
-    if (!user) return res.status(401).json({ message: "Unauthorized" });
-    
-    const team = await getPlayerTeamStats(userId);
-    if (!team) return res.status(401).json({ message: "Unauthorized" });
-    const enemy = generateEnemyStats('boss', user.level, user.currentLocationId);
-    const battleResult = runTurnBasedCombat(team, enemy) as any;
+    if (!user || user.stamina < 30) return res.status(400).json({ message: "Not enough stamina" });
 
-    if (battleResult.victory) {
+    const team = await getPlayerTeamStats(userId);
+    const enemy = generateEnemyStats('boss', user.level, user.currentLocationId);
+    const battleResult = runTurnBasedCombat(team, enemy);
+
+    if (battleResult.winner === 'player') {
       const goldGained = Math.floor(user.level * 100 * user.currentLocationId);
       const riceGained = Math.floor(user.level * 50 * user.currentLocationId);
       const stones = 5;
       
-      // Drop logic
-      const equipmentDropped = [];
-      for (let i = 0; i < 2; i++) {
-        const type = pick(EQUIP_TYPES);
-        const name = pick(type === 'weapon' ? WEAPON_NAMES : type === 'armor' ? ARMOR_NAMES : type === 'accessory' ? ACCESSORY_NAMES : HORSE_GEAR_NAMES);
-        const rarity = equipRarityFromRandom();
-        const equip = await storage.createEquipment({
-          userId,
-          name,
-          type,
-          rarity,
-          level: 1,
-          experience: 0,
-          expToNext: 100,
-          attackBonus: 10,
-          defenseBonus: 10,
-          speedBonus: 10,
-          critChance: 5,
-          critDamage: 50,
-          endowmentPoints: 0,
-          isEquipped: false,
-          equippedToId: null,
-          equippedToType: null
-        });
-        equipmentDropped.push(equip);
-      }
-
       const updates: any = {
         gold: user.gold + goldGained,
         rice: user.rice + riceGained,
-        stamina: user.stamina,
+        stamina: user.stamina - 30,
         upgradeStones: (user.upgradeStones || 0) + stones,
       };
 
       if (user.currentLocationId < 4) updates.currentLocationId = user.currentLocationId + 1;
 
       await storage.updateUser(userId, updates);
-      (battleResult as any).victory = true;
-      (battleResult as any).experienceGained = 100;
-      (battleResult as any).goldGained = goldGained;
-      (battleResult as any).riceGained = riceGained;
-      (battleResult as any).equipmentDropped = equipmentDropped;
-      (battleResult as any).rewards = { gold: goldGained, rice: riceGained, stones };
+      battleResult.rewards = { gold: goldGained, rice: riceGained, stones };
     } else {
-      // No stamina cost
+      await storage.updateUser(userId, { stamina: user.stamina - 30 });
     }
 
     res.json(battleResult);
@@ -969,18 +840,16 @@ export async function registerRoutes(
   app.post(api.battle.specialBoss.path, isAuthenticated, async (req: any, res) => {
     const userId = req.user.claims.sub;
     const user = await storage.getUser(userId);
-    if (!user) return res.status(401).json({ message: "Unauthorized" });
-    
-    const team = await getPlayerTeamStats(userId);
-    if (!team) return res.status(401).json({ message: "Unauthorized" });
-    const enemy = generateEnemyStats('special', user.level, user.currentLocationId);
-    const battleResult = runTurnBasedCombat(team, enemy) as any;
+    if (!user || user.stamina < 50) return res.status(400).json({ message: "Not enough stamina" });
 
-    if (battleResult.victory) {
+    const team = await getPlayerTeamStats(userId);
+    const enemy = generateEnemyStats('special', user.level, user.currentLocationId);
+    const battleResult = runTurnBasedCombat(team, enemy);
+
+    if (battleResult.winner === 'player') {
       const sb = SPECIAL_BOSSES.find(s => s.name === enemy.name);
-      let transformationDropped = null;
       if (sb) {
-        transformationDropped = await storage.createTransformation({
+        await storage.createTransformation({
           userId,
           name: sb.transformName,
           level: 1,
@@ -995,14 +864,10 @@ export async function registerRoutes(
           durationSeconds: 30
         });
       }
-      await storage.updateUser(userId, { stamina: user.stamina });
-      (battleResult as any).victory = true;
-      (battleResult as any).experienceGained = 500;
-      (battleResult as any).goldGained = 5000;
-      (battleResult as any).transformationDropped = transformationDropped;
-      (battleResult as any).rewards = { transform: sb?.transformName };
+      await storage.updateUser(userId, { stamina: user.stamina - 50 });
+      battleResult.rewards = { transform: sb?.transformName };
     } else {
-      // No stamina cost
+      await storage.updateUser(userId, { stamina: user.stamina - 50 });
     }
     res.json(battleResult);
   });

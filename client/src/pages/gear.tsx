@@ -61,22 +61,22 @@ export default function GearPage() {
             <div className="flex items-center gap-1.5 bg-red-900/10 px-2 py-1 rounded border border-red-900/20">
               <Sword size={14} className="text-red-400" />
               <span className="text-zinc-400 font-medium">ATK:</span>
-              <span className="text-white font-bold">{stats?.attack || 0}</span>
+              <span className="text-white font-bold">{stats.attack}</span>
             </div>
             <div className="flex items-center gap-1.5 bg-blue-900/10 px-2 py-1 rounded border border-blue-900/20">
               <Shield size={14} className="text-blue-400" />
               <span className="text-zinc-400 font-medium">DEF:</span>
-              <span className="text-white font-bold">{stats?.defense || 0}</span>
+              <span className="text-white font-bold">{stats.defense}</span>
             </div>
             <div className="flex items-center gap-1.5 bg-cyan-900/10 px-2 py-1 rounded border border-cyan-900/20">
               <Zap size={14} className="text-cyan-400" />
               <span className="text-zinc-400 font-medium">SPD:</span>
-              <span className="text-white font-bold">{stats?.speed || 0}</span>
+              <span className="text-white font-bold">{stats.speed}</span>
             </div>
             <div className="flex items-center gap-1.5 bg-orange-900/10 px-2 py-1 rounded border border-orange-900/20">
               <Sparkles size={14} className="text-orange-400" />
               <span className="text-zinc-400 font-medium">Crit:</span>
-              <span className="text-white font-bold">{stats?.critChance || 0}%</span>
+              <span className="text-white font-bold">{stats.critChance}%</span>
             </div>
           </div>
         )}

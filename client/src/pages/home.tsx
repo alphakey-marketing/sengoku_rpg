@@ -90,12 +90,12 @@ export default function Home() {
 
   const statCards = [
     { label: "Level", value: player.level, icon: Trophy, color: "text-purple-400" },
-    { label: "HP", value: `${teamStatus?.player?.hp ?? player?.hp ?? 0}/${teamStatus?.player?.maxHp ?? player?.maxHp ?? 100}`, icon: Heart, color: "text-red-400", bonus: (teamStatus?.player as any)?.permStats?.hp || 0 },
-    { label: "ATK", value: teamStatus?.player?.attack || player?.attack || 0, icon: Sword, color: "text-orange-400", bonus: (teamStatus?.player as any)?.permStats?.attack || 0 },
-    { label: "DEF", value: teamStatus?.player?.defense || player?.defense || 0, icon: Shield, color: "text-blue-400", bonus: (teamStatus?.player as any)?.permStats?.defense || 0 },
-    { label: "SPD", value: teamStatus?.player?.speed || player?.speed || 0, icon: Zap, color: "text-cyan-400", bonus: (teamStatus?.player as any)?.permStats?.speed || 0 },
-    { label: "Gold", value: (player?.gold ?? 0).toLocaleString(), icon: Coins, color: "text-yellow-400" },
-    { label: "Rice", value: (player?.rice ?? 0).toLocaleString(), icon: Wheat, color: "text-green-400" },
+    { label: "HP", value: `${player.hp}/${player.maxHp}`, icon: Heart, color: "text-red-400", bonus: (teamStatus?.player as any)?.permStats?.hp || 0 },
+    { label: "ATK", value: teamStatus?.player?.attack || player.attack, icon: Sword, color: "text-orange-400", bonus: (teamStatus?.player as any)?.permStats?.attack || 0 },
+    { label: "DEF", value: teamStatus?.player?.defense || player.defense, icon: Shield, color: "text-blue-400", bonus: (teamStatus?.player as any)?.permStats?.defense || 0 },
+    { label: "SPD", value: teamStatus?.player?.speed || player.speed, icon: Zap, color: "text-cyan-400", bonus: (teamStatus?.player as any)?.permStats?.speed || 0 },
+    { label: "Gold", value: player.gold.toLocaleString(), icon: Coins, color: "text-yellow-400" },
+    { label: "Rice", value: player.rice.toLocaleString(), icon: Wheat, color: "text-green-400" },
   ];
 
   const equippedItems = equipment?.filter(e => e.isEquipped && e.equippedToType === 'player') || [];
@@ -128,7 +128,7 @@ export default function Home() {
       <div className="space-y-8">
         <div className="flex justify-between items-end">
           <div>
-            <h1 className="text-3xl font-display font-bold text-white mb-2" data-testid="text-page-title">Dojo (Home)</h1>
+            <h1 className="text-3xl font-display font-bold text-white mb-2" data-testid="text-page-title">Daimyo's Quarters</h1>
             <p className="text-muted-foreground">Review your current standing and resources.</p>
           </div>
 

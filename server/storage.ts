@@ -39,7 +39,6 @@ export interface IStorage {
 
   getCampaignEvents(userId: string): Promise<CampaignEvent[]>;
   createCampaignEvent(event: any): Promise<CampaignEvent>;
-  triggerCampaignEvent(userId: string, eventKey: string, choice?: string): Promise<{ logs: string[], success: boolean }>;
 
   getQuarters(userId: string): Promise<Quarters | undefined>;
   getStructures(quartersId: number): Promise<Structure[]>;
@@ -200,53 +199,6 @@ export class DatabaseStorage implements IStorage {
   async createCampaignEvent(insertEvent: any): Promise<CampaignEvent> {
     const [event] = await db.insert(campaignEvents).values(insertEvent).returning();
     return event;
-  }
-
-  async triggerCampaignEvent(userId: string, eventKey: string, choice?: string): Promise<{ logs: string[], success: boolean }> {
-    const user = await this.getUser(userId);
-    if (!user) throw new Error("User not found");
-
-    const logs: string[] = [];
-    let success = true;
-
-    if (eventKey === 'onin_war') {
-      if (choice === 'nobunaga') {
-        logs.push("You pledged your sword to Oda Nobunaga.");
-        logs.push("The Oda clan rewards your loyalty with 500 Gold.");
-        await this.updateUser(userId, { gold: user.gold + 500 });
-      } else {
-        logs.push("You chose to remain independent.");
-        logs.push("You gained 50 Rice while scavenging the battlefield.");
-        await this.updateUser(userId, { rice: user.rice + 50 });
-      }
-    } else if (eventKey === 'honnoji') {
-      if (choice === 'rescue') {
-        logs.push("You rushed into the flames of Honno-ji.");
-        logs.push("You managed to save some precious scrolls. Gained 5 Endowment Stones.");
-        await this.updateUser(userId, { endowmentStones: (user.endowmentStones || 0) + 5 });
-      } else {
-        logs.push("You joined the Akechi forces.");
-        logs.push("The betrayal pays well. Gained 1000 Gold.");
-        await this.updateUser(userId, { gold: user.gold + 1000 });
-      }
-    } else if (eventKey === 'yokai_random') {
-      if (choice === 'ally') {
-        logs.push("The fox spirit smiles. You feel a surge of energy.");
-        logs.push("Gained 5 Transformation Stones.");
-        await this.updateUser(userId, { transformationStones: (user.transformationStones || 0) + 5 });
-      } else {
-        logs.push("The fox spirit vanishes into the mist.");
-      }
-    }
-
-    await this.createCampaignEvent({
-      userId,
-      eventKey,
-      choice,
-      outcome: logs.join(" ")
-    });
-
-    return { logs, success };
   }
 
   async getQuarters(userId: string): Promise<Quarters | undefined> {
