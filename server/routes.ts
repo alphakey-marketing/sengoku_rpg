@@ -39,16 +39,17 @@ function rarityFromRandom(): string {
 
 function equipRarityFromRandom(): string {
   const r = Math.random();
-  if (r > 0.999995) return 'primal';      // 0.0005%
-  if (r > 0.99998) return 'celestial';    // 0.0015%
-  if (r > 0.99995) return 'transcendent'; // 0.003%
-  if (r > 0.9998) return 'exotic';        // 0.015%
-  if (r > 0.999) return 'mythic';         // 0.08%
-  if (r > 0.991) return 'gold';           // 0.9%
-  if (r > 0.971) return 'purple';         // 2%
-  if (r > 0.901) return 'blue';           // 7%
-  if (r > 0.701) return 'green';          // 20%
-  return 'white';                         // 70%
+  // Significantly improved rarity rates for normal enemies
+  if (r > 0.99) return 'primal';        // 1%
+  if (r > 0.97) return 'celestial';     // 2%
+  if (r > 0.93) return 'transcendent';  // 4%
+  if (r > 0.85) return 'exotic';        // 8%
+  if (r > 0.70) return 'mythic';        // 15%
+  if (r > 0.50) return 'gold';          // 20%
+  if (r > 0.35) return 'purple';        // 15%
+  if (r > 0.20) return 'blue';          // 15%
+  if (r > 0.10) return 'green';          // 10%
+  return 'white';                       // 10%
 }
 
 function calcEquipExpToNext(level: number): number {
@@ -891,20 +892,9 @@ export async function registerRoutes(
       });
       
       const type = pick(EQUIP_TYPES);
-      const r = Math.random();
-      let rarity = 'white';
       
       // Significantly improved drop rates for field battles
-      if (r > 0.99) rarity = 'primal';
-      else if (r > 0.97) rarity = 'celestial';
-      else if (r > 0.94) rarity = 'transcendent';
-      else if (r > 0.90) rarity = 'exotic';
-      else if (r > 0.80) rarity = 'mythic';
-      else if (r > 0.60) rarity = 'gold';
-      else if (r > 0.45) rarity = 'purple';
-      else if (r > 0.30) rarity = 'blue';
-      else if (r > 0.15) rarity = 'green';
-      
+      const fieldRarity = equipRarityFromRandom();
       const name = pick(type === 'weapon' ? WEAPON_NAMES : type === 'armor' ? ARMOR_NAMES : type === 'accessory' ? ACCESSORY_NAMES : HORSE_GEAR_NAMES);
       
       const statsByRarity: Record<string, { atk: number, def: number, spd: number, critC: number, critD: number }> = {
@@ -913,14 +903,19 @@ export async function registerRoutes(
         blue: { atk: 15, def: 10, spd: 6, critC: 0, critD: 0 },
         purple: { atk: 25, def: 18, spd: 10, critC: 2, critD: 5 },
         gold: { atk: 40, def: 30, spd: 20, critC: 5, critD: 15 },
+        mythic: { atk: 60, def: 45, spd: 25, critC: 5, critD: 10 },
+        exotic: { atk: 100, def: 75, spd: 45, critC: 10, critD: 25 },
+        transcendent: { atk: 200, def: 150, spd: 80, critC: 15, critD: 50 },
+        celestial: { atk: 450, def: 350, spd: 150, critC: 25, critD: 100 },
+        primal: { atk: 1000, def: 800, spd: 300, critC: 50, critD: 250 }
       };
-      const baseStats = statsByRarity[rarity] || statsByRarity.white;
+      const baseStats = statsByRarity[fieldRarity] || statsByRarity.white;
 
       const eq = await storage.createEquipment({
         userId,
         name,
         type,
-        rarity,
+        rarity: fieldRarity,
         level: 1,
         experience: 0,
         expToNext: 100,
