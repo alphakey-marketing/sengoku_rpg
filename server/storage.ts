@@ -102,6 +102,46 @@ export class DatabaseStorage implements IStorage {
     await db.delete(equipment).where(eq(equipment.id, id));
   }
 
+  async recycleEquipmentByRarity(userId: string, rarity: string): Promise<{ count: number; stonesGained: number }> {
+    const rarityStones: Record<string, number> = { 
+      white: 1, green: 2, blue: 5, purple: 10, gold: 25,
+      mythic: 50, exotic: 100, transcendent: 250, celestial: 500, primal: 1000
+    };
+    
+    const value = rarityStones[rarity] || 1;
+    
+    return await db.transaction(async (tx) => {
+      const targets = await tx.select().from(equipment).where(
+        and(
+          eq(equipment.userId, userId),
+          eq(equipment.rarity, rarity),
+          eq(equipment.isEquipped, false)
+        )
+      );
+      
+      if (targets.length === 0) return { count: 0, stonesGained: 0 };
+      
+      const totalStones = targets.length * value;
+      
+      await tx.delete(equipment).where(
+        and(
+          eq(equipment.userId, userId),
+          eq(equipment.rarity, rarity),
+          eq(equipment.isEquipped, false)
+        )
+      );
+      
+      const [user] = await tx.select().from(users).where(eq(users.id, userId));
+      if (user) {
+        await tx.update(users)
+          .set({ upgradeStones: (user.upgradeStones || 0) + totalStones })
+          .where(eq(users.id, userId));
+      }
+      
+      return { count: targets.length, stonesGained: totalStones };
+    });
+  }
+
   async getPets(userId: string): Promise<Pet[]> {
     return await db.select().from(pets).where(eq(pets.userId, userId));
   }

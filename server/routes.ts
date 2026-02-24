@@ -402,30 +402,13 @@ export async function registerRoutes(
     const userId = req.user.claims.sub;
     const { rarity } = req.body;
     
-    const equips = await storage.getEquipment(userId);
-    const toRecycle = equips.filter(e => e.rarity === rarity && !e.isEquipped);
-    
-    if (toRecycle.length === 0) {
-      return res.json({ stonesGained: 0, count: 0 });
+    try {
+      const result = await (storage as any).recycleEquipmentByRarity(userId, rarity);
+      res.json(result);
+    } catch (error) {
+      console.error("Recycle rarity error:", error);
+      res.status(500).json({ message: "Failed to recycle items" });
     }
-    
-    const rarityStones: Record<string, number> = { 
-      white: 1, green: 2, blue: 5, purple: 10, gold: 25,
-      mythic: 50, exotic: 100, transcendent: 250, celestial: 500, primal: 1000
-    };
-    
-    const stonesGained = toRecycle.reduce((sum, eq) => sum + (rarityStones[eq.rarity] || 1), 0);
-    
-    const user = await storage.getUser(userId);
-    if (!user) return res.status(401).json({ message: "Unauthorized" });
-    
-    await storage.updateUser(userId, { upgradeStones: (user.upgradeStones || 0) + stonesGained });
-    
-    for (const eq of toRecycle) {
-      await storage.deleteEquipment(eq.id);
-    }
-    
-    res.json({ stonesGained, count: toRecycle.length });
   });
 
   app.post(api.equipment.upgrade.path, isAuthenticated, async (req: any, res) => {
