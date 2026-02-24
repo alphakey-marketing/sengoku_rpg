@@ -798,6 +798,59 @@ export async function registerRoutes(
       const riceGained = Math.floor(user.level * 5 * (1 + (user.currentLocationId - 1) * 0.5));
       const expGained = 20;
 
+      // Drop logic
+      const equipmentDropped = [];
+      if (Math.random() > 0.7) {
+        const type = pick(EQUIP_TYPES);
+        const name = pick(type === 'weapon' ? WEAPON_NAMES : type === 'armor' ? ARMOR_NAMES : type === 'accessory' ? ACCESSORY_NAMES : HORSE_GEAR_NAMES);
+        const rarity = equipRarityFromRandom();
+        const equip = await storage.createEquipment({
+          userId,
+          name,
+          type,
+          rarity,
+          level: 1,
+          experience: 0,
+          expToNext: 100,
+          attackBonus: 5,
+          defenseBonus: 5,
+          speedBonus: 5,
+          critChance: 5,
+          critDamage: 50,
+          endowmentPoints: 0,
+          isEquipped: false,
+          equippedToId: null,
+          equippedToType: null
+        });
+        equipmentDropped.push(equip);
+      }
+
+      let petDropped = null;
+      if (Math.random() > 0.95) {
+        const petData = pick(PET_NAMES);
+        petDropped = await storage.createPet({
+          userId,
+          name: petData.name,
+          type: "spirit",
+          rarity: equipRarityFromRandom(),
+          level: 1,
+          experience: 0,
+          expToNext: 100,
+          hp: 50,
+          maxHp: 50,
+          attack: 5,
+          defense: 5,
+          speed: 20,
+          skill: petData.skill,
+          isActive: false
+        });
+      }
+
+      let horseDropped = null;
+      if (Math.random() > 0.98) {
+        horseDropped = await storage.createHorse(generateHorse(userId));
+      }
+
       let newExp = user.experience + expGained;
       let newLevel = user.level;
       let newHp = user.maxHp;
@@ -833,6 +886,13 @@ export async function registerRoutes(
       if (Math.random() > 0.95) updates.transformationStones = (user.transformationStones || 0) + 1;
 
       await storage.updateUser(userId, updates);
+      (battleResult as any).victory = true;
+      (battleResult as any).experienceGained = expGained;
+      (battleResult as any).goldGained = goldGained;
+      (battleResult as any).riceGained = riceGained;
+      (battleResult as any).equipmentDropped = equipmentDropped;
+      (battleResult as any).petDropped = petDropped;
+      (battleResult as any).horseDropped = horseDropped;
       (battleResult as any).rewards = { gold: goldGained, rice: riceGained, exp: expGained };
     } else {
       await storage.updateUser(userId, { stamina: user.stamina - 10 });
@@ -856,6 +916,33 @@ export async function registerRoutes(
       const riceGained = Math.floor(user.level * 50 * user.currentLocationId);
       const stones = 5;
       
+      // Drop logic
+      const equipmentDropped = [];
+      for (let i = 0; i < 2; i++) {
+        const type = pick(EQUIP_TYPES);
+        const name = pick(type === 'weapon' ? WEAPON_NAMES : type === 'armor' ? ARMOR_NAMES : type === 'accessory' ? ACCESSORY_NAMES : HORSE_GEAR_NAMES);
+        const rarity = equipRarityFromRandom();
+        const equip = await storage.createEquipment({
+          userId,
+          name,
+          type,
+          rarity,
+          level: 1,
+          experience: 0,
+          expToNext: 100,
+          attackBonus: 10,
+          defenseBonus: 10,
+          speedBonus: 10,
+          critChance: 5,
+          critDamage: 50,
+          endowmentPoints: 0,
+          isEquipped: false,
+          equippedToId: null,
+          equippedToType: null
+        });
+        equipmentDropped.push(equip);
+      }
+
       const updates: any = {
         gold: user.gold + goldGained,
         rice: user.rice + riceGained,
@@ -866,6 +953,11 @@ export async function registerRoutes(
       if (user.currentLocationId < 4) updates.currentLocationId = user.currentLocationId + 1;
 
       await storage.updateUser(userId, updates);
+      (battleResult as any).victory = true;
+      (battleResult as any).experienceGained = 100;
+      (battleResult as any).goldGained = goldGained;
+      (battleResult as any).riceGained = riceGained;
+      (battleResult as any).equipmentDropped = equipmentDropped;
       (battleResult as any).rewards = { gold: goldGained, rice: riceGained, stones };
     } else {
       await storage.updateUser(userId, { stamina: user.stamina - 30 });
@@ -886,8 +978,9 @@ export async function registerRoutes(
 
     if (battleResult.victory) {
       const sb = SPECIAL_BOSSES.find(s => s.name === enemy.name);
+      let transformationDropped = null;
       if (sb) {
-        await storage.createTransformation({
+        transformationDropped = await storage.createTransformation({
           userId,
           name: sb.transformName,
           level: 1,
@@ -903,6 +996,10 @@ export async function registerRoutes(
         });
       }
       await storage.updateUser(userId, { stamina: user.stamina - 50 });
+      (battleResult as any).victory = true;
+      (battleResult as any).experienceGained = 500;
+      (battleResult as any).goldGained = 5000;
+      (battleResult as any).transformationDropped = transformationDropped;
       (battleResult as any).rewards = { transform: sb?.transformName };
     } else {
       await storage.updateUser(userId, { stamina: user.stamina - 50 });
