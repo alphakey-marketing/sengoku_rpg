@@ -71,7 +71,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createCompanion(companion: InsertCompanion): Promise<Companion> {
-    const [comp] = await db.insert(companions).values(companion as any).returning();
+    const [comp] = await db.insert(companions).values(companion).returning();
     return comp;
   }
 
@@ -89,7 +89,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createEquipment(equip: InsertEquipment): Promise<Equipment> {
-    const [eqp] = await db.insert(equipment).values(equip as any).returning();
+    const [eqp] = await db.insert(equipment).values(equip).returning();
     return eqp;
   }
 
@@ -147,7 +147,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createPet(pet: InsertPet): Promise<Pet> {
-    const [p] = await db.insert(pets).values(pet as any).returning();
+    const [p] = await db.insert(pets).values(pet).returning();
     return p;
   }
 
@@ -165,7 +165,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createHorse(horse: InsertHorse): Promise<Horse> {
-    const [h] = await db.insert(horses).values(horse as any).returning();
+    const [h] = await db.insert(horses).values(horse).returning();
     return h;
   }
 
