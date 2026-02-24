@@ -4,7 +4,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { Coins, Wheat, Home } from "lucide-react";
+import { Coins, Wheat, Building2 } from "lucide-react";
 import { MainLayout } from "@/components/layout/main-layout";
 import { usePlayer } from "@/hooks/use-game";
 import { useEffect, useState } from "react";
@@ -80,7 +80,7 @@ export default function QuartersPage() {
       <div className="p-4 space-y-4">
         <div className="flex justify-between items-center">
           <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Home className="w-6 h-6" /> Daimyo's Quarters
+            <Building2 className="w-6 h-6" /> Daimyo's Quarters
           </h1>
           <div className="flex gap-4">
             <div className="flex items-center gap-2 bg-yellow-900/20 border border-yellow-700/30 px-4 py-2 rounded-lg">
