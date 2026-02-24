@@ -290,7 +290,7 @@ export default function MapPage() {
                 </div>
                 <Slider
                   defaultValue={[1]}
-                  max={100}
+                  max={10}
                   min={1}
                   step={1}
                   onValueChange={(val) => setPreBattleInfo({ ...preBattleInfo, repeatCount: val[0] })}
@@ -308,21 +308,21 @@ export default function MapPage() {
                   <Button 
                     variant="outline" 
                     size="sm" 
-                    onClick={() => setPreBattleInfo({ ...preBattleInfo, repeatCount: 100 })}
+                    onClick={() => setPreBattleInfo({ ...preBattleInfo, repeatCount: 10 })}
                     className="text-[10px] h-8 px-2 font-bold text-amber-500 border-amber-900/30 bg-amber-900/10"
                   >
-                    MAX (100x)
+                    MAX (10x)
                   </Button>
                   <Button 
                     variant="outline" 
                     size="sm" 
-                    onClick={() => setPreBattleInfo({ ...preBattleInfo, repeatCount: Math.min(100, preBattleInfo.repeatCount + 1) })}
+                    onClick={() => setPreBattleInfo({ ...preBattleInfo, repeatCount: Math.min(10, preBattleInfo.repeatCount + 1) })}
                     className="h-8 w-8 p-0"
                   >
                     +
                   </Button>
                 </div>
-                <p className="text-[10px] text-zinc-500 text-center mt-2">Auto-repeat up to 100 skirmishes for multiplied rewards.</p>
+                <p className="text-[10px] text-zinc-500 text-center mt-2">Auto-repeat up to 10 skirmishes for multiplied rewards.</p>
               </div>
             )}
           </div>
