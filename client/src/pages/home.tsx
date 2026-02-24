@@ -90,7 +90,8 @@ export default function Home() {
     }
   };
 
-  const expPercent = player.level > 0 ? Math.min(100, (player.experience / (player.level * 100)) * 100) : 0;
+  const expToNext = Math.floor(100 * Math.pow(1.25, (player.level || 1) - 1));
+  const expPercent = player.level > 0 ? Math.min(100, (player.experience / expToNext) * 100) : 0;
 
   return (
     <MainLayout>
@@ -128,7 +129,7 @@ export default function Home() {
               <div className="mt-2 w-48">
                 <div className="flex justify-between text-xs text-zinc-400 mb-1">
                   <span>EXP</span>
-                  <span>{player.experience} / {player.level * 100}</span>
+                  <span>{player.experience} / {expToNext}</span>
                 </div>
                 <Progress value={expPercent} className="h-2" />
               </div>

@@ -818,8 +818,8 @@ export async function registerRoutes(
 
       if (victory) {
         // Update user stats with level up logic
-        const expGained = Math.floor(Math.random() * 20) + 10 + enemy.level * 2;
-        const goldGained = Math.floor(Math.random() * 10) + 5 + enemy.level;
+        const expGained = Math.floor(Math.random() * 50) + 30 + enemy.level * 5;
+        const goldGained = Math.floor(Math.random() * 20) + 10 + enemy.level * 2;
         totalExpGained += expGained;
         totalGoldGained += goldGained;
         
@@ -830,8 +830,8 @@ export async function registerRoutes(
         let currentDef = user.defense;
         let currentSpd = user.speed;
 
-        while (currentExp >= Math.floor(100 * Math.pow(1.5, currentLevel - 1))) {
-          currentExp -= Math.floor(100 * Math.pow(1.5, currentLevel - 1));
+        while (currentExp >= Math.floor(100 * Math.pow(1.25, currentLevel - 1))) {
+          currentExp -= Math.floor(100 * Math.pow(1.25, currentLevel - 1));
           currentLevel++;
           currentMaxHp += 20;
           currentAtk += 5;
@@ -1023,8 +1023,8 @@ export async function registerRoutes(
       let currentDef = user.defense;
       let currentSpd = user.speed;
 
-      while (currentExp >= Math.floor(100 * Math.pow(1.5, currentLevel - 1))) {
-        currentExp -= Math.floor(100 * Math.pow(1.5, currentLevel - 1));
+      while (currentExp >= Math.floor(100 * Math.pow(1.25, currentLevel - 1))) {
+        currentExp -= Math.floor(100 * Math.pow(1.25, currentLevel - 1));
         currentLevel++;
         currentMaxHp += 20;
         currentAtk += 5;
@@ -1131,8 +1131,8 @@ export async function registerRoutes(
       let currentDef = user.defense;
       let currentSpd = user.speed;
 
-      while (currentExp >= Math.floor(100 * Math.pow(1.5, currentLevel - 1))) {
-        currentExp -= Math.floor(100 * Math.pow(1.5, currentLevel - 1));
+      while (currentExp >= Math.floor(100 * Math.pow(1.25, currentLevel - 1))) {
+        currentExp -= Math.floor(100 * Math.pow(1.25, currentLevel - 1));
         currentLevel++;
         currentMaxHp += 20;
         currentAtk += 5;
