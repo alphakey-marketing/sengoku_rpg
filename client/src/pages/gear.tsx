@@ -1,11 +1,23 @@
-import { usePlayerFullStatus, useEquipment } from "@/hooks/use-game";
+import { usePlayerFullStatus, useEquipment, useEquip, useUnequip } from "@/hooks/use-game";
 import { MainLayout } from "@/components/layout/main-layout";
-import { Shield, Sword, Zap, Sparkles } from "lucide-react";
+import { Shield, Sword, Zap, Sparkles, Plus, Package } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 export default function GearPage() {
   const { data: teamStatus, isLoading } = usePlayerFullStatus();
   const { data: equipment } = useEquipment();
+  const { mutate: equipItem, isPending: equipPending } = useEquip();
+  const { mutate: unequipItem, isPending: unequipPending } = useUnequip();
+
+  const [selectedSlot, setSelectedSlot] = useState<{ type: string, targetId: number | null, targetType: string } | null>(null);
 
   if (isLoading) {
     return (
@@ -40,7 +52,7 @@ export default function GearPage() {
     }
   };
 
-  const renderGearSection = (title: string, entityGear: any[], stats?: any) => (
+  const renderGearSection = (title: string, entityGear: any[], stats?: any, targetId: number | null = null, targetType: string = 'player') => (
     <div className="space-y-4">
       <div className="flex flex-col md:flex-row md:items-end justify-between border-b border-border/50 pb-2 gap-4">
         <h3 className="text-xl font-display font-semibold">{title}</h3>
@@ -78,7 +90,7 @@ export default function GearPage() {
           return (
             <div
               key={type}
-              className={`rounded-lg border p-4 bg-card bg-washi flex items-center gap-3 ${item ? getRarityColor(item.rarity) : 'border-border/30 opacity-50'}`}
+              className={`rounded-lg border p-4 bg-card bg-washi flex items-center gap-3 relative group ${item ? getRarityColor(item.rarity) : 'border-border/30 opacity-50'}`}
             >
               <div className="p-2 bg-background/50 rounded border border-border/50 shrink-0">
                 <TypeIcon size={20} />
@@ -99,10 +111,32 @@ export default function GearPage() {
                     <div className="mt-1.5 mb-2">
                       <Progress value={(item.experience / item.expToNext) * 100} className="h-1" />
                     </div>
-                    <a href="/equipment" className="text-[10px] text-accent hover:underline font-bold uppercase tracking-wider">Change Equipment</a>
+                    <div className="flex gap-2">
+                      <button 
+                        onClick={() => setSelectedSlot({ type, targetId, targetType })}
+                        className="text-[10px] text-accent hover:underline font-bold uppercase tracking-wider"
+                      >
+                        Change
+                      </button>
+                      <button 
+                        onClick={() => unequipItem(item.id)}
+                        disabled={unequipPending}
+                        className="text-[10px] text-destructive hover:underline font-bold uppercase tracking-wider"
+                      >
+                        Remove
+                      </button>
+                    </div>
                   </>
                 ) : (
-                  <p className="text-sm text-zinc-500 italic">No {typeLabel} equipped</p>
+                  <div className="flex flex-col items-start">
+                    <p className="text-sm text-zinc-500 italic mb-1">Empty Slot</p>
+                    <button 
+                      onClick={() => setSelectedSlot({ type, targetId, targetType })}
+                      className="text-[10px] text-accent hover:underline font-bold uppercase tracking-wider flex items-center gap-1"
+                    >
+                      <Plus size={10} /> Equip {typeLabel}
+                    </button>
+                  </div>
                 )}
               </div>
             </div>
@@ -112,15 +146,25 @@ export default function GearPage() {
     </div>
   );
 
+  const inventoryItems = selectedSlot ? equipment?.filter(e => e.type === selectedSlot.type && !e.isEquipped) : [];
+
   return (
     <MainLayout>
       <div className="space-y-12">
-        <div>
-          <h1 className="text-3xl font-display font-bold text-white mb-2">Battle Formations</h1>
-          <p className="text-muted-foreground">Inspect the equipment of your entire war council.</p>
+        <div className="flex justify-between items-end">
+          <div>
+            <h1 className="text-3xl font-display font-bold text-white mb-2">Battle Formations</h1>
+            <p className="text-muted-foreground">Manage equipment for your entire war council in one place.</p>
+          </div>
+          <Button variant="outline" asChild size="sm" className="gap-2">
+            <a href="/equipment">
+              <Package size={16} />
+              Open Armory
+            </a>
+          </Button>
         </div>
 
-        {renderGearSection("Main Character (Daimyo)", equipment?.filter(e => e.isEquipped && e.equippedToType === 'player') || [], teamStatus?.player)}
+        {renderGearSection("Main Character (Daimyo)", equipment?.filter(e => e.isEquipped && e.equippedToType === 'player') || [], teamStatus?.player, null, 'player')}
 
         {teamStatus?.companions?.map((companion: any) => {
           const companionGear = equipment?.filter(e => 
@@ -131,7 +175,7 @@ export default function GearPage() {
           
           return (
             <div key={companion.id}>
-               {renderGearSection(companion.name, companionGear, companion)}
+               {renderGearSection(companion.name, companionGear, companion, companion.id, 'companion')}
             </div>
           );
         })}
@@ -142,6 +186,50 @@ export default function GearPage() {
           </div>
         )}
       </div>
+
+      <Dialog open={selectedSlot !== null} onOpenChange={(open) => !open && setSelectedSlot(null)}>
+        <DialogContent className="bg-card border-border text-foreground sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="font-display text-xl">
+              Change {selectedSlot ? (selectedSlot.type === 'horse_gear' ? 'Horse Gear' : selectedSlot.type.charAt(0).toUpperCase() + selectedSlot.type.slice(1)) : 'Gear'}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <div className="space-y-2 max-h-64 overflow-y-auto pr-2 custom-scrollbar">
+              {inventoryItems?.length === 0 ? (
+                <div className="text-center py-8">
+                  <Package className="w-12 h-12 mx-auto text-muted-foreground mb-2 opacity-50" />
+                  <p className="text-sm text-muted-foreground italic">No available {selectedSlot?.type.replace('_', ' ')} in inventory.</p>
+                </div>
+              ) : (
+                inventoryItems?.map(item => (
+                  <div key={item.id} className={`p-3 rounded-lg border flex justify-between items-center ${getRarityColor(item.rarity)}`}>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-bold text-sm truncate">{item.name}</p>
+                      <p className="text-[10px] opacity-70">Lv{item.level} • {item.rarity} {item.type.replace('_', ' ')}</p>
+                    </div>
+                    <Button 
+                      size="sm" 
+                      onClick={() => {
+                        equipItem({ 
+                          equipmentId: item.id, 
+                          equippedToId: selectedSlot?.targetId ?? null, 
+                          equippedToType: selectedSlot?.targetType ?? 'player' 
+                        });
+                        setSelectedSlot(null);
+                      }}
+                      disabled={equipPending}
+                      className="h-8 text-[10px] px-3 font-bold uppercase tracking-wider"
+                    >
+                      Equip
+                    </Button>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </MainLayout>
   );
 }

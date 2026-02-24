@@ -355,6 +355,13 @@ export default function MapPage() {
               
               <p className="text-xs text-center text-zinc-500 italic">"The wind whispers of blood and iron. Shall you draw your steel?"</p>
 
+              <div className="p-4 bg-muted/20 border border-border/50 rounded-lg text-center">
+                <p className="text-xs text-muted-foreground mb-2">Need to change gear?</p>
+                <Button variant="outline" size="sm" asChild className="h-8 text-[10px] font-bold uppercase tracking-wider">
+                  <a href="/gear">Go to Battle Formations</a>
+                </Button>
+              </div>
+
               {preBattleInfo?.type === 'field' && (
                 <div className="space-y-2 border-t border-border/50 pt-4">
                   <div className="flex justify-between items-center">
@@ -402,42 +409,13 @@ export default function MapPage() {
 
             <TabsContent value="gear" className="flex-1 overflow-y-auto py-4">
               <div className="space-y-4">
-                <h4 className="text-sm font-bold text-white border-b border-border/50 pb-1">Equipped Gear</h4>
-                <div className="grid grid-cols-1 gap-2">
-                  {equipment?.filter(e => e.isEquipped && e.equippedToType === 'player').length === 0 && (
-                    <p className="text-xs text-muted-foreground text-center py-4">No gear equipped</p>
-                  )}
-                  {equipment?.filter(e => e.isEquipped && e.equippedToType === 'player').map(item => (
-                    <div key={item.id} className="bg-muted/20 p-2 rounded flex justify-between items-center border border-border/30">
-                      <div className="flex items-center gap-2">
-                        <Package size={14} className="text-primary" />
-                        <div>
-                          <p className="text-xs font-bold text-white">{item.name}</p>
-                          <p className="text-[10px] text-muted-foreground uppercase">{item.rarity} {item.type}</p>
-                        </div>
-                      </div>
-                      <Button variant="ghost" size="sm" onClick={() => handleUnequip(item.id)} className="h-7 text-[10px] px-2 text-destructive">Unequip</Button>
-                    </div>
-                  ))}
-                </div>
-
-                <h4 className="text-sm font-bold text-white border-b border-border/50 pb-1 mt-4">Inventory</h4>
-                <div className="grid grid-cols-1 gap-2 max-h-48 overflow-y-auto custom-scrollbar pr-2">
-                  {equipment?.filter(e => !e.isEquipped).length === 0 && (
-                    <p className="text-xs text-muted-foreground text-center py-4">Inventory empty</p>
-                  )}
-                  {equipment?.filter(e => !e.isEquipped).map(item => (
-                    <div key={item.id} className="bg-muted/10 p-2 rounded flex justify-between items-center border border-border/20">
-                      <div className="flex items-center gap-2">
-                        <Package size={14} className="text-zinc-500" />
-                        <div>
-                          <p className="text-xs font-medium text-zinc-300">{item.name}</p>
-                          <p className="text-[10px] text-muted-foreground uppercase">{item.rarity} {item.type}</p>
-                        </div>
-                      </div>
-                      <Button variant="outline" size="sm" onClick={() => handleEquip(item.id)} className="h-7 text-[10px] px-2">Equip</Button>
-                    </div>
-                  ))}
+                <div className="p-8 text-center bg-muted/10 border border-dashed border-border/50 rounded-lg">
+                  <Package className="w-12 h-12 mx-auto text-muted-foreground mb-4 opacity-50" />
+                  <h3 className="text-sm font-bold text-white mb-2">Armory Moved</h3>
+                  <p className="text-xs text-muted-foreground mb-4">You can now manage all your companions' equipment in the main menu under Battle Formations.</p>
+                  <Button variant="outline" size="sm" asChild className="h-8 text-[10px] font-bold uppercase tracking-wider">
+                    <a href="/gear">Go to Battle Formations</a>
+                  </Button>
                 </div>
               </div>
             </TabsContent>
