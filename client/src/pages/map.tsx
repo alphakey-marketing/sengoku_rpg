@@ -54,7 +54,7 @@ const LOCATIONS = [
     name: "Mount Fuji Pass", 
     desc: "High altitude slopes where ancient spirits and frozen horrors await.", 
     level: 70,
-    image: "https://images.unsplash.com/photo-1490806678504-03004335a914?q=80&w=800&auto=format&fit=crop",
+    image: "https://images.unsplash.com/photo-1549692520-acc6669e2f0c?q=80&w=800&auto=format&fit=crop",
     theme: "border-cyan-900/30 shadow-[0_0_15px_rgba(6,182,212,0.1)]"
   },
   { 
