@@ -41,8 +41,8 @@ export default function StablePage() {
     <MainLayout>
       <div className="space-y-6">
         <div className="border-b border-border/50 pb-4">
-          <h1 className="text-3xl font-display font-bold text-white mb-2" data-testid="text-page-title">War Mounts</h1>
-          <p className="text-muted-foreground">Manage your war horses and transformation forms. Only one horse can be active at a time.</p>
+          <h1 className="text-3xl font-display font-bold text-white mb-2" data-testid="text-page-title">War Stable</h1>
+          <p className="text-muted-foreground">Manage your war horses, spirit pets, and transformation forms. Only one horse and one pet can be active at a time.</p>
         </div>
 
         <Tabs defaultValue="horses" className="w-full">
