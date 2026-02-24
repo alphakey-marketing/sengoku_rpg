@@ -324,19 +324,19 @@ export default function MapPage() {
                     <div className="grid grid-cols-2 gap-x-2 text-xs">
                       <span className="text-zinc-500">HP:</span> 
                       <span className="text-red-400">
-                        {Math.floor(((playerStatus?.player?.hp || 0) + (playerStatus?.companions?.reduce((sum, c) => sum + (c.hp || 0), 0) || 0)))}
+                        {Math.floor(((playerStatus?.stats?.player?.hp || 0) + (playerStatus?.stats?.companions?.reduce((sum: any, c: any) => sum + (c.hp || 0), 0) || 0)))}
                       </span>
                       <span className="text-zinc-500">ATK:</span> 
                       <span className="text-orange-400">
-                        {Math.floor(((playerStatus?.player?.attack || 0) + (playerStatus?.companions?.reduce((sum, c) => sum + (c.attack || 0), 0) || 0)))}
+                        {Math.floor(((playerStatus?.stats?.player?.attack || 0) + (playerStatus?.stats?.companions?.reduce((sum: any, c: any) => sum + (c.attack || 0), 0) || 0)))}
                       </span>
                       <span className="text-zinc-500">DEF:</span> 
                       <span className="text-blue-400">
-                        {Math.floor(((playerStatus?.player?.defense || 0) + (playerStatus?.companions?.reduce((sum, c) => sum + (c.defense || 0), 0) || 0)))}
+                        {Math.floor(((playerStatus?.stats?.player?.defense || 0) + (playerStatus?.stats?.companions?.reduce((sum: any, c: any) => sum + (c.defense || 0), 0) || 0)))}
                       </span>
                       <span className="text-zinc-500">SPD:</span> 
                       <span className="text-cyan-400">
-                        {Math.floor(((playerStatus?.player?.speed || 0) + (playerStatus?.companions?.reduce((sum, c) => sum + (c.speed || 0), 0) || 0)))}
+                        {Math.floor(((playerStatus?.stats?.player?.speed || 0) + (playerStatus?.stats?.companions?.reduce((sum: any, c: any) => sum + (c.speed || 0), 0) || 0)))}
                       </span>
                     </div>
                   </div>

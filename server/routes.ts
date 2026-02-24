@@ -358,6 +358,22 @@ export async function registerRoutes(
     res.json(user);
   });
 
+  app.get(api.player.fullStatus.path, isAuthenticated, async (req: any, res) => {
+    const userId = req.user.claims.sub;
+    const user = await storage.getUser(userId);
+    const stats = await getPlayerTeamStats(userId);
+    const comps = await storage.getCompanions(userId);
+    const equips = await storage.getEquipment(userId);
+    const partyCompanions = comps.filter(c => c.isInParty);
+
+    res.json({
+      player: user,
+      stats: stats,
+      companions: partyCompanions,
+      equipment: equips
+    });
+  });
+
   app.get(api.companions.list.path, isAuthenticated, async (req: any, res) => {
     const userId = req.user.claims.sub;
     res.json(await storage.getCompanions(userId));
