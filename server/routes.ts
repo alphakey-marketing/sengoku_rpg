@@ -228,18 +228,24 @@ async function getPlayerTeamStats(userId: string) {
 }
 
 function generateEnemyStats(type: 'field' | 'boss' | 'special', playerLevel: number, locationId: number = 1) {
-  const locationMultiplier = 1 + (locationId - 1) * 0.5;
+  const locationMultiplier = 1 + (locationId - 1) * 0.75; // Increased scaling from 0.5 to 0.75
   if (type === 'field') {
     const name = pick(YOKAI_NAMES);
     const lvl = Math.max(1, playerLevel + Math.floor(Math.random() * 3) - 1);
+    // Field enemies now scale much more aggressively in later maps
+    const baseHp = lvl * 30 + 50;
+    const baseAtk = lvl * 8 + 10;
+    const baseDef = lvl * 5 + 5;
+    const baseSpd = lvl * 4 + 8;
+
     return {
       name,
       level: lvl,
-      hp: Math.floor((lvl * 30 + 50) * locationMultiplier),
-      maxHp: Math.floor((lvl * 30 + 50) * locationMultiplier),
-      attack: Math.floor((lvl * 8 + 10) * locationMultiplier),
-      defense: Math.floor((lvl * 5 + 5) * locationMultiplier),
-      speed: Math.floor((lvl * 4 + 8) * locationMultiplier),
+      hp: Math.floor(baseHp * Math.pow(locationMultiplier, 1.2)),
+      maxHp: Math.floor(baseHp * Math.pow(locationMultiplier, 1.2)),
+      attack: Math.floor(baseAtk * Math.pow(locationMultiplier, 1.1)),
+      defense: Math.floor(baseDef * Math.pow(locationMultiplier, 1.1)),
+      speed: Math.floor(baseSpd * locationMultiplier),
       skills: ["Scratch", "Bite"],
     };
   } else if (type === 'boss') {
