@@ -178,15 +178,10 @@ export const campaignEventsRelations = relations(campaignEvents, ({ one }) => ({
 }));
 
 export const insertCompanionSchema = createInsertSchema(companions).omit({ id: true, createdAt: true });
-
 export const insertEquipmentSchema = createInsertSchema(equipment).omit({ id: true, createdAt: true });
-
 export const insertPetSchema = createInsertSchema(pets).omit({ id: true, createdAt: true });
-
 export const insertHorseSchema = createInsertSchema(horses).omit({ id: true, createdAt: true });
-
 export const insertTransformationSchema = createInsertSchema(transformations).omit({ id: true, createdAt: true });
-
 export const insertCampaignEventSchema = createInsertSchema(campaignEvents).omit({ id: true });
 
 export type User = typeof users.$inferSelect;
