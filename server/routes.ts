@@ -29,16 +29,16 @@ const HORSE_NAMES = ["Kiso Horse (木曽馬)", "Misaki Pony (御崎馬)", "Tokar
 function pick<T>(arr: T[]): T { return arr[Math.floor(Math.random() * arr.length)]; }
 
 const HORSE_RARITY_STATS: Record<string, { speed: number, atk: number, def: number }> = {
-  white: { speed: 5, atk: 2, def: 2 },
-  green: { speed: 10, atk: 5, def: 5 },
-  blue: { speed: 15, atk: 8, def: 8 },
-  purple: { speed: 20, atk: 12, def: 12 },
-  gold: { speed: 30, atk: 20, def: 20 },
-  mythic: { speed: 45, atk: 30, def: 30 },
-  exotic: { speed: 65, atk: 45, def: 45 },
-  transcendent: { speed: 90, atk: 65, def: 65 },
-  celestial: { speed: 120, atk: 90, def: 90 },
-  primal: { speed: 160, atk: 125, def: 125 }
+  white: { speed: 10, atk: 5, def: 5 },
+  green: { speed: 20, atk: 15, def: 15 },
+  blue: { speed: 35, atk: 30, def: 30 },
+  purple: { speed: 60, atk: 50, def: 50 },
+  gold: { speed: 100, atk: 85, def: 85 },
+  mythic: { speed: 160, atk: 140, def: 140 },
+  exotic: { speed: 240, atk: 210, def: 210 },
+  transcendent: { speed: 340, atk: 300, def: 300 },
+  celestial: { speed: 460, atk: 410, def: 410 },
+  primal: { speed: 600, atk: 540, def: 540 }
 };
 
 function generateHorse(userId: string, locationId: number = 1) {
@@ -57,16 +57,16 @@ function generateHorse(userId: string, locationId: number = 1) {
     else rarity = 'white';
 
   const statsByRarity: Record<string, { speed: number, atk: number, def: number }> = {
-    white: { speed: 5, atk: 2, def: 2 },
-    green: { atk: 5, def: 3, speed: 10 },
-    blue: { atk: 10, def: 8, speed: 15 },
-    purple: { atk: 15, def: 12, speed: 20 },
-    gold: { speed: 30, atk: 20, def: 20 },
-    mythic: { speed: 45, atk: 30, def: 30 },
-    exotic: { speed: 65, atk: 45, def: 45 },
-    transcendent: { speed: 90, atk: 65, def: 65 },
-    celestial: { speed: 120, atk: 90, def: 90 },
-    primal: { speed: 160, atk: 125, def: 125 }
+    white: { speed: 10, atk: 5, def: 5 },
+    green: { speed: 20, atk: 15, def: 15 },
+    blue: { speed: 35, atk: 30, def: 30 },
+    purple: { speed: 60, atk: 50, def: 50 },
+    gold: { speed: 100, atk: 85, def: 85 },
+    mythic: { speed: 160, atk: 140, def: 140 },
+    exotic: { speed: 240, atk: 210, def: 210 },
+    transcendent: { speed: 340, atk: 300, def: 300 },
+    celestial: { speed: 460, atk: 410, def: 410 },
+    primal: { speed: 600, atk: 540, def: 540 }
   };
 
   const stats = statsByRarity[rarity] || statsByRarity.white;
