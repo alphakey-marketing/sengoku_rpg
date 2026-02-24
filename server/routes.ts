@@ -24,6 +24,10 @@ const PET_NAMES = [
   { name: "War Hawk (鷹)", skill: "Scout (偵察)" },
   { name: "Shadow Cat (影猫)", skill: "Poison (毒)" },
 ];
+const HORSE_NAMES = ["Kiso Horse (木曽馬)", "Misaki Pony (御崎馬)", "Tokara Stallion (トカラ馬)"];
+
+function pick<T>(arr: T[]): T { return arr[Math.floor(Math.random() * arr.length)]; }
+
 const HORSE_RARITY_STATS: Record<string, { speed: number, atk: number, def: number }> = {
   white: { speed: 5, atk: 2, def: 2 },
   green: { speed: 10, atk: 5, def: 5 },
