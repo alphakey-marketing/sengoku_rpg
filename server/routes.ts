@@ -576,6 +576,9 @@ export async function registerRoutes(
     const eq = equips.find(e => e.id === equipId);
     if (!eq) return res.status(404).json({ message: "Equipment not found" });
 
+    const MAX_LEVEL = 20;
+    if (eq.level >= MAX_LEVEL) return res.status(400).json({ message: "Equipment already at max level" });
+
     await storage.updateUser(userId, { upgradeStones: user.upgradeStones - upgradeAmount });
 
     const expPerStone = 50;

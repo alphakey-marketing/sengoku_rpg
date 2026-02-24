@@ -304,7 +304,7 @@ export default function EquipmentPage() {
                     <div className="flex items-center justify-between text-xs text-zinc-400 mb-1">
                       <div className="flex items-center gap-1">
                         <ArrowUp size={12} />
-                        <span>Lv {item.level}</span>
+                        <span>Lv {item.level} / 20</span>
                       </div>
                       <span>{item.experience}/{item.expToNext} EXP</span>
                     </div>
@@ -362,7 +362,16 @@ export default function EquipmentPage() {
                         variant="outline"
                         className="border-purple-900/30 text-purple-400 h-7 text-xs px-2 hover:bg-purple-900/20"
                         onClick={() => {
-                          const amount = prompt("How many stones to use?", "1");
+                          const MAX_LEVEL = 20;
+                          if (item.level >= MAX_LEVEL) {
+                            toast({
+                              title: "Max Level Reached",
+                              description: "This item is already at the maximum level (20).",
+                              variant: "destructive",
+                            });
+                            return;
+                          }
+                          const amount = prompt(`How many stones to use? (Max Level: ${MAX_LEVEL})`, "1");
                           if (amount) {
                             const n = parseInt(amount);
                             if (!isNaN(n) && n > 0) {
