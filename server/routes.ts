@@ -29,6 +29,7 @@ const HORSE_NAMES = ["Kiso Horse (木曽馬)", "Misaki Pony (御崎馬)", "Tokar
 function pick<T>(arr: T[]): T { return arr[Math.floor(Math.random() * arr.length)]; }
 
 const HORSE_RARITY_STATS: Record<string, { speed: number, atk: number, def: number }> = {
+  common: { speed: 2, atk: 1, def: 1 },
   white: { speed: 5, atk: 2, def: 2 },
   green: { speed: 10, atk: 5, def: 5 },
   blue: { speed: 15, atk: 8, def: 8 },
@@ -49,7 +50,7 @@ function generateHorse(userId: string, locationId: number = 1) {
   // Dynamic rarity scaling for horses based on location
   const bonus = isChina ? (locationId - 100) * 0.05 + 0.1 : (locationId - 1) * 0.02;
   
-  let rarity = 'white';
+  let rarity = 'common';
   if (r > 0.99 - bonus/2) rarity = 'primal';
   else if (r > 0.98 - bonus) rarity = 'celestial';
   else if (r > 0.97 - bonus) rarity = 'transcendent';
@@ -59,8 +60,10 @@ function generateHorse(userId: string, locationId: number = 1) {
   else if (r > 0.55 - bonus) rarity = 'purple';
   else if (r > 0.35 - bonus) rarity = 'blue';
   else if (r > 0.15 - bonus) rarity = 'green';
+  else if (r > 0.05 - bonus) rarity = 'white';
 
   const statsByRarity: Record<string, { speed: number, atk: number, def: number }> = {
+    common: { speed: 2, atk: 1, def: 1 },
     white: { speed: 5, atk: 2, def: 2 },
     green: { atk: 5, def: 3, speed: 10 },
     blue: { atk: 10, def: 8, speed: 15 },
@@ -825,7 +828,7 @@ export async function registerRoutes(
       return res.status(400).json({ message: "All horses must be same rarity" });
     }
 
-    const rarityOrder = ['white', 'green', 'blue', 'purple', 'gold', 'mythic', 'exotic', 'transcendent', 'celestial', 'primal'];
+    const rarityOrder = ['common', 'white', 'green', 'blue', 'purple', 'gold', 'mythic', 'exotic', 'transcendent', 'celestial', 'primal'];
     const currentIndex = rarityOrder.indexOf(baseRarity);
     
     const upgraded = Math.random() < 0.5;

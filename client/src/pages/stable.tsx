@@ -289,6 +289,7 @@ export default function StablePage() {
                             horse.rarity === 'purple' ? 'text-purple-500 border-purple-500 bg-purple-500/10' :
                             horse.rarity === 'blue' ? 'text-blue-500 border-blue-500 bg-blue-500/10' :
                             horse.rarity === 'green' ? 'text-green-500 border-green-500 bg-green-500/10' :
+                            horse.rarity === 'white' ? 'text-zinc-300 border-zinc-500 bg-zinc-700/50' :
                             'text-zinc-400 border-zinc-700 bg-zinc-800/50'
                           }`}>
                             {horse.rarity}
