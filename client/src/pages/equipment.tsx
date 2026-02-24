@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dialog";
 
 export default function EquipmentPage() {
+  const { toast } = useToast();
   const { data: player } = usePlayer();
   const { data: equipment, isLoading: eqLoading } = useEquipment();
   const { data: companions } = useCompanions();
