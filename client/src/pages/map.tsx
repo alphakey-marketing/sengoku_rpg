@@ -85,37 +85,45 @@ export default function MapPage() {
     // matching the server's logic for the preview.
     const loc = LOCATIONS.find(l => l.id === locationId);
     const pLevel = playerStatus?.player.level || 1;
+    const locationMultiplier = 1 + (locationId - 1) * 0.75;
     
     let enemyPreview: any;
     if (type === 'field') {
       const lvl = Math.max(1, pLevel + 1);
+      const baseHp = lvl * 30 + 50;
+      const baseAtk = lvl * 8 + 10;
+      const baseDef = lvl * 5 + 5;
+      const baseSpd = lvl * 4 + 8;
+
       enemyPreview = {
         name: "Yokai Scout",
         level: lvl,
-        hp: lvl * 30 + 50,
-        attack: lvl * 8 + 10,
-        defense: lvl * 5 + 5,
-        speed: lvl * 4 + 8,
+        hp: Math.floor(baseHp * Math.pow(locationMultiplier, 1.2)),
+        attack: Math.floor(baseAtk * Math.pow(locationMultiplier, 1.1)),
+        defense: Math.floor(baseDef * Math.pow(locationMultiplier, 1.1)),
+        speed: Math.floor(baseSpd * locationMultiplier),
       };
     } else if (type === 'boss') {
-      const lvl = pLevel + 3;
+      const difficultyMultiplier = locationId * 1.5;
+      const lvl = Math.floor(pLevel + 5 + (locationId * 8));
+      
       enemyPreview = {
         name: "Castle Guardian",
         level: lvl,
-        hp: lvl * 80 + 200,
-        attack: lvl * 15 + 30,
-        defense: lvl * 12 + 25,
-        speed: lvl * 6 + 10,
+        hp: Math.floor((lvl * 150 + 500 + Math.floor(difficultyMultiplier * 1000)) * locationMultiplier),
+        attack: Math.floor((lvl * 25 + 60 + Math.floor(difficultyMultiplier * 50)) * locationMultiplier),
+        defense: Math.floor((lvl * 20 + 50 + Math.floor(difficultyMultiplier * 40)) * locationMultiplier),
+        speed: Math.floor((lvl * 12 + 25 + Math.floor(difficultyMultiplier * 20)) * locationMultiplier),
       };
     } else {
-      const lvl = pLevel + 8;
+      const lvl = Math.floor(pLevel + 15 + (locationId * 12));
       enemyPreview = {
         name: "Legendary Demon",
         level: lvl,
-        hp: lvl * 120 + 500,
-        attack: lvl * 25 + 80,
-        defense: lvl * 20 + 60,
-        speed: lvl * 10 + 20,
+        hp: Math.floor((lvl * 250 + 2000 + (locationId * 3000)) * locationMultiplier),
+        attack: Math.floor((lvl * 50 + 250 + (locationId * 150)) * locationMultiplier),
+        defense: Math.floor((lvl * 40 + 200 + (locationId * 120)) * locationMultiplier),
+        speed: Math.floor((lvl * 20 + 80 + (locationId * 50)) * locationMultiplier),
       };
     }
     
