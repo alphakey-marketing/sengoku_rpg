@@ -107,7 +107,7 @@ export default function EquipmentPage() {
       case 'gold': return 'text-yellow-400 border-yellow-700 bg-yellow-900/20 shadow-[0_0_15px_rgba(234,179,8,0.2)]';
       case 'mythic': return 'text-pink-400 border-pink-900 bg-pink-900/10 shadow-[0_0_20px_rgba(236,72,153,0.3)]';
       case 'exotic': return 'text-teal-400 border-teal-900 bg-teal-900/10 shadow-[0_0_25px_rgba(20,184,166,0.4)]';
-      case 'transcendent': return 'text-transparent bg-clip-text bg-gradient-to-r from-red-400 via-green-400 to-blue-400 border-white/20 bg-white/5 shadow-[0_0_30px_rgba(255,255,255,0.3)] font-black animate-pulse';
+      case 'transcendent': return 'text-zinc-100 border-white/20 bg-white/5 shadow-[0_0_30px_rgba(255,255,255,0.3)] animate-pulse';
       case 'celestial': return 'text-white border-zinc-200 bg-white/10 shadow-[0_0_40px_rgba(255,255,255,0.5)] font-bold';
       case 'primal': return 'text-red-600 border-red-900 bg-black shadow-[0_0_50px_rgba(220,38,38,0.6)] font-black uppercase tracking-tighter';
       default: return 'text-white border-border bg-card';
@@ -235,14 +235,14 @@ export default function EquipmentPage() {
                   className={`relative p-5 rounded-lg border flex flex-col ${getRarityColor(item.rarity)} transition-transform hover:-translate-y-1`}
                   data-testid={`equipment-card-${item.id}`}
                 >
-                  <div className="flex justify-between items-start mb-3">
-                    <div className="flex items-center gap-2">
-                      <TypeIcon size={16} />
-                      <h3 className="font-bold text-lg font-display truncate pr-2">
+                  <div className="flex justify-between items-start mb-3 gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <TypeIcon size={16} className="shrink-0" />
+                      <h3 className={`font-bold text-lg font-display truncate leading-tight ${item.rarity === 'transcendent' ? 'text-transparent bg-clip-text bg-gradient-to-r from-red-400 via-green-400 to-blue-400 pb-1' : ''}`}>
                         {item.name}{item.endowmentPoints > 0 ? ` +${item.endowmentPoints}` : ''}
                       </h3>
                     </div>
-                    <div className="uppercase text-[10px] font-bold tracking-wider px-2 py-1 rounded bg-black/40 border border-white/10">
+                    <div className="shrink-0 uppercase text-[10px] font-bold tracking-wider px-2 py-1 rounded bg-black/40 border border-white/10">
                       {typeLabel(item.type)}
                     </div>
                   </div>
