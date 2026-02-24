@@ -108,7 +108,7 @@ export default function EquipmentPage() {
       case 'mythic': return 'text-pink-400 border-pink-900 bg-pink-900/10 shadow-[0_0_20px_rgba(236,72,153,0.3)]';
       case 'exotic': return 'text-teal-400 border-teal-900 bg-teal-900/10 shadow-[0_0_25px_rgba(20,184,166,0.4)]';
       case 'transcendent': return 'text-zinc-100 border-white/20 bg-white/5 shadow-[0_0_30px_rgba(255,255,255,0.3)] animate-pulse';
-      case 'celestial': return 'text-white border-zinc-200 bg-white/10 shadow-[0_0_40px_rgba(255,255,255,0.5)] font-bold';
+      case 'celestial': return 'text-cyan-400 border-cyan-700 bg-cyan-950/20 shadow-[0_0_40px_rgba(34,211,238,0.5)] font-bold';
       case 'primal': return 'text-red-600 border-red-900 bg-black shadow-[0_0_50px_rgba(220,38,38,0.6)] font-black uppercase tracking-tighter';
       default: return 'text-white border-border bg-card';
     }
