@@ -1,7 +1,7 @@
-import { usePets, useHorses, useSetActivePet, useSetActiveHorse, useTransformations, usePlayer, useCompanions, useSetParty, useEquipment, useRecycleCompanion, useUpgradeCompanion } from "@/hooks/use-game";
+import { usePets, useHorses, useSetActivePet, useSetActiveHorse, useTransformations, usePlayer, useCompanions, useSetParty, useEquipment, useRecycleCompanion, useUpgradeCompanion, useRecyclePet, useUpgradePet } from "@/hooks/use-game";
 import { MainLayout } from "@/components/layout/main-layout";
 import { Button } from "@/components/ui/button";
-import { Sparkles, Zap, Star, Heart, Sword, Shield, Crown, Timer, Users, Trash2, Hammer, Flame } from "lucide-react";
+import { Sparkles, Zap, Star, Heart, Sword, Shield, Crown, Timer, Users, Trash2, Hammer, Flame, FlaskConical } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { motion } from "framer-motion";
 import { api } from "@shared/routes";
@@ -24,6 +24,8 @@ export default function StablePage() {
   const { mutate: setParty, isPending: partyPending } = useSetParty();
   const { mutate: recycleComp, isPending: recyclePending } = useRecycleCompanion();
   const { mutate: upgradeComp, isPending: upgradePending } = useUpgradeCompanion();
+  const { mutate: recyclePet, isPending: recyclePetPending } = useRecyclePet();
+  const { mutate: upgradePet, isPending: upgradePetPending } = useUpgradePet();
 
   const { toast } = useToast();
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
@@ -274,7 +276,17 @@ export default function StablePage() {
             )}
           </TabsContent>
 
-          <TabsContent value="pets" className="mt-6">
+          <TabsContent value="pets" className="mt-6 space-y-6">
+            <div className="flex justify-between items-center bg-card/30 p-4 rounded-lg border border-border/30">
+              <div className="flex items-center gap-2 bg-blue-900/20 border border-blue-700/30 px-4 py-2 rounded-lg">
+                <FlaskConical size={18} className="text-blue-400" />
+                <div className="flex flex-col">
+                  <span className="text-[10px] text-blue-300 uppercase font-bold tracking-wider leading-none">Pet Essence</span>
+                  <span className="text-lg font-bold text-white leading-none">{player?.petEssence || 0}</span>
+                </div>
+              </div>
+            </div>
+
             {!pets || pets.length === 0 ? (
               <EmptyState icon={Heart} title="No Pets" desc="Spirit pets can be found during your travels." />
             ) : (
@@ -327,13 +339,54 @@ export default function StablePage() {
                       <div className="flex items-center gap-1"><Zap size={14} className="text-cyan-400" /><span>+{pet.speed} SPD</span></div>
                       <div className="flex items-center gap-1"><Heart size={14} className="text-red-400" /><span>+{pet.hp} HP</span></div>
                     </div>
+
+                    <div className="mb-3">
+                      <div className="flex items-center justify-between text-[10px] text-zinc-400 mb-1 uppercase font-bold tracking-widest">
+                        <span>Lv {pet.level}</span>
+                        <span>{pet.experience}/{pet.expToNext} EXP</span>
+                      </div>
+                      <Progress value={(pet.experience / pet.expToNext) * 100} className="h-1.5" />
+                    </div>
+
                     {pet.skill && <p className="text-xs text-green-400 mb-3">Skill: {pet.skill}</p>}
-                    {!pet.isActive && (
+                    
+                    <div className="flex gap-2">
+                      {!pet.isActive && (
+                        <Button
+                          size="sm" variant="outline" className="flex-1 border-green-700/30 text-green-400 hover:bg-green-900/20"
+                          onClick={() => setActivePet(pet.id)} disabled={petPending}
+                          data-testid={`activate-pet-${pet.id}`}
+                        >Set Active</Button>
+                      )}
+                      {pet.isActive && (
+                        <Button
+                          size="sm" variant="secondary" className="flex-1" disabled
+                        >Active</Button>
+                      )}
                       <Button
-                        size="sm" variant="outline" className="w-full border-green-700/30 text-green-400 hover:bg-green-900/20"
-                        onClick={() => setActivePet(pet.id)} disabled={petPending}
-                      >Set Active</Button>
-                    )}
+                        size="sm" variant="outline" className="border-purple-900/30 text-purple-400 px-3"
+                        onClick={() => {
+                          const amount = prompt("How much essence to use?", "1");
+                          if (amount) {
+                            const n = parseInt(amount);
+                            if (!isNaN(n) && n > 0) {
+                              upgradePet({ id: pet.id, amount: n });
+                            }
+                          }
+                        }}
+                        disabled={upgradePetPending || (player?.petEssence || 0) < 1}
+                        title="Upgrade with essence"
+                        data-testid={`upgrade-pet-${pet.id}`}
+                      ><Hammer size={14} /></Button>
+                      {!pet.isActive && (
+                        <Button
+                          size="sm" variant="outline" className="border-red-900/30 text-red-400 px-3"
+                          onClick={() => recyclePet(pet.id)} disabled={recyclePetPending}
+                          title="Recycle for Essence"
+                          data-testid={`recycle-pet-${pet.id}`}
+                        ><Trash2 size={14} /></Button>
+                      )}
+                    </div>
                   </motion.div>
                 ))}
               </div>
