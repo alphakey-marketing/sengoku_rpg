@@ -50,17 +50,13 @@ function generateHorse(userId: string, locationId: number = 1) {
   // Dynamic rarity scaling for horses based on location
   const bonus = isChina ? (locationId - 100) * 0.05 + 0.1 : (locationId - 1) * 0.02;
   
-  let rarity = 'common';
-  if (r > 0.99 - bonus/2) rarity = 'primal';
-  else if (r > 0.98 - bonus) rarity = 'celestial';
-  else if (r > 0.97 - bonus) rarity = 'transcendent';
-  else if (r > 0.96 - bonus) rarity = 'exotic';
-  else if (r > 0.90 - bonus) rarity = 'mythic';
-  else if (r > 0.75 - bonus) rarity = 'gold';
-  else if (r > 0.55 - bonus) rarity = 'purple';
-  else if (r > 0.35 - bonus) rarity = 'blue';
-  else if (r > 0.15 - bonus) rarity = 'green';
-  else if (r > 0.05 - bonus) rarity = 'white';
+    let rarity = 'common';
+    // Drops only up to 'purple' (LEGENDARY in UI)
+    if (r > 0.95 - bonus) rarity = 'purple';
+    else if (r > 0.80 - bonus) rarity = 'blue';
+    else if (r > 0.55 - bonus) rarity = 'green';
+    else if (r > 0.25 - bonus) rarity = 'white';
+    else rarity = 'common';
 
   const statsByRarity: Record<string, { speed: number, atk: number, def: number }> = {
     common: { speed: 2, atk: 1, def: 1 },
