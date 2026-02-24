@@ -1150,9 +1150,11 @@ function generatePet(userId: string, locationId: number = 1) {
     if (!user) return res.status(401).json({ message: "Unauthorized" });
 
     if (action === 'pay') {
-      if (user.gold < goldDemanded) return res.status(400).json({ message: "Not enough gold" });
-      await storage.updateUser(userId, { gold: user.gold - goldDemanded });
-      return res.json({ success: true, message: `You paid ${goldDemanded} gold to ${ninjaName}. He vanished into the shadows.` });
+      const goldToPay = Number(goldDemanded);
+      const userStatus = await storage.getUser(userId);
+      if (!userStatus || userStatus.gold < goldToPay) return res.status(400).json({ message: "Not enough gold" });
+      await storage.updateUser(userId, { gold: userStatus.gold - goldToPay });
+      return res.json({ success: true, message: `You paid ${goldToPay} gold to ${ninjaName}. He vanished into the shadows.` });
     } else {
       const teamStats = await getPlayerTeamStats(userId);
       if (!teamStats) return res.status(400).json({ message: "Team not found" });
