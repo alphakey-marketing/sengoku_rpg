@@ -196,6 +196,15 @@ export default function MapPage() {
     triggerEvent({ eventKey, choice }, {
       onSuccess: (data) => {
         setEventLogs(data.logs);
+        queryClient.invalidateQueries({ queryKey: [api.campaign.events.path] });
+      },
+      onError: (err) => {
+        console.error("Event trigger error:", err);
+        toast({
+          variant: "destructive",
+          title: "Event Error",
+          description: "Failed to trigger event."
+        });
       }
     });
   };
