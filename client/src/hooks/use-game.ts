@@ -595,7 +595,7 @@ export function useTriggerCampaignEvent() {
 
 export function useGachaPull() {
   const queryClient = useQueryClient();
-  return useMutation<GachaResult, Error, { isSpecial?: boolean } | void>({
+  return useMutation<GachaResult, Error, { isSpecial?: boolean, count?: number } | void>({
     mutationFn: async (params) => {
       const body = params || {};
       const res = await fetchWithAuth(api.gacha.pull.path, {
@@ -615,9 +615,14 @@ export function useGachaPull() {
 
 export function useEquipmentGachaPull() {
   const queryClient = useQueryClient();
-  return useMutation<{ equipment: Equipment }, Error, void>({
-    mutationFn: async () => {
-      const res = await fetchWithAuth(api.gacha.pullEquipment.path, { method: "POST" });
+  return useMutation<{ equipment: Equipment[] }, Error, { count?: number } | void>({
+    mutationFn: async (params) => {
+      const body = params || {};
+      const res = await fetchWithAuth(api.gacha.pullEquipment.path, { 
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
       if (!res.ok) throw new Error("Equipment pull failed. Not enough rice?");
       return res.json();
     },

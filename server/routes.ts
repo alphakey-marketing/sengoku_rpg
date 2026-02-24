@@ -1458,12 +1458,15 @@ function generatePet(userId: string, locationId: number = 1) {
   app.post(api.gacha.pull.path, isAuthenticated, async (req: any, res) => {
     const userId = req.user.claims.sub;
     const isSpecial = req.body?.isSpecial || false;
+    const count = Math.min(Math.max(Number(req.body?.count) || 1, 1), 10);
     const user = await storage.getUser(userId);
     if (!user) return res.status(401).json({ message: "Unauthorized" });
     
-    const cost = isSpecial ? 50 : 10;
-    if (user.rice < cost) return res.status(400).json({ message: "Not enough rice" });
-    await storage.updateUser(userId, { rice: user.rice - cost });
+    const singleCost = isSpecial ? 50 : 10;
+    const totalCost = singleCost * count;
+    if (user.rice < totalCost) return res.status(400).json({ message: "Not enough rice" });
+    
+    await storage.updateUser(userId, { rice: user.rice - totalCost });
 
     const warriorPool = [
       { name: "Oda Nobunaga", skill: "Demon King's Command", type: "General" },
@@ -1480,69 +1483,65 @@ function generatePet(userId: string, locationId: number = 1) {
       { name: "Akechi Mitsuhide", skill: "Tenka Fubu", type: "Tactician" }
     ];
 
-    const warrior = pick(warriorPool);
+    const results = [];
+    for (let i = 0; i < count; i++) {
+      const warrior = pick(warriorPool);
+      
+      const rarityFromSpecial = () => {
+        const r = Math.random();
+        if (r > 0.85) return "5"; // 15%
+        if (r > 0.60) return "4"; // 25%
+        if (r > 0.30) return "3"; // 30%
+        return "2";               // 30% (No 1-star)
+      };
+
+      const rarity = isSpecial ? rarityFromSpecial() : rarityFromRandom();
+
+      const baseStats = {
+        "1": { hp: 60, atk: 12, def: 10, spd: 10 },
+        "2": { hp: 80, atk: 15, def: 12, spd: 12 },
+        "3": { hp: 100, atk: 20, def: 15, spd: 15 },
+        "4": { hp: 130, atk: 28, def: 22, spd: 20 },
+        "5": { hp: 180, atk: 40, def: 35, spd: 30 }
+      }[rarity] || { hp: 60, atk: 12, def: 10, spd: 10 };
+
+      const growthBonus = isSpecial ? 1.25 : 1.0;
+
+      const companion = await storage.createCompanion({
+        userId,
+        name: warrior.name,
+        type: warrior.type,
+        rarity,
+        level: 1,
+        experience: 0,
+        expToNext: 100,
+        hp: Math.floor(baseStats.hp * growthBonus),
+        maxHp: Math.floor(baseStats.hp * growthBonus),
+        attack: Math.floor(baseStats.atk * growthBonus),
+        defense: Math.floor(baseStats.def * growthBonus),
+        speed: Math.floor(baseStats.spd * growthBonus),
+        skill: warrior.skill,
+        isInParty: false,
+        isSpecial: !!isSpecial,
+      });
+      results.push(companion);
+    }
     
-    const rarityFromSpecial = () => {
-      const r = Math.random();
-      if (r > 0.85) return "5"; // 15%
-      if (r > 0.60) return "4"; // 25%
-      if (r > 0.30) return "3"; // 30%
-      return "2";               // 30% (No 1-star)
-    };
-
-    const rarity = isSpecial ? rarityFromSpecial() : rarityFromRandom();
-
-    const baseStats = {
-      "1": { hp: 60, atk: 12, def: 10, spd: 10 },
-      "2": { hp: 80, atk: 15, def: 12, spd: 12 },
-      "3": { hp: 100, atk: 20, def: 15, spd: 15 },
-      "4": { hp: 130, atk: 28, def: 22, spd: 20 },
-      "5": { hp: 180, atk: 40, def: 35, spd: 30 }
-    }[rarity] || { hp: 60, atk: 12, def: 10, spd: 10 };
-
-    const growthBonus = isSpecial ? 1.25 : 1.0;
-
-    const companion = await storage.createCompanion({
-      userId,
-      name: warrior.name,
-      type: warrior.type,
-      rarity,
-      level: 1,
-      experience: 0,
-      expToNext: 100,
-      hp: Math.floor(baseStats.hp * growthBonus),
-      maxHp: Math.floor(baseStats.hp * growthBonus),
-      attack: Math.floor(baseStats.atk * growthBonus),
-      defense: Math.floor(baseStats.def * growthBonus),
-      speed: Math.floor(baseStats.spd * growthBonus),
-      skill: warrior.skill,
-      isInParty: false,
-      isSpecial: !!isSpecial,
-    });
-    res.json({ companion });
+    res.json({ companions: results });
   });
 
   app.post(api.gacha.pullEquipment.path, isAuthenticated, async (req: any, res) => {
     const userId = req.user.claims.sub;
+    const count = Math.min(Math.max(Number(req.body?.count) || 1, 1), 10);
     const user = await storage.getUser(userId);
     if (!user) return res.status(401).json({ message: "Unauthorized" });
-    if (user.rice < 15) return res.status(400).json({ message: "Not enough rice" });
     
-    await storage.updateUser(userId, { rice: user.rice - 15 });
+    const singleCost = 15;
+    const totalCost = singleCost * count;
+    if (user.rice < totalCost) return res.status(400).json({ message: "Not enough rice" });
     
-    const type = pick(EQUIP_TYPES);
+    await storage.updateUser(userId, { rice: user.rice - totalCost });
     
-    // Improved Rates for Special Gacha: No more common (white) to epic (purple)
-    // Only Gold and above
-    const r = Math.random();
-    let rarity = 'gold';
-    if (r > 0.98) rarity = 'primal';           // 2% (was 0.1%)
-    else if (r > 0.94) rarity = 'celestial';  // 4% (was 0.4%)
-    else if (r > 0.88) rarity = 'transcendent'; // 6% (was 1.0%)
-    else if (r > 0.78) rarity = 'exotic';      // 10% (was 2.0%)
-    else if (r > 0.60) rarity = 'mythic';       // 18% (was 6.5%)
-    else rarity = 'gold';                       // 60% (was 90%)
-
     const weaponNames = [
       "Masamune Katana", "Muramasa Blade", "Dragon Naginata", "Shadow Tanto", "Imperial Yari",
       "Honjo Masamune", "Kusanagi-no-Tsurugi", "Onimaru", "Mikazuki Munechika", "Tombstone Cutter",
@@ -1564,36 +1563,51 @@ function generatePet(userId: string, locationId: number = 1) {
       "Takeda War Banner", "Thunder-Hoof Spurs", "Celestial Bridle", "Ebony Stirrups"
     ];
 
-    const name = pick(
-      type === 'weapon' ? weaponNames : 
-      type === 'armor' ? armorNames : 
-      type === 'accessory' ? accessoryNames : 
-      horseGearNames
-    );
+    const results = [];
+    for (let i = 0; i < count; i++) {
+      const type = pick(EQUIP_TYPES);
+      const r = Math.random();
+      let rarity = 'gold';
+      if (r > 0.98) rarity = 'primal';
+      else if (r > 0.94) rarity = 'celestial';
+      else if (r > 0.88) rarity = 'transcendent';
+      else if (r > 0.78) rarity = 'exotic';
+      else if (r > 0.60) rarity = 'mythic';
+      else rarity = 'gold';
 
-    const statsByRarity: Record<string, { atk: number, def: number, spd: number }> = {
-      gold: { atk: 35, def: 25, spd: 15 },
-      mythic: { atk: 60, def: 45, spd: 25 },
-      exotic: { atk: 100, def: 75, spd: 45 },
-      transcendent: { atk: 200, def: 150, spd: 80 },
-      celestial: { atk: 450, def: 350, spd: 150 },
-      primal: { atk: 1000, def: 800, spd: 300 }
-    };
-    const baseStats = statsByRarity[rarity];
+      const name = pick(
+        type === 'weapon' ? weaponNames : 
+        type === 'armor' ? armorNames : 
+        type === 'accessory' ? accessoryNames : 
+        horseGearNames
+      );
 
-    const equipment = await storage.createEquipment({
-      userId,
-      name,
-      type,
-      rarity,
-      level: 1,
-      experience: 0,
-      expToNext: 100,
-      attackBonus: baseStats.atk,
-      defenseBonus: baseStats.def,
-      speedBonus: baseStats.spd,
-    });
-    res.json({ equipment });
+      const statsByRarity: Record<string, { atk: number, def: number, spd: number }> = {
+        gold: { atk: 35, def: 25, spd: 15 },
+        mythic: { atk: 60, def: 45, spd: 25 },
+        exotic: { atk: 100, def: 75, spd: 45 },
+        transcendent: { atk: 200, def: 150, spd: 80 },
+        celestial: { atk: 450, def: 350, spd: 150 },
+        primal: { atk: 1000, def: 800, spd: 300 }
+      };
+      const baseStats = statsByRarity[rarity];
+
+      const equipment = await storage.createEquipment({
+        userId,
+        name,
+        type,
+        rarity,
+        level: 1,
+        experience: 0,
+        expToNext: 100,
+        attackBonus: baseStats.atk,
+        defenseBonus: baseStats.def,
+        speedBonus: baseStats.spd,
+      });
+      results.push(equipment);
+    }
+    
+    res.json({ equipment: results });
   });
 
   app.post("/api/player/exchange-stones", isAuthenticated, async (req: any, res) => {

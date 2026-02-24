@@ -13,21 +13,21 @@ export default function GachaPage() {
   const { mutate: pullCompanion, isPending: isPullingCompanion } = useGachaPull();
   const { mutate: pullEquipment, isPending: isPullingEquipment } = useEquipmentGachaPull();
   
-  const [companionResult, setCompanionResult] = useState<Companion | null>(null);
-  const [equipmentResult, setEquipmentResult] = useState<Equipment | null>(null);
+  const [companionResults, setCompanionResults] = useState<Companion[]>([]);
+  const [equipmentResults, setEquipmentResults] = useState<Equipment[]>([]);
   const [isAnimating, setIsAnimating] = useState(false);
   const [activeTab, setActiveTab] = useState<'companion' | 'special' | 'equipment' | 'exchange'>('companion');
   const { toast } = useToast();
 
-  const handleCompanionPull = (isSpecial: boolean = false) => {
-    setCompanionResult(null);
-    setEquipmentResult(null);
+  const handleCompanionPull = (isSpecial: boolean = false, count: number = 1) => {
+    setCompanionResults([]);
+    setEquipmentResults([]);
     setIsAnimating(true);
     
     setTimeout(() => {
-      pullCompanion({ isSpecial }, {
+      pullCompanion({ isSpecial, count }, {
         onSuccess: (data: any) => {
-          setCompanionResult(data.companion);
+          setCompanionResults(data.companions);
           setIsAnimating(false);
         },
         onError: (error: any) => {
@@ -42,15 +42,15 @@ export default function GachaPage() {
     }, 1500);
   };
 
-  const handleEquipmentPull = () => {
-    setCompanionResult(null);
-    setEquipmentResult(null);
+  const handleEquipmentPull = (count: number = 1) => {
+    setCompanionResults([]);
+    setEquipmentResults([]);
     setIsAnimating(true);
     
     setTimeout(() => {
-      pullEquipment(undefined, {
-        onSuccess: (data) => {
-          setEquipmentResult(data.equipment);
+      pullEquipment({ count }, {
+        onSuccess: (data: any) => {
+          setEquipmentResults(data.equipment);
           setIsAnimating(false);
         },
         onError: () => setIsAnimating(false)
@@ -62,8 +62,11 @@ export default function GachaPage() {
   const specialCost = 50;
   const equipmentCost = 15;
   const canAffordCompanion = (player?.rice || 0) >= companionCost;
+  const canAffordCompanion10 = (player?.rice || 0) >= companionCost * 10;
   const canAffordSpecial = (player?.rice || 0) >= specialCost;
+  const canAffordSpecial10 = (player?.rice || 0) >= specialCost * 10;
   const canAffordEquipment = (player?.rice || 0) >= equipmentCost;
+  const canAffordEquipment10 = (player?.rice || 0) >= equipmentCost * 10;
 
   const getRarityColor = (rarity: string) => {
     switch (rarity) {
@@ -138,11 +141,11 @@ export default function GachaPage() {
         </div>
 
         {/* Summon Area */}
-        <div className="relative w-full max-w-md aspect-[3/4] flex items-center justify-center">
+        <div className="relative w-full max-w-4xl flex flex-col items-center justify-center">
           <div className="absolute inset-0 bg-primary/5 rounded-full blur-3xl"></div>
           
           <AnimatePresence mode="wait">
-            {!companionResult && !equipmentResult && !isAnimating && (
+            {companionResults.length === 0 && equipmentResults.length === 0 && !isAnimating && (
               <motion.div 
                 key="idle"
                 initial={{ opacity: 0 }}
@@ -165,22 +168,37 @@ export default function GachaPage() {
                 </div>
                 
                 {activeTab !== 'exchange' ? (
-                  <Button 
-                    onClick={activeTab === 'companion' ? () => handleCompanionPull(false) : activeTab === 'special' ? () => handleCompanionPull(true) : handleEquipmentPull}
-                    disabled={
-                      activeTab === 'companion' ? (!canAffordCompanion || isPullingCompanion) : 
-                      activeTab === 'special' ? (!canAffordSpecial || isPullingCompanion) :
-                      (!canAffordEquipment || isPullingEquipment)
-                    }
-                    className={`bg-gradient-to-r ${activeTab === 'special' ? 'from-amber-600 to-yellow-700 shadow-[0_0_25px_rgba(234,179,8,0.5)]' : 'from-primary to-secondary shadow-[0_0_20px_rgba(220,38,38,0.4)]'} hover:from-primary/90 hover:to-secondary/90 text-white px-12 py-8 rounded-full text-xl font-bold border border-accent/50 hover:shadow-[0_0_30px_rgba(212,175,55,0.4)] transition-all group`}
-                  >
-                    <span className="mr-3">
-                      {activeTab === 'companion' ? 'Summon Warrior' : activeTab === 'special' ? 'Perform Rite' : 'Forge Special Gear'}
-                    </span>
-                    <div className="flex items-center text-accent group-hover:text-white transition-colors text-base bg-black/30 px-3 py-1 rounded-full">
-                      <Wheat size={16} className="mr-1" /> {activeTab === 'companion' ? companionCost : activeTab === 'special' ? specialCost : equipmentCost}
-                    </div>
-                  </Button>
+                  <div className="flex flex-col sm:flex-row gap-4">
+                    <Button 
+                      onClick={activeTab === 'companion' ? () => handleCompanionPull(false, 1) : activeTab === 'special' ? () => handleCompanionPull(true, 1) : () => handleEquipmentPull(1)}
+                      disabled={
+                        activeTab === 'companion' ? (!canAffordCompanion || isPullingCompanion) : 
+                        activeTab === 'special' ? (!canAffordSpecial || isPullingCompanion) :
+                        (!canAffordEquipment || isPullingEquipment)
+                      }
+                      className={`bg-gradient-to-r ${activeTab === 'special' ? 'from-amber-600 to-yellow-700 shadow-[0_0_25px_rgba(234,179,8,0.5)]' : 'from-primary to-secondary shadow-[0_0_20px_rgba(220,38,38,0.4)]'} hover:from-primary/90 hover:to-secondary/90 text-white px-8 py-6 rounded-full text-lg font-bold border border-accent/50 hover:shadow-[0_0_30px_rgba(212,175,55,0.4)] transition-all group`}
+                    >
+                      <span className="mr-3">Draw 1</span>
+                      <div className="flex items-center text-accent group-hover:text-white transition-colors text-sm bg-black/30 px-2 py-0.5 rounded-full">
+                        <Wheat size={14} className="mr-1" /> {activeTab === 'companion' ? companionCost : activeTab === 'special' ? specialCost : equipmentCost}
+                      </div>
+                    </Button>
+
+                    <Button 
+                      onClick={activeTab === 'companion' ? () => handleCompanionPull(false, 10) : activeTab === 'special' ? () => handleCompanionPull(true, 10) : () => handleEquipmentPull(10)}
+                      disabled={
+                        activeTab === 'companion' ? (!canAffordCompanion10 || isPullingCompanion) : 
+                        activeTab === 'special' ? (!canAffordSpecial10 || isPullingCompanion) :
+                        (!canAffordEquipment10 || isPullingEquipment)
+                      }
+                      className={`bg-gradient-to-r ${activeTab === 'special' ? 'from-amber-500 to-yellow-500 shadow-[0_0_25px_rgba(234,179,8,0.5)]' : 'from-red-600 to-orange-600 shadow-[0_0_20px_rgba(220,38,38,0.4)]'} hover:from-primary/90 hover:to-secondary/90 text-white px-8 py-6 rounded-full text-lg font-bold border border-accent/50 hover:shadow-[0_0_30px_rgba(212,175,55,0.4)] transition-all group`}
+                    >
+                      <span className="mr-3">Draw 10</span>
+                      <div className="flex items-center text-accent group-hover:text-white transition-colors text-sm bg-black/30 px-2 py-0.5 rounded-full">
+                        <Wheat size={14} className="mr-1" /> {activeTab === 'companion' ? companionCost * 10 : activeTab === 'special' ? specialCost * 10 : equipmentCost * 10}
+                      </div>
+                    </Button>
+                  </div>
                 ) : (
                   <Button 
                     onClick={() => {
@@ -234,68 +252,68 @@ export default function GachaPage() {
               </motion.div>
             )}
 
-            {companionResult && !isAnimating && (
+            {companionResults.length > 0 && !isAnimating && (
               <motion.div 
-                key="companion-result"
-                initial={{ scale: 0.5, opacity: 0, y: 50 }}
-                animate={{ scale: 1, opacity: 1, y: 0 }}
-                transition={{ type: "spring", bounce: 0.5 }}
-                className="relative z-10 w-full"
+                key="companion-results"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="relative z-10 w-full mt-8"
               >
-                <div className="bg-card border-2 border-accent rounded-xl p-8 text-center shadow-[0_0_40px_rgba(212,175,55,0.3)] bg-washi">
-                  <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-background border-2 border-accent px-4 py-1 rounded-full text-accent font-bold text-sm tracking-widest uppercase">
-                    New Ally
-                  </div>
-                  <h2 className="text-4xl font-display font-bold text-white mb-2 mt-4">{companionResult.name}</h2>
-                  <p className="text-primary font-medium tracking-widest uppercase text-sm mb-6">{companionResult.type} Hero</p>
-                  <div className="flex justify-center gap-1 text-accent mb-4">
-                    {Array.from({ length: Number(companionResult.rarity) }).map((_, j) => (
-                      <motion.div key={j} initial={{ opacity: 0, scale: 2 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.3 + (j * 0.1) }}>
-                        <Star size={28} fill="currentColor" />
-                      </motion.div>
-                    ))}
-                  </div>
-                  {companionResult.isSpecial && (
-                    <Badge className="mb-4 bg-gradient-to-r from-amber-500 to-yellow-600 border-yellow-400 text-white animate-pulse">
-                      Elite Growth +25%
-                    </Badge>
-                  )}
-                  <div className="grid grid-cols-2 gap-4 text-left bg-background/50 p-4 rounded-lg border border-border/50 mb-8">
-                    <div><span className="text-muted-foreground text-xs uppercase">HP</span><p className="font-bold text-green-400">{companionResult.hp}</p></div>
-                    <div><span className="text-muted-foreground text-xs uppercase">ATK</span><p className="font-bold text-red-400">{companionResult.attack}</p></div>
-                    <div><span className="text-muted-foreground text-xs uppercase">DEF</span><p className="font-bold text-blue-400">{companionResult.defense}</p></div>
-                    <div><span className="text-muted-foreground text-xs uppercase">SPD</span><p className="font-bold text-cyan-400">{companionResult.speed}</p></div>
-                  </div>
-                  <Button onClick={() => setCompanionResult(null)} variant="outline" className="w-full border-accent text-accent hover:bg-accent/10">Summon Again</Button>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4">
+                  {companionResults.map((companion, i) => (
+                    <motion.div 
+                      key={i}
+                      initial={{ scale: 0.5, opacity: 0, y: 50 }}
+                      animate={{ scale: 1, opacity: 1, y: 0 }}
+                      transition={{ type: "spring", bounce: 0.5, delay: i * 0.1 }}
+                      className="bg-card border-2 border-accent/50 rounded-xl p-4 text-center shadow-lg bg-washi relative"
+                    >
+                      <h2 className="text-xl font-display font-bold text-white mb-1">{companion.name}</h2>
+                      <p className="text-primary font-medium tracking-widest uppercase text-[10px] mb-2">{companion.type}</p>
+                      <div className="flex justify-center gap-0.5 text-accent mb-2">
+                        {Array.from({ length: Number(companion.rarity) }).map((_, j) => (
+                          <Star key={j} size={14} fill="currentColor" />
+                        ))}
+                      </div>
+                      <div className="grid grid-cols-2 gap-1 text-[10px] text-left bg-background/50 p-2 rounded border border-border/50">
+                        <div><span className="text-muted-foreground uppercase">HP</span><p className="font-bold text-green-400">{companion.hp}</p></div>
+                        <div><span className="text-muted-foreground uppercase">ATK</span><p className="font-bold text-red-400">{companion.attack}</p></div>
+                      </div>
+                    </motion.div>
+                  ))}
                 </div>
+                <Button onClick={() => setCompanionResults([])} variant="outline" className="mt-8 mx-auto block border-accent text-accent hover:bg-accent/10">Draw Again</Button>
               </motion.div>
             )}
 
-            {equipmentResult && !isAnimating && (
+            {equipmentResults.length > 0 && !isAnimating && (
               <motion.div 
-                key="equipment-result"
-                initial={{ scale: 0.5, opacity: 0, y: 50 }}
-                animate={{ scale: 1, opacity: 1, y: 0 }}
-                transition={{ type: "spring", bounce: 0.5 }}
-                className="relative z-10 w-full"
+                key="equipment-results"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="relative z-10 w-full mt-8"
               >
-                <div className="bg-card border-2 border-accent rounded-xl p-8 text-center shadow-[0_0_40px_rgba(212,175,55,0.3)] bg-washi">
-                  <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-background border-2 border-accent px-4 py-1 rounded-full text-accent font-bold text-sm tracking-widest uppercase">
-                    Forged Item
-                  </div>
-                  <h2 className="text-3xl font-display font-bold text-white mb-2 mt-4">{equipmentResult.name}</h2>
-                  <Badge className={`mb-6 uppercase tracking-widest ${getRarityColor(equipmentResult.rarity)}`}>
-                    {equipmentResult.rarity}
-                  </Badge>
-                  
-                  <div className="grid grid-cols-2 gap-4 text-left bg-background/50 p-4 rounded-lg border border-border/50 mb-8">
-                    <div><span className="text-muted-foreground text-xs uppercase">Attack</span><p className="font-bold text-red-400">+{equipmentResult.attackBonus}</p></div>
-                    <div><span className="text-muted-foreground text-xs uppercase">Defense</span><p className="font-bold text-blue-400">+{equipmentResult.defenseBonus}</p></div>
-                    <div className="col-span-2"><span className="text-muted-foreground text-xs uppercase">Speed</span><p className="font-bold text-green-400">+{equipmentResult.speedBonus}</p></div>
-                  </div>
-                  
-                  <Button onClick={() => setEquipmentResult(null)} variant="outline" className="w-full border-accent text-accent hover:bg-accent/10">Forge Again</Button>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4">
+                  {equipmentResults.map((equipment, i) => (
+                    <motion.div 
+                      key={i}
+                      initial={{ scale: 0.5, opacity: 0, y: 50 }}
+                      animate={{ scale: 1, opacity: 1, y: 0 }}
+                      transition={{ type: "spring", bounce: 0.5, delay: i * 0.1 }}
+                      className="bg-card border-2 border-accent/50 rounded-xl p-4 text-center shadow-lg bg-washi relative"
+                    >
+                      <h2 className="text-sm font-display font-bold text-white mb-1 line-clamp-1">{equipment.name}</h2>
+                      <Badge className={`mb-2 uppercase text-[8px] tracking-tighter ${getRarityColor(equipment.rarity)}`}>
+                        {equipment.rarity}
+                      </Badge>
+                      <div className="grid grid-cols-2 gap-1 text-[10px] text-left bg-background/50 p-2 rounded border border-border/50">
+                        <div><span className="text-muted-foreground uppercase">ATK</span><p className="font-bold text-red-400">+{equipment.attackBonus}</p></div>
+                        <div><span className="text-muted-foreground uppercase">DEF</span><p className="font-bold text-blue-400">+{equipment.defenseBonus}</p></div>
+                      </div>
+                    </motion.div>
+                  ))}
                 </div>
+                <Button onClick={() => setEquipmentResults([])} variant="outline" className="mt-8 mx-auto block border-accent text-accent hover:bg-accent/10">Draw Again</Button>
               </motion.div>
             )}
           </AnimatePresence>
