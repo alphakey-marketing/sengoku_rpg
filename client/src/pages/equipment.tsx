@@ -357,7 +357,15 @@ export default function EquipmentPage() {
                         size="sm"
                         variant="outline"
                         className="border-purple-900/30 text-purple-400 h-7 text-xs px-2 hover:bg-purple-900/20"
-                        onClick={() => upgradeItem(item.id)}
+                        onClick={() => {
+                          const amount = prompt("How many stones to use?", "1");
+                          if (amount) {
+                            const n = parseInt(amount);
+                            if (!isNaN(n) && n > 0) {
+                              upgradeItem({ id: item.id, amount: n });
+                            }
+                          }
+                        }}
                         disabled={upgradePending || (player?.upgradeStones || 0) < 1}
                         title="Upgrade with stone"
                         data-testid={`upgrade-${item.id}`}

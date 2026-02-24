@@ -324,9 +324,13 @@ export function useRecycleEquipment() {
 export function useUpgradeEquipment() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (equipmentId: number) => {
-      const url = buildUrl(api.equipment.upgrade.path, { id: equipmentId });
-      const res = await fetchWithAuth(url, { method: "POST" });
+    mutationFn: async ({ id, amount }: { id: number; amount: number }) => {
+      const url = buildUrl(api.equipment.upgrade.path, { id });
+      const res = await fetchWithAuth(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amount }),
+      });
       if (!res.ok) throw new Error("Failed to upgrade");
       return res.json();
     },
@@ -383,8 +387,12 @@ export function useRecyclePet() {
 export function useUpgradePet() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (petId: number) => {
-      const res = await fetchWithAuth(`/api/pets/${petId}/upgrade`, { method: "POST" });
+    mutationFn: async ({ id, amount }: { id: number; amount: number }) => {
+      const res = await fetchWithAuth(`/api/pets/${id}/upgrade`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amount }),
+      });
       if (!res.ok) throw new Error("Failed to upgrade pet");
       return res.json();
     },

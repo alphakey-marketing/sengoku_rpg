@@ -119,9 +119,18 @@ export default function PetsPage() {
                     size="sm"
                     variant="outline"
                     className="border-purple-900/30 text-purple-400 px-2"
-                    onClick={() => upgradePet(pet.id)}
+                    onClick={() => {
+                      const amount = prompt("How much essence to use?", "1");
+                      if (amount) {
+                        const n = parseInt(amount);
+                        if (!isNaN(n) && n > 0) {
+                          upgradePet({ id: pet.id, amount: n });
+                        }
+                      }
+                    }}
                     disabled={upgradePending || (player?.petEssence || 0) < 10}
-                    title="Upgrade (10 Essence)"
+                    title="Upgrade with essence"
+                    data-testid={`upgrade-pet-${pet.id}`}
                   >
                     <Hammer size={14} />
                   </Button>
