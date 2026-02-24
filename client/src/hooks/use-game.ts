@@ -113,6 +113,7 @@ export interface Transformation {
 }
 
 export interface TeamMemberStats {
+  id?: number;
   name: string;
   level: number;
   hp: number;

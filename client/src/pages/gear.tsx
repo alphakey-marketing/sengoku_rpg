@@ -93,11 +93,19 @@ export default function GearPage() {
 
         {renderGearSection("Main Character (Daimyo)", equipment?.filter(e => e.isEquipped && e.equippedToType === 'player') || [])}
 
-        {teamStatus?.companions?.map((companion: any) => (
-          <div key={companion.id}>
-             {renderGearSection(companion.name, equipment?.filter(e => e.isEquipped && e.equippedToType === 'companion' && e.equippedToId === companion.id) || [])}
-          </div>
-        ))}
+        {teamStatus?.companions?.map((companion: any) => {
+          const companionGear = equipment?.filter(e => 
+            e.isEquipped && 
+            e.equippedToType === 'companion' && 
+            Number(e.equippedToId) === Number(companion.id)
+          ) || [];
+          
+          return (
+            <div key={companion.id}>
+               {renderGearSection(companion.name, companionGear)}
+            </div>
+          );
+        })}
 
         {(!teamStatus?.companions || teamStatus.companions.length === 0) && (
           <div className="p-8 text-center bg-card rounded-lg border border-dashed border-border/50">
