@@ -70,34 +70,62 @@ async function getPlayerTeamStats(userId: string) {
   const activePet = allPets.find(p => p.isActive);
   const activeHorse = allHorses.find(h => h.isActive);
 
-  const playerEquipped = equips.filter(e => e.isEquipped && e.equippedToType === 'player');
-  const totalAtkBonus = playerEquipped.reduce((s, e) => s + Math.floor(e.attackBonus * (1 + (e.level - 1) * 0.05)), 0);
-  const totalDefBonus = playerEquipped.reduce((s, e) => s + Math.floor(e.defenseBonus * (1 + (e.level - 1) * 0.08)), 0);
-  const totalSpdBonus = playerEquipped.reduce((s, e) => s + Math.floor(e.speedBonus * (1 + (e.level - 1) * 0.1)), 0);
+    const playerEquipped = equips.filter(e => e.isEquipped && e.equippedToType === 'player');
+    
+    // Check for active transformation
+    let activeTransform = null;
+    if (user.activeTransformId && user.transformActiveUntil && new Date(user.transformActiveUntil) > new Date()) {
+      activeTransform = allTransforms.find(t => t.id === user.activeTransformId);
+    }
 
-  // Aggregate stats
-  const stats = {
-    player: {
-      name: user.firstName || user.lastName || 'Warrior',
-      level: user.level,
-      hp: user.hp + (user.permHpBonus || 0),
-      maxHp: user.maxHp + (user.permHpBonus || 0),
-      attack: user.attack + totalAtkBonus + (user.permAttackBonus || 0),
-      defense: user.defense + totalDefBonus + (user.permDefenseBonus || 0),
-      speed: user.speed + totalSpdBonus + (user.permSpeedBonus || 0),
-      critChance: playerEquipped.reduce((s, e) => s + (e.critChance || 0), 0),
-      critDamage: playerEquipped.reduce((s, e) => s + (e.critDamage || 0), 0),
-      endowmentPoints: playerEquipped.reduce((s, e) => s + (e.endowmentPoints || 0), 0),
-      equipped: playerEquipped.map(e => ({ name: e.name, type: e.type, level: e.level, rarity: e.rarity })),
-      canTransform: allTransforms.length > 0,
-      seppukuCount: user.seppukuCount || 0,
-      permStats: {
-        attack: user.permAttackBonus || 0,
-        defense: user.permDefenseBonus || 0,
-        speed: user.permSpeedBonus || 0,
-        hp: user.permHpBonus || 0,
-      }
-    } as any,
+    const totalAtkBonus = playerEquipped.reduce((s, e) => s + Math.floor(e.attackBonus * (1 + (e.level - 1) * 0.05)), 0);
+    const totalDefBonus = playerEquipped.reduce((s, e) => s + Math.floor(e.defenseBonus * (1 + (e.level - 1) * 0.08)), 0);
+    const totalSpdBonus = playerEquipped.reduce((s, e) => s + Math.floor(e.speedBonus * (1 + (e.level - 1) * 0.1)), 0);
+
+    // Base stats
+    let hp = user.hp + (user.permHpBonus || 0);
+    let maxHp = user.maxHp + (user.permHpBonus || 0);
+    let attack = user.attack + totalAtkBonus + (user.permAttackBonus || 0);
+    let defense = user.defense + totalDefBonus + (user.permDefenseBonus || 0);
+    let speed = user.speed + totalSpdBonus + (user.permSpeedBonus || 0);
+
+    // Apply transformation bonuses
+    if (activeTransform) {
+      attack = Math.floor(attack * (1 + activeTransform.attackPercent / 100));
+      defense = Math.floor(defense * (1 + activeTransform.defensePercent / 100));
+      speed = Math.floor(speed * (1 + activeTransform.speedPercent / 100));
+      const hpBonus = Math.floor(maxHp * (activeTransform.hpPercent / 100));
+      maxHp += hpBonus;
+      hp += hpBonus;
+    }
+
+    // Aggregate stats
+    const stats = {
+      player: {
+        name: user.firstName || user.lastName || 'Warrior',
+        level: user.level,
+        hp,
+        maxHp,
+        attack,
+        defense,
+        speed,
+        critChance: playerEquipped.reduce((s, e) => s + (e.critChance || 0), 0),
+        critDamage: playerEquipped.reduce((s, e) => s + (e.critDamage || 0), 0),
+        endowmentPoints: playerEquipped.reduce((s, e) => s + (e.endowmentPoints || 0), 0),
+        equipped: playerEquipped.map(e => ({ name: e.name, type: e.type, level: e.level, rarity: e.rarity })),
+        canTransform: allTransforms.length > 0,
+        activeTransform: activeTransform ? {
+          name: activeTransform.name,
+          until: user.transformActiveUntil
+        } : null,
+        seppukuCount: user.seppukuCount || 0,
+        permStats: {
+          attack: user.permAttackBonus || 0,
+          defense: user.permDefenseBonus || 0,
+          speed: user.permSpeedBonus || 0,
+          hp: user.permHpBonus || 0,
+        }
+      } as any,
     companions: partyCompanions.map(c => {
       const compEquipped = equips.filter(e => e.isEquipped && e.equippedToType === 'companion' && Number(e.equippedToId) === Number(c.id));
       const cAtkBonus = compEquipped.reduce((s, e) => s + Math.floor(e.attackBonus * (1 + (e.level - 1) * 0.05)), 0);
@@ -594,6 +622,32 @@ export async function registerRoutes(
     res.json(await storage.getHorses(userId));
   });
 
+  app.post("/api/transformations/:id/use-stone", isAuthenticated, async (req: any, res) => {
+    const userId = req.user.claims.sub;
+    const transformId = Number(req.params.id);
+    const user = await storage.getUser(userId);
+    if (!user) return res.status(401).json({ message: "Unauthorized" });
+
+    if ((user.transformationStones || 0) < 10) {
+      return res.status(400).json({ message: "Not enough transformation stones (need 10)" });
+    }
+
+    const transforms = await storage.getTransformations(userId);
+    const transform = transforms.find(t => t.id === transformId);
+    if (!transform) return res.status(404).json({ message: "Transformation not found" });
+
+    const activeUntil = new Date();
+    activeUntil.setHours(activeUntil.getHours() + 1);
+
+    await storage.updateUser(userId, {
+      transformationStones: user.transformationStones - 10,
+      activeTransformId: transformId,
+      transformActiveUntil: activeUntil,
+    });
+
+    res.json({ message: "Transformation activated", activeUntil });
+  });
+
   app.post(api.horses.setActive.path, isAuthenticated, async (req: any, res) => {
     const userId = req.user.claims.sub;
     const horseId = Number(req.params.id);
@@ -1017,6 +1071,7 @@ export async function registerRoutes(
         experience: currentExp, 
         gold: user.gold + goldGained,
         endowmentStones: (user.endowmentStones || 0) + endowmentStones,
+        transformationStones: (user.transformationStones || 0) + 10,
         maxHp: currentMaxHp,
         hp: currentMaxHp,
         attack: currentAtk,

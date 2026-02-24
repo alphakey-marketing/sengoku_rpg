@@ -29,6 +29,8 @@ export const users = pgTable("users", {
   maxStamina: integer("max_stamina").notNull().default(100),
   currentLocationId: integer("current_location_id").notNull().default(1),
   activeTransformId: integer("active_transform_id"),
+  transformActiveUntil: timestamp("transform_active_until"),
+  transformationStones: integer("transformation_stones").notNull().default(0),
   upgradeStones: integer("upgrade_stones").notNull().default(0),
   endowmentStones: integer("endowment_stones").notNull().default(0),
   fireGodTalisman: integer("fire_god_talisman").notNull().default(0),

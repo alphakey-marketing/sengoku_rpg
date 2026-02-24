@@ -19,6 +19,8 @@ export interface PlayerData {
   maxStamina: number;
   currentLocationId: number;
   activeTransformId: number | null;
+  transformActiveUntil: string | null;
+  transformationStones: number;
   upgradeStones: number;
   endowmentStones: number;
   fireGodTalisman: number;
