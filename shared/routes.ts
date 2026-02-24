@@ -73,6 +73,12 @@ export const api = {
       path: '/api/equipment/:id/recycle' as const,
       responses: { 200: z.any(), 401: errorSchemas.unauthorized, 404: errorSchemas.notFound },
     },
+    recycleRarity: {
+      method: 'POST' as const,
+      path: '/api/equipment/recycle-rarity' as const,
+      input: z.object({ rarity: z.string() }),
+      responses: { 200: z.object({ stonesGained: z.number(), count: z.number() }), 401: errorSchemas.unauthorized },
+    },
     upgrade: {
       method: 'POST' as const,
       path: '/api/equipment/:id/upgrade' as const,

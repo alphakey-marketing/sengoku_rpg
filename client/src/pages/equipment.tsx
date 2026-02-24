@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Sword, Shield, Crosshair, Zap, Sparkles, ArrowUp, Trash2, Hammer, Gem } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
+import { useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import {
   Dialog,
   DialogContent,
@@ -26,6 +28,22 @@ export default function EquipmentPage() {
   const [endowDialogOpen, setEndowDialogOpen] = useState(false);
   const [useProtection, setUseProtection] = useState(false);
   const [filterType, setFilterType] = useState<string>('all');
+  const [filterRarity, setFilterRarity] = useState<string>('all');
+
+  const { mutate: recycleRarity, isPending: recycleRarityPending } = useMutation({
+    mutationFn: async (rarity: string) => {
+      const res = await apiRequest("POST", "/api/equipment/recycle-rarity", { rarity });
+      return res.json();
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Recycle Complete",
+        description: `Recycled ${data.count} items for ${data.stonesGained} Upgrade Stones.`,
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/equipment"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/player"] });
+    },
+  });
 
   const handleEquip = (targetId: number | null, targetType: string) => {
     if (selectedEqId) {
@@ -69,8 +87,9 @@ export default function EquipmentPage() {
 
   const typeLabel = (type: string) => type === 'horse_gear' ? 'Horse Gear' : type.charAt(0).toUpperCase() + type.slice(1);
 
-  const filtered = filterType === 'all' ? equipment : equipment?.filter(e => e.type === filterType);
-  const sortedEquipment = filtered ? [...filtered].sort((a, b) => a.id - b.id) : [];
+  const typeFiltered = filterType === 'all' ? equipment : equipment?.filter(e => e.type === filterType);
+  const rarityFiltered = filterRarity === 'all' ? typeFiltered : typeFiltered?.filter(e => e.rarity === filterRarity);
+  const sortedEquipment = rarityFiltered ? [...rarityFiltered].sort((a, b) => a.id - b.id) : [];
 
   if (eqLoading) return <MainLayout><div className="p-8">Opening armory...</div></MainLayout>;
 
@@ -104,18 +123,51 @@ export default function EquipmentPage() {
           </div>
         </div>
 
-        <div className="flex flex-wrap gap-2">
-          {['all', 'weapon', 'armor', 'accessory', 'horse_gear'].map(t => (
-            <Button
-              key={t}
-              size="sm"
-              variant={filterType === t ? "default" : "outline"}
-              onClick={() => setFilterType(t)}
-              data-testid={`filter-${t}`}
-            >
-              {t === 'all' ? 'All' : typeLabel(t)}
-            </Button>
-          ))}
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-wrap gap-2">
+            {['all', 'weapon', 'armor', 'accessory', 'horse_gear'].map(t => (
+              <Button
+                key={t}
+                size="sm"
+                variant={filterType === t ? "default" : "outline"}
+                onClick={() => setFilterType(t)}
+                data-testid={`filter-type-${t}`}
+              >
+                {t === 'all' ? 'All Types' : typeLabel(t)}
+              </Button>
+            ))}
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            {['all', 'white', 'green', 'blue', 'purple', 'gold', 'mythic', 'exotic', 'transcendent', 'celestial', 'primal'].map(r => (
+              <Button
+                key={r}
+                size="sm"
+                variant={filterRarity === r ? "secondary" : "outline"}
+                onClick={() => setFilterRarity(r)}
+                className={`text-[10px] h-7 px-2 capitalize ${filterRarity === r ? 'border-accent' : ''}`}
+                data-testid={`filter-rarity-${r}`}
+              >
+                {r}
+              </Button>
+            ))}
+            
+            {filterRarity !== 'all' && (
+              <Button
+                size="sm"
+                variant="destructive"
+                className="h-7 text-[10px] ml-auto"
+                onClick={() => {
+                  if (confirm(`Recycle all UN-EQUIPPED ${filterRarity} items?`)) {
+                    recycleRarity(filterRarity);
+                  }
+                }}
+                disabled={recycleRarityPending}
+              >
+                Recycle All {filterRarity}
+              </Button>
+            )}
+          </div>
         </div>
 
         {sortedEquipment.length === 0 ? (
