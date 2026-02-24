@@ -891,7 +891,20 @@ export async function registerRoutes(
       });
       
       const type = pick(EQUIP_TYPES);
-      const rarity = locationId >= 3 ? 'gold' : 'purple';
+      const r = Math.random();
+      let rarity = 'white';
+      
+      // Significantly improved drop rates for field battles
+      if (r > 0.99) rarity = 'primal';
+      else if (r > 0.97) rarity = 'celestial';
+      else if (r > 0.94) rarity = 'transcendent';
+      else if (r > 0.90) rarity = 'exotic';
+      else if (r > 0.80) rarity = 'mythic';
+      else if (r > 0.60) rarity = 'gold';
+      else if (r > 0.45) rarity = 'purple';
+      else if (r > 0.30) rarity = 'blue';
+      else if (r > 0.15) rarity = 'green';
+      
       const name = pick(type === 'weapon' ? WEAPON_NAMES : type === 'armor' ? ARMOR_NAMES : type === 'accessory' ? ACCESSORY_NAMES : HORSE_GEAR_NAMES);
       
       const statsByRarity: Record<string, { atk: number, def: number, spd: number, critC: number, critD: number }> = {
@@ -1134,12 +1147,12 @@ export async function registerRoutes(
     // Only Gold and above
     const r = Math.random();
     let rarity = 'gold';
-    if (r > 0.999) rarity = 'primal';           // 0.1%
-    else if (r > 0.995) rarity = 'celestial';  // 0.4%
-    else if (r > 0.985) rarity = 'transcendent'; // 1.0%
-    else if (r > 0.965) rarity = 'exotic';      // 2.0%
-    else if (r > 0.90) rarity = 'mythic';       // 6.5%
-    else rarity = 'gold';                       // 90%
+    if (r > 0.98) rarity = 'primal';           // 2% (was 0.1%)
+    else if (r > 0.94) rarity = 'celestial';  // 4% (was 0.4%)
+    else if (r > 0.88) rarity = 'transcendent'; // 6% (was 1.0%)
+    else if (r > 0.78) rarity = 'exotic';      // 10% (was 2.0%)
+    else if (r > 0.60) rarity = 'mythic';       // 18% (was 6.5%)
+    else rarity = 'gold';                       // 60% (was 90%)
 
     const weaponNames = [
       "Masamune Katana", "Muramasa Blade", "Dragon Naginata", "Shadow Tanto", "Imperial Yari",
