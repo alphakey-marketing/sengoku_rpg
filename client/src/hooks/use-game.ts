@@ -433,6 +433,58 @@ export function useSetActiveHorse() {
   });
 }
 
+export function useRecycleHorse() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (horseId: number) => {
+      const url = buildUrl(api.horses.recycle.path, { id: horseId });
+      const res = await fetchWithAuth(url, { method: "POST" });
+      if (!res.ok) throw new Error("Failed to recycle horse");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [api.horses.list.path] });
+      queryClient.invalidateQueries({ queryKey: [api.player.get.path] });
+    },
+  });
+}
+
+export function useCombineHorses() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  return useMutation({
+    mutationFn: async (horseIds: number[]) => {
+      const res = await fetchWithAuth(api.horses.combine.path, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ horseIds }),
+      });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || "Failed to combine horses");
+      }
+      return res.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: [api.horses.list.path] });
+      toast({
+        title: data.upgraded ? "Upgrade Success!" : "Combination Complete",
+        description: data.upgraded 
+          ? `You obtained a higher rarity horse: ${data.newHorse.name}!`
+          : `You obtained a same rarity horse: ${data.newHorse.name}`,
+        variant: data.upgraded ? "default" : "default",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Combination Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+}
+
 export function useTransformations() {
   return useQuery<Transformation[]>({
     queryKey: [api.transformations.list.path],

@@ -108,6 +108,17 @@ export const api = {
       path: '/api/horses/:id/activate' as const,
       responses: { 200: z.any(), 401: errorSchemas.unauthorized, 404: errorSchemas.notFound },
     },
+    recycle: {
+      method: 'POST' as const,
+      path: '/api/horses/:id/recycle' as const,
+      responses: { 200: z.object({ goldGained: z.number() }), 401: errorSchemas.unauthorized, 404: errorSchemas.notFound },
+    },
+    combine: {
+      method: 'POST' as const,
+      path: '/api/horses/combine' as const,
+      input: z.object({ horseIds: z.array(z.number()).length(3) }),
+      responses: { 200: z.object({ success: z.boolean(), newHorse: z.any(), upgraded: z.boolean() }), 400: errorSchemas.validation, 401: errorSchemas.unauthorized },
+    },
   },
   transformations: {
     list: {

@@ -1,4 +1,4 @@
-import { usePets, useHorses, useSetActivePet, useSetActiveHorse, useTransformations, usePlayer, useCompanions, useSetParty, useEquipment, useRecycleCompanion, useUpgradeCompanion, useRecyclePet, useUpgradePet } from "@/hooks/use-game";
+import { usePets, useHorses, useSetActivePet, useSetActiveHorse, useTransformations, usePlayer, useCompanions, useSetParty, useEquipment, useRecycleCompanion, useUpgradeCompanion, useRecyclePet, useUpgradePet, useRecycleHorse, useCombineHorses } from "@/hooks/use-game";
 import { MainLayout } from "@/components/layout/main-layout";
 import { Button } from "@/components/ui/button";
 import { Sparkles, Zap, Star, Heart, Sword, Shield, Crown, Timer, Users, Trash2, Hammer, Flame, FlaskConical } from "lucide-react";
@@ -26,9 +26,12 @@ export default function StablePage() {
   const { mutate: upgradeComp, isPending: upgradePending } = useUpgradeCompanion();
   const { mutate: recyclePet, isPending: recyclePetPending } = useRecyclePet();
   const { mutate: upgradePet, isPending: upgradePetPending } = useUpgradePet();
+  const { mutate: recycleHorse, isPending: recycleHorsePending } = useRecycleHorse();
+  const { mutate: combineHorses, isPending: combineHorsesPending } = useCombineHorses();
 
   const { toast } = useToast();
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [selectedHorseIds, setSelectedHorseIds] = useState<number[]>([]);
 
   useEffect(() => {
     if (companions && selectedIds.length === 0 && companions.some(c => c.isInParty)) {
@@ -219,19 +222,53 @@ export default function StablePage() {
             )}
           </TabsContent>
 
-          <TabsContent value="horses" className="mt-6">
+          <TabsContent value="horses" className="mt-6 space-y-6">
+            <div className="flex justify-between items-center bg-card/30 p-4 rounded-lg border border-border/30">
+              <span className="text-sm font-medium text-secondary-foreground">
+                {selectedHorseIds.length} / 3 Horses Selected for Combination
+              </span>
+              <Button
+                onClick={() => {
+                  if (selectedHorseIds.length === 3) {
+                    combineHorses(selectedHorseIds);
+                    setSelectedHorseIds([]);
+                  }
+                }}
+                disabled={combineHorsesPending || selectedHorseIds.length !== 3}
+                className="bg-purple-900/40 hover:bg-purple-800/60 text-purple-300 font-bold border border-purple-700/30"
+                data-testid="button-combine-horses"
+              >
+                {combineHorsesPending ? "Combining..." : "Combine 3 Horses"}
+              </Button>
+            </div>
+
             {!horses || horses.length === 0 ? (
               <EmptyState icon={Zap} title="No Horses" desc="Rare horses can be tamed during field battles." />
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                {[...horses].sort((a, b) => a.id - b.id).map((horse, i) => (
+                {[...horses].sort((a, b) => a.id - b.id).map((horse, i) => {
+                  const isSelectedForCombine = selectedHorseIds.includes(horse.id);
+                  return (
                   <motion.div
                     key={horse.id}
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: i * 0.05 }}
-                    className={`rounded-lg border p-5 bg-washi transition-all ${horse.isActive ? 'border-cyan-700 bg-cyan-900/10 shadow-[0_0_15px_rgba(0,200,255,0.1)]' : 'border-border/50 bg-card'}`}
+                    className={`rounded-lg border p-5 bg-washi transition-all cursor-pointer ${
+                      isSelectedForCombine ? 'border-purple-500 bg-purple-900/20 shadow-[0_0_15px_rgba(168,85,247,0.3)]' :
+                      horse.isActive ? 'border-cyan-700 bg-cyan-900/10 shadow-[0_0_15px_rgba(0,200,255,0.1)]' : 
+                      'border-border/50 bg-card'
+                    }`}
                     data-testid={`horse-card-${horse.id}`}
+                    onClick={() => {
+                      if (!horse.isActive) {
+                        setSelectedHorseIds(prev => {
+                          if (prev.includes(horse.id)) return prev.filter(id => id !== horse.id);
+                          if (prev.length >= 3) return prev;
+                          return [...prev, horse.id];
+                        });
+                      }
+                    }}
                   >
                     <div className="flex justify-between items-start mb-3">
                       <div>
@@ -266,16 +303,26 @@ export default function StablePage() {
                       {!horse.isActive && (
                         <Button
                           size="sm" variant="outline" className="flex-1 border-cyan-700/30 text-cyan-400 hover:bg-cyan-900/20"
-                          onClick={() => setActiveHorse(horse.id)} disabled={horsePending}
+                          onClick={(e) => { e.stopPropagation(); setActiveHorse(horse.id); }} disabled={horsePending}
                           data-testid={`activate-horse-${horse.id}`}
                         >Set Active</Button>
                       )}
                       {horse.isActive && (
                         <Button size="sm" variant="secondary" className="flex-1" disabled>Active</Button>
                       )}
+                      {!horse.isActive && (
+                        <Button
+                          size="sm" variant="outline" className="border-red-900/30 text-red-400 px-3"
+                          onClick={(e) => { e.stopPropagation(); recycleHorse(horse.id); }} 
+                          disabled={recycleHorsePending}
+                          title="Recycle for Gold"
+                          data-testid={`recycle-horse-${horse.id}`}
+                        ><Trash2 size={14} /></Button>
+                      )}
                     </div>
                   </motion.div>
-                ))}
+                );
+              })}
               </div>
             )}
           </TabsContent>

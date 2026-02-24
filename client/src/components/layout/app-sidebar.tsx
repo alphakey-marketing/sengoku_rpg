@@ -28,7 +28,7 @@ const navItems = [
   { title: "Dojo (Home)", url: "/", icon: Home },
   { title: "War Council", url: "/stable", icon: Users },
   { title: "Battle Prep (Gear)", url: "/gear", icon: ShieldAlert },
-  { title: "Armory (Equipment)", url: "/equipment", icon: Sword },
+  { title: "Armory (Upgrade)", url: "/equipment", icon: Sword },
   { title: "Shrine (Gacha)", url: "/gacha", icon: Zap },
   { title: "Campaign (Map)", url: "/map", icon: Map },
 ];
