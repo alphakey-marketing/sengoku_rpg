@@ -108,28 +108,23 @@ export class DatabaseStorage implements IStorage {
       mythic: 50, exotic: 100, transcendent: 250, celestial: 500, primal: 1000
     };
     
-    const value = rarityStones[rarity] || 1;
-    
     return await db.transaction(async (tx) => {
-      const targets = await tx.select().from(equipment).where(
-        and(
-          eq(equipment.userId, userId),
-          eq(equipment.rarity, rarity),
-          eq(equipment.isEquipped, false)
-        )
-      );
+      const conditions = [
+        eq(equipment.userId, userId),
+        eq(equipment.isEquipped, false)
+      ];
+      
+      if (rarity !== 'all') {
+        conditions.push(eq(equipment.rarity, rarity));
+      }
+      
+      const targets = await tx.select().from(equipment).where(and(...conditions));
       
       if (targets.length === 0) return { count: 0, stonesGained: 0 };
       
-      const totalStones = targets.length * value;
+      const totalStones = targets.reduce((sum, item) => sum + (rarityStones[item.rarity] || 1), 0);
       
-      await tx.delete(equipment).where(
-        and(
-          eq(equipment.userId, userId),
-          eq(equipment.rarity, rarity),
-          eq(equipment.isEquipped, false)
-        )
-      );
+      await tx.delete(equipment).where(and(...conditions));
       
       const [user] = await tx.select().from(users).where(eq(users.id, userId));
       if (user) {

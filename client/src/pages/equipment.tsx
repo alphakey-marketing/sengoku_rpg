@@ -142,6 +142,17 @@ export default function EquipmentPage() {
   return (
     <MainLayout>
       <div className="space-y-6">
+        {recycleRarityPending && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center">
+            <div className="bg-card border border-border p-6 rounded-xl shadow-2xl flex flex-col items-center gap-4 animate-in fade-in zoom-in duration-300">
+              <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+              <div className="text-center">
+                <h3 className="text-xl font-display font-bold text-white">Recycling Equipment</h3>
+                <p className="text-muted-foreground text-sm">Purifying items into Upgrade Stones...</p>
+              </div>
+            </div>
+          </div>
+        )}
         <div className="border-b border-border/50 pb-4 flex justify-between items-end">
           <div>
             <h1 className="text-3xl font-display font-bold text-white mb-2" data-testid="text-page-title">Armory</h1>
@@ -198,23 +209,22 @@ export default function EquipmentPage() {
               </Button>
             ))}
             
-            {/* 
-            {filterRarity !== 'all' && (
-              <Button
-                size="sm"
-                variant="destructive"
-                className="h-7 text-[10px] ml-auto"
-                onClick={() => {
-                  if (confirm(`Recycle all UN-EQUIPPED ${filterRarity} items?`)) {
-                    recycleRarity(filterRarity);
-                  }
-                }}
-                disabled={recycleRarityPending}
-              >
-                Recycle All {filterRarity}
-              </Button>
-            )}
-            */}
+            <Button
+              size="sm"
+              variant="destructive"
+              className="h-7 text-[10px] ml-auto gap-2"
+              onClick={() => {
+                const target = filterRarity === 'all' ? 'ALL un-equipped' : `all UN-EQUIPPED ${filterRarity}`;
+                if (confirm(`Recycle ${target} items?`)) {
+                  recycleRarity(filterRarity);
+                }
+              }}
+              disabled={recycleRarityPending}
+              data-testid="button-recycle-all"
+            >
+              <Trash2 size={12} />
+              {filterRarity === 'all' ? 'Recycle All' : `Recycle All ${filterRarity}`}
+            </Button>
           </div>
         </div>
 
