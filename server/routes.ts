@@ -1150,7 +1150,7 @@ function generatePet(userId: string, locationId: number = 1) {
     if (!user) return res.status(401).json({ message: "Unauthorized" });
 
     if (action === 'pay') {
-      const goldToPay = Number(goldDemanded);
+      const goldToPay = Math.floor(Number(goldDemanded));
       const userStatus = await storage.getUser(userId);
       if (!userStatus || userStatus.gold < goldToPay) return res.status(400).json({ message: "Not enough gold" });
       await storage.updateUser(userId, { gold: userStatus.gold - goldToPay });

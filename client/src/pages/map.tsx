@@ -218,7 +218,7 @@ export default function MapPage() {
     apiRequest('POST', '/api/battle/ninja/resolve', {
       action,
       ninjaName: ninjaEncounter.name,
-      goldDemanded: ninjaEncounter.goldDemanded
+      goldDemanded: Math.floor(ninjaEncounter.goldDemanded)
     }).then(async (res) => {
       const data = await res.json();
       if (action === 'pay') {
