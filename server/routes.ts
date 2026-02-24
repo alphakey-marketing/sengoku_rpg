@@ -45,9 +45,9 @@ function generateHorse(userId: string) {
   const name = pick(HORSE_NAMES);
   const r = Math.random();
   let rarity = 'white';
-  if (r > 0.999) rarity = 'primal';
-  else if (r > 0.995) rarity = 'celestial';
-  else if (r > 0.985) rarity = 'transcendent';
+  if (r > 0.99) rarity = 'primal';
+  else if (r > 0.98) rarity = 'celestial';
+  else if (r > 0.97) rarity = 'transcendent';
   else if (r > 0.96) rarity = 'exotic';
   else if (r > 0.90) rarity = 'mythic';
   else if (r > 0.75) rarity = 'gold';
@@ -95,30 +95,41 @@ function equipRarityFromRandom(locationId: number = 1): string {
   const r = Math.random();
   const isChina = locationId >= 100;
   
-  // Significantly improved rarity rates for normal enemies, even better in China
+  // Dynamic rarity scaling based on locationId
+  // locationId 1 (Owari) -> base rates
+  // locationId 2 (Mino) -> slightly better
+  // ...
+  // locationId 100+ (China) -> significantly better
+  
   if (isChina) {
-    if (r > 0.995) return 'primal';        // 0.5% (vs 0.1%)
-    if (r > 0.985) return 'celestial';     // 1.0% (vs 0.4%)
-    if (r > 0.965) return 'transcendent';  // 2.0% (vs 1.0%)
-    if (r > 0.92) return 'exotic';         // 4.5% (vs 3.5%)
-    if (r > 0.80) return 'mythic';         // 12% (vs 10%)
-    if (r > 0.60) return 'gold';           // 20% (vs 15%)
-    if (r > 0.40) return 'purple';         // 20% (vs 20%)
-    if (r > 0.20) return 'blue';           // 20% (vs 20%)
-    if (r > 0.10) return 'green';          // 10% (vs 15%)
-    return 'white';                       // 10% (vs 15%)
+    const chinaIndex = locationId - 100;
+    // China scaling: even more aggressive rarity improvements
+    const bonus = chinaIndex * 0.02; // 2% shift per China map
+    if (r > 0.995 - bonus) return 'primal';
+    if (r > 0.985 - bonus) return 'celestial';
+    if (r > 0.965 - bonus) return 'transcendent';
+    if (r > 0.92 - bonus) return 'exotic';
+    if (r > 0.80 - bonus) return 'mythic';
+    if (r > 0.60 - bonus) return 'gold';
+    if (r > 0.40 - bonus) return 'purple';
+    if (r > 0.20 - bonus) return 'blue';
+    if (r > 0.10 - bonus) return 'green';
+    return 'white';
   }
 
-  if (r > 0.999) return 'primal';        // 0.1%
-  if (r > 0.995) return 'celestial';     // 0.4%
-  if (r > 0.985) return 'transcendent';  // 1.0%
-  if (r > 0.95) return 'exotic';         // 3.5%
-  if (r > 0.85) return 'mythic';         // 10%
-  if (r > 0.70) return 'gold';           // 15%
-  if (r > 0.50) return 'purple';         // 20%
-  if (r > 0.30) return 'blue';           // 20%
-  if (r > 0.15) return 'green';          // 15%
-  return 'white';                       // 15%
+  // Japan scaling: gradual improvement from map 1 to 6
+  const japanBonus = (locationId - 1) * 0.03; // 3% shift per Japan map
+  
+  if (r > 0.999 - japanBonus/10) return 'primal';        
+  if (r > 0.995 - japanBonus/5) return 'celestial';     
+  if (r > 0.985 - japanBonus/2) return 'transcendent';  
+  if (r > 0.95 - japanBonus) return 'exotic';         
+  if (r > 0.85 - japanBonus) return 'mythic';         
+  if (r > 0.70 - japanBonus) return 'gold';           
+  if (r > 0.50 - japanBonus) return 'purple';         
+  if (r > 0.30 - japanBonus) return 'blue';           
+  if (r > 0.15 - japanBonus) return 'green';          
+  return 'white';                       
 }
 
 function calcEquipExpToNext(level: number): number {
