@@ -21,11 +21,11 @@ export default function GearPage() {
       case 'purple': return 'text-purple-400 border-purple-700 bg-purple-900/10';
       case 'blue': return 'text-blue-400 border-blue-700 bg-blue-900/10';
       case 'green': return 'text-green-400 border-green-700 bg-green-900/10';
-      case 'mythic': return 'text-pink-400 border-pink-700 bg-pink-900/10';
-      case 'exotic': return 'text-teal-400 border-teal-700 bg-teal-900/10';
-      case 'transcendent': return 'text-zinc-100 border-white/20 bg-white/5 shadow-[0_0_20px_rgba(255,255,255,0.2)]';
-      case 'celestial': return 'text-white border-zinc-200 bg-white/10 shadow-[0_0_30px_rgba(255,255,255,0.4)]';
-      case 'primal': return 'text-red-500 border-red-900 bg-black shadow-[0_0_40px_rgba(220,38,38,0.5)]';
+      case 'mythic': return 'text-pink-400 border-pink-700 bg-pink-900/10 shadow-[0_0_20px_rgba(236,72,153,0.3)]';
+      case 'exotic': return 'text-teal-400 border-teal-700 bg-teal-900/10 shadow-[0_0_25px_rgba(20,184,166,0.4)]';
+      case 'transcendent': return 'text-zinc-100 border-white/20 bg-white/5 shadow-[0_0_30px_rgba(255,255,255,0.3)] animate-pulse';
+      case 'celestial': return 'text-white border-zinc-200 bg-white/10 shadow-[0_0_40px_rgba(255,255,255,0.5)] font-bold';
+      case 'primal': return 'text-red-600 border-red-900 bg-black shadow-[0_0_50px_rgba(220,38,38,0.6)] font-black uppercase tracking-tighter';
       default: return 'text-zinc-400 border-zinc-700 bg-zinc-900/20';
     }
   };
@@ -61,7 +61,9 @@ export default function GearPage() {
                 <p className="text-[10px] text-muted-foreground uppercase tracking-widest">{typeLabel}</p>
                 {item ? (
                   <>
-                    <p className="font-bold text-sm truncate">{item.name}{item.endowmentPoints > 0 ? ` +${item.endowmentPoints}` : ''}</p>
+                    <p className={`font-bold text-sm truncate ${item.rarity === 'transcendent' ? 'text-transparent bg-clip-text bg-gradient-to-r from-red-400 via-green-400 to-blue-400 pb-1' : ''}`}>
+                      {item.name}{item.endowmentPoints > 0 ? ` +${item.endowmentPoints}` : ''}
+                    </p>
                     <div className="flex gap-2 text-[10px] mt-1 flex-wrap">
                       <span className="font-bold">Lv{item.level}</span>
                       {item.attackBonus > 0 && <span className="text-red-400">+{item.attackBonus} ATK</span>}
