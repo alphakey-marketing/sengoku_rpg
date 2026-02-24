@@ -38,7 +38,7 @@ const LOCATIONS = [
     name: "Kyoto Approaches", 
     desc: "The capital's outskirts. Heavily defended by the Shogun's remnants.", 
     level: 25,
-    image: "https://images.unsplash.com/photo-1493780474015-ba834ff0ce2f?q=80&w=800&auto=format&fit=crop",
+    image: "https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?q=80&w=800&auto=format&fit=crop",
     theme: "border-red-900/30 shadow-[0_0_15px_rgba(239,68,68,0.1)]"
   },
   { 
@@ -46,7 +46,7 @@ const LOCATIONS = [
     name: "Edo Outskirts", 
     desc: "The path to the new capital. Protected by elite samurai and treacherous traps.", 
     level: 45,
-    image: "https://images.unsplash.com/photo-1545569341-9eb8b30979d9?q=80&w=800&auto=format&fit=crop",
+    image: "https://images.unsplash.com/photo-1528164344705-47542687000d?q=80&w=800&auto=format&fit=crop",
     theme: "border-purple-900/30 shadow-[0_0_20px_rgba(168,85,247,0.1)]"
   },
   { 
