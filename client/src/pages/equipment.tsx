@@ -198,6 +198,7 @@ export default function EquipmentPage() {
               </Button>
             ))}
             
+            {/* 
             {filterRarity !== 'all' && (
               <Button
                 size="sm"
@@ -213,6 +214,7 @@ export default function EquipmentPage() {
                 Recycle All {filterRarity}
               </Button>
             )}
+            */}
           </div>
         </div>
 
