@@ -228,17 +228,18 @@ async function getPlayerTeamStats(userId: string) {
 }
 
 function generateEnemyStats(type: 'field' | 'boss' | 'special', playerLevel: number, locationId: number = 1) {
+  const locationMultiplier = 1 + (locationId - 1) * 0.5;
   if (type === 'field') {
     const name = pick(YOKAI_NAMES);
     const lvl = Math.max(1, playerLevel + Math.floor(Math.random() * 3) - 1);
     return {
       name,
       level: lvl,
-      hp: lvl * 30 + 50,
-      maxHp: lvl * 30 + 50,
-      attack: lvl * 8 + 10,
-      defense: lvl * 5 + 5,
-      speed: lvl * 4 + 8,
+      hp: Math.floor((lvl * 30 + 50) * locationMultiplier),
+      maxHp: Math.floor((lvl * 30 + 50) * locationMultiplier),
+      attack: Math.floor((lvl * 8 + 10) * locationMultiplier),
+      defense: Math.floor((lvl * 5 + 5) * locationMultiplier),
+      speed: Math.floor((lvl * 4 + 8) * locationMultiplier),
       skills: ["Scratch", "Bite"],
     };
   } else if (type === 'boss') {
@@ -249,11 +250,11 @@ function generateEnemyStats(type: 'field' | 'boss' | 'special', playerLevel: num
     return {
       name,
       level: lvl,
-      hp: lvl * 150 + 500 + Math.floor(difficultyMultiplier * 1000),
-      maxHp: lvl * 150 + 500 + Math.floor(difficultyMultiplier * 1000),
-      attack: lvl * 25 + 60 + Math.floor(difficultyMultiplier * 50),
-      defense: lvl * 20 + 50 + Math.floor(difficultyMultiplier * 40),
-      speed: lvl * 12 + 25 + Math.floor(difficultyMultiplier * 20),
+      hp: Math.floor((lvl * 150 + 500 + Math.floor(difficultyMultiplier * 1000)) * locationMultiplier),
+      maxHp: Math.floor((lvl * 150 + 500 + Math.floor(difficultyMultiplier * 1000)) * locationMultiplier),
+      attack: Math.floor((lvl * 25 + 60 + Math.floor(difficultyMultiplier * 50)) * locationMultiplier),
+      defense: Math.floor((lvl * 20 + 50 + Math.floor(difficultyMultiplier * 40)) * locationMultiplier),
+      speed: Math.floor((lvl * 12 + 25 + Math.floor(difficultyMultiplier * 20)) * locationMultiplier),
       skills: ["War Cry", "Shield Wall", "Charge", "Strategic Strike"],
     };
   } else {
