@@ -208,6 +208,18 @@ async function getPlayerTeamStats(userId: string) {
     } : null,
   };
 
+  // Apply pet bonuses if active
+  if (activePet) {
+    const party = [stats.player, ...stats.companions];
+    party.forEach(member => {
+      member.attack += activePet.attack;
+      member.defense += activePet.defense;
+      member.speed += activePet.speed;
+      member.maxHp += activePet.hp;
+      member.hp += activePet.hp;
+    });
+  }
+
   // Apply horse bonuses to the whole party if active
   if (activeHorse) {
     const party = [stats.player, ...stats.companions];
