@@ -9,6 +9,7 @@ import LandingPage from "@/pages/landing";
 import Home from "@/pages/home";
 import Party from "@/pages/party";
 import EquipmentPage from "@/pages/equipment";
+import GearPage from "@/pages/gear";
 import GachaPage from "@/pages/gacha";
 import MapPage from "@/pages/map";
 import StablePage from "@/pages/stable";
@@ -22,6 +23,7 @@ function Router() {
       <Route path="/" component={Home} />
       <Route path="/party" component={Party} />
       <Route path="/equipment" component={EquipmentPage} />
+      <Route path="/gear" component={GearPage} />
       <Route path="/pets" component={PetsPage} />
       <Route path="/gacha" component={GachaPage} />
       <Route path="/map" component={MapPage} />

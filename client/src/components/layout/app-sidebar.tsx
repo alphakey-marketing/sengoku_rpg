@@ -8,6 +8,7 @@ import {
   LogOut,
   Tent,
   Zap,
+  ShieldAlert,
 } from "lucide-react";
 import {
   Sidebar,
@@ -26,6 +27,7 @@ import { useAuth } from "@/hooks/use-auth";
 const navItems = [
   { title: "Dojo (Home)", url: "/", icon: Home },
   { title: "War Council (Party)", url: "/party", icon: Users },
+  { title: "Battle Prep (Gear)", url: "/gear", icon: ShieldAlert },
   { title: "Armory (Equipment)", url: "/equipment", icon: Sword },
   { title: "Stable (Horses)", url: "/stable", icon: Tent },
   { title: "Spirits (Pets)", url: "/pets", icon: Sparkles },

@@ -188,49 +188,6 @@ export default function Home() {
           ))}
         </div>
 
-        <h3 className="text-xl font-display font-semibold border-b border-border/50 pb-2 mt-8 mb-4">Equipped Gear</h3>
-        {equippedItems.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No equipment is currently worn. Visit the Armory to equip items.</p>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            {['weapon', 'armor', 'accessory', 'horse_gear'].map(type => {
-              const item = equippedItems.find(e => e.type === type);
-              const TypeIcon = getTypeIcon(type);
-              const typeLabel = type === 'horse_gear' ? 'Horse Gear' : type.charAt(0).toUpperCase() + type.slice(1);
-              return (
-                <div
-                  key={type}
-                  className={`rounded-lg border p-4 bg-card bg-washi flex items-center gap-3 ${item ? getRarityColor(item.rarity) : 'border-border/30 opacity-50'}`}
-                  data-testid={`equipped-${type}`}
-                >
-                  <div className="p-2 bg-background/50 rounded border border-border/50">
-                    <TypeIcon size={20} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs text-muted-foreground uppercase tracking-wide">{typeLabel}</p>
-                    {item ? (
-                      <>
-                        <p className="font-bold text-sm truncate">{item.name}</p>
-                        <div className="flex gap-2 text-xs mt-1">
-                          <span>Lv{item.level}</span>
-                          {item.attackBonus > 0 && <span className="text-red-400">+{item.attackBonus} ATK</span>}
-                          {item.defenseBonus > 0 && <span className="text-blue-400">+{item.defenseBonus} DEF</span>}
-                          {item.speedBonus > 0 && <span className="text-cyan-400">+{item.speedBonus} SPD</span>}
-                        </div>
-                        <div className="mt-1">
-                          <Progress value={(item.experience / item.expToNext) * 100} className="h-1" />
-                        </div>
-                      </>
-                    ) : (
-                      <p className="text-sm text-zinc-500">Empty</p>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-
         {teamStatus?.pet && (
           <div className="mt-4">
             <h3 className="text-xl font-display font-semibold border-b border-border/50 pb-2 mb-4">Active Pet</h3>
