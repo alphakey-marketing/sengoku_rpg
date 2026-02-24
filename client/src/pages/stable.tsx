@@ -280,30 +280,28 @@ export default function StablePage() {
                         <h3 className="font-bold text-lg font-display text-white">{horse.name}</h3>
                         <div className="flex items-center gap-1">
                           <span className={`text-[10px] uppercase font-bold px-1.5 py-0.5 rounded border ${
-                            horse.rarity === 'primal' ? 'text-red-600 border-red-900 bg-black shadow-[0_0_20px_rgba(220,38,38,0.6)]' :
-                            horse.rarity === 'celestial' ? 'text-cyan-400 border-cyan-700 bg-cyan-950/20 shadow-[0_0_15px_rgba(34,211,238,0.5)]' :
-                            horse.rarity === 'transcendent' ? 'text-zinc-100 border-white/20 bg-white/5 shadow-[0_0_12px_rgba(255,255,255,0.3)]' :
-                            horse.rarity === 'exotic' ? 'text-teal-400 border-teal-900 bg-teal-900/10 shadow-[0_0_10px_rgba(20,184,166,0.4)]' :
-                            horse.rarity === 'mythic' ? 'text-pink-400 border-pink-900 bg-pink-900/10 shadow-[0_0_8px_rgba(236,72,153,0.3)]' :
-                            horse.rarity === 'gold' ? 'text-yellow-400 border-yellow-700 bg-yellow-900/20 shadow-[0_0_6px_rgba(234,179,8,0.2)]' :
-                            horse.rarity === 'purple' ? 'text-purple-400 border-purple-900 bg-purple-900/10' :
-                            horse.rarity === 'blue' ? 'text-blue-400 border-blue-900 bg-blue-900/10' :
-                            horse.rarity === 'green' ? 'text-green-400 border-green-900 bg-green-900/10' :
-                            horse.rarity === 'white' ? 'text-zinc-400 border-zinc-700 bg-zinc-900/50' :
-                            'text-zinc-500 border-zinc-800 bg-zinc-900/80'
+                            horse.rarity === 'primal' ? 'text-red-500 border-red-500/50 bg-black shadow-[0_0_20px_rgba(239,68,68,0.5)]' :
+                            horse.rarity === 'celestial' ? 'text-blue-200 border-blue-200/50 bg-blue-200/10 shadow-[0_0_15px_rgba(191,219,254,0.5)]' :
+                            horse.rarity === 'transcendent' ? 'text-white border-white/50 bg-white/10 animate-pulse' :
+                            horse.rarity === 'exotic' ? 'text-teal-400 border-teal-400/50 bg-teal-400/10' :
+                            horse.rarity === 'mythic' ? 'text-pink-400 border-pink-400/50 bg-pink-400/10' :
+                            horse.rarity === 'gold' ? 'text-yellow-400 border-yellow-400/50 bg-yellow-400/10' :
+                            horse.rarity === 'purple' ? 'text-purple-400 border-purple-400/50 bg-purple-400/10' :
+                            horse.rarity === 'blue' ? 'text-blue-400 border-blue-400/50 bg-blue-400/10' :
+                            horse.rarity === 'green' ? 'text-green-400 border-green-400/50 bg-green-400/10' :
+                            'text-zinc-400 border-zinc-400/50 bg-zinc-400/10'
                           }`}>
                             {
-                              horse.rarity === 'common' ? 'COMMON' :
-                              horse.rarity === 'white' ? 'UNCOMMON' :
-                              horse.rarity === 'green' ? 'RARE' :
-                              horse.rarity === 'blue' ? 'EPIC' :
-                              horse.rarity === 'purple' ? 'LEGENDARY' :
-                              horse.rarity === 'gold' ? 'MYTHIC' :
-                              horse.rarity === 'mythic' ? 'EXOTIC' :
-                              horse.rarity === 'exotic' ? 'TRANSCENDENT' :
-                              horse.rarity === 'transcendent' ? 'CELESTIAL' :
-                              horse.rarity === 'celestial' ? 'PRIMAL' :
-                              horse.rarity === 'primal' ? 'DIVINE' : horse.rarity.toUpperCase()
+                              horse.rarity === 'white' ? 'WHITE' :
+                              horse.rarity === 'green' ? 'GREEN' :
+                              horse.rarity === 'blue' ? 'BLUE' :
+                              horse.rarity === 'purple' ? 'PURPLE' :
+                              horse.rarity === 'gold' ? 'GOLD' :
+                              horse.rarity === 'mythic' ? 'MYTHIC' :
+                              horse.rarity === 'exotic' ? 'EXOTIC' :
+                              horse.rarity === 'transcendent' ? 'TRANSCENDENT' :
+                              horse.rarity === 'celestial' ? 'CELESTIAL' :
+                              horse.rarity === 'primal' ? 'PRIMAL' : horse.rarity.toUpperCase()
                             }
                           </span>
                         </div>
