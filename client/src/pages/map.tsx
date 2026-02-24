@@ -1,11 +1,11 @@
 import { useState, useEffect } from "react";
-import { useFieldBattle, useBossBattle, useSpecialBossBattle, BattleResult, useCampaignEvents, useTriggerCampaignEvent, usePlayerFullStatus } from "@/hooks/use-game";
+import { useFieldBattle, useBossBattle, useSpecialBossBattle, BattleResult, useCampaignEvents, useTriggerCampaignEvent, usePlayerFullStatus, useEquipment } from "@/hooks/use-game";
 import { MainLayout } from "@/components/layout/main-layout";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { api } from "@shared/routes";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
-import { Map as MapIcon, Swords, Skull, ChevronRight, Crown, Zap, Shield, Heart, Sparkles, ArrowUp, Scroll, Star } from "lucide-react";
+import { Map as MapIcon, Swords, Skull, ChevronRight, Crown, Zap, Shield, Heart, Sparkles, ArrowUp, Scroll, Star, Package } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -14,6 +14,8 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { motion, AnimatePresence } from "framer-motion";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useToast } from "@/hooks/use-toast";
 
 const LOCATIONS = [
   { id: 1, name: "Owari Province", desc: "Starting grounds of the Oda clan. Bandits and minor yokai roam here.", level: 1 },
@@ -69,6 +71,30 @@ export default function MapPage() {
   const [isResolvingNinja, setIsResolvingNinja] = useState(false);
 
   const { data: playerStatus } = usePlayerFullStatus();
+  const { data: equipment } = useEquipment();
+  const { toast } = useToast();
+
+  const handleEquip = async (id: number) => {
+    try {
+      await apiRequest('POST', `/api/equipment/${id}/equip`, { equippedToId: null, equippedToType: 'player' });
+      queryClient.invalidateQueries({ queryKey: [api.player.fullStatus.path] });
+      queryClient.invalidateQueries({ queryKey: [api.equipment.list.path] });
+      toast({ title: "Equipped", description: "Item equipped successfully." });
+    } catch (error) {
+      toast({ variant: "destructive", title: "Error", description: "Failed to equip item." });
+    }
+  };
+
+  const handleUnequip = async (id: number) => {
+    try {
+      await apiRequest('POST', `/api/equipment/${id}/unequip`);
+      queryClient.invalidateQueries({ queryKey: [api.player.fullStatus.path] });
+      queryClient.invalidateQueries({ queryKey: [api.equipment.list.path] });
+      toast({ title: "Unequipped", description: "Item unequipped successfully." });
+    } catch (error) {
+      toast({ variant: "destructive", title: "Error", description: "Failed to unequip item." });
+    }
+  };
 
   useEffect(() => {
     // Random IF trigger check
@@ -270,103 +296,154 @@ export default function MapPage() {
       </div>
 
       <Dialog open={preBattleInfo !== null} onOpenChange={(open) => !open && setPreBattleInfo(null)}>
-        <DialogContent className="bg-card border-border text-foreground sm:max-w-md">
+        <DialogContent className="bg-card border-border text-foreground sm:max-w-xl max-h-[90vh] flex flex-col">
           <DialogHeader>
             <DialogTitle className="font-display text-2xl text-center text-white">Battle Preparation</DialogTitle>
           </DialogHeader>
-          <div className="space-y-6 py-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2 bg-blue-950/20 p-3 rounded border border-blue-900/30">
-                <h4 className="text-xs font-bold text-blue-400 uppercase tracking-widest text-center">Your Team</h4>
-                <div className="space-y-1 text-sm">
-                  <div className="flex justify-between items-center mb-1">
-                    <p className="font-bold text-white truncate">{(playerStatus?.player as any)?.firstName || (playerStatus?.player as any)?.lastName || 'Warrior'}</p>
-                    {playerStatus?.companions && playerStatus.companions.length > 0 && (
-                      <span className="text-[10px] bg-blue-900/50 px-1 rounded">+{playerStatus.companions.length} Allies</span>
-                    )}
-                  </div>
-                  <div className="grid grid-cols-2 gap-x-2 text-xs">
-                    <span className="text-zinc-500">HP:</span> 
-                    <span className="text-red-400">
-                      {Math.floor(((playerStatus?.player?.hp || 0) + (playerStatus?.companions?.reduce((sum, c) => sum + (c.hp || 0), 0) || 0)))}
-                    </span>
-                    <span className="text-zinc-500">ATK:</span> 
-                    <span className="text-orange-400">
-                      {Math.floor(((playerStatus?.player?.attack || 0) + (playerStatus?.companions?.reduce((sum, c) => sum + (c.attack || 0), 0) || 0)))}
-                    </span>
-                    <span className="text-zinc-500">DEF:</span> 
-                    <span className="text-blue-400">
-                      {Math.floor(((playerStatus?.player?.defense || 0) + (playerStatus?.companions?.reduce((sum, c) => sum + (c.defense || 0), 0) || 0)))}
-                    </span>
-                    <span className="text-zinc-500">SPD:</span> 
-                    <span className="text-cyan-400">
-                      {Math.floor(((playerStatus?.player?.speed || 0) + (playerStatus?.companions?.reduce((sum, c) => sum + (c.speed || 0), 0) || 0)))}
-                    </span>
-                  </div>
-                </div>
-              </div>
+          
+          <Tabs defaultValue="prep" className="flex-1 overflow-hidden flex flex-col">
+            <TabsList className="grid w-full grid-cols-2 bg-muted/30">
+              <TabsTrigger value="prep">Strategy</TabsTrigger>
+              <TabsTrigger value="gear">Armory</TabsTrigger>
+            </TabsList>
 
-              <div className="space-y-2 bg-red-950/20 p-3 rounded border border-red-900/30">
-                <h4 className="text-xs font-bold text-red-400 uppercase tracking-widest text-center">Enemy</h4>
-                <div className="space-y-1 text-sm">
-                  <p className="font-bold text-white truncate">{preBattleInfo?.enemy.name}</p>
-                  <div className="grid grid-cols-2 gap-x-2 text-xs">
-                    <span className="text-zinc-500">HP:</span> <span className="text-red-400">{preBattleInfo?.enemy.hp}</span>
-                    <span className="text-zinc-500">ATK:</span> <span className="text-orange-400">{preBattleInfo?.enemy.attack}</span>
-                    <span className="text-zinc-500">DEF:</span> <span className="text-blue-400">{preBattleInfo?.enemy.defense}</span>
-                    <span className="text-zinc-500">SPD:</span> <span className="text-cyan-400">{preBattleInfo?.enemy.speed}</span>
+            <TabsContent value="prep" className="flex-1 overflow-y-auto py-4 space-y-6">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2 bg-blue-950/20 p-3 rounded border border-blue-900/30">
+                  <h4 className="text-xs font-bold text-blue-400 uppercase tracking-widest text-center">Your Team</h4>
+                  <div className="space-y-1 text-sm">
+                    <div className="flex justify-between items-center mb-1">
+                      <p className="font-bold text-white truncate">{(playerStatus?.player as any)?.firstName || (playerStatus?.player as any)?.lastName || 'Warrior'}</p>
+                      {playerStatus?.companions && playerStatus.companions.length > 0 && (
+                        <span className="text-[10px] bg-blue-900/50 px-1 rounded">+{playerStatus.companions.length} Allies</span>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-2 gap-x-2 text-xs">
+                      <span className="text-zinc-500">HP:</span> 
+                      <span className="text-red-400">
+                        {Math.floor(((playerStatus?.player?.hp || 0) + (playerStatus?.companions?.reduce((sum, c) => sum + (c.hp || 0), 0) || 0)))}
+                      </span>
+                      <span className="text-zinc-500">ATK:</span> 
+                      <span className="text-orange-400">
+                        {Math.floor(((playerStatus?.player?.attack || 0) + (playerStatus?.companions?.reduce((sum, c) => sum + (c.attack || 0), 0) || 0)))}
+                      </span>
+                      <span className="text-zinc-500">DEF:</span> 
+                      <span className="text-blue-400">
+                        {Math.floor(((playerStatus?.player?.defense || 0) + (playerStatus?.companions?.reduce((sum, c) => sum + (c.defense || 0), 0) || 0)))}
+                      </span>
+                      <span className="text-zinc-500">SPD:</span> 
+                      <span className="text-cyan-400">
+                        {Math.floor(((playerStatus?.player?.speed || 0) + (playerStatus?.companions?.reduce((sum, c) => sum + (c.speed || 0), 0) || 0)))}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-2 bg-red-950/20 p-3 rounded border border-red-900/30">
+                  <h4 className="text-xs font-bold text-red-400 uppercase tracking-widest text-center">Enemy</h4>
+                  <div className="space-y-1 text-sm">
+                    <p className="font-bold text-white truncate">{preBattleInfo?.enemy.name}</p>
+                    <div className="grid grid-cols-2 gap-x-2 text-xs">
+                      <span className="text-zinc-500">HP:</span> <span className="text-red-400">{preBattleInfo?.enemy.hp}</span>
+                      <span className="text-zinc-500">ATK:</span> <span className="text-orange-400">{preBattleInfo?.enemy.attack}</span>
+                      <span className="text-zinc-500">DEF:</span> <span className="text-blue-400">{preBattleInfo?.enemy.defense}</span>
+                      <span className="text-zinc-500">SPD:</span> <span className="text-cyan-400">{preBattleInfo?.enemy.speed}</span>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-            
-            <p className="text-xs text-center text-zinc-500 italic">"The wind whispers of blood and iron. Shall you draw your steel?"</p>
+              
+              <p className="text-xs text-center text-zinc-500 italic">"The wind whispers of blood and iron. Shall you draw your steel?"</p>
 
-            {preBattleInfo?.type === 'field' && (
-              <div className="space-y-2 border-t border-border/50 pt-4">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm font-bold text-white">Repeat Battle</span>
-                  <span className="text-sm font-bold text-primary">{preBattleInfo.repeatCount}x</span>
+              {preBattleInfo?.type === 'field' && (
+                <div className="space-y-2 border-t border-border/50 pt-4">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-bold text-white">Repeat Battle</span>
+                    <span className="text-sm font-bold text-primary">{preBattleInfo.repeatCount}x</span>
+                  </div>
+                  <Slider
+                    defaultValue={[1]}
+                    max={10}
+                    min={1}
+                    step={1}
+                    onValueChange={(val) => setPreBattleInfo({ ...preBattleInfo, repeatCount: val[0] })}
+                    className="py-4"
+                  />
+                  <div className="flex justify-between items-center mt-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => setPreBattleInfo({ ...preBattleInfo, repeatCount: Math.max(1, preBattleInfo.repeatCount - 1) })}
+                      className="h-8 w-8 p-0"
+                    >
+                      -
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => setPreBattleInfo({ ...preBattleInfo, repeatCount: 10 })}
+                      className="text-[10px] h-8 px-2 font-bold text-amber-500 border-amber-900/30 bg-amber-900/10"
+                    >
+                      MAX (10x)
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => setPreBattleInfo({ ...preBattleInfo, repeatCount: Math.min(10, preBattleInfo.repeatCount + 1) })}
+                      className="h-8 w-8 p-0"
+                    >
+                      +
+                    </Button>
+                  </div>
+                  <p className="text-[10px] text-zinc-500 text-center mt-2">Auto-repeat up to 10 skirmishes for multiplied rewards.</p>
                 </div>
-                <Slider
-                  defaultValue={[1]}
-                  max={10}
-                  min={1}
-                  step={1}
-                  onValueChange={(val) => setPreBattleInfo({ ...preBattleInfo, repeatCount: val[0] })}
-                  className="py-4"
-                />
-                <div className="flex justify-between items-center mt-2">
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={() => setPreBattleInfo({ ...preBattleInfo, repeatCount: Math.max(1, preBattleInfo.repeatCount - 1) })}
-                    className="h-8 w-8 p-0"
-                  >
-                    -
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={() => setPreBattleInfo({ ...preBattleInfo, repeatCount: 10 })}
-                    className="text-[10px] h-8 px-2 font-bold text-amber-500 border-amber-900/30 bg-amber-900/10"
-                  >
-                    MAX (10x)
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={() => setPreBattleInfo({ ...preBattleInfo, repeatCount: Math.min(10, preBattleInfo.repeatCount + 1) })}
-                    className="h-8 w-8 p-0"
-                  >
-                    +
-                  </Button>
+              )}
+            </TabsContent>
+
+            <TabsContent value="gear" className="flex-1 overflow-y-auto py-4">
+              <div className="space-y-4">
+                <h4 className="text-sm font-bold text-white border-b border-border/50 pb-1">Equipped Gear</h4>
+                <div className="grid grid-cols-1 gap-2">
+                  {equipment?.filter(e => e.isEquipped && e.equippedToType === 'player').length === 0 && (
+                    <p className="text-xs text-muted-foreground text-center py-4">No gear equipped</p>
+                  )}
+                  {equipment?.filter(e => e.isEquipped && e.equippedToType === 'player').map(item => (
+                    <div key={item.id} className="bg-muted/20 p-2 rounded flex justify-between items-center border border-border/30">
+                      <div className="flex items-center gap-2">
+                        <Package size={14} className="text-primary" />
+                        <div>
+                          <p className="text-xs font-bold text-white">{item.name}</p>
+                          <p className="text-[10px] text-muted-foreground uppercase">{item.rarity} {item.type}</p>
+                        </div>
+                      </div>
+                      <Button variant="ghost" size="sm" onClick={() => handleUnequip(item.id)} className="h-7 text-[10px] px-2 text-destructive">Unequip</Button>
+                    </div>
+                  ))}
                 </div>
-                <p className="text-[10px] text-zinc-500 text-center mt-2">Auto-repeat up to 10 skirmishes for multiplied rewards.</p>
+
+                <h4 className="text-sm font-bold text-white border-b border-border/50 pb-1 mt-4">Inventory</h4>
+                <div className="grid grid-cols-1 gap-2 max-h-48 overflow-y-auto custom-scrollbar pr-2">
+                  {equipment?.filter(e => !e.isEquipped).length === 0 && (
+                    <p className="text-xs text-muted-foreground text-center py-4">Inventory empty</p>
+                  )}
+                  {equipment?.filter(e => !e.isEquipped).map(item => (
+                    <div key={item.id} className="bg-muted/10 p-2 rounded flex justify-between items-center border border-border/20">
+                      <div className="flex items-center gap-2">
+                        <Package size={14} className="text-zinc-500" />
+                        <div>
+                          <p className="text-xs font-medium text-zinc-300">{item.name}</p>
+                          <p className="text-[10px] text-muted-foreground uppercase">{item.rarity} {item.type}</p>
+                        </div>
+                      </div>
+                      <Button variant="outline" size="sm" onClick={() => handleEquip(item.id)} className="h-7 text-[10px] px-2">Equip</Button>
+                    </div>
+                  ))}
+                </div>
               </div>
-            )}
-          </div>
-          <DialogFooter className="gap-2 sm:gap-0">
+            </TabsContent>
+          </Tabs>
+
+          <DialogFooter className="gap-2 sm:gap-0 mt-4 border-t border-border/50 pt-4">
             <Button variant="ghost" onClick={() => setPreBattleInfo(null)} className="flex-1">Withdraw</Button>
             <Button onClick={handleBattle} className="flex-1 bg-primary hover:bg-primary/80 text-black font-bold">Charge!</Button>
           </DialogFooter>
