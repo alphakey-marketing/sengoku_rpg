@@ -129,15 +129,21 @@ export default function Party() {
                         </div>
                         <div className="flex items-center gap-1 text-zinc-300">
                           <Sword size={14} className="text-orange-400" />
-                          <span>{comp.attack}</span>
+                          <span>
+                            {comp.attack + compEquip.reduce((s, e) => s + Math.floor((e.attackBonus || 0) * (1 + ((e.level || 1) - 1) * 0.05)), 0)}
+                          </span>
                         </div>
                         <div className="flex items-center gap-1 text-zinc-300">
                           <Shield size={14} className="text-blue-400" />
-                          <span>{comp.defense}</span>
+                          <span>
+                            {comp.defense + compEquip.reduce((s, e) => s + Math.floor((e.defenseBonus || 0) * (1 + ((e.level || 1) - 1) * 0.08)), 0)}
+                          </span>
                         </div>
                         <div className="flex items-center gap-1 text-zinc-300">
                           <Zap size={14} className="text-cyan-400" />
-                          <span>{comp.speed}</span>
+                          <span>
+                            {comp.speed + compEquip.reduce((s, e) => s + Math.floor((e.speedBonus || 0) * (1 + ((e.level || 1) - 1) * 0.1)), 0)}
+                          </span>
                         </div>
                       </div>
                     </div>

@@ -90,7 +90,7 @@ export default function Home() {
 
   const statCards = [
     { label: "Level", value: player.level, icon: Trophy, color: "text-purple-400" },
-    { label: "HP", value: `${player?.hp ?? 0}/${player?.maxHp ?? 100}`, icon: Heart, color: "text-red-400", bonus: (teamStatus?.player as any)?.permStats?.hp || 0 },
+    { label: "HP", value: `${teamStatus?.player?.hp ?? player?.hp ?? 0}/${teamStatus?.player?.maxHp ?? player?.maxHp ?? 100}`, icon: Heart, color: "text-red-400", bonus: (teamStatus?.player as any)?.permStats?.hp || 0 },
     { label: "ATK", value: teamStatus?.player?.attack || player?.attack || 0, icon: Sword, color: "text-orange-400", bonus: (teamStatus?.player as any)?.permStats?.attack || 0 },
     { label: "DEF", value: teamStatus?.player?.defense || player?.defense || 0, icon: Shield, color: "text-blue-400", bonus: (teamStatus?.player as any)?.permStats?.defense || 0 },
     { label: "SPD", value: teamStatus?.player?.speed || player?.speed || 0, icon: Zap, color: "text-cyan-400", bonus: (teamStatus?.player as any)?.permStats?.speed || 0 },
