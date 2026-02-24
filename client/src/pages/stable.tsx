@@ -50,6 +50,9 @@ export default function StablePage() {
             <TabsTrigger value="horses" className="data-[state=active]:bg-cyan-900/30 data-[state=active]:text-cyan-400" data-testid="tab-horses">
               <Zap size={16} className="mr-2" /> Horses ({horses?.length || 0})
             </TabsTrigger>
+            <TabsTrigger value="pets" className="data-[state=active]:bg-green-900/30 data-[state=active]:text-green-400" data-testid="tab-pets">
+              <Heart size={16} className="mr-2" /> Pets ({pets?.length || 0})
+            </TabsTrigger>
             <TabsTrigger value="transforms" className="data-[state=active]:bg-purple-900/30 data-[state=active]:text-purple-400" data-testid="tab-transforms">
               <Crown size={16} className="mr-2" /> Transformations ({transforms?.length || 0})
             </TabsTrigger>
@@ -109,6 +112,70 @@ export default function StablePage() {
                         onClick={() => setActiveHorse(horse.id)}
                         disabled={horsePending}
                         data-testid={`activate-horse-${horse.id}`}
+                      >
+                        Set Active
+                      </Button>
+                    )}
+                  </motion.div>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="pets" className="mt-6">
+            {!pets || pets.length === 0 ? (
+              <EmptyState icon={Heart} title="No Pets" desc="Spirit pets can be found during your travels." />
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                {[...pets].sort((a, b) => a.id - b.id).map((pet, i) => (
+                  <motion.div
+                    key={pet.id}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: i * 0.05 }}
+                    className={`rounded-lg border p-5 bg-washi transition-all ${pet.isActive ? 'border-green-700 bg-green-900/10 shadow-[0_0_15px_rgba(0,255,0,0.1)]' : 'border-border/50 bg-card'}`}
+                    data-testid={`pet-card-${pet.id}`}
+                  >
+                    <div className="flex justify-between items-start mb-3">
+                      <div>
+                        <h3 className="font-bold text-lg font-display text-white">{pet.name}</h3>
+                        <div className="flex items-center gap-1">
+                          <span className={`text-[10px] uppercase font-bold px-1.5 py-0.5 rounded border ${
+                            pet.rarity === 'primal' ? 'text-orange-500 border-orange-500 bg-orange-500/10 shadow-[0_0_10px_rgba(255,165,0,0.3)]' :
+                            pet.rarity === 'celestial' ? 'text-blue-400 border-blue-400 bg-blue-400/10' :
+                            pet.rarity === 'transcendent' ? 'text-purple-400 border-purple-400 bg-purple-400/10' :
+                            pet.rarity === 'exotic' ? 'text-red-400 border-red-400 bg-red-400/10' :
+                            pet.rarity === 'mythic' ? 'text-pink-400 border-pink-400 bg-pink-400/10' :
+                            pet.rarity === 'gold' ? 'text-yellow-400 border-yellow-400 bg-yellow-400/10' :
+                            pet.rarity === 'purple' ? 'text-purple-500 border-purple-500 bg-purple-500/10' :
+                            pet.rarity === 'blue' ? 'text-blue-500 border-blue-500 bg-blue-500/10' :
+                            pet.rarity === 'green' ? 'text-green-500 border-green-500 bg-green-500/10' :
+                            'text-zinc-400 border-zinc-700 bg-zinc-800/50'
+                          }`}>
+                            {pet.rarity}
+                          </span>
+                        </div>
+                      </div>
+                      {pet.isActive && <span className="text-xs bg-green-900/30 text-green-400 px-2 py-1 rounded font-bold border border-green-700/30">ACTIVE</span>}
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 text-sm mb-3">
+                      <div className="flex items-center gap-1"><Sword size={14} className="text-orange-400" /><span>+{pet.attack} ATK</span></div>
+                      <div className="flex items-center gap-1"><Shield size={14} className="text-blue-400" /><span>+{pet.defense} DEF</span></div>
+                      <div className="flex items-center gap-1"><Zap size={14} className="text-cyan-400" /><span>+{pet.speed} SPD</span></div>
+                      <div className="flex items-center gap-1"><Heart size={14} className="text-red-400" /><span>+{pet.hp} HP</span></div>
+                    </div>
+
+                    {pet.skill && <p className="text-xs text-green-400 mb-3">Skill: {pet.skill}</p>}
+
+                    {!pet.isActive && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="w-full border-green-700/30 text-green-400 hover:bg-green-900/20"
+                        onClick={() => setActivePet(pet.id)}
+                        disabled={petPending}
+                        data-testid={`activate-pet-${pet.id}`}
                       >
                         Set Active
                       </Button>

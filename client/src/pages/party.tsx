@@ -117,7 +117,13 @@ export default function Party() {
                         </div>
                       </div>
                       <div className="flex text-accent mb-3">
-                        <span className="text-[10px] uppercase font-bold px-1.5 py-0.5 rounded bg-accent/20 border border-accent/30">
+                        <span className={`text-[10px] uppercase font-bold px-1.5 py-0.5 rounded border ${
+                          comp.rarity === "5" ? 'text-orange-500 border-orange-500 bg-orange-500/10 shadow-[0_0_10px_rgba(255,165,0,0.3)]' :
+                          comp.rarity === "4" ? 'text-purple-400 border-purple-400 bg-purple-400/10' :
+                          comp.rarity === "3" ? 'text-blue-400 border-blue-400 bg-blue-400/10' :
+                          comp.rarity === "2" ? 'text-green-500 border-green-500 bg-green-500/10' :
+                          'text-zinc-400 border-zinc-700 bg-zinc-800/50'
+                        }`}>
                           {comp.rarity}-Star
                         </span>
                       </div>

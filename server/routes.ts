@@ -975,33 +975,58 @@ export async function registerRoutes(
           allLogs.push(`Found ${rarity.toUpperCase()} ${name}!`);
         }
 
-        // Pet Drop (15% chance)
-        if (Math.random() < 0.15) {
-          const pInfo = pick(PET_NAMES);
-          const rarityStr = equipRarityFromRandom();
-          try {
-            const petDropped = await storage.createPet({
-              userId,
-              name: pInfo.name,
-              type: 'spirit',
-              rarity: rarityStr,
-              level: 1,
-              experience: 0,
-              expToNext: 100,
-              hp: 30,
-              maxHp: 30,
-              attack: 5,
-              defense: 5,
-              speed: 15,
-              skill: pInfo.skill,
-              isActive: false,
-            });
-            allPetsDropped.push(petDropped);
-            allLogs.push(`Captured ${rarityStr.toUpperCase()} ${pInfo.name}!`);
-          } catch (err) {
-            console.error("Failed to create pet drop:", err);
-          }
-        }
+function generatePet(userId: string, locationId: number = 1) {
+  const pInfo = pick(PET_NAMES);
+  const r = Math.random();
+  const isChina = locationId >= 100;
+  const bonus = isChina ? (locationId - 100) * 0.05 + 0.1 : (locationId - 1) * 0.02;
+
+  let rarity = 'white';
+  if (r > 0.99 - bonus/2) rarity = 'primal';
+  else if (r > 0.98 - bonus) rarity = 'celestial';
+  else if (r > 0.97 - bonus) rarity = 'transcendent';
+  else if (r > 0.96 - bonus) rarity = 'exotic';
+  else if (r > 0.90 - bonus) rarity = 'mythic';
+  else if (r > 0.75 - bonus) rarity = 'gold';
+  else if (r > 0.55 - bonus) rarity = 'purple';
+  else if (r > 0.35 - bonus) rarity = 'blue';
+  else if (r > 0.15 - bonus) rarity = 'green';
+
+  const statsByRarity: Record<string, { hp: number, atk: number, def: number, spd: number }> = {
+    white: { hp: 30, atk: 5, def: 5, spd: 15 },
+    green: { hp: 50, atk: 10, def: 10, spd: 25 },
+    blue: { hp: 80, atk: 18, def: 15, spd: 35 },
+    purple: { hp: 120, atk: 28, def: 25, spd: 50 },
+    gold: { hp: 200, atk: 45, def: 40, spd: 75 },
+    mythic: { hp: 350, atk: 75, def: 65, spd: 110 },
+    exotic: { hp: 600, atk: 130, def: 110, spd: 160 },
+    transcendent: { hp: 1000, atk: 220, def: 190, spd: 240 },
+    celestial: { hp: 1800, atk: 400, def: 350, spd: 380 },
+    primal: { hp: 3500, atk: 800, def: 700, spd: 600 }
+  };
+
+  const stats = statsByRarity[rarity] || statsByRarity.white;
+  
+  // Location scaling for base stats
+  const locMult = isChina ? 2 + (locationId - 100) * 0.5 : 1 + (locationId - 1) * 0.2;
+
+  return {
+    userId,
+    name: pInfo.name,
+    type: 'spirit',
+    rarity,
+    level: 1,
+    experience: 0,
+    expToNext: 100,
+    hp: Math.floor(stats.hp * locMult),
+    maxHp: Math.floor(stats.hp * locMult),
+    attack: Math.floor(stats.atk * locMult),
+    defense: Math.floor(stats.def * locMult),
+    speed: Math.floor(stats.spd * locMult),
+    skill: pInfo.skill,
+    isActive: false,
+  };
+}
 
         // Horse Drop (5% chance)
         if (Math.random() < 0.05) {
