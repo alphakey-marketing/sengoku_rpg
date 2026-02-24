@@ -223,10 +223,15 @@ export default function StablePage() {
           </TabsContent>
 
           <TabsContent value="horses" className="mt-6 space-y-6">
-            <div className="flex justify-between items-center bg-card/30 p-4 rounded-lg border border-border/30">
-              <span className="text-sm font-medium text-secondary-foreground">
-                {selectedHorseIds.length} / 3 Horses Selected for Combination
-              </span>
+            <div className="flex flex-col md:flex-row justify-between items-center bg-card/30 p-4 rounded-lg border border-border/30 gap-4">
+              <div className="flex flex-col">
+                <span className="text-sm font-medium text-secondary-foreground">
+                  {selectedHorseIds.length} / 3 Horses Selected for Combination
+                </span>
+                <span className="text-xs text-muted-foreground italic">
+                  50% chance to obtain a higher rarity horse when combining
+                </span>
+              </div>
               <Button
                 onClick={() => {
                   if (selectedHorseIds.length === 3) {
