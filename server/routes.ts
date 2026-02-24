@@ -554,8 +554,8 @@ export async function registerRoutes(
     const user = await storage.getUser(userId);
     if (!user) return res.status(401).json({ message: "Unauthorized" });
 
-    const costPerUpgrade = 10;
-    const totalCost = costPerUpgrade * upgradeAmount;
+    const costPerUpgrade = 1;
+    const totalCost = upgradeAmount;
 
     if ((user.petEssence || 0) < totalCost) return res.status(400).json({ message: "Not enough pet essence" });
 
