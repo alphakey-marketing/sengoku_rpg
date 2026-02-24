@@ -16,16 +16,16 @@ export default function GachaPage() {
   const [companionResult, setCompanionResult] = useState<Companion | null>(null);
   const [equipmentResult, setEquipmentResult] = useState<Equipment | null>(null);
   const [isAnimating, setIsAnimating] = useState(false);
-  const [activeTab, setActiveTab] = useState<'companion' | 'equipment' | 'exchange'>('companion');
+  const [activeTab, setActiveTab] = useState<'companion' | 'special' | 'equipment' | 'exchange'>('companion');
   const { toast } = useToast();
 
-  const handleCompanionPull = () => {
+  const handleCompanionPull = (isSpecial: boolean = false) => {
     setCompanionResult(null);
     setEquipmentResult(null);
     setIsAnimating(true);
     
     setTimeout(() => {
-      pullCompanion(undefined, {
+      pullCompanion({ isSpecial } as any, {
         onSuccess: (data) => {
           setCompanionResult(data.companion);
           setIsAnimating(false);
@@ -52,8 +52,10 @@ export default function GachaPage() {
   };
 
   const companionCost = 10;
+  const specialCost = 50;
   const equipmentCost = 15;
   const canAffordCompanion = (player?.rice || 0) >= companionCost;
+  const canAffordSpecial = (player?.rice || 0) >= specialCost;
   const canAffordEquipment = (player?.rice || 0) >= equipmentCost;
 
   const getRarityColor = (rarity: string) => {
@@ -77,21 +79,31 @@ export default function GachaPage() {
         
         <div className="text-center mb-8 w-full">
           <h1 className="text-4xl md:text-5xl font-display font-bold text-accent mb-4 text-shadow-glow">
-            {activeTab === 'companion' ? 'Shrine of Summons' : 'Shrine of Steel'}
+            {activeTab === 'companion' ? 'Shrine of Summons' : activeTab === 'special' ? 'Imperial Rite' : 'Shrine of Steel'}
           </h1>
           <p className="text-lg text-zinc-300">
             {activeTab === 'companion' 
               ? 'Offer rice to attract legendary warriors to your banner.' 
+              : activeTab === 'special'
+              ? 'Perform a sacred ritual to summon elite warriors with superior growth.'
               : 'The sacred forge offers legendary equipment to those who sacrifice.'}
           </p>
           
-          <div className="flex justify-center gap-4 mt-8">
+          <div className="flex justify-center flex-wrap gap-4 mt-8">
             <Button 
               variant={activeTab === 'companion' ? 'default' : 'outline'}
               onClick={() => { setActiveTab('companion'); setCompanionResult(null); setEquipmentResult(null); }}
               className={activeTab === 'companion' ? 'bg-primary border-accent text-white' : 'border-border'}
             >
               Summon Companion
+            </Button>
+            <Button 
+              variant={activeTab === 'special' ? 'default' : 'outline'}
+              onClick={() => { setActiveTab('special'); setCompanionResult(null); setEquipmentResult(null); }}
+              className={activeTab === 'special' ? 'bg-gradient-to-r from-amber-500 to-yellow-600 border-yellow-400 text-white shadow-[0_0_15px_rgba(234,179,8,0.4)]' : 'border-border'}
+            >
+              <Sparkles size={16} className="mr-2" />
+              Special Summon
             </Button>
             <Button 
               variant={activeTab === 'equipment' ? 'default' : 'outline'}
@@ -135,6 +147,8 @@ export default function GachaPage() {
                   <div className="w-24 h-24 rounded-full border-2 border-primary/50 flex items-center justify-center animate-[spin_5s_linear_infinite_reverse]">
                     {activeTab === 'companion' ? (
                       <Sparkles className="text-accent animate-pulse" size={32} />
+                    ) : activeTab === 'special' ? (
+                      <Star className="text-yellow-400 animate-pulse" size={32} />
                     ) : activeTab === 'equipment' ? (
                       <Gem className="text-purple-400 animate-pulse" size={32} />
                     ) : (
@@ -145,13 +159,19 @@ export default function GachaPage() {
                 
                 {activeTab !== 'exchange' ? (
                   <Button 
-                    onClick={activeTab === 'companion' ? handleCompanionPull : handleEquipmentPull}
-                    disabled={activeTab === 'companion' ? (!canAffordCompanion || isPullingCompanion) : (!canAffordEquipment || isPullingEquipment)}
-                    className="bg-gradient-to-r from-primary to-secondary hover:from-primary/90 hover:to-secondary/90 text-white px-12 py-8 rounded-full text-xl font-bold border border-accent/50 shadow-[0_0_20px_rgba(220,38,38,0.4)] hover:shadow-[0_0_30px_rgba(212,175,55,0.4)] transition-all group"
+                    onClick={activeTab === 'companion' ? () => handleCompanionPull(false) : activeTab === 'special' ? () => handleCompanionPull(true) : handleEquipmentPull}
+                    disabled={
+                      activeTab === 'companion' ? (!canAffordCompanion || isPullingCompanion) : 
+                      activeTab === 'special' ? (!canAffordSpecial || isPullingCompanion) :
+                      (!canAffordEquipment || isPullingEquipment)
+                    }
+                    className={`bg-gradient-to-r ${activeTab === 'special' ? 'from-amber-600 to-yellow-700 shadow-[0_0_25px_rgba(234,179,8,0.5)]' : 'from-primary to-secondary shadow-[0_0_20px_rgba(220,38,38,0.4)]'} hover:from-primary/90 hover:to-secondary/90 text-white px-12 py-8 rounded-full text-xl font-bold border border-accent/50 hover:shadow-[0_0_30px_rgba(212,175,55,0.4)] transition-all group`}
                   >
-                    <span className="mr-3">{activeTab === 'companion' ? 'Summon Warrior' : 'Forge Special Gear'}</span>
+                    <span className="mr-3">
+                      {activeTab === 'companion' ? 'Summon Warrior' : activeTab === 'special' ? 'Perform Rite' : 'Forge Special Gear'}
+                    </span>
                     <div className="flex items-center text-accent group-hover:text-white transition-colors text-base bg-black/30 px-3 py-1 rounded-full">
-                      <Wheat size={16} className="mr-1" /> {activeTab === 'companion' ? companionCost : equipmentCost}
+                      <Wheat size={16} className="mr-1" /> {activeTab === 'companion' ? companionCost : activeTab === 'special' ? specialCost : equipmentCost}
                     </div>
                   </Button>
                 ) : (
@@ -176,6 +196,8 @@ export default function GachaPage() {
                 
                 {activeTab === 'companion' ? (
                   !canAffordCompanion && <p className="text-destructive mt-4 text-sm font-medium">Need more rice.</p>
+                ) : activeTab === 'special' ? (
+                  !canAffordSpecial && <p className="text-destructive mt-4 text-sm font-medium">Need more rice for the Imperial Rite.</p>
                 ) : activeTab === 'equipment' ? (
                   !canAffordEquipment && <p className="text-destructive mt-4 text-sm font-medium">Need more rice.</p>
                 ) : (
