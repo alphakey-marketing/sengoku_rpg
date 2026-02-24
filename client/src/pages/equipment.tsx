@@ -138,7 +138,9 @@ export default function EquipmentPage() {
                   <div className="flex justify-between items-start mb-3">
                     <div className="flex items-center gap-2">
                       <TypeIcon size={16} />
-                      <h3 className="font-bold text-lg font-display truncate pr-2">{item.name}</h3>
+                      <h3 className="font-bold text-lg font-display truncate pr-2">
+                        {item.name}{item.endowmentPoints > 0 ? ` +${item.endowmentPoints}` : ''}
+                      </h3>
                     </div>
                     <div className="uppercase text-[10px] font-bold tracking-wider px-2 py-1 rounded bg-black/40 border border-white/10">
                       {typeLabel(item.type)}
