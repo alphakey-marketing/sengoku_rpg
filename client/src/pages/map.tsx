@@ -218,20 +218,20 @@ export default function MapPage() {
     apiRequest('POST', '/api/battle/ninja/resolve', {
       action,
       ninjaName: ninjaEncounter.name,
-      goldDemanded: Math.floor(ninjaEncounter.goldDemanded)
+      goldDemanded: Math.floor(Number(ninjaEncounter.goldDemanded))
     }).then(async (res) => {
       const data = await res.json();
       if (res.ok) {
         if (action === 'pay') {
           setEventLogs([data.message]);
           setNinjaEncounter(null);
-          queryClient.invalidateQueries({ queryKey: ['/api/player'] });
-          queryClient.invalidateQueries({ queryKey: [api.player.get.path] });
+          await queryClient.invalidateQueries({ queryKey: [api.player.get.path] });
+          await queryClient.invalidateQueries({ queryKey: [api.player.fullStatus.path] });
         } else {
           setResult(data.battleResult);
           setNinjaEncounter(null);
-          queryClient.invalidateQueries({ queryKey: ['/api/player'] });
-          queryClient.invalidateQueries({ queryKey: [api.player.get.path] });
+          await queryClient.invalidateQueries({ queryKey: [api.player.get.path] });
+          await queryClient.invalidateQueries({ queryKey: [api.player.fullStatus.path] });
         }
       } else {
         toast({
