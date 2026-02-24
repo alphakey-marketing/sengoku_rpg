@@ -19,8 +19,12 @@ export function calculateDamage(attacker: CombatUnit, defender: CombatUnit, isCr
   let baseDamage = attacker.attack;
   let critMod = isCritical ? 1.5 : 1.0;
   
-  // Final Damage = Base Damage × (ATK / Enemy DEF) × Critical Modifier × Status Effect Modifier
-  let damage = Math.floor(baseDamage * (attacker.attack / Math.max(1, defender.defense)) * critMod);
+  // Endowment points provide 0.5% damage reduction per point, capped at 35% (70 points)
+  const endowmentPoints = (defender as any).endowmentPoints || 0;
+  const damageReduction = Math.min(0.35, (endowmentPoints * 0.5) / 100);
+  
+  // Final Damage = Base Damage × (ATK / Enemy DEF) × Critical Modifier × (1 - Damage Reduction)
+  let damage = Math.floor(baseDamage * (attacker.attack / Math.max(1, defender.defense)) * critMod * (1 - damageReduction));
   
   if (defender.isGuarding) {
     damage = Math.floor(damage * 0.7);
@@ -46,8 +50,9 @@ export function runTurnBasedCombat(playerTeam: TeamStats, enemies: EnemyStats[])
     stamina: 100,
     maxStamina: 100,
     statusEffects: [],
-    isGuarding: false
-  });
+    isGuarding: false,
+    endowmentPoints: (playerTeam.player as any).endowmentPoints || 0
+  } as any);
   
   playerTeam.companions.forEach((c, i) => {
     units.push({
@@ -60,8 +65,9 @@ export function runTurnBasedCombat(playerTeam: TeamStats, enemies: EnemyStats[])
       speed: c.speed,
       isPlayer: true,
       statusEffects: [],
-      isGuarding: false
-    });
+      isGuarding: false,
+      endowmentPoints: (c as any).endowmentPoints || 0
+    } as any);
   });
   
   // Initialize enemies

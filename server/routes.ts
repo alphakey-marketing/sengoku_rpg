@@ -84,6 +84,7 @@ async function getPlayerTeamStats(userId: string) {
       attack: user.attack + totalAtkBonus + (user.permAttackBonus || 0),
       defense: user.defense + totalDefBonus + (user.permDefenseBonus || 0),
       speed: user.speed + totalSpdBonus + (user.permSpeedBonus || 0),
+      endowmentPoints: playerEquipped.reduce((s, e) => s + (e.endowmentPoints || 0), 0),
       equipped: playerEquipped.map(e => ({ name: e.name, type: e.type, level: e.level, rarity: e.rarity })),
       canTransform: allTransforms.length > 0,
       seppukuCount: user.seppukuCount || 0,
@@ -107,6 +108,7 @@ async function getPlayerTeamStats(userId: string) {
         attack: c.attack + cAtkBonus,
         defense: c.defense + cDefBonus,
         speed: c.speed + cSpdBonus,
+        endowmentPoints: compEquipped.reduce((s, e) => s + (e.endowmentPoints || 0), 0),
         skill: c.skill,
         equipped: compEquipped.map(e => ({ name: e.name, type: e.type, level: e.level, rarity: e.rarity })),
       } as any;
@@ -688,7 +690,8 @@ export async function registerRoutes(
           hp: currentMaxHp,
           attack: currentAtk,
           defense: currentDef,
-          speed: currentSpd
+          speed: currentSpd,
+          endowmentStones: (user.endowmentStones || 0) + (Math.random() < 0.2 ? 1 : 0)
         };
 
         await storage.updateUser(userId, userUpdate);
@@ -1167,6 +1170,60 @@ export async function registerRoutes(
       speedBonus: baseStats.spd,
     });
     res.json({ equipment });
+  });
+
+  app.post("/api/equipment/:id/endow", isAuthenticated, async (req: any, res) => {
+    const userId = req.user.claims.sub;
+    const equipId = Number(req.params.id);
+    const { type, protect } = req.body; // type: 'normal', 'advanced', 'extreme'
+    
+    const user = await storage.getUser(userId);
+    if (!user) return res.status(401).json({ message: "Unauthorized" });
+
+    const equips = await storage.getEquipment(userId);
+    const eq = equips.find(e => e.id === equipId);
+    if (!eq) return res.status(404).json({ message: "Equipment not found" });
+
+    if (user.endowmentStones < 1) return res.status(400).json({ message: "Not enough endowment stones" });
+
+    // Success Rates: Base 90% - (CurrentPoints * 2%)
+    const currentPoints = eq.endowmentPoints || 0;
+    const baseRate = type === 'extreme' ? 0.7 : 0.9;
+    const successRate = Math.max(0.1, baseRate - (currentPoints * 0.02));
+    const roll = Math.random();
+    
+    let pointsGained = 0;
+    let failed = false;
+
+    if (roll < successRate) {
+      if (type === 'advanced') {
+        const advRoll = Math.random();
+        if (advRoll < 0.1) pointsGained = 5;
+        else if (advRoll < 0.25) pointsGained = 4;
+        else if (advRoll < 0.45) pointsGained = 3;
+        else if (advRoll < 0.70) pointsGained = 2;
+        else pointsGained = 1;
+      } else {
+        pointsGained = 1;
+      }
+    } else {
+      failed = true;
+      if (!protect) {
+        pointsGained = -Math.floor(Math.random() * 5) - 1;
+      }
+    }
+
+    const newPoints = Math.max(0, Math.min(70, currentPoints + pointsGained));
+    
+    await storage.updateUser(userId, { endowmentStones: user.endowmentStones - 1 });
+    const updated = await storage.updateEquipment(eq.id, { endowmentPoints: newPoints });
+
+    res.json({ 
+      success: !failed, 
+      pointsGained, 
+      newPoints,
+      equipment: updated
+    });
   });
 
   app.post(api.restart.path, isAuthenticated, async (req: any, res) => {

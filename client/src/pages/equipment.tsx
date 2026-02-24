@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useEquipment, useEquip, useUnequip, useCompanions, usePlayer, useRecycleEquipment, useUpgradeEquipment } from "@/hooks/use-game";
+import { useEquipment, useEquip, useUnequip, useCompanions, usePlayer, useRecycleEquipment, useUpgradeEquipment, useEndowEquipment } from "@/hooks/use-game";
 import { MainLayout } from "@/components/layout/main-layout";
 import { Button } from "@/components/ui/button";
 import { Sword, Shield, Crosshair, Zap, Sparkles, ArrowUp, Trash2, Hammer, Gem } from "lucide-react";
@@ -19,8 +19,10 @@ export default function EquipmentPage() {
   const { mutate: unequipItem, isPending: unequipPending } = useUnequip();
   const { mutate: recycleItem, isPending: recyclePending } = useRecycleEquipment();
   const { mutate: upgradeItem, isPending: upgradePending } = useUpgradeEquipment();
+  const { mutate: endowItem, isPending: endowPending } = useEndowEquipment();
 
   const [selectedEqId, setSelectedEqId] = useState<number | null>(null);
+  const [endowDialogOpen, setEndowDialogOpen] = useState(false);
   const [filterType, setFilterType] = useState<string>('all');
 
   const handleEquip = (targetId: number | null, targetType: string) => {
@@ -78,11 +80,20 @@ export default function EquipmentPage() {
             <h1 className="text-3xl font-display font-bold text-white mb-2" data-testid="text-page-title">Armory</h1>
             <p className="text-muted-foreground">Manage weapons, armor, and gear. Only one item per type can be equipped.</p>
           </div>
-          <div className="flex items-center gap-2 bg-purple-900/20 border border-purple-700/30 px-4 py-2 rounded-lg">
-            <Gem size={18} className="text-purple-400" />
-            <div className="flex flex-col">
-              <span className="text-[10px] text-purple-300 uppercase font-bold tracking-wider">Upgrade Stones</span>
-              <span className="text-lg font-bold text-white leading-none">{player?.upgradeStones || 0}</span>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 bg-purple-900/20 border border-purple-700/30 px-4 py-2 rounded-lg">
+              <Gem size={18} className="text-purple-400" />
+              <div className="flex flex-col">
+                <span className="text-[10px] text-purple-300 uppercase font-bold tracking-wider">Upgrade Stones</span>
+                <span className="text-lg font-bold text-white leading-none">{player?.upgradeStones || 0}</span>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 bg-amber-900/20 border border-amber-700/30 px-4 py-2 rounded-lg">
+              <Sparkles size={18} className="text-amber-400" />
+              <div className="flex flex-col">
+                <span className="text-[10px] text-amber-300 uppercase font-bold tracking-wider">Endowment Stones</span>
+                <span className="text-lg font-bold text-white leading-none">{player?.endowmentStones || 0}</span>
+              </div>
             </div>
           </div>
         </div>
@@ -147,6 +158,12 @@ export default function EquipmentPage() {
                         <span>+{item.speedBonus}</span>
                       </div>
                     )}
+                    {item.endowmentPoints > 0 && (
+                      <div className="flex items-center gap-1">
+                        <Sparkles size={14} className="text-amber-400" />
+                        <span>+{item.endowmentPoints}</span>
+                      </div>
+                    )}
                   </div>
 
                   <div className="mb-3">
@@ -195,6 +212,20 @@ export default function EquipmentPage() {
                       <Button
                         size="sm"
                         variant="outline"
+                        className="border-amber-900/30 text-amber-400 h-7 text-xs px-2 hover:bg-amber-900/20"
+                        onClick={() => {
+                          setSelectedEqId(item.id);
+                          setEndowDialogOpen(true);
+                        }}
+                        disabled={endowPending}
+                        title="Endow Equipment"
+                        data-testid={`endow-${item.id}`}
+                      >
+                        <Sparkles size={14} />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
                         className="border-purple-900/30 text-purple-400 h-7 text-xs px-2 hover:bg-purple-900/20"
                         onClick={() => upgradeItem(item.id)}
                         disabled={upgradePending || (player?.upgradeStones || 0) < 1}
@@ -233,7 +264,38 @@ export default function EquipmentPage() {
         )}
       </div>
 
-      <Dialog open={selectedEqId !== null} onOpenChange={(open) => !open && setSelectedEqId(null)}>
+      <Dialog open={endowDialogOpen} onOpenChange={setEndowDialogOpen}>
+        <DialogContent className="bg-card border-border text-foreground sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="font-display text-xl">Equipment Endowment</DialogTitle>
+          </DialogHeader>
+          <div className="py-4 space-y-4">
+            <div className="p-4 bg-amber-900/10 border border-amber-900/30 rounded-lg">
+              <h4 className="text-amber-400 font-bold mb-1">Success Rate: {Math.max(10, 90 - ((equipment?.find(e => e.id === selectedEqId)?.endowmentPoints || 0) * 2))}%</h4>
+              <p className="text-xs text-muted-foreground">Current Points: {equipment?.find(e => e.id === selectedEqId)?.endowmentPoints || 0} / 70</p>
+            </div>
+            <div className="grid grid-cols-1 gap-2">
+              <Button 
+                onClick={() => selectedEqId && endowItem({ id: selectedEqId, type: 'normal' })}
+                disabled={endowPending || (player?.endowmentStones || 0) < 1}
+                className="bg-amber-700 hover:bg-amber-600"
+              >
+                Normal Endowment (1 Stone)
+              </Button>
+              <Button 
+                onClick={() => selectedEqId && endowItem({ id: selectedEqId, type: 'advanced' })}
+                disabled={endowPending || (player?.endowmentStones || 0) < 1}
+                variant="outline"
+                className="border-amber-700 text-amber-400 hover:bg-amber-900/20"
+              >
+                Advanced Endowment (1 Stone)
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={selectedEqId !== null && !endowDialogOpen} onOpenChange={(open) => !open && setSelectedEqId(null)}>
         <DialogContent className="bg-card border-border text-foreground sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="font-display text-xl border-b border-border/50 pb-2">Equip Item</DialogTitle>
