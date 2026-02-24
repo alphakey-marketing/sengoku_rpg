@@ -31,6 +31,8 @@ export const users = pgTable("users", {
   activeTransformId: integer("active_transform_id"),
   upgradeStones: integer("upgrade_stones").notNull().default(0),
   endowmentStones: integer("endowment_stones").notNull().default(0),
+  fireGodTalisman: integer("fire_god_talisman").notNull().default(0),
+  flameEmperorTalisman: integer("flame_emperor_talisman").notNull().default(0),
   petEssence: integer("pet_essence").notNull().default(0),
   warriorSouls: integer("warrior_soul").notNull().default(0),
   seppukuCount: integer("seppuku_count").notNull().default(0),

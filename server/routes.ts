@@ -678,10 +678,11 @@ export async function registerRoutes(
           currentExp -= Math.floor(100 * Math.pow(1.5, currentLevel - 1));
           currentLevel++;
           currentMaxHp += 20;
-          currentAtk += 5;
-          currentDef += 3;
           currentSpd += 2;
         }
+        const endowmentStoneGained = Math.random() < 0.2 ? 1 : 0;
+        const talismanGained = Math.random() < 0.05 ? 1 : 0;
+
         const userUpdate: any = {
           level: currentLevel,
           experience: currentExp,
@@ -691,7 +692,8 @@ export async function registerRoutes(
           attack: currentAtk,
           defense: currentDef,
           speed: currentSpd,
-          endowmentStones: (user.endowmentStones || 0) + (Math.random() < 0.2 ? 1 : 0)
+          endowmentStones: (user.endowmentStones || 0) + endowmentStoneGained,
+          fireGodTalisman: (user.fireGodTalisman || 0) + talismanGained
         };
 
         await storage.updateUser(userId, userUpdate);
@@ -1208,7 +1210,13 @@ export async function registerRoutes(
       }
     } else {
       failed = true;
-      if (!protect) {
+      const talismanField = type === 'extreme' ? 'flameEmperorTalisman' : 'fireGodTalisman';
+      const hasTalisman = user[talismanField as keyof typeof user] as number > 0;
+      
+      if (protect && hasTalisman) {
+        pointsGained = 0;
+        await storage.updateUser(userId, { [talismanField]: (user[talismanField as keyof typeof user] as number) - 1 });
+      } else {
         pointsGained = -Math.floor(Math.random() * 5) - 1;
       }
     }

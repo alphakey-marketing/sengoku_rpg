@@ -23,6 +23,7 @@ export default function EquipmentPage() {
 
   const [selectedEqId, setSelectedEqId] = useState<number | null>(null);
   const [endowDialogOpen, setEndowDialogOpen] = useState(false);
+  const [useProtection, setUseProtection] = useState(false);
   const [filterType, setFilterType] = useState<string>('all');
 
   const handleEquip = (targetId: number | null, targetType: string) => {
@@ -94,6 +95,10 @@ export default function EquipmentPage() {
                 <span className="text-[10px] text-amber-300 uppercase font-bold tracking-wider">Endowment Stones</span>
                 <span className="text-lg font-bold text-white leading-none">{player?.endowmentStones || 0}</span>
               </div>
+            </div>
+            <div className="flex items-center gap-2 bg-red-900/20 border border-red-700/30 px-4 py-2 rounded-lg" title="Fire God Talisman">
+              <Zap size={18} className="text-red-400" />
+              <span className="text-lg font-bold text-white leading-none">{player?.fireGodTalisman || 0}</span>
             </div>
           </div>
         </div>
@@ -272,18 +277,28 @@ export default function EquipmentPage() {
           <div className="py-4 space-y-4">
             <div className="p-4 bg-amber-900/10 border border-amber-900/30 rounded-lg">
               <h4 className="text-amber-400 font-bold mb-1">Success Rate: {Math.max(10, 90 - ((equipment?.find(e => e.id === selectedEqId)?.endowmentPoints || 0) * 2))}%</h4>
-              <p className="text-xs text-muted-foreground">Current Points: {equipment?.find(e => e.id === selectedEqId)?.endowmentPoints || 0} / 70</p>
+              <p className="text-xs text-muted-foreground mb-2">Current Points: {equipment?.find(e => e.id === selectedEqId)?.endowmentPoints || 0} / 70</p>
+              <div className="flex items-center gap-2">
+                <input 
+                  type="checkbox" 
+                  id="protect" 
+                  checked={useProtection} 
+                  onChange={(e) => setUseProtection(e.target.checked)}
+                  className="rounded border-zinc-700 bg-zinc-900 text-amber-500 focus:ring-amber-500"
+                />
+                <label htmlFor="protect" className="text-sm text-zinc-300">Use Protection Talisman (Prevents point loss on failure)</label>
+              </div>
             </div>
             <div className="grid grid-cols-1 gap-2">
               <Button 
-                onClick={() => selectedEqId && endowItem({ id: selectedEqId, type: 'normal' })}
+                onClick={() => selectedEqId && endowItem({ id: selectedEqId, type: 'normal', protect: useProtection })}
                 disabled={endowPending || (player?.endowmentStones || 0) < 1}
                 className="bg-amber-700 hover:bg-amber-600"
               >
                 Normal Endowment (1 Stone)
               </Button>
               <Button 
-                onClick={() => selectedEqId && endowItem({ id: selectedEqId, type: 'advanced' })}
+                onClick={() => selectedEqId && endowItem({ id: selectedEqId, type: 'advanced', protect: useProtection })}
                 disabled={endowPending || (player?.endowmentStones || 0) < 1}
                 variant="outline"
                 className="border-amber-700 text-amber-400 hover:bg-amber-900/20"

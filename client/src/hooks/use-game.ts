@@ -19,6 +19,9 @@ export interface PlayerData {
   currentLocationId: number;
   activeTransformId: number | null;
   upgradeStones: number;
+  endowmentStones: number;
+  fireGodTalisman: number;
+  flameEmperorTalisman: number;
   petEssence: number;
   warriorSouls: number;
 }
@@ -28,7 +31,7 @@ export interface Companion {
   userId: string;
   name: string;
   type: string;
-  rarity: number;
+  rarity: string;
   level: number;
   experience: number;
   expToNext: number;
@@ -53,6 +56,7 @@ export interface Equipment {
   attackBonus: number;
   defenseBonus: number;
   speedBonus: number;
+  endowmentPoints: number;
   isEquipped: boolean;
   equippedToId: number | null;
   equippedToType: string | null;
