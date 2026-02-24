@@ -110,7 +110,6 @@ function equipRarityFromRandom(locationId: number = 1): string {
     const chinaIndex = locationId - 100;
     // China scaling: even more aggressive rarity improvements
     const bonus = chinaIndex * 0.02; // 2% shift per China map
-    if (r > 0.995 - bonus) return 'primal';
     if (r > 0.985 - bonus) return 'celestial';
     if (r > 0.965 - bonus) return 'transcendent';
     if (r > 0.92 - bonus) return 'exotic';
@@ -125,7 +124,6 @@ function equipRarityFromRandom(locationId: number = 1): string {
   // Japan scaling: gradual improvement from map 1 to 6
   const japanBonus = (locationId - 1) * 0.03; // 3% shift per Japan map
   
-  if (r > 0.999 - japanBonus/10) return 'primal';        
   if (r > 0.995 - japanBonus/5) return 'celestial';     
   if (r > 0.985 - japanBonus/2) return 'transcendent';  
   if (r > 0.95 - japanBonus) return 'exotic';         
@@ -1567,8 +1565,7 @@ function generatePet(userId: string, locationId: number = 1) {
       const type = pick(EQUIP_TYPES);
       const r = Math.random();
       let rarity = 'gold';
-      if (r > 0.98) rarity = 'primal';
-      else if (r > 0.94) rarity = 'celestial';
+      if (r > 0.94) rarity = 'celestial';
       else if (r > 0.88) rarity = 'transcendent';
       else if (r > 0.78) rarity = 'exotic';
       else if (r > 0.60) rarity = 'mythic';

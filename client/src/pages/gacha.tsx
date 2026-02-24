@@ -78,7 +78,6 @@ export default function GachaPage() {
     case 'exotic': return 'text-teal-400 border-teal-400/50 bg-teal-400/10';
     case 'transcendent': return 'text-white border-white/50 bg-white/10 animate-pulse';
     case 'celestial': return 'text-blue-200 border-blue-200/50 bg-blue-200/10 shadow-[0_0_15px_rgba(191,219,254,0.5)]';
-    case 'primal': return 'text-red-500 border-red-500/50 bg-black shadow-[0_0_20px_rgba(239,68,68,0.5)]';
     default: return 'text-zinc-400 border-zinc-400/50 bg-zinc-400/10';
     }
   };
