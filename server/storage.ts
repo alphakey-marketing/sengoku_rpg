@@ -211,12 +211,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createQuarters(q: InsertQuarters): Promise<Quarters> {
-    const [newQ] = await db.insert(quarters).values(q).returning();
+    const [newQ] = await db.insert(quarters).values(q as any).returning();
     return newQ;
   }
 
   async createStructure(s: InsertStructure): Promise<Structure> {
-    const [newS] = await db.insert(structures).values(s).returning();
+    const [newS] = await db.insert(structures).values(s as any).returning();
     return newS;
   }
 

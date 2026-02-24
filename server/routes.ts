@@ -80,7 +80,6 @@ function rarityFromRandom(): string {
 
 function equipRarityFromRandom(): string {
   const r = Math.random();
-  // Significantly improved rarity rates for normal enemies
   if (r > 0.999) return 'primal';        // 0.1%
   if (r > 0.995) return 'celestial';     // 0.4%
   if (r > 0.985) return 'transcendent';  // 1.0%
@@ -113,7 +112,6 @@ async function getPlayerTeamStats(userId: string) {
 
     const playerEquipped = equips.filter(e => e.isEquipped && e.equippedToType === 'player');
     
-    // Check for active transformation
     let activeTransform = null;
     if (user.activeTransformId && user.transformActiveUntil && new Date(user.transformActiveUntil) > new Date()) {
       activeTransform = allTransforms.find(t => t.id === user.activeTransformId);
@@ -123,14 +121,12 @@ async function getPlayerTeamStats(userId: string) {
     const totalDefBonus = playerEquipped.reduce((s, e) => s + Math.floor(e.defenseBonus * (1 + (e.level - 1) * 0.08)), 0);
     const totalSpdBonus = playerEquipped.reduce((s, e) => s + Math.floor(e.speedBonus * (1 + (e.level - 1) * 0.1)), 0);
 
-    // Base stats
     let hp = user.hp + (user.permHpBonus || 0);
     let maxHp = user.maxHp + (user.permHpBonus || 0);
     let attack = user.attack + totalAtkBonus + (user.permAttackBonus || 0);
     let defense = user.defense + totalDefBonus + (user.permDefenseBonus || 0);
     let speed = user.speed + totalSpdBonus + (user.permSpeedBonus || 0);
 
-    // Apply transformation bonuses
     if (activeTransform) {
       attack = Math.floor(attack * (1 + activeTransform.attackPercent / 100));
       defense = Math.floor(defense * (1 + activeTransform.defensePercent / 100));
@@ -140,7 +136,6 @@ async function getPlayerTeamStats(userId: string) {
       hp += hpBonus;
     }
 
-    // Aggregate stats
     const stats = {
       player: {
         name: user.firstName || user.lastName || 'Warrior',
@@ -208,7 +203,6 @@ async function getPlayerTeamStats(userId: string) {
     } : null,
   };
 
-  // Apply horse bonuses to the whole party if active
   if (activeHorse) {
     const party = [stats.player, ...stats.companions];
     party.forEach(member => {
@@ -228,11 +222,10 @@ async function getPlayerTeamStats(userId: string) {
 }
 
 function generateEnemyStats(type: 'field' | 'boss' | 'special', playerLevel: number, locationId: number = 1) {
-  const locationMultiplier = 1 + (locationId - 1) * 0.75; // Increased scaling from 0.5 to 0.75
+  const locationMultiplier = 1 + (locationId - 1) * 0.75;
   if (type === 'field') {
     const name = pick(YOKAI_NAMES);
     const lvl = Math.max(1, playerLevel + Math.floor(Math.random() * 3) - 1);
-    // Field enemies now scale much more aggressively in later maps
     const baseHp = lvl * 30 + 50;
     const baseAtk = lvl * 8 + 10;
     const baseDef = lvl * 5 + 5;
@@ -250,7 +243,6 @@ function generateEnemyStats(type: 'field' | 'boss' | 'special', playerLevel: num
     };
   } else if (type === 'boss') {
     const name = pick(BOSS_NAMES);
-    // Bosses scale more significantly with location
     const difficultyMultiplier = locationId * 1.5;
     const lvl = Math.floor(playerLevel + 5 + (locationId * 8));
     return {
@@ -265,7 +257,6 @@ function generateEnemyStats(type: 'field' | 'boss' | 'special', playerLevel: num
     };
   } else {
     const sb = pick(SPECIAL_BOSSES);
-    // Special bosses are the ultimate challenge
     const lvl = Math.floor(playerLevel + 15 + (locationId * 12));
     return {
       name: sb.name,
@@ -287,7 +278,6 @@ export async function registerRoutes(
   await setupAuth(app);
   registerAuthRoutes(app);
 
-  // Quarters routes
   app.get("/api/quarters", isAuthenticated, async (req: any, res) => {
     const userId = req.user.claims.sub;
     let q = await storage.getQuarters(userId);
@@ -361,6 +351,8 @@ export async function registerRoutes(
 
     res.json({ riceGained });
   });
+
+  app.get(api.player.get.path, isAuthenticated, async (req: any, res) => {
     const userId = req.user.claims.sub;
     const user = await storage.getUser(userId);
     res.json(user);
@@ -373,7 +365,6 @@ export async function registerRoutes(
     res.json(teamStats);
   });
 
-  // Companions
   app.get(api.companions.list.path, isAuthenticated, async (req: any, res) => {
     const userId = req.user.claims.sub;
     res.json(await storage.getCompanions(userId));
@@ -387,7 +378,6 @@ export async function registerRoutes(
     }
     const allComps = await storage.getCompanions(userId);
     
-    // Check for duplicate names in the selected companion IDs
     const selectedComps = allComps.filter(c => companionIds.includes(c.id));
     const names = selectedComps.map(c => c.name);
     const uniqueNames = new Set(names);
@@ -484,7 +474,6 @@ export async function registerRoutes(
     res.json(updated);
   });
 
-  // Equipment
   app.get(api.equipment.list.path, isAuthenticated, async (req: any, res) => {
     const userId = req.user.claims.sub;
     res.json(await storage.getEquipment(userId));
@@ -626,7 +615,6 @@ export async function registerRoutes(
     res.json(updated);
   });
 
-  // Pets
   app.get(api.pets.list.path, isAuthenticated, async (req: any, res) => {
     const userId = req.user.claims.sub;
     res.json(await storage.getPets(userId));
@@ -641,15 +629,15 @@ export async function registerRoutes(
     }
     const pet = allPets.find(p => p.id === petId);
     if (!pet) return res.status(404).json({ message: "Pet not found" });
-    const updated = await storage.updatePet(petId, { isActive: true });
+    const updated = await storage.updatePet(petId, { isActive: !pet.isActive });
     res.json(updated);
   });
 
   app.post("/api/pets/:id/recycle", isAuthenticated, async (req: any, res) => {
     const userId = req.user.claims.sub;
     const petId = Number(req.params.id);
-    const pets = await storage.getPets(userId);
-    const targetPet = pets.find(p => p.id === petId);
+    const allPets = await storage.getPets(userId);
+    const targetPet = allPets.find(p => p.id === petId);
     if (!targetPet) return res.status(404).json({ message: "Pet not found" });
     if (targetPet.isActive) return res.status(400).json({ message: "Cannot recycle active pet" });
 
@@ -668,107 +656,9 @@ export async function registerRoutes(
     res.json({ essenceGained });
   });
 
-  app.post("/api/pets/:id/upgrade", isAuthenticated, async (req: any, res) => {
-    const userId = req.user.claims.sub;
-    const petId = Number(req.params.id);
-    const { amount = 1 } = req.body;
-    const upgradeAmount = Math.max(1, Math.floor(Number(amount)));
-
-    const user = await storage.getUser(userId);
-    if (!user) return res.status(401).json({ message: "Unauthorized" });
-
-    const costPerUpgrade = 1;
-    const totalCost = upgradeAmount;
-
-    if ((user.petEssence || 0) < totalCost) return res.status(400).json({ message: "Not enough pet essence" });
-
-    const allPets = await storage.getPets(userId);
-    const pet = allPets.find(p => p.id === petId);
-    if (!pet) return res.status(404).json({ message: "Pet not found" });
-
-    await storage.updateUser(userId, { petEssence: user.petEssence - totalCost });
-
-    const expPerEssence = 50;
-    const totalExpGained = expPerEssence * upgradeAmount;
-    let newExp = pet.experience + totalExpGained;
-    let newLevel = pet.level;
-    let newExpToNext = pet.expToNext;
-    let hp = pet.hp;
-    let maxHp = pet.maxHp;
-    let atk = pet.attack;
-    let def = pet.defense;
-    let spd = pet.speed;
-
-    const RARITY_GROWTH: Record<string, { hp: number, atk: number, def: number, spd: number }> = {
-      white: { hp: 1.05, atk: 1.02, def: 1.03, spd: 1.05 },
-      green: { hp: 1.08, atk: 1.04, def: 1.06, spd: 1.08 },
-      blue: { hp: 1.12, atk: 1.06, def: 1.09, spd: 1.12 },
-      purple: { hp: 1.15, atk: 1.08, def: 1.12, spd: 1.15 },
-      gold: { hp: 1.25, atk: 1.12, def: 1.18, spd: 1.25 },
-      mythic: { hp: 1.35, atk: 1.16, def: 1.25, spd: 1.35 },
-      exotic: { hp: 1.50, atk: 1.22, def: 1.35, spd: 1.50 },
-      transcendent: { hp: 1.75, atk: 1.30, def: 1.50, spd: 1.75 },
-      celestial: { hp: 2.10, atk: 1.45, def: 1.75, spd: 2.10 },
-      primal: { hp: 3.00, atk: 1.75, def: 2.25, spd: 3.00 }
-    };
-
-    const growth = RARITY_GROWTH[pet.rarity] || RARITY_GROWTH.white;
-
-    while (newExp >= newExpToNext) {
-      newExp -= newExpToNext;
-      newLevel++;
-      newExpToNext = Math.floor(100 * Math.pow(1.3, newLevel - 1));
-      maxHp = Math.floor(maxHp * growth.hp) + 5;
-      hp = maxHp;
-      atk = Math.floor(atk * growth.atk) + 2;
-      def = Math.floor(def * growth.def) + 2;
-      spd = Math.floor(spd * growth.spd) + 3;
-    }
-
-    const updated = await storage.updatePet(pet.id, {
-      experience: newExp,
-      level: newLevel,
-      expToNext: newExpToNext,
-      hp,
-      maxHp,
-      attack: atk,
-      defense: def,
-      speed: spd,
-    });
-
-    res.json(updated);
-  });
-
-  // Horses
   app.get(api.horses.list.path, isAuthenticated, async (req: any, res) => {
     const userId = req.user.claims.sub;
     res.json(await storage.getHorses(userId));
-  });
-
-  app.post("/api/transformations/:id/use-stone", isAuthenticated, async (req: any, res) => {
-    const userId = req.user.claims.sub;
-    const transformId = Number(req.params.id);
-    const user = await storage.getUser(userId);
-    if (!user) return res.status(401).json({ message: "Unauthorized" });
-
-    if ((user.transformationStones || 0) < 10) {
-      return res.status(400).json({ message: "Not enough transformation stones (need 10)" });
-    }
-
-    const transforms = await storage.getTransformations(userId);
-    const transform = transforms.find(t => t.id === transformId);
-    if (!transform) return res.status(404).json({ message: "Transformation not found" });
-
-    const activeUntil = new Date();
-    activeUntil.setHours(activeUntil.getHours() + 1);
-
-    await storage.updateUser(userId, {
-      transformationStones: user.transformationStones - 10,
-      activeTransformId: transformId,
-      transformActiveUntil: activeUntil,
-    });
-
-    res.json({ message: "Transformation activated", activeUntil });
   });
 
   app.post(api.horses.setActive.path, isAuthenticated, async (req: any, res) => {
@@ -780,771 +670,237 @@ export async function registerRoutes(
     }
     const horse = allHorses.find(h => h.id === horseId);
     if (!horse) return res.status(404).json({ message: "Horse not found" });
-    const updated = await storage.updateHorse(horseId, { isActive: true });
+    const updated = await storage.updateHorse(horseId, { isActive: !horse.isActive });
     res.json(updated);
   });
 
-  // Transformations
-  app.get(api.transformations.list.path, isAuthenticated, async (req: any, res) => {
-    const userId = req.user.claims.sub;
-    res.json(await storage.getTransformations(userId));
-  });
-
-  // Battles
-  async function giveEquipmentExp(userId: string, expAmount: number) {
-    const equips = await storage.getEquipment(userId);
-    const equipped = equips.filter(e => e.isEquipped);
-    for (const eq of equipped) {
-      let newExp = eq.experience + expAmount;
-      let newLevel = eq.level;
-      let newExpToNext = eq.expToNext;
-      let atkBonus = eq.attackBonus;
-      let defBonus = eq.defenseBonus;
-      let spdBonus = eq.speedBonus;
-
-      const RARITY_GROWTH: Record<string, { atk: number, def: number, spd: number }> = {
-        white: { atk: 1.02, def: 1.03, spd: 1.05 },
-        green: { atk: 1.04, def: 1.06, spd: 1.08 },
-        blue: { atk: 1.06, def: 1.09, spd: 1.12 },
-        purple: { atk: 1.08, def: 1.12, spd: 1.15 },
-        gold: { atk: 1.12, def: 1.18, spd: 1.25 },
-        mythic: { atk: 1.16, def: 1.25, spd: 1.35 },
-        exotic: { atk: 1.22, def: 1.35, spd: 1.50 },
-        transcendent: { atk: 1.30, def: 1.50, spd: 1.75 },
-        celestial: { atk: 1.45, def: 1.75, spd: 2.10 },
-        primal: { atk: 1.75, def: 2.25, spd: 3.00 }
-      };
-
-      const growth = RARITY_GROWTH[eq.rarity] || RARITY_GROWTH.white;
-
-      while (newExp >= newExpToNext) {
-        newExp -= newExpToNext;
-        newLevel++;
-        newExpToNext = calcEquipExpToNext(newLevel);
-        atkBonus = Math.floor(atkBonus * growth.atk) + 1;
-        defBonus = Math.floor(defBonus * growth.def) + 1;
-        spdBonus = Math.floor(spdBonus * growth.spd) + 1;
-      }
-
-      if (newLevel !== eq.level) {
-        await storage.updateEquipment(eq.id, {
-          experience: newExp,
-          level: newLevel,
-          expToNext: newExpToNext,
-          attackBonus: atkBonus,
-          defenseBonus: defBonus,
-          speedBonus: spdBonus,
-        });
-      } else if (newExp !== eq.experience) {
-        await storage.updateEquipment(eq.id, { experience: newExp });
-      }
-    }
-  }
-
-  app.post(api.battle.field.path, isAuthenticated, async (req: any, res) => {
-    const userId = req.user.claims.sub;
-    const user = await storage.getUser(userId);
-    if (!user) return res.status(401).json({ message: "Unauthorized" });
-
-    // Ensure locationId and repeatCount are parsed as numbers
-    const locationId = Number(req.body.locationId) || 1;
-    const repeatCount = Number(req.body.repeatCount) || 1;
-    const count = Math.min(Math.max(1, repeatCount), 100);
-
-    const teamStats = await getPlayerTeamStats(userId);
-    if (!teamStats) return res.status(400).json({ message: "Team not found" });
-
-    let totalExpGained = 0;
-    let totalGoldGained = 0;
-    const allEquipmentDropped = [];
-    const allPetsDropped = [];
-    const allHorsesDropped = [];
-    const allLogs: string[] = [];
-    let ninjaEncounter = null;
-
-    for (let i = 0; i < count; i++) {
-      if (count > 1) allLogs.push(`--- BATTLE ${i + 1} ---`);
-
-      // 10% chance for a famous ninja encounter
-      if (Math.random() < 0.10) {
-        const ninjaNames = ["Hattori Hanzo", "Fuma Kotaro", "Ishikawa Goemon", "Mochizuki Chiyome"];
-        const ninjaName = pick(ninjaNames);
-        const isSuperStrong = Math.random() < 0.3;
-        
-        const ninjaStats = {
-          name: ninjaName,
-          level: isSuperStrong ? user.level + 20 : user.level + 2,
-          hp: isSuperStrong ? user.maxHp * 3 : user.maxHp * 1.2,
-          maxHp: isSuperStrong ? user.maxHp * 3 : user.maxHp * 1.2,
-          attack: isSuperStrong ? user.attack * 2 : user.attack * 1.1,
-          defense: isSuperStrong ? user.defense * 1.5 : user.defense * 1.05,
-          speed: isSuperStrong ? user.speed * 1.5 : user.speed * 1.1,
-          skills: ["Shadow Strike", "Smoke Bomb", "Assassinate"],
-          isNinja: true,
-          goldDemanded: Math.floor(user.gold * 0.1)
-        };
-        
-        ninjaEncounter = ninjaStats;
-        allLogs.push(`A famous ninja, ${ninjaName}, blocks your path!`);
-        break; // Stop auto-battle for the encounter
-      }
-
-      const enemy = generateEnemyStats('field', user.level, locationId);
-      const battleResult = runTurnBasedCombat(teamStats, [enemy]);
-      const victory = battleResult.victory;
-      allLogs.push(...battleResult.logs);
-
-      if (victory) {
-        // Update user stats with level up logic
-        const expGained = Math.floor(Math.random() * 50) + 30 + enemy.level * 5;
-        const goldGained = Math.floor(Math.random() * 20) + 10 + enemy.level * 2;
-        totalExpGained += expGained;
-        totalGoldGained += goldGained;
-        
-        let currentExp = user.experience + totalExpGained;
-        let currentLevel = user.level;
-        let currentMaxHp = user.maxHp;
-        let currentAtk = user.attack;
-        let currentDef = user.defense;
-        let currentSpd = user.speed;
-
-        while (currentExp >= Math.floor(100 * Math.pow(1.25, currentLevel - 1))) {
-          currentExp -= Math.floor(100 * Math.pow(1.25, currentLevel - 1));
-          currentLevel++;
-          currentMaxHp += 20;
-          currentAtk += 5;
-          currentDef += 3;
-          currentSpd += 2;
-        }
-        
-        const endowmentStoneGained = Math.random() < 0.4 ? 1 : 0;
-        const talismanGained = Math.random() < 0.1 ? 1 : 0;
-
-        const userUpdate: any = {
-          level: currentLevel,
-          experience: currentExp,
-          gold: user.gold + totalGoldGained,
-          maxHp: currentMaxHp,
-          hp: currentMaxHp,
-          attack: currentAtk,
-          defense: currentDef,
-          speed: currentSpd,
-          endowmentStones: (user.endowmentStones || 0) + endowmentStoneGained,
-          fireGodTalisman: (user.fireGodTalisman || 0) + talismanGained
-        };
-
-        await storage.updateUser(userId, userUpdate);
-        if (Math.random() < 0.3) {
-          const type = pick(EQUIP_TYPES);
-          const rarity = equipRarityFromRandom();
-          const name = pick(type === 'weapon' ? WEAPON_NAMES : type === 'armor' ? ARMOR_NAMES : type === 'accessory' ? ACCESSORY_NAMES : HORSE_GEAR_NAMES);
-          
-          const statsByRarity: Record<string, { atk: number, def: number, spd: number }> = {
-            white: { atk: 5, def: 5, spd: 2 },
-            green: { atk: 8, def: 8, spd: 4 },
-            blue: { atk: 12, def: 10, spd: 6 },
-            purple: { atk: 20, def: 15, spd: 10 },
-            gold: { atk: 35, def: 25, spd: 15 },
-            mythic: { atk: 60, def: 45, spd: 25 },
-            exotic: { atk: 100, def: 75, spd: 45 },
-            transcendent: { atk: 200, def: 150, spd: 80 },
-            celestial: { atk: 450, def: 350, spd: 150 },
-            primal: { atk: 1000, def: 800, spd: 300 }
-          };
-          const baseStats = statsByRarity[rarity] || statsByRarity.white;
-
-          const eq = await storage.createEquipment({
-            userId,
-            name,
-            type,
-            rarity,
-            level: 1,
-            experience: 0,
-            expToNext: 100,
-            attackBonus: baseStats.atk,
-            defenseBonus: baseStats.def,
-            speedBonus: baseStats.spd,
-          });
-          allEquipmentDropped.push(eq);
-          allLogs.push(`Found ${rarity.toUpperCase()} ${name}!`);
-        }
-
-        // Pet Drop (15% chance)
-        if (Math.random() < 0.15) {
-          const pInfo = pick(PET_NAMES);
-          const rarityStr = equipRarityFromRandom();
-          try {
-            const petDropped = await storage.createPet({
-              userId,
-              name: pInfo.name,
-              type: 'spirit',
-              rarity: rarityStr,
-              level: 1,
-              experience: 0,
-              expToNext: 100,
-              hp: 30,
-              maxHp: 30,
-              attack: 5,
-              defense: 5,
-              speed: 15,
-              skill: pInfo.skill,
-              isActive: false,
-            });
-            allPetsDropped.push(petDropped);
-            allLogs.push(`Captured ${rarityStr.toUpperCase()} ${pInfo.name}!`);
-          } catch (err) {
-            console.error("Failed to create pet drop:", err);
-          }
-        }
-
-        // Horse Drop (5% chance)
-        if (Math.random() < 0.05) {
-          const horseData = generateHorse(userId);
-          try {
-            const horse = await storage.createHorse(horseData as any);
-            allHorsesDropped.push(horse);
-            allLogs.push(`HORSES: You managed to tame a wild ${horse.name}!`);
-          } catch (err) {
-            console.error("Failed to create horse drop:", err);
-          }
-        }
-      }
-    }
-
-    if (totalExpGained > 0) {
-      // Handled in loop
-    } else if (totalGoldGained > 0) {
-      await storage.updateUser(userId, {
-        gold: user.gold + totalGoldGained,
-      });
-    }
-    
-    // Always give equipment exp at the end
-    if (count > 0) {
-      await giveEquipmentExp(userId, 10 * count);
-    }
-
-    res.json({
-      victory: totalExpGained > 0,
-      experienceGained: totalExpGained,
-      goldGained: totalGoldGained,
-      equipmentDropped: allEquipmentDropped,
-      petDropped: allPetsDropped[0] || null,
-      allPetsDropped,
-      horseDropped: allHorsesDropped[0] || null,
-      allHorsesDropped,
-      logs: allLogs,
-      ninjaEncounter
-    });
-  });
-
-  app.post("/api/battle/ninja/resolve", isAuthenticated, async (req: any, res) => {
-    const userId = req.user.claims.sub;
-    const { action, ninjaName, goldDemanded } = req.body;
-    const user = await storage.getUser(userId);
-    if (!user) return res.status(401).json({ message: "Unauthorized" });
-
-    if (action === 'pay') {
-      if (user.gold < goldDemanded) return res.status(400).json({ message: "Not enough gold" });
-      await storage.updateUser(userId, { gold: user.gold - goldDemanded });
-      return res.json({ success: true, message: `You paid ${goldDemanded} gold to ${ninjaName}. He vanished into the shadows.` });
-    } else {
-      const teamStats = await getPlayerTeamStats(userId);
-      if (!teamStats) return res.status(400).json({ message: "Team not found" });
-
-      const isSuperStrong = Math.random() < 0.3;
-      const enemy = {
-        name: ninjaName,
-        level: isSuperStrong ? user.level + 20 : user.level + 2,
-        hp: isSuperStrong ? user.maxHp * 3 : user.maxHp * 1.2,
-        maxHp: isSuperStrong ? user.maxHp * 3 : user.maxHp * 1.2,
-        attack: isSuperStrong ? user.attack * 2 : user.attack * 1.1,
-        defense: isSuperStrong ? user.defense * 1.5 : user.defense * 1.05,
-        speed: isSuperStrong ? user.speed * 1.5 : user.speed * 1.1,
-        skills: ["Shadow Strike", "Smoke Bomb", "Assassinate"],
-      };
-
-      const battleResult = runTurnBasedCombat(teamStats, [enemy]);
-      if (battleResult.victory) {
-        const goldGained = goldDemanded * 2;
-        await storage.updateUser(userId, { gold: user.gold + goldGained });
-        battleResult.logs.push(`You defeated ${ninjaName} and looted ${goldGained} gold!`);
-      }
-      res.json({ success: true, battleResult });
-    }
-  });
-
-  app.post(api.battle.boss.path, isAuthenticated, async (req: any, res) => {
-    const userId = req.user.claims.sub;
-    const user = await storage.getUser(userId);
-    if (!user) return res.status(401).json({ message: "Unauthorized" });
-    const locationId = Number(req.body.locationId) || 1;
-    const teamStats = await getPlayerTeamStats(userId);
-    const enemy = generateEnemyStats('boss', user.level, locationId);
-    
-    if (!teamStats) return res.status(400).json({ message: "Team not found" });
-
-    const battleResult = runTurnBasedCombat(teamStats, [enemy]);
-    const victory = battleResult.victory;
-    const logs = battleResult.logs;
-
-    if (victory) {
-      const expGained = 100 + (locationId * 50);
-      const goldGained = 50 + (locationId * 25);
-      const riceGained = 10 + (locationId * 5);
-      const endowmentStones = 2 + Math.floor(Math.random() * 3); // 2-4 stones
-
-      // Level up logic
-      let currentExp = user.experience + expGained;
-      let currentLevel = user.level;
-      let currentMaxHp = user.maxHp;
-      let currentAtk = user.attack;
-      let currentDef = user.defense;
-      let currentSpd = user.speed;
-
-      while (currentExp >= Math.floor(100 * Math.pow(1.25, currentLevel - 1))) {
-        currentExp -= Math.floor(100 * Math.pow(1.25, currentLevel - 1));
-        currentLevel++;
-        currentMaxHp += 20;
-        currentAtk += 5;
-        currentDef += 3;
-        currentSpd += 2;
-      }
-      
-      // Ensure the loop above continues until all excess EXP is consumed
-      // The current logic is correct but I'll ensure it persists correctly
-      
-      await storage.updateUser(userId, { 
-        level: currentLevel,
-        experience: currentExp, 
-        gold: user.gold + goldGained, 
-        rice: user.rice + riceGained,
-        endowmentStones: (user.endowmentStones || 0) + endowmentStones,
-        maxHp: currentMaxHp,
-        hp: currentMaxHp,
-        attack: currentAtk,
-        defense: currentDef,
-        speed: currentSpd
-      });
-      
-      const type = pick(EQUIP_TYPES);
-      
-      // Significantly improved drop rates for field battles
-      const fieldRarity = equipRarityFromRandom();
-      const name = pick(type === 'weapon' ? WEAPON_NAMES : type === 'armor' ? ARMOR_NAMES : type === 'accessory' ? ACCESSORY_NAMES : HORSE_GEAR_NAMES);
-      
-      const statsByRarity: Record<string, { atk: number, def: number, spd: number, critC: number, critD: number }> = {
-        white: { atk: 5, def: 3, spd: 2, critC: 0, critD: 0 },
-        green: { atk: 10, def: 6, spd: 4, critC: 0, critD: 0 },
-        blue: { atk: 15, def: 10, spd: 6, critC: 0, critD: 0 },
-        purple: { atk: 25, def: 18, spd: 10, critC: 2, critD: 5 },
-        gold: { atk: 40, def: 30, spd: 20, critC: 5, critD: 15 },
-        mythic: { atk: 60, def: 45, spd: 25, critC: 8, critD: 20 },
-        exotic: { atk: 100, def: 75, spd: 45, critC: 12, critD: 35 },
-        transcendent: { atk: 200, def: 150, spd: 80, critC: 20, critD: 60 },
-        celestial: { atk: 450, def: 350, spd: 150, critC: 35, critD: 120 },
-        primal: { atk: 1000, def: 800, spd: 300, critC: 60, critD: 300 }
-      };
-      const baseStats = statsByRarity[fieldRarity] || statsByRarity.white;
-
-      const itemData: any = {
-        userId,
-        name,
-        type,
-        rarity: fieldRarity,
-        level: 1,
-        experience: 0,
-        expToNext: 100,
-        attackBonus: baseStats.atk + (locationId * 5),
-        defenseBonus: baseStats.def + (locationId * 3),
-        speedBonus: baseStats.spd + (locationId * 2),
-        critChance: 0,
-        critDamage: 0,
-      };
-
-      // Apply critical stats based on type and rarity
-      if (['gold', 'mythic', 'exotic', 'transcendent', 'celestial', 'primal'].includes(fieldRarity)) {
-        if (type === 'weapon') {
-          itemData.critDamage = baseStats.critD;
-        } else if (type === 'accessory') {
-          itemData.critChance = baseStats.critC;
-        }
-      }
-
-      const eq = await storage.createEquipment(itemData);
-
-      res.json({ 
-        victory: true, 
-        experienceGained: expGained, 
-        goldGained: goldGained, 
-        riceGained: riceGained, 
-        equipmentDropped: [eq],
-        logs 
-      });
-    } else {
-      logs.push("Defeat!");
-      res.json({ victory: false, logs });
-    }
-  });
-
-  app.post(api.battle.specialBoss.path, isAuthenticated, async (req: any, res) => {
-    const userId = req.user.claims.sub;
-    const user = await storage.getUser(userId);
-    if (!user) return res.status(401).json({ message: "Unauthorized" });
-    const locationId = Number(req.body.locationId) || 1;
-    const teamStats = await getPlayerTeamStats(userId);
-    const enemy = generateEnemyStats('special', user.level, locationId);
-    
-    if (!teamStats) return res.status(400).json({ message: "Team not found" });
-
-    const battleResult = runTurnBasedCombat(teamStats, [enemy]);
-    const victory = battleResult.victory;
-    const logs = battleResult.logs;
-
-    if (victory) {
-      const expGained = 250 + (locationId * 100);
-      const goldGained = 150 + (locationId * 75);
-      const endowmentStones = 5 + Math.floor(Math.random() * 6); // 5-10 stones
-
-      let currentExp = user.experience + expGained;
-      let currentLevel = user.level;
-      let currentMaxHp = user.maxHp;
-      let currentAtk = user.attack;
-      let currentDef = user.defense;
-      let currentSpd = user.speed;
-
-      while (currentExp >= Math.floor(100 * Math.pow(1.25, currentLevel - 1))) {
-        currentExp -= Math.floor(100 * Math.pow(1.25, currentLevel - 1));
-        currentLevel++;
-        currentMaxHp += 20;
-        currentAtk += 5;
-        currentDef += 3;
-        currentSpd += 2;
-      }
-      
-      // Explicitly awaiting the database update
-      await storage.updateUser(userId, { 
-        level: currentLevel,
-        experience: currentExp, 
-        gold: user.gold + goldGained,
-        endowmentStones: (user.endowmentStones || 0) + endowmentStones,
-        transformationStones: (user.transformationStones || 0) + 10,
-        maxHp: currentMaxHp,
-        hp: currentMaxHp,
-        attack: currentAtk,
-        defense: currentDef,
-        speed: currentSpd
-      });
-
-      const sb = pick(SPECIAL_BOSSES);
-      const trans = await storage.createTransformation({
-        userId,
-        name: sb.transformName,
-        level: 1,
-        experience: 0,
-        expToNext: 200,
-        attackPercent: sb.atkPct,
-        defensePercent: sb.defPct,
-        speedPercent: sb.spdPct,
-        hpPercent: sb.hpPct,
-        skill: sb.skill,
-        cooldownSeconds: 60,
-        durationSeconds: 30,
-      });
-      res.json({ victory: true, transformationDropped: trans, logs, experienceGained: expGained, goldGained: goldGained });
-    } else {
-      logs.push("Defeat!");
-      res.json({ victory: false, logs });
-    }
-  });
-
-  // Campaign Events
-  app.get(api.campaign.events.path, isAuthenticated, async (req: any, res) => {
-    const userId = req.user.claims.sub;
-    res.json(await storage.getCampaignEvents(userId));
-  });
-
-  app.post(api.campaign.triggerEvent.path, isAuthenticated, async (req: any, res) => {
-    const userId = req.user.claims.sub;
-    const { eventKey, choice } = req.body;
-    const user = await storage.getUser(userId);
-    if (!user) return res.status(401).json({ message: "Unauthorized" });
-
-    const logs: string[] = [];
-    let reward: any = null;
-
-    if (eventKey === 'onin_war') {
-      if (choice === 'nobunaga') {
-        logs.push("You supported the Oda clan in Owari.");
-        await storage.updateUser(userId, { gold: user.gold + 500 });
-        reward = { type: 'gold', amount: 500 };
-      } else {
-        logs.push("You chose to walk your own path.");
-      }
-    } else if (eventKey === 'honnoji') {
-        if (choice === 'rescue') {
-            logs.push("You fought through the fire to save the Lord.");
-            await storage.updateUser(userId, { attack: user.attack + 10 });
-            reward = { type: 'stat', stat: 'attack', amount: 10 };
-        } else {
-            logs.push("You joined the rebellion. The course of history changes.");
-        }
-    } else if (eventKey === 'yokai_random') {
-        if (choice === 'ally') {
-            logs.push("You formed an alliance with the fox spirit.");
-            reward = await storage.createPet({
-                userId,
-                name: "Heavenly Fox",
-                type: "yokai",
-                rarity: "gold",
-                level: 1,
-                experience: 0,
-                expToNext: 100,
-                hp: 50,
-                maxHp: 50,
-                attack: 15,
-                defense: 10,
-                speed: 25,
-                skill: "Foxfire Ward",
-                isActive: false
-            });
-        } else {
-            logs.push("The spirit vanishes into the mist.");
-        }
-    }
-
-    const event = await storage.createCampaignEvent({
-      userId,
-      eventKey,
-      choice,
-      isTriggered: true,
-      completedAt: new Date(),
-    });
-
-    res.json({ event, logs, reward });
-  });
-
-  // Gacha
   app.post(api.gacha.pull.path, isAuthenticated, async (req: any, res) => {
     const userId = req.user.claims.sub;
-    const isSpecial = req.body?.isSpecial || false;
+    const { amount = 1 } = req.body;
+    const riceCost = 100 * amount;
     const user = await storage.getUser(userId);
-    if (!user) return res.status(401).json({ message: "Unauthorized" });
-    
-    const cost = isSpecial ? 50 : 10;
-    if (user.rice < cost) return res.status(400).json({ message: "Not enough rice" });
-    await storage.updateUser(userId, { rice: user.rice - cost });
+    if (!user || user.rice < riceCost) return res.status(400).json({ message: "Not enough rice" });
 
-    const warriorPool = [
-      { name: "Oda Nobunaga", skill: "Demon King's Command", type: "General" },
-      { name: "Toyotomi Hideyoshi", skill: "Ape's Cunning", type: "Strategist" },
-      { name: "Tokugawa Ieyasu", skill: "Patient Turtle", type: "Defender" },
-      { name: "Hattori Hanzo", skill: "Shadow Strike", type: "Ninja" },
-      { name: "Sanada Yukimura", skill: "Crimson Charge", type: "Lancer" },
-      { name: "Date Masamune", skill: "One-Eyed Dragon", type: "Ronin" },
-      { name: "Uesugi Kenshin", skill: "God of War", type: "Monk" },
-      { name: "Takeda Shingen", skill: "Furin-kazan", type: "General" },
-      { name: "Miyamoto Musashi", skill: "Niten Ichi-ryu", type: "Samurai" },
-      { name: "Sasaki Kojiro", skill: "Swallow Cut", type: "Samurai" },
-      { name: "Honda Tadakatsu", skill: "Unscathed General", type: "Defender" },
-      { name: "Akechi Mitsuhide", skill: "Tenka Fubu", type: "Tactician" }
-    ];
+    await storage.updateUser(userId, { rice: user.rice - riceCost });
 
-    const warrior = pick(warriorPool);
-    
-    const rarityFromSpecial = () => {
-      const r = Math.random();
-      if (r > 0.85) return "5"; // 15%
-      if (r > 0.60) return "4"; // 25%
-      if (r > 0.30) return "3"; // 30%
-      return "2";               // 30% (No 1-star)
-    };
-
-    const rarity = isSpecial ? rarityFromSpecial() : rarityFromRandom();
-
-    const baseStats = {
-      "1": { hp: 60, atk: 12, def: 10, spd: 10 },
-      "2": { hp: 80, atk: 15, def: 12, spd: 12 },
-      "3": { hp: 100, atk: 20, def: 15, spd: 15 },
-      "4": { hp: 130, atk: 28, def: 22, spd: 20 },
-      "5": { hp: 180, atk: 40, def: 35, spd: 30 }
-    }[rarity] || { hp: 60, atk: 12, def: 10, spd: 10 };
-
-    const growthBonus = isSpecial ? 1.25 : 1.0;
-
-    const companion = await storage.createCompanion({
-      userId,
-      name: warrior.name,
-      type: warrior.type,
-      rarity,
-      level: 1,
-      experience: 0,
-      expToNext: 100,
-      hp: Math.floor(baseStats.hp * growthBonus),
-      maxHp: Math.floor(baseStats.hp * growthBonus),
-      attack: Math.floor(baseStats.atk * growthBonus),
-      defense: Math.floor(baseStats.def * growthBonus),
-      speed: Math.floor(baseStats.spd * growthBonus),
-      skill: warrior.skill,
-      isInParty: false,
-      isSpecial: !!isSpecial,
-    });
-    res.json({ companion });
-  });
-
-  app.post(api.gacha.pullEquipment.path, isAuthenticated, async (req: any, res) => {
-    const userId = req.user.claims.sub;
-    const user = await storage.getUser(userId);
-    if (!user) return res.status(401).json({ message: "Unauthorized" });
-    if (user.rice < 15) return res.status(400).json({ message: "Not enough rice" });
-    
-    await storage.updateUser(userId, { rice: user.rice - 15 });
-    
-    const type = pick(EQUIP_TYPES);
-    
-    // Improved Rates for Special Gacha: No more common (white) to epic (purple)
-    // Only Gold and above
-    const r = Math.random();
-    let rarity = 'gold';
-    if (r > 0.98) rarity = 'primal';           // 2% (was 0.1%)
-    else if (r > 0.94) rarity = 'celestial';  // 4% (was 0.4%)
-    else if (r > 0.88) rarity = 'transcendent'; // 6% (was 1.0%)
-    else if (r > 0.78) rarity = 'exotic';      // 10% (was 2.0%)
-    else if (r > 0.60) rarity = 'mythic';       // 18% (was 6.5%)
-    else rarity = 'gold';                       // 60% (was 90%)
-
-    const weaponNames = [
-      "Masamune Katana", "Muramasa Blade", "Dragon Naginata", "Shadow Tanto", "Imperial Yari",
-      "Honjo Masamune", "Kusanagi-no-Tsurugi", "Onimaru", "Mikazuki Munechika", "Tombstone Cutter",
-      "Nihongo Spear", "Otegine", "Heshikiri Hasebe", "Azai Ichimonji", "Dragon Slaying Odachi"
-    ];
-    const armorNames = [
-      "Oda Clan Do", "Red Thread Kabuto", "Shinobi Shozoku", "Iron Suneate", "Golden Menpo",
-      "Nanban-do Armor", "Yukimura's Crimson Kabuto", "Date's Crescent Helm", "Dragon Scale Do",
-      "Golden Lacquer Hara-ate", "Iron Menpo of Terror", "Shogun's Great Armor", "Shadow Stalker Garb"
-    ];
-    const accessoryNames = [
-      "Magatama of Luck", "War Fan of Strategy", "Ninja Kunai Set", "Omamori of Health", "Smoke Bomb Belt",
-      "Scroll of Hidden Mist", "Sacred Mirror", "Talisman of Elements", "Vengeful Spirit Mask",
-      "Heirloom Inro", "Dragon Bone Rosary", "Jade Amulet", "Phoenix Feather"
-    ];
-    const horseGearNames = [
-      "War Saddle", "Iron Stirrups", "Silk Reins", "Steel Barding", "Speed Spurs",
-      "Imperial Gold Saddle", "Jade-Inlaid Stirrups", "Wind-Step Horseshoes", "Ceremonial Crest",
-      "Takeda War Banner", "Thunder-Hoof Spurs", "Celestial Bridle", "Ebony Stirrups"
-    ];
-
-    const name = pick(
-      type === 'weapon' ? weaponNames : 
-      type === 'armor' ? armorNames : 
-      type === 'accessory' ? accessoryNames : 
-      horseGearNames
-    );
-
-    const statsByRarity: Record<string, { atk: number, def: number, spd: number }> = {
-      gold: { atk: 35, def: 25, spd: 15 },
-      mythic: { atk: 60, def: 45, spd: 25 },
-      exotic: { atk: 100, def: 75, spd: 45 },
-      transcendent: { atk: 200, def: 150, spd: 80 },
-      celestial: { atk: 450, def: 350, spd: 150 },
-      primal: { atk: 1000, def: 800, spd: 300 }
-    };
-    const baseStats = statsByRarity[rarity];
-
-    const equipment = await storage.createEquipment({
-      userId,
-      name,
-      type,
-      rarity,
-      level: 1,
-      experience: 0,
-      expToNext: 100,
-      attackBonus: baseStats.atk,
-      defenseBonus: baseStats.def,
-      speedBonus: baseStats.spd,
-    });
-    res.json({ equipment });
-  });
-
-  app.post("/api/player/exchange-stones", isAuthenticated, async (req: any, res) => {
-    const userId = req.user.claims.sub;
-    const user = await storage.getUser(userId);
-    if (!user) return res.status(401).json({ message: "Unauthorized" });
-    
-    const riceCost = 2000;
-    if (user.rice < riceCost) return res.status(400).json({ message: "Not enough rice" });
-    
-    await storage.updateUser(userId, {
-      rice: user.rice - riceCost,
-      endowmentStones: (user.endowmentStones || 0) + 1
-    });
-    
-    res.json({ success: true });
-  });
-
-  app.post("/api/equipment/:id/endow", isAuthenticated, async (req: any, res) => {
-    const userId = req.user.claims.sub;
-    const equipId = Number(req.params.id);
-    const { type, protect } = req.body; // type: 'normal', 'advanced', 'extreme'
-    
-    const user = await storage.getUser(userId);
-    if (!user) return res.status(401).json({ message: "Unauthorized" });
-
-    const equips = await storage.getEquipment(userId);
-    const eq = equips.find(e => e.id === equipId);
-    if (!eq) return res.status(404).json({ message: "Equipment not found" });
-
-    if (user.endowmentStones < 1) return res.status(400).json({ message: "Not enough endowment stones" });
-
-    // Success Rates: Base 90% - (CurrentPoints * 2%)
-    const currentPoints = eq.endowmentPoints || 0;
-    const baseRate = type === 'extreme' ? 0.7 : 0.9;
-    const successRate = Math.max(0.1, baseRate - (currentPoints * 0.02));
-    const roll = Math.random();
-    
-    let pointsGained = 0;
-    let failed = false;
-
-    if (roll < successRate) {
-      if (type === 'advanced') {
-        const advRoll = Math.random();
-        if (advRoll < 0.1) pointsGained = 5;
-        else if (advRoll < 0.25) pointsGained = 4;
-        else if (advRoll < 0.45) pointsGained = 3;
-        else if (advRoll < 0.70) pointsGained = 2;
-        else pointsGained = 1;
+    const results = [];
+    for (let i = 0; i < amount; i++) {
+      const typeRoll = Math.random();
+      if (typeRoll < 0.3) {
+        const rarity = rarityFromRandom();
+        const comp = await storage.createCompanion({
+          userId,
+          name: pick(WEAPON_NAMES),
+          type: "warrior",
+          rarity,
+          level: 1,
+          experience: 0,
+          expToNext: 100,
+          hp: 100,
+          maxHp: 100,
+          attack: 10,
+          defense: 10,
+          speed: 10,
+          isInParty: false,
+          isSpecial: false
+        });
+        results.push({ type: 'companion', data: comp });
+      } else if (typeRoll < 0.6) {
+        const type = pick(EQUIP_TYPES);
+        const name = pick(type === 'weapon' ? WEAPON_NAMES : type === 'armor' ? ARMOR_NAMES : type === 'accessory' ? ACCESSORY_NAMES : HORSE_GEAR_NAMES);
+        const rarity = equipRarityFromRandom();
+        const equip = await storage.createEquipment({
+          userId,
+          name,
+          type,
+          rarity,
+          level: 1,
+          experience: 0,
+          expToNext: 100,
+          attackBonus: 5,
+          defenseBonus: 5,
+          speedBonus: 5,
+          critChance: 5,
+          critDamage: 50,
+          endowmentPoints: 0,
+          isEquipped: false,
+          equippedToId: null,
+          equippedToType: null
+        });
+        results.push({ type: 'equipment', data: equip });
+      } else if (typeRoll < 0.8) {
+        const petData = pick(PET_NAMES);
+        const pet = await storage.createPet({
+          userId,
+          name: petData.name,
+          type: "spirit",
+          rarity: equipRarityFromRandom(),
+          level: 1,
+          experience: 0,
+          expToNext: 100,
+          hp: 50,
+          maxHp: 50,
+          attack: 5,
+          defense: 5,
+          speed: 20,
+          skill: petData.skill,
+          isActive: false
+        });
+        results.push({ type: 'pet', data: pet });
       } else {
-        pointsGained = 1;
-      }
-    } else {
-      failed = true;
-      const talismanField = type === 'extreme' ? 'flameEmperorTalisman' : 'fireGodTalisman';
-      const hasTalisman = user[talismanField as keyof typeof user] as number > 0;
-      
-      if (protect && hasTalisman) {
-        pointsGained = 0;
-        await storage.updateUser(userId, { [talismanField]: (user[talismanField as keyof typeof user] as number) - 1 });
-      } else {
-        pointsGained = -Math.floor(Math.random() * 5) - 1;
+        const horse = await storage.createHorse(generateHorse(userId));
+        results.push({ type: 'horse', data: horse });
       }
     }
-
-    const newPoints = Math.max(0, Math.min(70, currentPoints + pointsGained));
-    
-    await storage.updateUser(userId, { endowmentStones: user.endowmentStones - 1 });
-    const updated = await storage.updateEquipment(eq.id, { endowmentPoints: newPoints });
-
-    res.json({ 
-      success: !failed, 
-      pointsGained, 
-      newPoints,
-      equipment: updated
-    });
+    res.json(results);
   });
 
-  app.post(api.restart.path, isAuthenticated, async (req: any, res) => {
+  app.post(api.combat.field.path, isAuthenticated, async (req: any, res) => {
     const userId = req.user.claims.sub;
-    await (storage as any).restartGame(userId);
+    const user = await storage.getUser(userId);
+    if (!user || user.stamina < 10) return res.status(400).json({ message: "Not enough stamina" });
+
+    const team = await getPlayerTeamStats(userId);
+    const enemy = generateEnemyStats('field', user.level, user.currentLocationId);
+    const battleResult = runTurnBasedCombat(team, enemy);
+
+    if (battleResult.winner === 'player') {
+      const goldGained = Math.floor(user.level * 10 * (1 + (user.currentLocationId - 1) * 0.5));
+      const riceGained = Math.floor(user.level * 5 * (1 + (user.currentLocationId - 1) * 0.5));
+      const expGained = 20;
+
+      let newExp = user.experience + expGained;
+      let newLevel = user.level;
+      let newHp = user.maxHp;
+      let newMaxHp = user.maxHp;
+      let newAtk = user.attack;
+      let newDef = user.defense;
+      let newSpd = user.speed;
+
+      while (newExp >= 100 * newLevel) {
+        newExp -= 100 * newLevel;
+        newLevel++;
+        newMaxHp += 20;
+        newHp = newMaxHp;
+        newAtk += 5;
+        newDef += 5;
+        newSpd += 2;
+      }
+
+      const updates: any = {
+        gold: user.gold + goldGained,
+        rice: user.rice + riceGained,
+        experience: newExp,
+        level: newLevel,
+        maxHp: newMaxHp,
+        hp: newHp,
+        attack: newAtk,
+        defense: newDef,
+        speed: newSpd,
+        stamina: user.stamina - 10,
+      };
+
+      if (Math.random() > 0.8) updates.upgradeStones = (user.upgradeStones || 0) + 1;
+      if (Math.random() > 0.95) updates.transformationStones = (user.transformationStones || 0) + 1;
+
+      await storage.updateUser(userId, updates);
+      battleResult.rewards = { gold: goldGained, rice: riceGained, exp: expGained };
+    } else {
+      await storage.updateUser(userId, { stamina: user.stamina - 10 });
+    }
+
+    res.json(battleResult);
+  });
+
+  app.post(api.combat.boss.path, isAuthenticated, async (req: any, res) => {
+    const userId = req.user.claims.sub;
+    const user = await storage.getUser(userId);
+    if (!user || user.stamina < 30) return res.status(400).json({ message: "Not enough stamina" });
+
+    const team = await getPlayerTeamStats(userId);
+    const enemy = generateEnemyStats('boss', user.level, user.currentLocationId);
+    const battleResult = runTurnBasedCombat(team, enemy);
+
+    if (battleResult.winner === 'player') {
+      const goldGained = Math.floor(user.level * 100 * user.currentLocationId);
+      const riceGained = Math.floor(user.level * 50 * user.currentLocationId);
+      const stones = 5;
+      
+      const updates: any = {
+        gold: user.gold + goldGained,
+        rice: user.rice + riceGained,
+        stamina: user.stamina - 30,
+        upgradeStones: (user.upgradeStones || 0) + stones,
+      };
+
+      if (user.currentLocationId < 4) updates.currentLocationId = user.currentLocationId + 1;
+
+      await storage.updateUser(userId, updates);
+      battleResult.rewards = { gold: goldGained, rice: riceGained, stones };
+    } else {
+      await storage.updateUser(userId, { stamina: user.stamina - 30 });
+    }
+
+    res.json(battleResult);
+  });
+
+  app.post(api.combat.specialBoss.path, isAuthenticated, async (req: any, res) => {
+    const userId = req.user.claims.sub;
+    const user = await storage.getUser(userId);
+    if (!user || user.stamina < 50) return res.status(400).json({ message: "Not enough stamina" });
+
+    const team = await getPlayerTeamStats(userId);
+    const enemy = generateEnemyStats('special', user.level, user.currentLocationId);
+    const battleResult = runTurnBasedCombat(team, enemy);
+
+    if (battleResult.winner === 'player') {
+      const sb = SPECIAL_BOSSES.find(s => s.name === enemy.name);
+      if (sb) {
+        await storage.createTransformation({
+          userId,
+          name: sb.transformName,
+          level: 1,
+          experience: 0,
+          expToNext: 200,
+          attackPercent: sb.atkPct,
+          defensePercent: sb.defPct,
+          speedPercent: sb.spdPct,
+          hpPercent: sb.hpPct,
+          skill: sb.skill,
+          cooldownSeconds: 60,
+          durationSeconds: 30
+        });
+      }
+      await storage.updateUser(userId, { stamina: user.stamina - 50 });
+      battleResult.rewards = { transform: sb?.transformName };
+    } else {
+      await storage.updateUser(userId, { stamina: user.stamina - 50 });
+    }
+    res.json(battleResult);
+  });
+
+  app.post("/api/player/transform", isAuthenticated, async (req: any, res) => {
+    const userId = req.user.claims.sub;
+    const { transformId } = req.body;
+    const user = await storage.getUser(userId);
+    if (!user) return res.status(401).json({ message: "Unauthorized" });
+
+    const transforms = await storage.getTransformations(userId);
+    const target = transforms.find(t => t.id === transformId);
+    if (!target) return res.status(404).json({ message: "Transformation not found" });
+
+    const activeUntil = new Date(Date.now() + target.durationSeconds * 1000);
+    await storage.updateUser(userId, {
+      activeTransformId: transformId,
+      transformActiveUntil: activeUntil
+    });
+
+    res.json({ activeUntil });
+  });
+
+  app.post("/api/player/restart", isAuthenticated, async (req: any, res) => {
+    const userId = req.user.claims.sub;
+    await storage.restartGame(userId);
     res.json({ success: true });
   });
 
