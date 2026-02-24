@@ -807,6 +807,8 @@ export async function registerRoutes(
           currentExp -= Math.floor(100 * Math.pow(1.5, currentLevel - 1));
           currentLevel++;
           currentMaxHp += 20;
+          currentAtk += 5;
+          currentDef += 3;
           currentSpd += 2;
         }
         const endowmentStoneGained = Math.random() < 0.4 ? 1 : 0;
