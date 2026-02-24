@@ -40,9 +40,35 @@ export default function GearPage() {
     }
   };
 
-  const renderGearSection = (title: string, entityGear: any[]) => (
+  const renderGearSection = (title: string, entityGear: any[], stats?: any) => (
     <div className="space-y-4">
-      <h3 className="text-xl font-display font-semibold border-b border-border/50 pb-2">{title}</h3>
+      <div className="flex flex-col md:flex-row md:items-end justify-between border-b border-border/50 pb-2 gap-4">
+        <h3 className="text-xl font-display font-semibold">{title}</h3>
+        {stats && (
+          <div className="flex flex-wrap gap-4 text-sm">
+            <div className="flex items-center gap-1.5 bg-red-900/10 px-2 py-1 rounded border border-red-900/20">
+              <Sword size={14} className="text-red-400" />
+              <span className="text-zinc-400 font-medium">ATK:</span>
+              <span className="text-white font-bold">{stats.attack}</span>
+            </div>
+            <div className="flex items-center gap-1.5 bg-blue-900/10 px-2 py-1 rounded border border-blue-900/20">
+              <Shield size={14} className="text-blue-400" />
+              <span className="text-zinc-400 font-medium">DEF:</span>
+              <span className="text-white font-bold">{stats.defense}</span>
+            </div>
+            <div className="flex items-center gap-1.5 bg-cyan-900/10 px-2 py-1 rounded border border-cyan-900/20">
+              <Zap size={14} className="text-cyan-400" />
+              <span className="text-zinc-400 font-medium">SPD:</span>
+              <span className="text-white font-bold">{stats.speed}</span>
+            </div>
+            <div className="flex items-center gap-1.5 bg-orange-900/10 px-2 py-1 rounded border border-orange-900/20">
+              <Sparkles size={14} className="text-orange-400" />
+              <span className="text-zinc-400 font-medium">Crit:</span>
+              <span className="text-white font-bold">{stats.critChance}%</span>
+            </div>
+          </div>
+        )}
+      </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {['weapon', 'armor', 'accessory', 'horse_gear'].map(type => {
           const item = entityGear?.find(e => e.type === type);
@@ -93,7 +119,7 @@ export default function GearPage() {
           <p className="text-muted-foreground">Inspect the equipment of your entire war council.</p>
         </div>
 
-        {renderGearSection("Main Character (Daimyo)", equipment?.filter(e => e.isEquipped && e.equippedToType === 'player') || [])}
+        {renderGearSection("Main Character (Daimyo)", equipment?.filter(e => e.isEquipped && e.equippedToType === 'player') || [], teamStatus?.player)}
 
         {teamStatus?.companions?.map((companion: any) => {
           const companionGear = equipment?.filter(e => 
@@ -104,7 +130,7 @@ export default function GearPage() {
           
           return (
             <div key={companion.id}>
-               {renderGearSection(companion.name, companionGear)}
+               {renderGearSection(companion.name, companionGear, companion)}
             </div>
           );
         })}
