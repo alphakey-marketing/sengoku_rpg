@@ -155,7 +155,7 @@ export default function MapPage() {
     setPreBattleInfo({ type, locationId, enemy: enemyPreview, repeatCount: 1 });
   };
 
-  const handleBattle = () => {
+  const handleBattle = async () => {
     if (!preBattleInfo) return;
     const { type, locationId, repeatCount } = preBattleInfo;
     
@@ -168,28 +168,47 @@ export default function MapPage() {
     // Important: boss and special battles expect just the number, field expects the object
     const params = type === 'field' ? { locationId: locIdNum, repeatCount: repeatNum } : locIdNum;
     
-    (action as any)(params, {
-      onSuccess: (data: any) => {
-        if (data.ninjaEncounter) {
-          setNinjaEncounter(data.ninjaEncounter);
-          return;
-        }
-        setResult(data);
-        setPreBattleInfo(null);
-        // Story event triggers
-        if (data.victory) {
-          if (locIdNum === 1 && !events?.some(e => e.eventKey === 'onin_war')) {
-            setActiveEvent(STORY_EVENTS[0]);
-          } else if (locIdNum === 3 && !events?.some(e => e.eventKey === 'honnoji')) {
-            setActiveEvent(STORY_EVENTS[1]);
+    try {
+      await (action as any)(params, {
+        onSuccess: (data: any) => {
+          if (data.message) {
+            toast({
+              variant: "destructive",
+              title: "Battle Error",
+              description: data.message,
+            });
+            setPreBattleInfo(null);
+            return;
           }
+          if (data.ninjaEncounter) {
+            setNinjaEncounter(data.ninjaEncounter);
+            return;
+          }
+          setResult(data);
+          setPreBattleInfo(null);
+          // Story event triggers
+          if (data.victory) {
+            if (locIdNum === 1 && !events?.some(e => e.eventKey === 'onin_war')) {
+              setActiveEvent(STORY_EVENTS[0]);
+            } else if (locIdNum === 3 && !events?.some(e => e.eventKey === 'honnoji')) {
+              setActiveEvent(STORY_EVENTS[1]);
+            }
+          }
+        },
+        onError: (err: any) => {
+          console.error("Battle error:", err);
+          toast({
+            variant: "destructive",
+            title: "Battle Error",
+            description: err.message || "The messenger failed to reach the battlefield.",
+          });
+          setPreBattleInfo(null);
         }
-      },
-      onError: (err: any) => {
-        console.error("Battle error:", err);
-        setPreBattleInfo(null); // Clear loading state if error occurs
-      }
-    });
+      });
+    } catch (e) {
+      console.error("Mutation call error:", e);
+      setPreBattleInfo(null);
+    }
   };
 
   const handleEventChoice = (eventKey: string, choice: string) => {
