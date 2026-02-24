@@ -152,7 +152,18 @@ export default function StablePage() {
                             pet.rarity === 'green' ? 'text-green-500 border-green-500 bg-green-500/10' :
                             'text-zinc-400 border-zinc-700 bg-zinc-800/50'
                           }`}>
-                            {pet.rarity}
+                            {pet.rarity} - {
+                              pet.rarity === 'white' ? 'Common' :
+                              pet.rarity === 'green' ? 'Uncommon' :
+                              pet.rarity === 'blue' ? 'Rare' :
+                              pet.rarity === 'purple' ? 'Epic' :
+                              pet.rarity === 'gold' ? 'Legendary' :
+                              pet.rarity === 'mythic' ? 'Mythic' :
+                              pet.rarity === 'exotic' ? 'Exotic' :
+                              pet.rarity === 'transcendent' ? 'Transcendent' :
+                              pet.rarity === 'celestial' ? 'Celestial' :
+                              pet.rarity === 'primal' ? 'Primal' : 'Unknown'
+                            }
                           </span>
                         </div>
                       </div>
