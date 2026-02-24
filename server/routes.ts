@@ -825,12 +825,14 @@ export async function registerRoutes(
     const allHorsesDropped = [];
     const allLogs: string[] = [];
     let ninjaEncounter = null;
+    let ninjaEncounteredInThisSkirmish = false;
 
     for (let i = 0; i < count; i++) {
       if (count > 1) allLogs.push(`--- BATTLE ${i + 1} ---`);
 
-      // 10% chance for a famous ninja encounter
-      if (Math.random() < (locationId >= 100 ? 0.15 : 0.10)) {
+      // 10% chance for a famous ninja encounter (at most once per skirmish)
+      if (!ninjaEncounteredInThisSkirmish && Math.random() < (locationId >= 100 ? 0.15 : 0.10)) {
+        ninjaEncounteredInThisSkirmish = true;
         const ninjaNames = locationId >= 100 ? ["Zhuge Liang (Ghost)", "Lu Bu's Spirit", "Empress Wu Zetian"] : ["Hattori Hanzo", "Fuma Kotaro", "Ishikawa Goemon", "Mochizuki Chiyome"];
         const ninjaName = pick(ninjaNames);
         const isSuperStrong = Math.random() < (locationId >= 100 ? 0.5 : 0.3);
@@ -881,8 +883,8 @@ export async function registerRoutes(
           currentSpd += 2;
         }
         
-        const endowmentStoneGained = Math.random() < 0.4 ? 1 : 0;
-        const talismanGained = Math.random() < 0.1 ? 1 : 0;
+        const endowmentStoneGained = Math.random() < 0.2 ? 1 : 0;
+        const talismanGained = Math.random() < 0.05 ? 1 : 0;
 
         const userUpdate: any = {
           level: currentLevel,
@@ -1015,7 +1017,7 @@ export async function registerRoutes(
 
   app.post("/api/battle/ninja/resolve", isAuthenticated, async (req: any, res) => {
     const userId = req.user.claims.sub;
-    const { action, ninjaName, goldDemanded } = req.body;
+    const { action, ninjaName, goldDemanded, locationId = 1 } = req.body;
     const user = await storage.getUser(userId);
     if (!user) return res.status(401).json({ message: "Unauthorized" });
 
@@ -1042,8 +1044,12 @@ export async function registerRoutes(
       const battleResult = runTurnBasedCombat(teamStats, [enemy]);
       if (battleResult.victory) {
         const goldGained = goldDemanded * 2;
-        await storage.updateUser(userId, { gold: user.gold + goldGained });
-        battleResult.logs.push(`You defeated ${ninjaName} and looted ${goldGained} gold!`);
+        const stonesGained = 3 + Math.floor(Math.random() * 3); // 3-5 stones
+        await storage.updateUser(userId, { 
+          gold: user.gold + goldGained,
+          endowmentStones: (user.endowmentStones || 0) + stonesGained
+        });
+        battleResult.logs.push(`You defeated ${ninjaName} and looted ${goldGained} gold and ${stonesGained} Endowment Stones!`);
       }
       res.json({ success: true, battleResult });
     }
