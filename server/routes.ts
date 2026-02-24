@@ -253,7 +253,7 @@ export async function registerRoutes(
     if (!target) return res.status(404).json({ message: "Companion not found" });
     if (target.isInParty) return res.status(400).json({ message: "Cannot dismiss active party member" });
 
-    const raritySouls: Record<number, number> = { 1: 5, 2: 10, 3: 25, 4: 50, 5: 125 };
+    const raritySouls: Record<string, number> = { "1": 5, "2": 10, "3": 25, "4": 50, "5": 125 };
     const soulsGained = raritySouls[target.rarity] || 5;
 
     const user = await storage.getUser(userId);
@@ -289,15 +289,15 @@ export async function registerRoutes(
     let def = comp.defense;
     let spd = comp.speed;
 
-    const RARITY_GROWTH: Record<number, { hp: number, atk: number, def: number, spd: number }> = {
-      1: { hp: 1.05, atk: 1.02, def: 1.03, spd: 1.05 },
-      2: { hp: 1.08, atk: 1.04, def: 1.06, spd: 1.08 },
-      3: { hp: 1.12, atk: 1.06, def: 1.09, spd: 1.12 },
-      4: { hp: 1.15, atk: 1.08, def: 1.12, spd: 1.15 },
-      5: { hp: 1.25, atk: 1.12, def: 1.18, spd: 1.25 }
+    const RARITY_GROWTH: Record<string, { hp: number, atk: number, def: number, spd: number }> = {
+      "1": { hp: 1.05, atk: 1.02, def: 1.03, spd: 1.05 },
+      "2": { hp: 1.08, atk: 1.04, def: 1.06, spd: 1.08 },
+      "3": { hp: 1.12, atk: 1.06, def: 1.09, spd: 1.12 },
+      "4": { hp: 1.15, atk: 1.08, def: 1.12, spd: 1.15 },
+      "5": { hp: 1.25, atk: 1.12, def: 1.18, spd: 1.25 }
     };
 
-    const growth = RARITY_GROWTH[comp.rarity] || RARITY_GROWTH[1];
+    const growth = RARITY_GROWTH[comp.rarity] || RARITY_GROWTH["1"];
 
     while (newExp >= newExpToNext) {
       newExp -= newExpToNext;
@@ -1059,11 +1059,11 @@ export async function registerRoutes(
     const rarity = rarityFromRandom();
 
     const baseStats = {
-      1: { hp: 60, atk: 12, def: 10, spd: 10 },
-      2: { hp: 80, atk: 15, def: 12, spd: 12 },
-      3: { hp: 100, atk: 20, def: 15, spd: 15 },
-      4: { hp: 130, atk: 28, def: 22, spd: 20 },
-      5: { hp: 180, atk: 40, def: 35, spd: 30 }
+      "1": { hp: 60, atk: 12, def: 10, spd: 10 },
+      "2": { hp: 80, atk: 15, def: 12, spd: 12 },
+      "3": { hp: 100, atk: 20, def: 15, spd: 15 },
+      "4": { hp: 130, atk: 28, def: 22, spd: 20 },
+      "5": { hp: 180, atk: 40, def: 35, spd: 30 }
     }[rarity] || { hp: 60, atk: 12, def: 10, spd: 10 };
 
     const companion = await storage.createCompanion({
