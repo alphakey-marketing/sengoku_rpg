@@ -264,11 +264,11 @@ function generateEnemyStats(type: 'field' | 'boss' | 'special', playerLevel: num
     return {
       name: sb.name,
       level: lvl,
-      hp: lvl * 250 + 2000 + (locationId * 3000),
-      maxHp: lvl * 250 + 2000 + (locationId * 3000),
-      attack: lvl * 50 + 250 + (locationId * 150),
-      defense: lvl * 40 + 200 + (locationId * 120),
-      speed: lvl * 20 + 80 + (locationId * 50),
+      hp: Math.floor((lvl * 250 + 2000 + (locationId * 3000)) * locationMultiplier),
+      maxHp: Math.floor((lvl * 250 + 2000 + (locationId * 3000)) * locationMultiplier),
+      attack: Math.floor((lvl * 50 + 250 + (locationId * 150)) * locationMultiplier),
+      defense: Math.floor((lvl * 40 + 200 + (locationId * 120)) * locationMultiplier),
+      speed: Math.floor((lvl * 20 + 80 + (locationId * 50)) * locationMultiplier),
       skills: [sb.skill, "Roar", "Dark Aura", "Divine Intervention"],
     };
   }
