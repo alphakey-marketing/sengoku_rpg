@@ -177,32 +177,17 @@ export const campaignEventsRelations = relations(campaignEvents, ({ one }) => ({
   user: one(users, { fields: [campaignEvents.userId], references: [users.id] }),
 }));
 
-export const insertCompanionSchema = createInsertSchema(companions, {
-  rarity: z.string(),
-  isSpecial: z.boolean(),
-  isInParty: z.boolean(),
-}).omit({ id: true, createdAt: true });
+export const insertCompanionSchema = createInsertSchema(companions).omit({ id: true, createdAt: true });
 
-export const insertEquipmentSchema = createInsertSchema(equipment, {
-  rarity: z.string(),
-  isEquipped: z.boolean(),
-}).omit({ id: true, createdAt: true });
+export const insertEquipmentSchema = createInsertSchema(equipment).omit({ id: true, createdAt: true });
 
-export const insertPetSchema = createInsertSchema(pets, {
-  rarity: z.string(),
-  isActive: z.boolean(),
-}).omit({ id: true, createdAt: true });
+export const insertPetSchema = createInsertSchema(pets).omit({ id: true, createdAt: true });
 
-export const insertHorseSchema = createInsertSchema(horses, {
-  rarity: z.string(),
-  isActive: z.boolean(),
-}).omit({ id: true, createdAt: true });
+export const insertHorseSchema = createInsertSchema(horses).omit({ id: true, createdAt: true });
 
 export const insertTransformationSchema = createInsertSchema(transformations).omit({ id: true, createdAt: true });
 
-export const insertCampaignEventSchema = createInsertSchema(campaignEvents, {
-  isTriggered: z.boolean(),
-}).omit({ id: true });
+export const insertCampaignEventSchema = createInsertSchema(campaignEvents).omit({ id: true });
 
 export type User = typeof users.$inferSelect;
 export type UpsertUser = typeof users.$inferInsert;
