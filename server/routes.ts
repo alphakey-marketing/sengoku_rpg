@@ -832,8 +832,9 @@ export async function registerRoutes(
     const newRarityIndex = upgraded && currentIndex < rarityOrder.length - 1 ? currentIndex + 1 : currentIndex;
     const newRarity = rarityOrder[newRarityIndex];
 
+    // Delete old horses first
     for (const id of horseIds) {
-      await storage.deleteHorse(id);
+      await storage.deleteHorse(Number(id));
     }
 
     const newHorse = generateHorse(userId, 1);
