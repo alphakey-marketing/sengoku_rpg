@@ -287,8 +287,80 @@ export async function registerRoutes(
   await setupAuth(app);
   registerAuthRoutes(app);
 
-  // Player routes
-  app.get(api.player.get.path, isAuthenticated, async (req: any, res) => {
+  // Quarters routes
+  app.get("/api/quarters", isAuthenticated, async (req: any, res) => {
+    const userId = req.user.claims.sub;
+    let q = await storage.getQuarters(userId);
+    if (!q) {
+      q = await storage.createQuarters({ userId, availableSlots: 4, totalGoldSpent: 0, lastIncomeAt: new Date() });
+    }
+    const structs = await storage.getStructures(q.id);
+    res.json({ ...q, structures: structs });
+  });
+
+  app.post("/api/quarters/build", isAuthenticated, async (req: any, res) => {
+    const userId = req.user.claims.sub;
+    const { type, positionX, positionY } = req.body;
+    
+    const user = await storage.getUser(userId);
+    if (!user) return res.status(401).json({ message: "Unauthorized" });
+
+    const costs: Record<string, number> = { merchant_guild: 500 };
+    const cost = costs[type] || 500;
+
+    if (user.gold < cost) return res.status(400).json({ message: "Not enough gold" });
+
+    let q = await storage.getQuarters(userId);
+    if (!q) {
+      q = await storage.createQuarters({ userId, availableSlots: 4, totalGoldSpent: 0, lastIncomeAt: new Date() });
+    }
+
+    const structs = await storage.getStructures(q.id);
+    if (structs.length >= q.availableSlots) return res.status(400).json({ message: "No available slots" });
+
+    await storage.updateUser(userId, { gold: user.gold - cost });
+    await storage.updateQuarters(q.id, { totalGoldSpent: q.totalGoldSpent + cost });
+
+    const newStruct = await storage.createStructure({
+      quartersId: q.id,
+      type,
+      tier: 1,
+      level: 1,
+      positionX,
+      positionY,
+      incomeBonus: 10,
+      nextUpkeepAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+    });
+
+    res.json(newStruct);
+  });
+
+  app.post("/api/quarters/collect", isAuthenticated, async (req: any, res) => {
+    const userId = req.user.claims.sub;
+    const q = await storage.getQuarters(userId);
+    if (!q) return res.status(404).json({ message: "Quarters not found" });
+
+    const structs = await storage.getStructures(q.id);
+    const merchantGuilds = structs.filter(s => s.type === 'merchant_guild');
+    
+    const now = new Date();
+    const lastCollect = q.lastIncomeAt ? new Date(q.lastIncomeAt) : new Date();
+    const hoursPassed = Math.floor((now.getTime() - lastCollect.getTime()) / (1000 * 60 * 60));
+
+    if (hoursPassed < 1) return res.json({ collected: 0, message: "Too soon to collect" });
+
+    const totalBonusPct = merchantGuilds.reduce((sum, s) => sum + s.incomeBonus, 0);
+    const baseRicePerHour = 10;
+    const riceGained = Math.floor(hoursPassed * baseRicePerHour * (1 + totalBonusPct / 100));
+
+    const user = await storage.getUser(userId);
+    if (!user) return res.status(401).json({ message: "Unauthorized" });
+
+    await storage.updateUser(userId, { rice: user.rice + riceGained });
+    await storage.updateQuarters(q.id, { lastIncomeAt: now });
+
+    res.json({ riceGained });
+  });
     const userId = req.user.claims.sub;
     const user = await storage.getUser(userId);
     res.json(user);

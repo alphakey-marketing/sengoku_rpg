@@ -209,4 +209,40 @@ export type InsertCompanion = z.infer<typeof insertCompanionSchema>;
 export type InsertEquipment = z.infer<typeof insertEquipmentSchema>;
 export type InsertPet = z.infer<typeof insertPetSchema>;
 export type InsertHorse = z.infer<typeof insertHorseSchema>;
-export type InsertTransformation = z.infer<typeof insertTransformationSchema>;
+export const quarters = pgTable("quarters", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().unique(),
+  availableSlots: integer("available_slots").notNull().default(4),
+  totalGoldSpent: integer("total_gold_spent").notNull().default(0),
+  lastIncomeAt: timestamp("last_income_at").defaultNow(),
+});
+
+export const structures = pgTable("structures", {
+  id: serial("id").primaryKey(),
+  quartersId: integer("quarters_id").notNull(),
+  type: text("type").notNull(), // e.g., 'merchant_guild'
+  tier: integer("tier").notNull().default(1),
+  level: integer("level").notNull().default(1),
+  positionX: integer("position_x").notNull().default(0),
+  positionY: integer("position_y").notNull().default(0),
+  incomeBonus: integer("income_bonus").notNull().default(10), // Percentage
+  constructedAt: timestamp("constructed_at").defaultNow(),
+  nextUpkeepAt: timestamp("next_upkeep_at").defaultNow(),
+});
+
+export const quartersRelations = relations(quarters, ({ one, many }) => ({
+  user: one(users, { fields: [quarters.userId], references: [users.id] }),
+  structures: many(structures),
+}));
+
+export const structuresRelations = relations(structures, ({ one }) => ({
+  quarters: one(quarters, { fields: [structures.quartersId], references: [quarters.id] }),
+}));
+
+export const insertQuartersSchema = createInsertSchema(quarters).omit({ id: true });
+export const insertStructureSchema = createInsertSchema(structures).omit({ id: true, constructedAt: true });
+
+export type Quarters = typeof quarters.$inferSelect;
+export type Structure = typeof structures.$inferSelect;
+export type InsertQuarters = z.infer<typeof insertQuartersSchema>;
+export type InsertStructure = z.infer<typeof insertStructureSchema>;

@@ -1,8 +1,10 @@
 import {
   users, companions, equipment, pets, horses, transformations, campaignEvents,
+  quarters, structures,
   type User, type UpsertUser, type InsertCompanion, type InsertEquipment,
   type Companion, type Equipment, type Pet, type Horse, type Transformation,
-  type InsertPet, type InsertHorse, type InsertTransformation, type CampaignEvent
+  type InsertPet, type InsertHorse, type InsertTransformation, type CampaignEvent,
+  type Quarters, type Structure, type InsertQuarters, type InsertStructure
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and } from "drizzle-orm";
@@ -37,6 +39,13 @@ export interface IStorage {
 
   getCampaignEvents(userId: string): Promise<CampaignEvent[]>;
   createCampaignEvent(event: any): Promise<CampaignEvent>;
+
+  getQuarters(userId: string): Promise<Quarters | undefined>;
+  getStructures(quartersId: number): Promise<Structure[]>;
+  createQuarters(q: InsertQuarters): Promise<Quarters>;
+  createStructure(s: InsertStructure): Promise<Structure>;
+  updateStructure(id: number, updates: Partial<Structure>): Promise<Structure>;
+  updateQuarters(id: number, updates: Partial<Quarters>): Promise<Quarters>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -190,6 +199,35 @@ export class DatabaseStorage implements IStorage {
   async createCampaignEvent(insertEvent: any): Promise<CampaignEvent> {
     const [event] = await db.insert(campaignEvents).values(insertEvent).returning();
     return event;
+  }
+
+  async getQuarters(userId: string): Promise<Quarters | undefined> {
+    const [q] = await db.select().from(quarters).where(eq(quarters.userId, userId));
+    return q;
+  }
+
+  async getStructures(quartersId: number): Promise<Structure[]> {
+    return await db.select().from(structures).where(eq(structures.quartersId, quartersId));
+  }
+
+  async createQuarters(q: InsertQuarters): Promise<Quarters> {
+    const [newQ] = await db.insert(quarters).values(q).returning();
+    return newQ;
+  }
+
+  async createStructure(s: InsertStructure): Promise<Structure> {
+    const [newS] = await db.insert(structures).values(s).returning();
+    return newS;
+  }
+
+  async updateStructure(id: number, updates: Partial<Structure>): Promise<Structure> {
+    const [updated] = await db.update(structures).set(updates).where(eq(structures.id, id)).returning();
+    return updated;
+  }
+
+  async updateQuarters(id: number, updates: Partial<Quarters>): Promise<Quarters> {
+    const [updated] = await db.update(quarters).set(updates).where(eq(quarters.id, id)).returning();
+    return updated;
   }
 
   async restartGame(userId: string): Promise<void> {
