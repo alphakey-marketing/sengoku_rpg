@@ -456,7 +456,7 @@ export default function MapPage() {
             <Button 
               variant="outline" 
               onClick={() => handleResolveNinja('pay')} 
-              disabled={isResolvingNinja || (playerStatus?.player as any).gold < ninjaEncounter?.goldDemanded}
+              disabled={isResolvingNinja || ((playerStatus?.player as any)?.gold || 0) < (ninjaEncounter?.goldDemanded || 0)}
               className="flex-1 border-amber-700/50 hover:bg-amber-900/20"
             >
               Pay Gold
