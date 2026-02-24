@@ -645,7 +645,7 @@ export async function registerRoutes(
     // Ensure locationId and repeatCount are parsed as numbers
     const locationId = Number(req.body.locationId) || 1;
     const repeatCount = Number(req.body.repeatCount) || 1;
-    const count = Math.min(Math.max(1, repeatCount), 10);
+    const count = Math.min(Math.max(1, repeatCount), 100);
 
     const teamStats = await getPlayerTeamStats(userId);
     if (!teamStats) return res.status(400).json({ message: "Team not found" });
