@@ -17,12 +17,54 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
 
 const LOCATIONS = [
-  { id: 1, name: "Owari Province", desc: "Starting grounds of the Oda clan. Bandits and minor yokai roam here.", level: 1 },
-  { id: 2, name: "Mino Province", desc: "Mountainous terrain hiding fierce warrior monks and elite guards.", level: 10 },
-  { id: 3, name: "Kyoto Approaches", desc: "The capital's outskirts. Heavily defended by the Shogun's remnants.", level: 25 },
-  { id: 4, name: "Edo Outskirts", desc: "The path to the new capital. Protected by elite samurai and treacherous traps.", level: 45 },
-  { id: 5, name: "Mount Fuji Pass", desc: "High altitude slopes where ancient spirits and frozen horrors await.", level: 70 },
-  { id: 6, name: "Demon Gate (鬼門)", desc: "A cursed portal where legendary yokai lurk. Special bosses drop transformation stones.", level: 100 },
+  { 
+    id: 1, 
+    name: "Owari Province", 
+    desc: "Starting grounds of the Oda clan. Bandits and minor yokai roam here.", 
+    level: 1,
+    image: "https://images.unsplash.com/photo-1528164344705-47542687000d?q=80&w=800&auto=format&fit=crop",
+    theme: "border-green-900/30 shadow-[0_0_15px_rgba(34,197,94,0.1)]"
+  },
+  { 
+    id: 2, 
+    name: "Mino Province", 
+    desc: "Mountainous terrain hiding fierce warrior monks and elite guards.", 
+    level: 10,
+    image: "https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?q=80&w=800&auto=format&fit=crop",
+    theme: "border-blue-900/30 shadow-[0_0_15px_rgba(59,130,246,0.1)]"
+  },
+  { 
+    id: 3, 
+    name: "Kyoto Approaches", 
+    desc: "The capital's outskirts. Heavily defended by the Shogun's remnants.", 
+    level: 25,
+    image: "https://images.unsplash.com/photo-1493780474015-ba834ff0ce2f?q=80&w=800&auto=format&fit=crop",
+    theme: "border-red-900/30 shadow-[0_0_15px_rgba(239,68,68,0.1)]"
+  },
+  { 
+    id: 4, 
+    name: "Edo Outskirts", 
+    desc: "The path to the new capital. Protected by elite samurai and treacherous traps.", 
+    level: 45,
+    image: "https://images.unsplash.com/photo-1545569341-9eb8b30979d9?q=80&w=800&auto=format&fit=crop",
+    theme: "border-purple-900/30 shadow-[0_0_20px_rgba(168,85,247,0.1)]"
+  },
+  { 
+    id: 5, 
+    name: "Mount Fuji Pass", 
+    desc: "High altitude slopes where ancient spirits and frozen horrors await.", 
+    level: 70,
+    image: "https://images.unsplash.com/photo-1490806678504-03004335a914?q=80&w=800&auto=format&fit=crop",
+    theme: "border-cyan-900/30 shadow-[0_0_15px_rgba(6,182,212,0.1)]"
+  },
+  { 
+    id: 6, 
+    name: "Demon Gate (鬼門)", 
+    desc: "A cursed portal where legendary yokai lurk. Special bosses drop transformation stones.", 
+    level: 100,
+    image: "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?q=80&w=800&auto=format&fit=crop",
+    theme: "border-orange-900/30 shadow-[0_0_20px_rgba(249,115,22,0.2)]"
+  },
 ];
 
 const STORY_EVENTS = [
@@ -239,11 +281,11 @@ export default function MapPage() {
           {LOCATIONS.map((loc) => (
             <div
               key={loc.id}
-              className={`bg-card border rounded-lg p-1 flex flex-col md:flex-row bg-washi hover:border-border transition-colors ${loc.id === 4 ? 'border-purple-700/50 shadow-[0_0_20px_rgba(128,0,255,0.1)]' : 'border-border/50'}`}
+              className={`bg-card border rounded-lg p-1 flex flex-col md:flex-row bg-washi hover:border-border transition-all duration-300 ${loc.theme || 'border-border/50'}`}
             >
               <div
-                className="h-32 md:h-auto md:w-48 bg-cover bg-center rounded-md m-1 opacity-80"
-                style={{ backgroundImage: `url(https://images.unsplash.com/photo-1578469645742-46cae010e5d4?q=80&w=800&auto=format&fit=crop)` }}
+                className="h-32 md:h-auto md:w-48 bg-cover bg-center rounded-md m-1 opacity-80 transition-opacity hover:opacity-100"
+                style={{ backgroundImage: `url(${loc.image})` }}
               />
 
               <div className="p-4 flex-1 flex flex-col justify-between">
