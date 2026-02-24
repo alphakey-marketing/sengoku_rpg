@@ -60,6 +60,7 @@ export const companions = pgTable("companions", {
   speed: integer("speed").notNull().default(10),
   skill: text("skill"),
   isInParty: boolean("is_in_party").notNull().default(false),
+  isSpecial: boolean("is_special").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow(),
 });
 

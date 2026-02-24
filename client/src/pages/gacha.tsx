@@ -241,12 +241,23 @@ export default function GachaPage() {
                   </div>
                   <h2 className="text-4xl font-display font-bold text-white mb-2 mt-4">{companionResult.name}</h2>
                   <p className="text-primary font-medium tracking-widest uppercase text-sm mb-6">{companionResult.type} Hero</p>
-                  <div className="flex justify-center gap-1 text-accent mb-8">
+                  <div className="flex justify-center gap-1 text-accent mb-4">
                     {Array.from({ length: companionResult.rarity }).map((_, j) => (
                       <motion.div key={j} initial={{ opacity: 0, scale: 2 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.3 + (j * 0.1) }}>
                         <Star size={28} fill="currentColor" />
                       </motion.div>
                     ))}
+                  </div>
+                  {companionResult.isSpecial && (
+                    <Badge className="mb-4 bg-gradient-to-r from-amber-500 to-yellow-600 border-yellow-400 text-white animate-pulse">
+                      Elite Growth +25%
+                    </Badge>
+                  )}
+                  <div className="grid grid-cols-2 gap-4 text-left bg-background/50 p-4 rounded-lg border border-border/50 mb-8">
+                    <div><span className="text-muted-foreground text-xs uppercase">HP</span><p className="font-bold text-green-400">{companionResult.hp}</p></div>
+                    <div><span className="text-muted-foreground text-xs uppercase">ATK</span><p className="font-bold text-red-400">{companionResult.attack}</p></div>
+                    <div><span className="text-muted-foreground text-xs uppercase">DEF</span><p className="font-bold text-blue-400">{companionResult.defense}</p></div>
+                    <div><span className="text-muted-foreground text-xs uppercase">SPD</span><p className="font-bold text-cyan-400">{companionResult.speed}</p></div>
                   </div>
                   <Button onClick={() => setCompanionResult(null)} variant="outline" className="w-full border-accent text-accent hover:bg-accent/10">Summon Again</Button>
                 </div>

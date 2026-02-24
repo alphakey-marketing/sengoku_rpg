@@ -306,16 +306,17 @@ export async function registerRoutes(
     };
 
     const growth = RARITY_GROWTH[comp.rarity] || RARITY_GROWTH["1"];
+    const specialBonus = (comp as any).isSpecial ? 1.25 : 1.0;
 
     while (newExp >= newExpToNext) {
       newExp -= newExpToNext;
       newLevel++;
       newExpToNext = Math.floor(100 * Math.pow(1.3, newLevel - 1));
-      maxHp = Math.floor(maxHp * growth.hp) + 10;
+      maxHp = Math.floor(maxHp * growth.hp * specialBonus) + 10;
       hp = maxHp;
-      atk = Math.floor(atk * growth.atk) + 3;
-      def = Math.floor(def * growth.def) + 3;
-      spd = Math.floor(spd * growth.spd) + 2;
+      atk = Math.floor(atk * growth.atk * specialBonus) + 3;
+      def = Math.floor(def * growth.def * specialBonus) + 3;
+      spd = Math.floor(spd * growth.spd * specialBonus) + 2;
     }
 
     const updated = await storage.updateCompanion(comp.id, {
@@ -1103,10 +1104,13 @@ export async function registerRoutes(
   // Gacha
   app.post(api.gacha.pull.path, isAuthenticated, async (req: any, res) => {
     const userId = req.user.claims.sub;
+    const { isSpecial } = req.body;
     const user = await storage.getUser(userId);
     if (!user) return res.status(401).json({ message: "Unauthorized" });
-    if (user.rice < 10) return res.status(400).json({ message: "Not enough rice" });
-    await storage.updateUser(userId, { rice: user.rice - 10 });
+    
+    const cost = isSpecial ? 50 : 10;
+    if (user.rice < cost) return res.status(400).json({ message: "Not enough rice" });
+    await storage.updateUser(userId, { rice: user.rice - cost });
 
     const warriorPool = [
       { name: "Oda Nobunaga", skill: "Demon King's Command", type: "General" },
@@ -1124,7 +1128,16 @@ export async function registerRoutes(
     ];
 
     const warrior = pick(warriorPool);
-    const rarity = rarityFromRandom();
+    
+    const rarityFromSpecial = () => {
+      const r = Math.random();
+      if (r > 0.85) return "5"; // 15%
+      if (r > 0.60) return "4"; // 25%
+      if (r > 0.30) return "3"; // 30%
+      return "2";               // 30% (No 1-star)
+    };
+
+    const rarity = isSpecial ? rarityFromSpecial() : rarityFromRandom();
 
     const baseStats = {
       "1": { hp: 60, atk: 12, def: 10, spd: 10 },
@@ -1134,6 +1147,8 @@ export async function registerRoutes(
       "5": { hp: 180, atk: 40, def: 35, spd: 30 }
     }[rarity] || { hp: 60, atk: 12, def: 10, spd: 10 };
 
+    const growthBonus = isSpecial ? 1.25 : 1.0;
+
     const companion = await storage.createCompanion({
       userId,
       name: warrior.name,
@@ -1142,13 +1157,14 @@ export async function registerRoutes(
       level: 1,
       experience: 0,
       expToNext: 100,
-      hp: baseStats.hp,
-      maxHp: baseStats.hp,
-      attack: baseStats.atk,
-      defense: baseStats.def,
-      speed: baseStats.spd,
+      hp: Math.floor(baseStats.hp * growthBonus),
+      maxHp: Math.floor(baseStats.hp * growthBonus),
+      attack: Math.floor(baseStats.atk * growthBonus),
+      defense: Math.floor(baseStats.def * growthBonus),
+      speed: Math.floor(baseStats.spd * growthBonus),
       skill: warrior.skill,
       isInParty: false,
+      isSpecial: !!isSpecial,
     });
     res.json({ companion });
   });
