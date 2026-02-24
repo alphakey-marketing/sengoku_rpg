@@ -358,13 +358,6 @@ export async function registerRoutes(
     res.json(user);
   });
 
-  app.get(api.player.fullStatus.path, isAuthenticated, async (req: any, res) => {
-    const userId = req.user.claims.sub;
-    const teamStats = await getPlayerTeamStats(userId);
-    if (!teamStats) return res.status(401).json({ message: "Unauthorized" });
-    res.json(teamStats);
-  });
-
   app.get(api.companions.list.path, isAuthenticated, async (req: any, res) => {
     const userId = req.user.claims.sub;
     res.json(await storage.getCompanions(userId));
@@ -755,7 +748,7 @@ export async function registerRoutes(
     res.json(results);
   });
 
-  app.post(api.combat.field.path, isAuthenticated, async (req: any, res) => {
+  app.post(api.battle.field.path, isAuthenticated, async (req: any, res) => {
     const userId = req.user.claims.sub;
     const user = await storage.getUser(userId);
     if (!user || user.stamina < 10) return res.status(400).json({ message: "Not enough stamina" });
@@ -812,7 +805,7 @@ export async function registerRoutes(
     res.json(battleResult);
   });
 
-  app.post(api.combat.boss.path, isAuthenticated, async (req: any, res) => {
+  app.post(api.battle.boss.path, isAuthenticated, async (req: any, res) => {
     const userId = req.user.claims.sub;
     const user = await storage.getUser(userId);
     if (!user || user.stamina < 30) return res.status(400).json({ message: "Not enough stamina" });
@@ -844,7 +837,7 @@ export async function registerRoutes(
     res.json(battleResult);
   });
 
-  app.post(api.combat.specialBoss.path, isAuthenticated, async (req: any, res) => {
+  app.post(api.battle.specialBoss.path, isAuthenticated, async (req: any, res) => {
     const userId = req.user.claims.sub;
     const user = await storage.getUser(userId);
     if (!user || user.stamina < 50) return res.status(400).json({ message: "Not enough stamina" });

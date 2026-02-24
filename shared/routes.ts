@@ -140,7 +140,7 @@ export const api = {
     pull: {
       method: 'POST' as const,
       path: '/api/gacha/pull' as const,
-      input: z.object({ isSpecial: z.boolean().optional() }),
+      input: z.object({ amount: z.number().optional(), isSpecial: z.boolean().optional() }),
       responses: { 200: z.any(), 400: errorSchemas.validation, 401: errorSchemas.unauthorized },
     },
     pullEquipment: {
