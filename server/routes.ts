@@ -28,18 +28,13 @@ const HORSE_NAMES = ["Kiso Horse (木曽馬)", "Misaki Pony (御崎馬)", "Tokar
 
 function pick<T>(arr: T[]): T { return arr[Math.floor(Math.random() * arr.length)]; }
 
-function rarityFromRandom(): number {
+function rarityFromRandom(): string {
   const r = Math.random();
-  if (r > 0.999995) return 5;
-  if (r > 0.99998) return 5;
-  if (r > 0.99995) return 5;
-  if (r > 0.9998) return 4;
-  if (r > 0.999) return 4;
-  if (r > 0.991) return 3;
-  if (r > 0.971) return 3;
-  if (r > 0.901) return 2;
-  if (r > 0.701) return 2;
-  return 1;
+  if (r > 0.99) return "5";
+  if (r > 0.90) return "4";
+  if (r > 0.75) return "3";
+  if (r > 0.50) return "2";
+  return "1";
 }
 
 function equipRarityFromRandom(): string {

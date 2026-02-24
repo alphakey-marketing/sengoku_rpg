@@ -46,7 +46,7 @@ export const companions = pgTable("companions", {
   userId: varchar("user_id").notNull(),
   name: text("name").notNull(),
   type: text("type").notNull(),
-  rarity: integer("rarity").notNull(),
+  rarity: text("rarity").notNull(),
   level: integer("level").notNull().default(1),
   experience: integer("experience").notNull().default(0),
   expToNext: integer("exp_to_next").notNull().default(100),
