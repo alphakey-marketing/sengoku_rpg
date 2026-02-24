@@ -136,7 +136,10 @@ export default function EquipmentPage() {
 
   const typeFiltered = filterType === 'all' ? equipment : equipment?.filter(e => e.type === filterType);
   const rarityFiltered = filterRarity === 'all' ? typeFiltered : typeFiltered?.filter(e => e.rarity === filterRarity);
-  const sortedEquipment = rarityFiltered ? [...rarityFiltered].sort((a, b) => a.id - b.id) : [];
+  const sortedEquipment = rarityFiltered ? [...rarityFiltered].sort((a, b) => {
+    if (a.isEquipped !== b.isEquipped) return a.isEquipped ? -1 : 1;
+    return a.id - b.id;
+  }) : [];
 
   if (eqLoading) return <MainLayout><div className="p-8">Opening armory...</div></MainLayout>;
 

@@ -96,9 +96,10 @@ export default function GearPage() {
                       {item.defenseBonus > 0 && <span className="text-blue-400">+{item.defenseBonus} DEF</span>}
                       {item.speedBonus > 0 && <span className="text-cyan-400">+{item.speedBonus} SPD</span>}
                     </div>
-                    <div className="mt-1.5">
+                    <div className="mt-1.5 mb-2">
                       <Progress value={(item.experience / item.expToNext) * 100} className="h-1" />
                     </div>
+                    <a href="/equipment" className="text-[10px] text-accent hover:underline font-bold uppercase tracking-wider">Change Equipment</a>
                   </>
                 ) : (
                   <p className="text-sm text-zinc-500 italic">No {typeLabel} equipped</p>
