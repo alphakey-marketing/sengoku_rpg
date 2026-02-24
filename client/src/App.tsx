@@ -13,7 +13,6 @@ import GearPage from "@/pages/gear";
 import GachaPage from "@/pages/gacha";
 import MapPage from "@/pages/map";
 import StablePage from "@/pages/stable";
-import QuartersPage from "@/pages/quarters";
 
 import PetsPage from "@/pages/pets";
 
@@ -29,7 +28,6 @@ function Router() {
       <Route path="/gacha" component={GachaPage} />
       <Route path="/map" component={MapPage} />
       <Route path="/stable" component={StablePage} />
-      <Route path="/quarters" component={QuartersPage} />
       <Route component={NotFound} />
     </Switch>
   );
