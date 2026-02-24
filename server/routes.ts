@@ -74,14 +74,15 @@ function generateHorse(userId: string, locationId: number = 1) {
   };
 
   const stats = statsByRarity[rarity] || statsByRarity.white;
+  const variance = () => (0.9 + Math.random() * 0.2); // 0.9 to 1.1 multiplier
   return {
     userId,
     name: `${rarity.toUpperCase()} ${name}`,
     rarity,
     level: 1,
-    speedBonus: stats.speed,
-    attackBonus: stats.atk,
-    defenseBonus: stats.def,
+    speedBonus: Math.floor(stats.speed * variance()),
+    attackBonus: Math.floor(stats.atk * variance()),
+    defenseBonus: Math.floor(stats.def * variance()),
     isActive: false
   };
 }
@@ -839,9 +840,10 @@ export async function registerRoutes(
     newHorse.rarity = newRarity;
     newHorse.name = `${newRarity.toUpperCase()} ${pick(HORSE_NAMES)}`;
     const stats = HORSE_RARITY_STATS[newRarity] || HORSE_RARITY_STATS.white;
-    newHorse.speedBonus = stats.speed;
-    newHorse.attackBonus = stats.atk;
-    newHorse.defenseBonus = stats.def;
+    const variance = () => (0.9 + Math.random() * 0.2);
+    newHorse.speedBonus = Math.floor(stats.speed * variance());
+    newHorse.attackBonus = Math.floor(stats.atk * variance());
+    newHorse.defenseBonus = Math.floor(stats.def * variance());
     
     const created = await storage.createHorse(newHorse);
     res.json({ success: true, newHorse: created, upgraded });
@@ -1076,9 +1078,11 @@ function generatePet(userId: string, locationId: number = 1) {
   };
 
   const stats = statsByRarity[rarity] || statsByRarity.white;
+  const variance = () => (0.9 + Math.random() * 0.2); // 0.9 to 1.1 multiplier
   
   // Location scaling for base stats
   const locMult = isChina ? 2 + (locationId - 100) * 0.5 : 1 + (locationId - 1) * 0.2;
+  const hpValue = Math.floor(stats.hp * locMult * variance());
 
   return {
     userId,
@@ -1088,11 +1092,11 @@ function generatePet(userId: string, locationId: number = 1) {
     level: 1,
     experience: 0,
     expToNext: 100,
-    hp: Math.floor(stats.hp * locMult),
-    maxHp: Math.floor(stats.hp * locMult),
-    attack: Math.floor(stats.atk * locMult),
-    defense: Math.floor(stats.def * locMult),
-    speed: Math.floor(stats.spd * locMult),
+    hp: hpValue,
+    maxHp: hpValue,
+    attack: Math.floor(stats.atk * locMult * variance()),
+    defense: Math.floor(stats.def * locMult * variance()),
+    speed: Math.floor(stats.spd * locMult * variance()),
     skill: pInfo.skill,
     isActive: false,
   };

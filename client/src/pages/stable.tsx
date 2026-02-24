@@ -229,7 +229,7 @@ export default function StablePage() {
                   {selectedHorseIds.length} / 3 Horses Selected for Combination
                 </span>
                 <span className="text-xs text-muted-foreground italic">
-                  50% chance to obtain a higher rarity horse when combining
+                  There is a 50% chance to obtain a higher rarity horse when combining
                 </span>
               </div>
               <Button
