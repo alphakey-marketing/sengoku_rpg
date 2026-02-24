@@ -1,6 +1,6 @@
 import { usePlayerFullStatus, useEquipment, useEquip, useUnequip } from "@/hooks/use-game";
 import { MainLayout } from "@/components/layout/main-layout";
-import { Shield, Sword, Zap, Sparkles, Plus, Package } from "lucide-react";
+import { Shield, Sword, Zap, Sparkles, Plus, Package, Heart } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -58,6 +58,11 @@ export default function GearPage() {
         <h3 className="text-xl font-display font-semibold">{title}</h3>
         {stats && (
           <div className="flex flex-wrap gap-4 text-sm">
+            <div className="flex items-center gap-1.5 bg-red-900/10 px-2 py-1 rounded border border-red-900/20">
+              <Heart size={14} className="text-red-400" />
+              <span className="text-zinc-400 font-medium">HP:</span>
+              <span className="text-white font-bold">{stats.hp}/{stats.maxHp}</span>
+            </div>
             <div className="flex items-center gap-1.5 bg-red-900/10 px-2 py-1 rounded border border-red-900/20">
               <Sword size={14} className="text-red-400" />
               <span className="text-zinc-400 font-medium">ATK:</span>
