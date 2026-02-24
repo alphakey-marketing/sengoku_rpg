@@ -55,7 +55,20 @@ function generateHorse(userId: string) {
   else if (r > 0.35) rarity = 'blue';
   else if (r > 0.15) rarity = 'green';
 
-  const stats = HORSE_RARITY_STATS[rarity];
+  const statsByRarity: Record<string, { speed: number, atk: number, def: number }> = {
+    white: { speed: 5, atk: 2, def: 2 },
+    green: { atk: 5, def: 3, speed: 10 },
+    blue: { atk: 10, def: 8, speed: 15 },
+    purple: { atk: 15, def: 12, speed: 20 },
+    gold: { speed: 30, atk: 20, def: 20 },
+    mythic: { speed: 45, atk: 30, def: 30 },
+    exotic: { speed: 65, atk: 45, def: 45 },
+    transcendent: { speed: 90, atk: 65, def: 65 },
+    celestial: { speed: 120, atk: 90, def: 90 },
+    primal: { speed: 160, atk: 125, def: 125 }
+  };
+
+  const stats = statsByRarity[rarity] || statsByRarity.white;
   return {
     userId,
     name: `${rarity.toUpperCase()} ${name}`,

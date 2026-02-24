@@ -60,7 +60,7 @@ export default function StablePage() {
               <EmptyState icon={Zap} title="No Horses" desc="Rare horses can be tamed during field battles." />
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                {horses.map((horse, i) => (
+                {[...horses].sort((a, b) => a.id - b.id).map((horse, i) => (
                   <motion.div
                     key={horse.id}
                     initial={{ opacity: 0, y: 10 }}
