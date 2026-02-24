@@ -28,8 +28,10 @@ export interface IStorage {
   deletePet(id: number): Promise<void>;
 
   getHorses(userId: string): Promise<Horse[]>;
+  getHorse(id: number): Promise<Horse | undefined>;
   createHorse(horse: InsertHorse): Promise<Horse>;
   updateHorse(id: number, updates: Partial<Horse>): Promise<Horse>;
+  deleteHorse(id: number): Promise<void>;
 
   getTransformations(userId: string): Promise<Transformation[]>;
   createTransformation(t: InsertTransformation): Promise<Transformation>;
@@ -159,6 +161,11 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(horses).where(eq(horses.userId, userId));
   }
 
+  async getHorse(id: number): Promise<Horse | undefined> {
+    const [horse] = await db.select().from(horses).where(eq(horses.id, id));
+    return horse;
+  }
+
   async createHorse(horse: InsertHorse): Promise<Horse> {
     const [h] = await db.insert(horses).values(horse as any).returning();
     return h;
@@ -167,6 +174,10 @@ export class DatabaseStorage implements IStorage {
   async updateHorse(id: number, updates: Partial<Horse>): Promise<Horse> {
     const [h] = await db.update(horses).set(updates).where(eq(horses.id, id)).returning();
     return h;
+  }
+
+  async deleteHorse(id: number): Promise<void> {
+    await db.delete(horses).where(eq(horses.id, id));
   }
 
   async getTransformations(userId: string): Promise<Transformation[]> {
