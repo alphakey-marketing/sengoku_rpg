@@ -80,20 +80,9 @@ export default function StablePage() {
   return (
     <MainLayout>
       <div className="space-y-6">
-        <div className="border-b border-border/50 pb-4 flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
-          <div>
-            <h1 className="text-3xl font-display font-bold text-white mb-2" data-testid="text-page-title">War Council & Stable</h1>
-            <p className="text-muted-foreground">Manage your party, war horses, spirit pets, and transformations in one place.</p>
-          </div>
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2 bg-orange-900/20 border border-orange-700/30 px-4 py-2 rounded-lg">
-              <Flame size={18} className="text-orange-400" />
-              <div className="flex flex-col">
-                <span className="text-[10px] text-orange-300 uppercase font-bold tracking-wider leading-none">Warrior Souls</span>
-                <span className="text-lg font-bold text-white leading-none">{player?.warriorSouls || 0}</span>
-              </div>
-            </div>
-          </div>
+        <div className="border-b border-border/50 pb-4">
+          <h1 className="text-3xl font-display font-bold text-white mb-2" data-testid="text-page-title">War Council & Stable</h1>
+          <p className="text-muted-foreground">Manage your party, war horses, spirit pets, and transformations in one place.</p>
         </div>
 
         <Tabs defaultValue="party" className="w-full">
@@ -114,9 +103,18 @@ export default function StablePage() {
 
           <TabsContent value="party" className="mt-6 space-y-6">
             <div className="flex justify-between items-center bg-card/30 p-4 rounded-lg border border-border/30">
-              <span className="text-sm font-medium text-secondary-foreground">
-                {selectedIds.length} / 5 Warriors Selected
-              </span>
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2 bg-orange-900/20 border border-orange-700/30 px-4 py-2 rounded-lg">
+                  <Flame size={18} className="text-orange-400" />
+                  <div className="flex flex-col">
+                    <span className="text-[10px] text-orange-300 uppercase font-bold tracking-wider leading-none">Warrior Souls</span>
+                    <span className="text-lg font-bold text-white leading-none">{player?.warriorSouls || 0}</span>
+                  </div>
+                </div>
+                <span className="text-sm font-medium text-secondary-foreground">
+                  {selectedIds.length} / 5 Warriors Selected
+                </span>
+              </div>
               <Button
                 onClick={handleSaveParty}
                 disabled={partyPending || selectedIds.length === 0}
@@ -264,12 +262,18 @@ export default function StablePage() {
                       <div className="text-xs text-muted-foreground self-center">Lv {horse.level}</div>
                     </div>
                     {horse.skill && <p className="text-xs text-cyan-400 mb-3">Skill: {horse.skill}</p>}
-                    {!horse.isActive && (
-                      <Button
-                        size="sm" variant="outline" className="w-full border-cyan-700/30 text-cyan-400 hover:bg-cyan-900/20"
-                        onClick={() => setActiveHorse(horse.id)} disabled={horsePending}
-                      >Set Active</Button>
-                    )}
+                    <div className="flex gap-2">
+                      {!horse.isActive && (
+                        <Button
+                          size="sm" variant="outline" className="flex-1 border-cyan-700/30 text-cyan-400 hover:bg-cyan-900/20"
+                          onClick={() => setActiveHorse(horse.id)} disabled={horsePending}
+                          data-testid={`activate-horse-${horse.id}`}
+                        >Set Active</Button>
+                      )}
+                      {horse.isActive && (
+                        <Button size="sm" variant="secondary" className="flex-1" disabled>Active</Button>
+                      )}
+                    </div>
                   </motion.div>
                 ))}
               </div>
@@ -316,17 +320,17 @@ export default function StablePage() {
                             pet.rarity === 'green' ? 'text-green-500 border-green-500 bg-green-500/10' :
                             'text-zinc-400 border-zinc-700 bg-zinc-800/50'
                           }`}>
-                            {pet.rarity} - {
-                              pet.rarity === 'white' ? 'Common' :
-                              pet.rarity === 'green' ? 'Uncommon' :
-                              pet.rarity === 'blue' ? 'Rare' :
-                              pet.rarity === 'purple' ? 'Epic' :
-                              pet.rarity === 'gold' ? 'Legendary' :
-                              pet.rarity === 'mythic' ? 'Mythic' :
-                              pet.rarity === 'exotic' ? 'Exotic' :
-                              pet.rarity === 'transcendent' ? 'Transcendent' :
-                              pet.rarity === 'celestial' ? 'Celestial' :
-                              pet.rarity === 'primal' ? 'Primal' : 'Unknown'
+                            {
+                              pet.rarity === 'white' ? 'COMMON' :
+                              pet.rarity === 'green' ? 'UNCOMMON' :
+                              pet.rarity === 'blue' ? 'RARE' :
+                              pet.rarity === 'purple' ? 'EPIC' :
+                              pet.rarity === 'gold' ? 'LEGENDARY' :
+                              pet.rarity === 'mythic' ? 'MYTHIC' :
+                              pet.rarity === 'exotic' ? 'EXOTIC' :
+                              pet.rarity === 'transcendent' ? 'TRANSCENDENT' :
+                              pet.rarity === 'celestial' ? 'CELESTIAL' :
+                              pet.rarity === 'primal' ? 'PRIMAL' : 'UNKNOWN'
                             }
                           </span>
                         </div>
