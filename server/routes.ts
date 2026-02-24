@@ -84,6 +84,8 @@ async function getPlayerTeamStats(userId: string) {
       attack: user.attack + totalAtkBonus + (user.permAttackBonus || 0),
       defense: user.defense + totalDefBonus + (user.permDefenseBonus || 0),
       speed: user.speed + totalSpdBonus + (user.permSpeedBonus || 0),
+      critChance: playerEquipped.reduce((s, e) => s + (e.critChance || 0), 0),
+      critDamage: playerEquipped.reduce((s, e) => s + (e.critDamage || 0), 0),
       endowmentPoints: playerEquipped.reduce((s, e) => s + (e.endowmentPoints || 0), 0),
       equipped: playerEquipped.map(e => ({ name: e.name, type: e.type, level: e.level, rarity: e.rarity })),
       canTransform: allTransforms.length > 0,
@@ -108,6 +110,8 @@ async function getPlayerTeamStats(userId: string) {
         attack: c.attack + cAtkBonus,
         defense: c.defense + cDefBonus,
         speed: c.speed + cSpdBonus,
+        critChance: compEquipped.reduce((s, e) => s + (e.critChance || 0), 0),
+        critDamage: compEquipped.reduce((s, e) => s + (e.critDamage || 0), 0),
         endowmentPoints: compEquipped.reduce((s, e) => s + (e.endowmentPoints || 0), 0),
         skill: c.skill,
         equipped: compEquipped.map(e => ({ name: e.name, type: e.type, level: e.level, rarity: e.rarity })),
@@ -889,6 +893,16 @@ export async function registerRoutes(
       const type = pick(EQUIP_TYPES);
       const rarity = locationId >= 3 ? 'gold' : 'purple';
       const name = pick(type === 'weapon' ? WEAPON_NAMES : type === 'armor' ? ARMOR_NAMES : type === 'accessory' ? ACCESSORY_NAMES : HORSE_GEAR_NAMES);
+      
+      const statsByRarity: Record<string, { atk: number, def: number, spd: number, critC: number, critD: number }> = {
+        white: { atk: 5, def: 3, spd: 2, critC: 0, critD: 0 },
+        green: { atk: 10, def: 6, spd: 4, critC: 0, critD: 0 },
+        blue: { atk: 15, def: 10, spd: 6, critC: 0, critD: 0 },
+        purple: { atk: 25, def: 18, spd: 10, critC: 2, critD: 5 },
+        gold: { atk: 40, def: 30, spd: 20, critC: 5, critD: 15 },
+      };
+      const baseStats = statsByRarity[rarity] || statsByRarity.white;
+
       const eq = await storage.createEquipment({
         userId,
         name,
@@ -897,9 +911,11 @@ export async function registerRoutes(
         level: 1,
         experience: 0,
         expToNext: 100,
-        attackBonus: 25 + (locationId * 10),
-        defenseBonus: 15 + (locationId * 5),
-        speedBonus: 10 + (locationId * 5),
+        attackBonus: baseStats.atk + (locationId * 5),
+        defenseBonus: baseStats.def + (locationId * 3),
+        speedBonus: baseStats.spd + (locationId * 2),
+        critChance: baseStats.critC,
+        critDamage: baseStats.critD,
       });
 
       res.json({ 

@@ -57,6 +57,8 @@ export interface Equipment {
   attackBonus: number;
   defenseBonus: number;
   speedBonus: number;
+  critChance: number;
+  critDamage: number;
   endowmentPoints: number;
   isEquipped: boolean;
   equippedToId: number | null;

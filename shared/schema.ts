@@ -75,6 +75,8 @@ export const equipment = pgTable("equipment", {
   attackBonus: integer("attack_bonus").notNull().default(0),
   defenseBonus: integer("defense_bonus").notNull().default(0),
   speedBonus: integer("speed_bonus").notNull().default(0),
+  critChance: integer("crit_chance").notNull().default(0),
+  critDamage: integer("crit_damage").notNull().default(0),
   endowmentPoints: integer("endowment_points").notNull().default(0),
   isEquipped: boolean("is_equipped").notNull().default(false),
   equippedToId: integer("equipped_to_id"),

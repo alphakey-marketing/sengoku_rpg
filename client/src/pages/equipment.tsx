@@ -166,6 +166,18 @@ export default function EquipmentPage() {
                         <span>+{item.speedBonus}</span>
                       </div>
                     )}
+                    {item.critChance > 0 && (
+                      <div className="flex items-center gap-1" title="Critical Chance">
+                        <Sparkles size={14} className="text-yellow-400" />
+                        <span>{item.critChance}% Crit</span>
+                      </div>
+                    )}
+                    {item.critDamage > 0 && (
+                      <div className="flex items-center gap-1" title="Critical Damage">
+                        <Sword size={14} className="text-orange-400" />
+                        <span>+{item.critDamage}% CDmg</span>
+                      </div>
+                    )}
                     {item.endowmentPoints > 0 && (
                       <div className="flex items-center gap-1">
                         <Sparkles size={14} className="text-amber-400" />

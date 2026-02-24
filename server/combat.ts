@@ -8,16 +8,20 @@ export interface CombatUnit {
   attack: number;
   defense: number;
   speed: number;
+  critChance: number;
+  critDamage: number;
   isPlayer: boolean;
   stamina?: number;
   maxStamina?: number;
   statusEffects: { type: string; duration: number }[];
   isGuarding: boolean;
+  endowmentPoints?: number;
 }
 
 export function calculateDamage(attacker: CombatUnit, defender: CombatUnit, isCritical: boolean = false) {
   let baseDamage = attacker.attack;
-  let critMod = isCritical ? 1.5 : 1.0;
+  // Critical modifier: 1.5x base + critical damage from equipment
+  let critMod = isCritical ? (1.5 + (attacker.critDamage / 100)) : 1.0;
   
   // Endowment points provide 0.5% damage reduction per point, capped at 35% (70 points)
   const endowmentPoints = (defender as any).endowmentPoints || 0;
@@ -37,38 +41,41 @@ export function runTurnBasedCombat(playerTeam: TeamStats, enemies: EnemyStats[])
   const logs: string[] = [];
   const units: CombatUnit[] = [];
   
-  // Initialize player units
-  units.push({
-    id: 'player',
-    name: playerTeam.player.name,
-    hp: playerTeam.player.hp,
-    maxHp: playerTeam.player.maxHp,
-    attack: playerTeam.player.attack,
-    defense: playerTeam.player.defense,
-    speed: playerTeam.player.speed,
-    isPlayer: true,
-    stamina: 100,
-    maxStamina: 100,
-    statusEffects: [],
-    isGuarding: false,
-    endowmentPoints: (playerTeam.player as any).endowmentPoints || 0
-  } as any);
-  
-  playerTeam.companions.forEach((c, i) => {
     units.push({
-      id: `comp-${i}`,
-      name: c.name,
-      hp: c.hp,
-      maxHp: c.maxHp,
-      attack: c.attack,
-      defense: c.defense,
-      speed: c.speed,
+      id: 'player',
+      name: playerTeam.player.name,
+      hp: playerTeam.player.hp,
+      maxHp: playerTeam.player.maxHp,
+      attack: playerTeam.player.attack,
+      defense: playerTeam.player.defense,
+      speed: playerTeam.player.speed,
+      critChance: (playerTeam.player as any).critChance || 0,
+      critDamage: (playerTeam.player as any).critDamage || 0,
       isPlayer: true,
+      stamina: 100,
+      maxStamina: 100,
       statusEffects: [],
       isGuarding: false,
-      endowmentPoints: (c as any).endowmentPoints || 0
+      endowmentPoints: (playerTeam.player as any).endowmentPoints || 0
     } as any);
-  });
+    
+    playerTeam.companions.forEach((c, i) => {
+      units.push({
+        id: `comp-${i}`,
+        name: c.name,
+        hp: c.hp,
+        maxHp: c.maxHp,
+        attack: c.attack,
+        defense: c.defense,
+        speed: c.speed,
+        critChance: (c as any).critChance || 0,
+        critDamage: (c as any).critDamage || 0,
+        isPlayer: true,
+        statusEffects: [],
+        isGuarding: false,
+        endowmentPoints: (c as any).endowmentPoints || 0
+      } as any);
+    });
   
   // Initialize enemies
   enemies.forEach((e, i) => {
@@ -125,8 +132,9 @@ export function runTurnBasedCombat(playerTeam: TeamStats, enemies: EnemyStats[])
       
       const target = targets[Math.floor(Math.random() * targets.length)];
       
-      // 5% base crit + SKL (simulated as 5%)
-      const isCrit = Math.random() < 0.10;
+      // Critical chance: 5% base + critChance from equipment
+      const critChance = (unit.critChance || 0) + 5;
+      const isCrit = (Math.random() * 100) < critChance;
       const damage = calculateDamage(unit, target, isCrit);
       
       target.hp -= damage;
