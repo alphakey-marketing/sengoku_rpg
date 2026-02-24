@@ -731,24 +731,28 @@ export async function registerRoutes(
         if (Math.random() < 0.15) {
           const pInfo = pick(PET_NAMES);
           const rarityStr = equipRarityFromRandom();
-          const petDropped = await storage.createPet({
-            userId,
-            name: pInfo.name,
-            type: 'spirit',
-            rarity: rarityStr,
-            level: 1,
-            experience: 0,
-            expToNext: 100,
-            hp: 30,
-            maxHp: 30,
-            attack: 5,
-            defense: 5,
-            speed: 15,
-            skill: pInfo.skill,
-            isActive: false,
-          });
-          allPetsDropped.push(petDropped);
-          allLogs.push(`Captured ${rarityStr.toUpperCase()} ${pInfo.name}!`);
+          try {
+            const petDropped = await storage.createPet({
+              userId,
+              name: pInfo.name,
+              type: 'spirit',
+              rarity: rarityStr,
+              level: 1,
+              experience: 0,
+              expToNext: 100,
+              hp: 30,
+              maxHp: 30,
+              attack: 5,
+              defense: 5,
+              speed: 15,
+              skill: pInfo.skill,
+              isActive: false,
+            });
+            allPetsDropped.push(petDropped);
+            allLogs.push(`Captured ${rarityStr.toUpperCase()} ${pInfo.name}!`);
+          } catch (err) {
+            console.error("Failed to create pet drop:", err);
+          }
         }
 
         // Horse Drop (10% chance)
@@ -778,19 +782,23 @@ export async function registerRoutes(
             attackBonus = 8;
           }
 
-          const horseDropped = await storage.createHorse({
-            userId,
-            name: hName,
-            rarity,
-            level: 1,
-            speedBonus,
-            attackBonus,
-            defenseBonus,
-            skill,
-            isActive: false,
-          });
-          allHorsesDropped.push(horseDropped);
-          allLogs.push(`Tamed ${rarity.toUpperCase()} ${hName}!`);
+          try {
+            const horseDropped = await storage.createHorse({
+              userId,
+              name: hName,
+              rarity,
+              level: 1,
+              speedBonus,
+              attackBonus,
+              defenseBonus,
+              skill,
+              isActive: false,
+            });
+            allHorsesDropped.push(horseDropped);
+            allLogs.push(`Tamed ${rarity.toUpperCase()} ${hName}!`);
+          } catch (err) {
+            console.error("Failed to create horse drop:", err);
+          }
         }
       }
     }
