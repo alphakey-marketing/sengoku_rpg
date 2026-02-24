@@ -135,7 +135,7 @@ export default function MapPage() {
     // Important: boss and special battles expect just the number, field expects the object
     const params: any = type === 'field' ? { locationId: locIdNum, repeatCount: repeatNum } : locIdNum;
     
-    action(params, {
+    action(params as any, {
       onSuccess: (data: any) => {
         if (data.ninjaEncounter) {
           setNinjaEncounter(data.ninjaEncounter);
@@ -393,7 +393,7 @@ export default function MapPage() {
             <Button 
               variant="outline" 
               onClick={() => handleResolveNinja('pay')} 
-              disabled={isResolvingNinja || (playerStatus?.player.gold || 0) < ninjaEncounter?.goldDemanded}
+              disabled={isResolvingNinja || (playerStatus?.player as any).gold < ninjaEncounter?.goldDemanded}
               className="flex-1 border-amber-700/50 hover:bg-amber-900/20"
             >
               Pay Gold
