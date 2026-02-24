@@ -27,6 +27,22 @@ export default function PetsPage() {
     }
   };
 
+  const getRarityDescription = (rarity: string) => {
+    switch (rarity) {
+      case 'white': return 'Basic companion with minimal stat growth.';
+      case 'green': return 'Common spirit with reliable base stats.';
+      case 'blue': return 'Rare guardian with improved growth potential.';
+      case 'purple': return 'Epic spirit possessing significant power bonuses.';
+      case 'gold': return 'Legendary companion with exceptional stat scaling.';
+      case 'mythic': return 'Ancient spirit with immense power and presence.';
+      case 'exotic': return 'Otherworldly being with unique and potent stats.';
+      case 'transcendent': return 'Divine guardian transcending mortal limits.';
+      case 'celestial': return 'Cosmic entity with overwhelming celestial energy.';
+      case 'primal': return 'The ultimate progenitor of spirit power.';
+      default: return '';
+    }
+  };
+
   if (isLoading) return <MainLayout><div className="p-8">Whistling for pets...</div></MainLayout>;
 
   const sortedPets = pets ? [...pets].sort((a, b) => a.id - b.id) : [];
@@ -97,6 +113,10 @@ export default function PetsPage() {
                     <span>{pet.experience}/{pet.expToNext} EXP</span>
                   </div>
                   <Progress value={(pet.experience / pet.expToNext) * 100} className="h-1.5" />
+                </div>
+
+                <div className="text-[10px] text-zinc-500 italic mb-4 leading-tight">
+                  {getRarityDescription(pet.rarity)}
                 </div>
 
                 {pet.skill && (
