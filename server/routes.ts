@@ -40,16 +40,16 @@ function rarityFromRandom(): string {
 function equipRarityFromRandom(): string {
   const r = Math.random();
   // Significantly improved rarity rates for normal enemies
-  if (r > 0.99) return 'primal';        // 1%
-  if (r > 0.97) return 'celestial';     // 2%
-  if (r > 0.93) return 'transcendent';  // 4%
-  if (r > 0.85) return 'exotic';        // 8%
-  if (r > 0.70) return 'mythic';        // 15%
-  if (r > 0.50) return 'gold';          // 20%
-  if (r > 0.35) return 'purple';        // 15%
-  if (r > 0.20) return 'blue';          // 15%
-  if (r > 0.10) return 'green';          // 10%
-  return 'white';                       // 10%
+  if (r > 0.999) return 'primal';        // 0.1%
+  if (r > 0.995) return 'celestial';     // 0.4%
+  if (r > 0.985) return 'transcendent';  // 1.0%
+  if (r > 0.95) return 'exotic';         // 3.5%
+  if (r > 0.85) return 'mythic';         // 10%
+  if (r > 0.70) return 'gold';           // 15%
+  if (r > 0.50) return 'purple';         // 20%
+  if (r > 0.30) return 'blue';           // 20%
+  if (r > 0.15) return 'green';          // 15%
+  return 'white';                       // 15%
 }
 
 function calcEquipExpToNext(level: number): number {
