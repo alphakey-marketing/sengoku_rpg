@@ -44,26 +44,26 @@ export default function EquipmentPage() {
       const previousEquipment = queryClient.getQueryData(["/api/equipment"]);
       const previousPlayer = queryClient.getQueryData(["/api/player"]);
 
-      // Optimistically update to the new value
-      if (previousEquipment) {
-        queryClient.setQueryData(["/api/equipment"], (old: any) => 
-          old.filter((e: any) => !(e.rarity === rarity && !e.isEquipped))
-        );
-      }
-
       const rarityStones: Record<string, number> = { 
         white: 1, green: 2, blue: 5, purple: 10, gold: 25,
         mythic: 50, exotic: 100, transcendent: 250, celestial: 500, primal: 1000
       };
-      
-      if (previousPlayer && previousEquipment) {
+
+      // Optimistically update to the new value
+      if (previousEquipment) {
         const toRecycle = (previousEquipment as any[]).filter(e => e.rarity === rarity && !e.isEquipped);
         const stonesGained = toRecycle.length * (rarityStones[rarity] || 1);
-        
-        queryClient.setQueryData(["/api/player"], (old: any) => ({
-          ...old,
-          upgradeStones: (old.upgradeStones || 0) + stonesGained
-        }));
+
+        queryClient.setQueryData(["/api/equipment"], (old: any) => 
+          old.filter((e: any) => !(e.rarity === rarity && !e.isEquipped))
+        );
+
+        if (previousPlayer) {
+          queryClient.setQueryData(["/api/player"], (old: any) => ({
+            ...old,
+            upgradeStones: (old.upgradeStones || 0) + stonesGained
+          }));
+        }
       }
 
       return { previousEquipment, previousPlayer };
@@ -79,15 +79,15 @@ export default function EquipmentPage() {
         variant: "destructive",
       });
     },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/equipment"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/player"] });
-    },
     onSuccess: (data) => {
       toast({
         title: "Recycle Complete",
         description: `Recycled ${data.count} items for ${data.stonesGained} Upgrade Stones.`,
       });
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/equipment"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/player"] });
     },
   });
 
