@@ -1,6 +1,6 @@
 import { usePlayer, usePlayerFullStatus, useEquipment, useTransformations } from "@/hooks/use-game";
 import { MainLayout } from "@/components/layout/main-layout";
-import { Shield, Sword, Coins, Wheat, Trophy, Zap, Heart, Sparkles, RefreshCcw } from "lucide-react";
+import { Shield, Sword, Coins, Wheat, Trophy, Zap, Heart, Sparkles, RefreshCcw, BookOpen, Users, Info } from "lucide-react";
 import { motion } from "framer-motion";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,13 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 export default function Home() {
   const { data: player, isLoading } = usePlayer();
@@ -25,6 +32,29 @@ export default function Home() {
   const { data: equipment } = useEquipment();
   const { data: transforms } = useTransformations();
   const { toast } = useToast();
+
+  const mechanics = [
+    {
+      icon: Users,
+      title: "Recruit Allies",
+      desc: "Visit the Shrine to summon unique warrior companions. Build a party of up to 5 warriors to fight by your side."
+    },
+    {
+      icon: Sword,
+      title: "Master Combat",
+      desc: "Progress through the Campaign Map. Face field bandits, storm castles, and challenge legendary Demon Lords."
+    },
+    {
+      icon: Shield,
+      title: "Forge Equipment",
+      desc: "Loot weapons and armor from fallen foes. Upgrade and endow your gear at the Armory to increase your power."
+    },
+    {
+      icon: Zap,
+      title: "Spirit Bonds",
+      desc: "Manage war horses and spirit pets in the Stable. They provide vital stat bonuses and unique skills in battle."
+    }
+  ];
 
   const handleRestart = async () => {
     try {
@@ -96,9 +126,70 @@ export default function Home() {
   return (
     <MainLayout>
       <div className="space-y-8">
-        <div>
-          <h1 className="text-3xl font-display font-bold text-white mb-2" data-testid="text-page-title">Daimyo's Quarters</h1>
-          <p className="text-muted-foreground">Review your current standing and resources.</p>
+        <div className="flex justify-between items-end">
+          <div>
+            <h1 className="text-3xl font-display font-bold text-white mb-2" data-testid="text-page-title">Daimyo's Quarters</h1>
+            <p className="text-muted-foreground">Review your current standing and resources.</p>
+          </div>
+
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-2 border-accent/50 text-accent hover:bg-accent/10">
+                <BookOpen size={16} />
+                How to Play
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="bg-card border-border text-foreground max-w-2xl max-h-[85vh] overflow-y-auto custom-scrollbar">
+              <DialogHeader>
+                <DialogTitle className="font-display text-2xl text-center text-white border-b border-border/50 pb-4">
+                  Sengoku Chronicles Guide
+                </DialogTitle>
+              </DialogHeader>
+              <div className="py-6 space-y-8">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                  {mechanics.map((m, i) => (
+                    <div key={i} className="bg-black/20 border border-border/30 p-4 rounded-lg">
+                      <div className="flex items-center gap-3 mb-3">
+                        <div className="p-2 bg-primary/10 border border-primary/20 rounded-md">
+                          <m.icon className="text-primary" size={20} />
+                        </div>
+                        <h4 className="font-display font-bold text-white tracking-wide">{m.title}</h4>
+                      </div>
+                      <p className="text-zinc-400 text-xs leading-relaxed">{m.desc}</p>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="p-6 bg-accent/5 border border-accent/20 rounded-xl">
+                  <div className="flex items-start gap-4">
+                    <div className="p-2 bg-accent/10 rounded border border-accent/20">
+                      <Info className="text-accent" size={18} />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-bold text-white mb-2 tracking-wide uppercase">Core Loop</h4>
+                      <p className="text-zinc-400 text-xs leading-relaxed mb-4">
+                        Master the Sengoku era through this cycle:
+                      </p>
+                      <ol className="space-y-3">
+                        <li className="flex items-center gap-3 text-xs text-zinc-300 font-bold uppercase tracking-wider">
+                          <span className="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center text-primary border border-primary/30 shrink-0 text-[10px]">1</span>
+                          Fight battles to earn Gold & Equipment
+                        </li>
+                        <li className="flex items-center gap-3 text-xs text-zinc-300 font-bold uppercase tracking-wider">
+                          <span className="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center text-primary border border-primary/30 shrink-0 text-[10px]">2</span>
+                          Upgrade your gear in the Armory
+                        </li>
+                        <li className="flex items-center gap-3 text-xs text-zinc-300 font-bold uppercase tracking-wider">
+                          <span className="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center text-primary border border-primary/30 shrink-0 text-[10px]">3</span>
+                          Summon allies and manage your Stable
+                        </li>
+                      </ol>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
 
         <motion.div
