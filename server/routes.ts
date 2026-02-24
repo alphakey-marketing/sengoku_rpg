@@ -760,26 +760,28 @@ export async function registerRoutes(
           const hName = pick(HORSE_NAMES);
           const r = Math.random();
           let rarity = "common";
-          let speedBonus = 10;
-          let attackBonus = 0;
-          let defenseBonus = 0;
+          let speedBonus = Math.floor(Math.random() * 6) + 5; // 5-10
+          let attackBonus = Math.floor(Math.random() * 4); // 0-3
+          let defenseBonus = Math.floor(Math.random() * 4); // 0-3
           let skill = "Swift Gallop";
 
           if (r < 0.001) {
             rarity = "mythic";
-            speedBonus = 40;
-            attackBonus = 25;
+            speedBonus = Math.floor(Math.random() * 16) + 35; // 35-50
+            attackBonus = Math.floor(Math.random() * 11) + 20; // 20-30
+            defenseBonus = Math.floor(Math.random() * 11) + 15; // 15-25
             skill = "Divine Wind";
           } else if (r < 0.005) {
             rarity = "epic";
-            speedBonus = 25;
-            attackBonus = 15;
-            defenseBonus = 10;
+            speedBonus = Math.floor(Math.random() * 11) + 20; // 20-30
+            attackBonus = Math.floor(Math.random() * 8) + 12; // 12-19
+            defenseBonus = Math.floor(Math.random() * 8) + 8; // 8-15
             skill = "Steel Charger";
           } else if (r < 0.02) {
             rarity = "rare";
-            speedBonus = 15;
-            attackBonus = 8;
+            speedBonus = Math.floor(Math.random() * 8) + 12; // 12-19
+            attackBonus = Math.floor(Math.random() * 6) + 5; // 5-10
+            defenseBonus = Math.floor(Math.random() * 6) + 4; // 4-9
           }
 
           try {
