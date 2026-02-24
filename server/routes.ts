@@ -24,9 +24,46 @@ const PET_NAMES = [
   { name: "War Hawk (鷹)", skill: "Scout (偵察)" },
   { name: "Shadow Cat (影猫)", skill: "Poison (毒)" },
 ];
-const HORSE_NAMES = ["Kiso Horse (木曽馬)", "Misaki Pony (御崎馬)", "Tokara Stallion (トカラ馬)"];
+const HORSE_RARITY_STATS: Record<string, { speed: number, atk: number, def: number }> = {
+  white: { speed: 5, atk: 2, def: 2 },
+  green: { speed: 10, atk: 5, def: 5 },
+  blue: { speed: 15, atk: 8, def: 8 },
+  purple: { speed: 20, atk: 12, def: 12 },
+  gold: { speed: 30, atk: 20, def: 20 },
+  mythic: { speed: 45, atk: 30, def: 30 },
+  exotic: { speed: 65, atk: 45, def: 45 },
+  transcendent: { speed: 90, atk: 65, def: 65 },
+  celestial: { speed: 120, atk: 90, def: 90 },
+  primal: { speed: 160, atk: 125, def: 125 }
+};
 
-function pick<T>(arr: T[]): T { return arr[Math.floor(Math.random() * arr.length)]; }
+function generateHorse(userId: string) {
+  const name = pick(HORSE_NAMES);
+  const r = Math.random();
+  let rarity = 'white';
+  if (r > 0.999) rarity = 'primal';
+  else if (r > 0.995) rarity = 'celestial';
+  else if (r > 0.985) rarity = 'transcendent';
+  else if (r > 0.96) rarity = 'exotic';
+  else if (r > 0.90) rarity = 'mythic';
+  else if (r > 0.75) rarity = 'gold';
+  else if (r > 0.55) rarity = 'purple';
+  else if (r > 0.35) rarity = 'blue';
+  else if (r > 0.15) rarity = 'green';
+
+  const stats = HORSE_RARITY_STATS[rarity];
+  return {
+    userId,
+    name: `${rarity.toUpperCase()} ${name}`,
+    rarity,
+    level: 1,
+    speedBonus: stats.speed,
+    attackBonus: stats.atk,
+    defenseBonus: stats.def,
+    isActive: false
+  };
+}
+
 
 function rarityFromRandom(): string {
   const r = Math.random();
