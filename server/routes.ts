@@ -1000,7 +1000,15 @@ export async function registerRoutes(
 
         await storage.updateUser(userId, userUpdate);
         if (Math.random() < (locationId >= 100 ? 0.5 : 0.3)) {
-          const type = pick(EQUIP_TYPES);
+          const rDrop = Math.random();
+          let type: string;
+          if (rDrop < 0.1) {
+            type = 'accessory';
+          } else {
+            const others = ['weapon', 'armor', 'horse_gear'];
+            type = others[Math.floor(Math.random() * others.length)];
+          }
+          
           const rarity = equipRarityFromRandom(locationId);
           const name = pick(type === 'weapon' ? WEAPON_NAMES : type === 'armor' ? ARMOR_NAMES : type === 'accessory' ? ACCESSORY_NAMES : HORSE_GEAR_NAMES);
           
@@ -1013,14 +1021,13 @@ export async function registerRoutes(
             mythic: { atk: 60, def: 45, spd: 25 },
             exotic: { atk: 100, def: 75, spd: 45 },
             transcendent: { atk: 200, def: 150, spd: 80 },
-            celestial: { atk: 450, def: 350, spd: 150 },
-            primal: { atk: 1000, def: 800, spd: 300 }
+            celestial: { atk: 450, def: 350, spd: 150 }
           };
           const baseStats = statsByRarity[rarity] || statsByRarity.white;
 
-          let atkBonus = baseStats.atk;
-          let defBonus = baseStats.def;
-          let spdBonus = baseStats.spd;
+          let atkBonus = type === 'weapon' || type === 'accessory' ? baseStats.atk : 0;
+          let defBonus = type === 'armor' || type === 'accessory' ? baseStats.def : 0;
+          let spdBonus = type === 'horse_gear' || type === 'accessory' ? baseStats.spd : 0;
 
           if (locationId >= 100) {
             const chinaMult = 2 + ((locationId - 100) * 0.5);
@@ -1559,7 +1566,15 @@ function generatePet(userId: string, locationId: number = 1) {
 
     const results = [];
     for (let i = 0; i < count; i++) {
-      const type = pick(EQUIP_TYPES);
+      const rDrop = Math.random();
+      let type: string;
+      if (rDrop < 0.1) {
+        type = 'accessory';
+      } else {
+        const others = ['weapon', 'armor', 'horse_gear'];
+        type = others[Math.floor(Math.random() * others.length)];
+      }
+      
       const r = Math.random();
       let rarity = 'gold';
       if (r > 0.94) rarity = 'celestial';
@@ -1580,10 +1595,13 @@ function generatePet(userId: string, locationId: number = 1) {
         mythic: { atk: 60, def: 45, spd: 25 },
         exotic: { atk: 100, def: 75, spd: 45 },
         transcendent: { atk: 200, def: 150, spd: 80 },
-        celestial: { atk: 450, def: 350, spd: 150 },
-        primal: { atk: 1000, def: 800, spd: 300 }
+        celestial: { atk: 450, def: 350, spd: 150 }
       };
-      const baseStats = statsByRarity[rarity];
+      const baseStats = statsByRarity[rarity] || statsByRarity.gold;
+      
+      let atkBonus = type === 'weapon' || type === 'accessory' ? baseStats.atk : 0;
+      let defBonus = type === 'armor' || type === 'accessory' ? baseStats.def : 0;
+      let spdBonus = type === 'horse_gear' || type === 'accessory' ? baseStats.spd : 0;
 
       const equipment = await storage.createEquipment({
         userId,
@@ -1593,9 +1611,9 @@ function generatePet(userId: string, locationId: number = 1) {
         level: 1,
         experience: 0,
         expToNext: 100,
-        attackBonus: baseStats.atk,
-        defenseBonus: baseStats.def,
-        speedBonus: baseStats.spd,
+        attackBonus: atkBonus,
+        defenseBonus: defBonus,
+        speedBonus: spdBonus,
       });
       results.push(equipment);
     }
