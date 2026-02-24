@@ -41,19 +41,24 @@ const HORSE_RARITY_STATS: Record<string, { speed: number, atk: number, def: numb
   primal: { speed: 160, atk: 125, def: 125 }
 };
 
-function generateHorse(userId: string) {
+function generateHorse(userId: string, locationId: number = 1) {
   const name = pick(HORSE_NAMES);
   const r = Math.random();
+  const isChina = locationId >= 100;
+  
+  // Dynamic rarity scaling for horses based on location
+  const bonus = isChina ? (locationId - 100) * 0.05 + 0.1 : (locationId - 1) * 0.02;
+  
   let rarity = 'white';
-  if (r > 0.99) rarity = 'primal';
-  else if (r > 0.98) rarity = 'celestial';
-  else if (r > 0.97) rarity = 'transcendent';
-  else if (r > 0.96) rarity = 'exotic';
-  else if (r > 0.90) rarity = 'mythic';
-  else if (r > 0.75) rarity = 'gold';
-  else if (r > 0.55) rarity = 'purple';
-  else if (r > 0.35) rarity = 'blue';
-  else if (r > 0.15) rarity = 'green';
+  if (r > 0.99 - bonus/2) rarity = 'primal';
+  else if (r > 0.98 - bonus) rarity = 'celestial';
+  else if (r > 0.97 - bonus) rarity = 'transcendent';
+  else if (r > 0.96 - bonus) rarity = 'exotic';
+  else if (r > 0.90 - bonus) rarity = 'mythic';
+  else if (r > 0.75 - bonus) rarity = 'gold';
+  else if (r > 0.55 - bonus) rarity = 'purple';
+  else if (r > 0.35 - bonus) rarity = 'blue';
+  else if (r > 0.15 - bonus) rarity = 'green';
 
   const statsByRarity: Record<string, { speed: number, atk: number, def: number }> = {
     white: { speed: 5, atk: 2, def: 2 },
@@ -1000,7 +1005,7 @@ export async function registerRoutes(
 
         // Horse Drop (5% chance)
         if (Math.random() < 0.05) {
-          const horseData = generateHorse(userId);
+          const horseData = generateHorse(userId, locationId);
           try {
             const horse = await storage.createHorse(horseData as any);
             allHorsesDropped.push(horse);
