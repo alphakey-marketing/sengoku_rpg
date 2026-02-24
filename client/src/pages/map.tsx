@@ -14,7 +14,6 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { motion, AnimatePresence } from "framer-motion";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 
 const LOCATIONS = [
@@ -301,13 +300,8 @@ export default function MapPage() {
             <DialogTitle className="font-display text-2xl text-center text-white">Battle Preparation</DialogTitle>
           </DialogHeader>
           
-          <Tabs defaultValue="prep" className="flex-1 overflow-hidden flex flex-col">
-            <TabsList className="grid w-full grid-cols-2 bg-muted/30">
-              <TabsTrigger value="prep">Strategy</TabsTrigger>
-              <TabsTrigger value="gear">Armory</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="prep" className="flex-1 overflow-y-auto py-4 space-y-6">
+          <div className="flex-1 overflow-hidden flex flex-col p-4">
+            <div className="flex-1 overflow-y-auto space-y-6">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2 bg-blue-950/20 p-3 rounded border border-blue-900/30">
                   <h4 className="text-xs font-bold text-blue-400 uppercase tracking-widest text-center">Your Team</h4>
@@ -355,13 +349,6 @@ export default function MapPage() {
               
               <p className="text-xs text-center text-zinc-500 italic">"The wind whispers of blood and iron. Shall you draw your steel?"</p>
 
-              <div className="p-4 bg-muted/20 border border-border/50 rounded-lg text-center">
-                <p className="text-xs text-muted-foreground mb-2">Need to change gear?</p>
-                <Button variant="outline" size="sm" asChild className="h-8 text-[10px] font-bold uppercase tracking-wider">
-                  <a href="/gear">Go to Battle Formations</a>
-                </Button>
-              </div>
-
               {preBattleInfo?.type === 'field' && (
                 <div className="space-y-2 border-t border-border/50 pt-4">
                   <div className="flex justify-between items-center">
@@ -405,21 +392,8 @@ export default function MapPage() {
                   <p className="text-[10px] text-zinc-500 text-center mt-2">Auto-repeat up to 10 skirmishes for multiplied rewards.</p>
                 </div>
               )}
-            </TabsContent>
-
-            <TabsContent value="gear" className="flex-1 overflow-y-auto py-4">
-              <div className="space-y-4">
-                <div className="p-8 text-center bg-muted/10 border border-dashed border-border/50 rounded-lg">
-                  <Package className="w-12 h-12 mx-auto text-muted-foreground mb-4 opacity-50" />
-                  <h3 className="text-sm font-bold text-white mb-2">Armory Moved</h3>
-                  <p className="text-xs text-muted-foreground mb-4">You can now manage all your companions' equipment in the main menu under Battle Formations.</p>
-                  <Button variant="outline" size="sm" asChild className="h-8 text-[10px] font-bold uppercase tracking-wider">
-                    <a href="/gear">Go to Battle Formations</a>
-                  </Button>
-                </div>
-              </div>
-            </TabsContent>
-          </Tabs>
+            </div>
+          </div>
 
           <DialogFooter className="gap-2 sm:gap-0 mt-4 border-t border-border/50 pt-4">
             <Button variant="ghost" onClick={() => setPreBattleInfo(null)} className="flex-1">Withdraw</Button>
