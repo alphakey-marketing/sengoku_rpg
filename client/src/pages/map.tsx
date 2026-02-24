@@ -221,14 +221,24 @@ export default function MapPage() {
       goldDemanded: Math.floor(ninjaEncounter.goldDemanded)
     }).then(async (res) => {
       const data = await res.json();
-      if (action === 'pay') {
-        setEventLogs([data.message]);
-        setNinjaEncounter(null);
-        queryClient.invalidateQueries({ queryKey: [api.player.get.path] });
+      if (res.ok) {
+        if (action === 'pay') {
+          setEventLogs([data.message]);
+          setNinjaEncounter(null);
+          queryClient.invalidateQueries({ queryKey: ['/api/player'] });
+          queryClient.invalidateQueries({ queryKey: [api.player.get.path] });
+        } else {
+          setResult(data.battleResult);
+          setNinjaEncounter(null);
+          queryClient.invalidateQueries({ queryKey: ['/api/player'] });
+          queryClient.invalidateQueries({ queryKey: [api.player.get.path] });
+        }
       } else {
-        setResult(data.battleResult);
-        setNinjaEncounter(null);
-        queryClient.invalidateQueries({ queryKey: [api.player.get.path] });
+        toast({
+          title: "Error",
+          description: data.message || "Something went wrong",
+          variant: "destructive"
+        });
       }
     }).finally(() => {
       setIsResolvingNinja(false);
@@ -463,10 +473,10 @@ export default function MapPage() {
             <Button 
               variant="outline" 
               onClick={() => handleResolveNinja('pay')} 
-              disabled={isResolvingNinja || ((playerStatus?.player as any)?.gold || 0) < (ninjaEncounter?.goldDemanded || 0)}
+              disabled={isResolvingNinja || (playerStatus?.gold || 0) < (ninjaEncounter?.goldDemanded || 0)}
               className="flex-1 border-amber-700/50 hover:bg-amber-900/20"
             >
-              Pay {ninjaEncounter?.goldDemanded} Gold
+              Pay {Math.floor(ninjaEncounter?.goldDemanded || 0)} Gold
             </Button>
             <Button 
               onClick={() => handleResolveNinja('fight')} 
