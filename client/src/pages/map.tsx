@@ -190,7 +190,7 @@ export default function MapPage() {
         console.error("Battle error:", err);
         setPreBattleInfo(null); // Clear loading state if error occurs
       }
-    } as any);
+    });
   };
 
   const handleEventChoice = (eventKey: string, choice: string) => {
