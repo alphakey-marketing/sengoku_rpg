@@ -917,15 +917,15 @@ export async function registerRoutes(
         blue: { atk: 15, def: 10, spd: 6, critC: 0, critD: 0 },
         purple: { atk: 25, def: 18, spd: 10, critC: 2, critD: 5 },
         gold: { atk: 40, def: 30, spd: 20, critC: 5, critD: 15 },
-        mythic: { atk: 60, def: 45, spd: 25, critC: 5, critD: 10 },
-        exotic: { atk: 100, def: 75, spd: 45, critC: 10, critD: 25 },
-        transcendent: { atk: 200, def: 150, spd: 80, critC: 15, critD: 50 },
-        celestial: { atk: 450, def: 350, spd: 150, critC: 25, critD: 100 },
-        primal: { atk: 1000, def: 800, spd: 300, critC: 50, critD: 250 }
+        mythic: { atk: 60, def: 45, spd: 25, critC: 8, critD: 20 },
+        exotic: { atk: 100, def: 75, spd: 45, critC: 12, critD: 35 },
+        transcendent: { atk: 200, def: 150, spd: 80, critC: 20, critD: 60 },
+        celestial: { atk: 450, def: 350, spd: 150, critC: 35, critD: 120 },
+        primal: { atk: 1000, def: 800, spd: 300, critC: 60, critD: 300 }
       };
       const baseStats = statsByRarity[fieldRarity] || statsByRarity.white;
 
-      const eq = await storage.createEquipment({
+      const itemData: any = {
         userId,
         name,
         type,
@@ -936,9 +936,20 @@ export async function registerRoutes(
         attackBonus: baseStats.atk + (locationId * 5),
         defenseBonus: baseStats.def + (locationId * 3),
         speedBonus: baseStats.spd + (locationId * 2),
-        critChance: baseStats.critC,
-        critDamage: baseStats.critD,
-      });
+        critChance: 0,
+        critDamage: 0,
+      };
+
+      // Apply critical stats based on type and rarity
+      if (['gold', 'mythic', 'exotic', 'transcendent', 'celestial', 'primal'].includes(fieldRarity)) {
+        if (type === 'weapon') {
+          itemData.critDamage = baseStats.critD;
+        } else if (type === 'accessory') {
+          itemData.critChance = baseStats.critC;
+        }
+      }
+
+      const eq = await storage.createEquipment(itemData);
 
       res.json({ 
         victory: true, 
