@@ -416,19 +416,23 @@ export async function registerRoutes(
   app.post(api.equipment.upgrade.path, isAuthenticated, async (req: any, res) => {
     const userId = req.user.claims.sub;
     const equipId = Number(req.params.id);
+    const { amount = 1 } = req.body;
+    const upgradeAmount = Math.max(1, Math.floor(Number(amount)));
+
     const user = await storage.getUser(userId);
     if (!user) return res.status(401).json({ message: "Unauthorized" });
 
-    if ((user.upgradeStones || 0) < 1) return res.status(400).json({ message: "Not enough upgrade stones" });
+    if ((user.upgradeStones || 0) < upgradeAmount) return res.status(400).json({ message: "Not enough upgrade stones" });
 
     const equips = await storage.getEquipment(userId);
     const eq = equips.find(e => e.id === equipId);
     if (!eq) return res.status(404).json({ message: "Equipment not found" });
 
-    await storage.updateUser(userId, { upgradeStones: user.upgradeStones - 1 });
+    await storage.updateUser(userId, { upgradeStones: user.upgradeStones - upgradeAmount });
 
-    const expAmount = 50;
-    let newExp = eq.experience + expAmount;
+    const expPerStone = 50;
+    const totalExpGained = expPerStone * upgradeAmount;
+    let newExp = eq.experience + totalExpGained;
     let newLevel = eq.level;
     let newExpToNext = eq.expToNext;
     let atkBonus = eq.attackBonus;
@@ -516,19 +520,26 @@ export async function registerRoutes(
   app.post("/api/pets/:id/upgrade", isAuthenticated, async (req: any, res) => {
     const userId = req.user.claims.sub;
     const petId = Number(req.params.id);
+    const { amount = 1 } = req.body;
+    const upgradeAmount = Math.max(1, Math.floor(Number(amount)));
+
     const user = await storage.getUser(userId);
     if (!user) return res.status(401).json({ message: "Unauthorized" });
 
-    if ((user.petEssence || 0) < 10) return res.status(400).json({ message: "Not enough pet essence" });
+    const costPerUpgrade = 10;
+    const totalCost = costPerUpgrade * upgradeAmount;
+
+    if ((user.petEssence || 0) < totalCost) return res.status(400).json({ message: "Not enough pet essence" });
 
     const allPets = await storage.getPets(userId);
     const pet = allPets.find(p => p.id === petId);
     if (!pet) return res.status(404).json({ message: "Pet not found" });
 
-    await storage.updateUser(userId, { petEssence: user.petEssence - 10 });
+    await storage.updateUser(userId, { petEssence: user.petEssence - totalCost });
 
-    const expAmount = 50;
-    let newExp = pet.experience + expAmount;
+    const expPerEssence = 50;
+    const totalExpGained = expPerEssence * upgradeAmount;
+    let newExp = pet.experience + totalExpGained;
     let newLevel = pet.level;
     let newExpToNext = pet.expToNext;
     let hp = pet.hp;
