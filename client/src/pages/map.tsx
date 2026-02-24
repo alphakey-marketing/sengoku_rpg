@@ -15,9 +15,11 @@ import { motion, AnimatePresence } from "framer-motion";
 
 const LOCATIONS = [
   { id: 1, name: "Owari Province", desc: "Starting grounds of the Oda clan. Bandits and minor yokai roam here.", level: 1 },
-  { id: 2, name: "Mino Province", desc: "Mountainous terrain hiding fierce warrior monks and elite guards.", level: 5 },
-  { id: 3, name: "Kyoto Approaches", desc: "The capital's outskirts. Heavily defended by the Shogun's remnants.", level: 10 },
-  { id: 4, name: "Demon Gate (鬼門)", desc: "A cursed portal where legendary yokai lurk. Special bosses drop transformation stones.", level: 15 },
+  { id: 2, name: "Mino Province", desc: "Mountainous terrain hiding fierce warrior monks and elite guards.", level: 10 },
+  { id: 3, name: "Kyoto Approaches", desc: "The capital's outskirts. Heavily defended by the Shogun's remnants.", level: 25 },
+  { id: 4, name: "Edo Outskirts", desc: "The path to the new capital. Protected by elite samurai and treacherous traps.", level: 45 },
+  { id: 5, name: "Mount Fuji Pass", desc: "High altitude slopes where ancient spirits and frozen horrors await.", level: 70 },
+  { id: 6, name: "Demon Gate (鬼門)", desc: "A cursed portal where legendary yokai lurk. Special bosses drop transformation stones.", level: 100 },
 ];
 
 const STORY_EVENTS = [

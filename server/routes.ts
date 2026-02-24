@@ -243,29 +243,32 @@ function generateEnemyStats(type: 'field' | 'boss' | 'special', playerLevel: num
     };
   } else if (type === 'boss') {
     const name = pick(BOSS_NAMES);
-    const lvl = playerLevel + 2 + (locationId * 3);
+    // Bosses scale more significantly with location
+    const difficultyMultiplier = locationId * 1.5;
+    const lvl = Math.floor(playerLevel + 5 + (locationId * 8));
     return {
       name,
       level: lvl,
-      hp: lvl * 100 + 300 + (locationId * 200),
-      maxHp: lvl * 100 + 300 + (locationId * 200),
-      attack: lvl * 18 + 40 + (locationId * 30),
-      defense: lvl * 15 + 35 + (locationId * 25),
-      speed: lvl * 8 + 15 + (locationId * 10),
-      skills: ["War Cry", "Shield Wall", "Charge"],
+      hp: lvl * 150 + 500 + Math.floor(difficultyMultiplier * 1000),
+      maxHp: lvl * 150 + 500 + Math.floor(difficultyMultiplier * 1000),
+      attack: lvl * 25 + 60 + Math.floor(difficultyMultiplier * 50),
+      defense: lvl * 20 + 50 + Math.floor(difficultyMultiplier * 40),
+      speed: lvl * 12 + 25 + Math.floor(difficultyMultiplier * 20),
+      skills: ["War Cry", "Shield Wall", "Charge", "Strategic Strike"],
     };
   } else {
     const sb = pick(SPECIAL_BOSSES);
-    const lvl = playerLevel + 5 + (locationId * 5);
+    // Special bosses are the ultimate challenge
+    const lvl = Math.floor(playerLevel + 15 + (locationId * 12));
     return {
       name: sb.name,
       level: lvl,
-      hp: lvl * 150 + 800 + (locationId * 500),
-      maxHp: lvl * 150 + 800 + (locationId * 500),
-      attack: lvl * 35 + 120 + (locationId * 80),
-      defense: lvl * 25 + 100 + (locationId * 60),
-      speed: lvl * 12 + 40 + (locationId * 25),
-      skills: [sb.skill, "Roar", "Dark Aura"],
+      hp: lvl * 250 + 2000 + (locationId * 3000),
+      maxHp: lvl * 250 + 2000 + (locationId * 3000),
+      attack: lvl * 50 + 250 + (locationId * 150),
+      defense: lvl * 40 + 200 + (locationId * 120),
+      speed: lvl * 20 + 80 + (locationId * 50),
+      skills: [sb.skill, "Roar", "Dark Aura", "Divine Intervention"],
     };
   }
 }
