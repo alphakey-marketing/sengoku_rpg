@@ -781,9 +781,35 @@ export async function registerRoutes(
     const allPetsDropped = [];
     const allHorsesDropped = [];
     const allLogs: string[] = [];
+    let ninjaEncounter = null;
 
     for (let i = 0; i < count; i++) {
       if (count > 1) allLogs.push(`--- BATTLE ${i + 1} ---`);
+
+      // 10% chance for a famous ninja encounter
+      if (Math.random() < 0.10) {
+        const ninjaNames = ["Hattori Hanzo", "Fuma Kotaro", "Ishikawa Goemon", "Mochizuki Chiyome"];
+        const ninjaName = pick(ninjaNames);
+        const isSuperStrong = Math.random() < 0.3;
+        
+        const ninjaStats = {
+          name: ninjaName,
+          level: isSuperStrong ? user.level + 20 : user.level + 2,
+          hp: isSuperStrong ? user.maxHp * 3 : user.maxHp * 1.2,
+          maxHp: isSuperStrong ? user.maxHp * 3 : user.maxHp * 1.2,
+          attack: isSuperStrong ? user.attack * 2 : user.attack * 1.1,
+          defense: isSuperStrong ? user.defense * 1.5 : user.defense * 1.05,
+          speed: isSuperStrong ? user.speed * 1.5 : user.speed * 1.1,
+          skills: ["Shadow Strike", "Smoke Bomb", "Assassinate"],
+          isNinja: true,
+          goldDemanded: Math.floor(user.gold * 0.1)
+        };
+        
+        ninjaEncounter = ninjaStats;
+        allLogs.push(`A famous ninja, ${ninjaName}, blocks your path!`);
+        break; // Stop auto-battle for the encounter
+      }
+
       const enemy = generateEnemyStats('field', user.level, locationId);
       const battleResult = runTurnBasedCombat(teamStats, [enemy]);
       const victory = battleResult.victory;
@@ -927,8 +953,45 @@ export async function registerRoutes(
       allPetsDropped,
       horseDropped: allHorsesDropped[0] || null,
       allHorsesDropped,
-      logs: allLogs
+      logs: allLogs,
+      ninjaEncounter
     });
+  });
+
+  app.post("/api/battle/ninja/resolve", isAuthenticated, async (req: any, res) => {
+    const userId = req.user.claims.sub;
+    const { action, ninjaName, goldDemanded } = req.body;
+    const user = await storage.getUser(userId);
+    if (!user) return res.status(401).json({ message: "Unauthorized" });
+
+    if (action === 'pay') {
+      if (user.gold < goldDemanded) return res.status(400).json({ message: "Not enough gold" });
+      await storage.updateUser(userId, { gold: user.gold - goldDemanded });
+      return res.json({ success: true, message: `You paid ${goldDemanded} gold to ${ninjaName}. He vanished into the shadows.` });
+    } else {
+      const teamStats = await getPlayerTeamStats(userId);
+      if (!teamStats) return res.status(400).json({ message: "Team not found" });
+
+      const isSuperStrong = Math.random() < 0.3;
+      const enemy = {
+        name: ninjaName,
+        level: isSuperStrong ? user.level + 20 : user.level + 2,
+        hp: isSuperStrong ? user.maxHp * 3 : user.maxHp * 1.2,
+        maxHp: isSuperStrong ? user.maxHp * 3 : user.maxHp * 1.2,
+        attack: isSuperStrong ? user.attack * 2 : user.attack * 1.1,
+        defense: isSuperStrong ? user.defense * 1.5 : user.defense * 1.05,
+        speed: isSuperStrong ? user.speed * 1.5 : user.speed * 1.1,
+        skills: ["Shadow Strike", "Smoke Bomb", "Assassinate"],
+      };
+
+      const battleResult = runTurnBasedCombat(teamStats, [enemy]);
+      if (battleResult.victory) {
+        const goldGained = goldDemanded * 2;
+        await storage.updateUser(userId, { gold: user.gold + goldGained });
+        battleResult.logs.push(`You defeated ${ninjaName} and looted ${goldGained} gold!`);
+      }
+      res.json({ success: true, battleResult });
+    }
   });
 
   app.post(api.battle.boss.path, isAuthenticated, async (req: any, res) => {

@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { useFieldBattle, useBossBattle, useSpecialBossBattle, BattleResult, useCampaignEvents, useTriggerCampaignEvent, usePlayerFullStatus } from "@/hooks/use-game";
 import { MainLayout } from "@/components/layout/main-layout";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { api } from "@shared/routes";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Map as MapIcon, Swords, Skull, ChevronRight, Crown, Zap, Shield, Heart, Sparkles, ArrowUp, Scroll, Star } from "lucide-react";
@@ -63,6 +65,8 @@ export default function MapPage() {
   const [activeEvent, setActiveEvent] = useState<any>(null);
   const [eventLogs, setEventLogs] = useState<string[]>([]);
   const [preBattleInfo, setPreBattleInfo] = useState<{ type: 'field' | 'boss' | 'special', locationId: number, enemy: any, repeatCount: number } | null>(null);
+  const [ninjaEncounter, setNinjaEncounter] = useState<any>(null);
+  const [isResolvingNinja, setIsResolvingNinja] = useState(false);
 
   const { data: playerStatus } = usePlayerFullStatus();
 
@@ -133,6 +137,10 @@ export default function MapPage() {
     
     action(params, {
       onSuccess: (data: any) => {
+        if (data.ninjaEncounter) {
+          setNinjaEncounter(data.ninjaEncounter);
+          return;
+        }
         setResult(data);
         setPreBattleInfo(null);
         // Story event triggers
@@ -156,6 +164,28 @@ export default function MapPage() {
       onSuccess: (data) => {
         setEventLogs(data.logs);
       }
+    });
+  };
+
+  const handleResolveNinja = (action: 'pay' | 'fight') => {
+    setIsResolvingNinja(true);
+    apiRequest('POST', '/api/battle/ninja/resolve', {
+      action,
+      ninjaName: ninjaEncounter.name,
+      goldDemanded: ninjaEncounter.goldDemanded
+    }).then(async (res) => {
+      const data = await res.json();
+      if (action === 'pay') {
+        setEventLogs([data.message]);
+        setNinjaEncounter(null);
+        queryClient.invalidateQueries({ queryKey: [api.player.get.path] });
+      } else {
+        setResult(data.battleResult);
+        setNinjaEncounter(null);
+        queryClient.invalidateQueries({ queryKey: [api.player.get.path] });
+      }
+    }).finally(() => {
+      setIsResolvingNinja(false);
     });
   };
 
@@ -331,6 +361,50 @@ export default function MapPage() {
           <DialogFooter className="gap-2 sm:gap-0">
             <Button variant="ghost" onClick={() => setPreBattleInfo(null)} className="flex-1">Withdraw</Button>
             <Button onClick={handleBattle} className="flex-1 bg-primary hover:bg-primary/80 text-black font-bold">Charge!</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={ninjaEncounter !== null} onOpenChange={(open) => !open && !isResolvingNinja && setNinjaEncounter(null)}>
+        <DialogContent className="bg-card border-border text-foreground sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="font-display text-2xl text-center text-amber-500">Famous Ninja Encounter!</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="bg-amber-950/20 p-4 rounded border border-amber-900/30 text-center">
+              <Skull className="mx-auto mb-2 text-amber-500" size={48} />
+              <h3 className="text-xl font-bold text-white mb-2">{ninjaEncounter?.name}</h3>
+              <p className="text-sm text-zinc-300">
+                The legendary shinobi blocks your path. "Your gold or your life, warrior."
+              </p>
+            </div>
+            <div className="flex flex-col gap-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-zinc-500">Demand:</span>
+                <span className="text-amber-400 font-bold">{ninjaEncounter?.goldDemanded} Gold (10%)</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-zinc-500">Ninja Level:</span>
+                <span className="text-red-400 font-bold">{ninjaEncounter?.level}</span>
+              </div>
+            </div>
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button 
+              variant="outline" 
+              onClick={() => handleResolveNinja('pay')} 
+              disabled={isResolvingNinja || (playerStatus?.player.gold || 0) < ninjaEncounter?.goldDemanded}
+              className="flex-1 border-amber-700/50 hover:bg-amber-900/20"
+            >
+              Pay Gold
+            </Button>
+            <Button 
+              onClick={() => handleResolveNinja('fight')} 
+              disabled={isResolvingNinja}
+              className="flex-1 bg-red-700 hover:bg-red-800 text-white font-bold"
+            >
+              Fight!
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
