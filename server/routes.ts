@@ -786,8 +786,8 @@ export async function registerRoutes(
   app.post(api.battle.field.path, isAuthenticated, async (req: any, res) => {
     const userId = req.user.claims.sub;
     const user = await storage.getUser(userId);
-    if (!user || user.stamina < 10) return res.status(400).json({ message: "Not enough stamina" });
-
+    if (!user) return res.status(401).json({ message: "Unauthorized" });
+    
     const team = await getPlayerTeamStats(userId);
     if (!team) return res.status(401).json({ message: "Unauthorized" });
     const enemy = generateEnemyStats('field', user.level, user.currentLocationId);
@@ -904,8 +904,8 @@ export async function registerRoutes(
   app.post(api.battle.boss.path, isAuthenticated, async (req: any, res) => {
     const userId = req.user.claims.sub;
     const user = await storage.getUser(userId);
-    if (!user || user.stamina < 30) return res.status(400).json({ message: "Not enough stamina" });
-
+    if (!user) return res.status(401).json({ message: "Unauthorized" });
+    
     const team = await getPlayerTeamStats(userId);
     if (!team) return res.status(401).json({ message: "Unauthorized" });
     const enemy = generateEnemyStats('boss', user.level, user.currentLocationId);
@@ -946,7 +946,7 @@ export async function registerRoutes(
       const updates: any = {
         gold: user.gold + goldGained,
         rice: user.rice + riceGained,
-        stamina: user.stamina - 30,
+        stamina: user.stamina,
         upgradeStones: (user.upgradeStones || 0) + stones,
       };
 
@@ -960,7 +960,7 @@ export async function registerRoutes(
       (battleResult as any).equipmentDropped = equipmentDropped;
       (battleResult as any).rewards = { gold: goldGained, rice: riceGained, stones };
     } else {
-      await storage.updateUser(userId, { stamina: user.stamina - 30 });
+      // No stamina cost
     }
 
     res.json(battleResult);
@@ -969,8 +969,8 @@ export async function registerRoutes(
   app.post(api.battle.specialBoss.path, isAuthenticated, async (req: any, res) => {
     const userId = req.user.claims.sub;
     const user = await storage.getUser(userId);
-    if (!user || user.stamina < 50) return res.status(400).json({ message: "Not enough stamina" });
-
+    if (!user) return res.status(401).json({ message: "Unauthorized" });
+    
     const team = await getPlayerTeamStats(userId);
     if (!team) return res.status(401).json({ message: "Unauthorized" });
     const enemy = generateEnemyStats('special', user.level, user.currentLocationId);
@@ -995,14 +995,14 @@ export async function registerRoutes(
           durationSeconds: 30
         });
       }
-      await storage.updateUser(userId, { stamina: user.stamina - 50 });
+      await storage.updateUser(userId, { stamina: user.stamina });
       (battleResult as any).victory = true;
       (battleResult as any).experienceGained = 500;
       (battleResult as any).goldGained = 5000;
       (battleResult as any).transformationDropped = transformationDropped;
       (battleResult as any).rewards = { transform: sb?.transformName };
     } else {
-      await storage.updateUser(userId, { stamina: user.stamina - 50 });
+      // No stamina cost
     }
     res.json(battleResult);
   });

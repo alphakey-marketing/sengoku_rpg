@@ -168,6 +168,8 @@ export default function MapPage() {
     // Important: boss and special battles expect just the number, field expects the object
     const params = type === 'field' ? { locationId: locIdNum, repeatCount: repeatNum } : locIdNum;
     
+    setPreBattleInfo(null); // Clear early to avoid double-clicks or stale UI
+
     try {
       await (action as any)(params, {
         onSuccess: (data: any) => {
