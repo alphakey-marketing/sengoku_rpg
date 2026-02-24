@@ -169,7 +169,7 @@ export default function EquipmentPage() {
                     {item.endowmentPoints > 0 && (
                       <div className="flex items-center gap-1">
                         <Sparkles size={14} className="text-amber-400" />
-                        <span>+{item.endowmentPoints}</span>
+                        <span>+{item.endowmentPoints} (+{((item.endowmentPoints * 0.5)).toFixed(1)}% DR)</span>
                       </div>
                     )}
                   </div>
@@ -280,7 +280,8 @@ export default function EquipmentPage() {
           <div className="py-4 space-y-4">
             <div className="p-4 bg-amber-900/10 border border-amber-900/30 rounded-lg">
               <h4 className="text-amber-400 font-bold mb-1">Success Rate: {Math.max(10, 90 - ((equipment?.find(e => e.id === selectedEqId)?.endowmentPoints || 0) * 2))}%</h4>
-              <p className="text-xs text-muted-foreground mb-2">Current Points: {equipment?.find(e => e.id === selectedEqId)?.endowmentPoints || 0} / 70</p>
+              <p className="text-xs text-muted-foreground mb-1">Current Points: {equipment?.find(e => e.id === selectedEqId)?.endowmentPoints || 0} / 70</p>
+              <p className="text-[10px] text-amber-200/50 mb-2 italic">Each point provides 0.5% Damage Reduction (Max 35% total reduction)</p>
               <div className="flex items-center gap-2">
                 <input 
                   type="checkbox" 
