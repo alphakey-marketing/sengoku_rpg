@@ -128,7 +128,7 @@ export default function Home() {
       <div className="space-y-8">
         <div className="flex justify-between items-end">
           <div>
-            <h1 className="text-3xl font-display font-bold text-white mb-2" data-testid="text-page-title">Daimyo's Quarters</h1>
+            <h1 className="text-3xl font-display font-bold text-white mb-2" data-testid="text-page-title">Dojo (Home)</h1>
             <p className="text-muted-foreground">Review your current standing and resources.</p>
           </div>
 

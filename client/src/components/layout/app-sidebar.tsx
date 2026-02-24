@@ -9,6 +9,7 @@ import {
   Tent,
   Zap,
   ShieldAlert,
+  Building2,
 } from "lucide-react";
 import {
   Sidebar,
@@ -30,6 +31,7 @@ const navItems = [
   { title: "Battle Prep (Gear)", url: "/gear", icon: ShieldAlert },
   { title: "Armory (Equipment)", url: "/equipment", icon: Sword },
   { title: "Stable (Horses)", url: "/stable", icon: Tent },
+  { title: "Daimyo's Quarters", url: "/quarters", icon: Building2 },
   { title: "Spirits (Pets)", url: "/pets", icon: Sparkles },
   { title: "Shrine (Gacha)", url: "/gacha", icon: Zap },
   { title: "Campaign (Map)", url: "/map", icon: Map },
