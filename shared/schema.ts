@@ -178,19 +178,23 @@ export const campaignEventsRelations = relations(campaignEvents, ({ one }) => ({
 }));
 
 export const insertCompanionSchema = createInsertSchema(companions, {
+  rarity: z.string(),
   isSpecial: z.boolean(),
   isInParty: z.boolean(),
 }).omit({ id: true, createdAt: true });
 
 export const insertEquipmentSchema = createInsertSchema(equipment, {
+  rarity: z.string(),
   isEquipped: z.boolean(),
 }).omit({ id: true, createdAt: true });
 
 export const insertPetSchema = createInsertSchema(pets, {
+  rarity: z.string(),
   isActive: z.boolean(),
 }).omit({ id: true, createdAt: true });
 
 export const insertHorseSchema = createInsertSchema(horses, {
+  rarity: z.string(),
   isActive: z.boolean(),
 }).omit({ id: true, createdAt: true });
 

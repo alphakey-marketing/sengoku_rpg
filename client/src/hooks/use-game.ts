@@ -43,6 +43,7 @@ export interface Companion {
   speed: number;
   skill: string | null;
   isInParty: boolean;
+  isSpecial: boolean;
 }
 
 export interface Equipment {
@@ -532,9 +533,14 @@ export function useTriggerCampaignEvent() {
 
 export function useGachaPull() {
   const queryClient = useQueryClient();
-  return useMutation<GachaResult, Error, void>({
-    mutationFn: async () => {
-      const res = await fetchWithAuth(api.gacha.pull.path, { method: "POST" });
+  return useMutation<GachaResult, Error, { isSpecial?: boolean } | void>({
+    mutationFn: async (params) => {
+      const body = params || {};
+      const res = await fetchWithAuth(api.gacha.pull.path, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
       if (!res.ok) throw new Error("Gacha pull failed. Not enough rice?");
       return res.json();
     },

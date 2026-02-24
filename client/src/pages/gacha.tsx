@@ -25,12 +25,19 @@ export default function GachaPage() {
     setIsAnimating(true);
     
     setTimeout(() => {
-      pullCompanion({ isSpecial } as any, {
-        onSuccess: (data) => {
+      pullCompanion({ isSpecial }, {
+        onSuccess: (data: any) => {
           setCompanionResult(data.companion);
           setIsAnimating(false);
         },
-        onError: () => setIsAnimating(false)
+        onError: (error: any) => {
+          setIsAnimating(false);
+          toast({
+            title: "Summon Failed",
+            description: error.message || "An unexpected error occurred",
+            variant: "destructive"
+          });
+        }
       });
     }, 1500);
   };
@@ -242,7 +249,7 @@ export default function GachaPage() {
                   <h2 className="text-4xl font-display font-bold text-white mb-2 mt-4">{companionResult.name}</h2>
                   <p className="text-primary font-medium tracking-widest uppercase text-sm mb-6">{companionResult.type} Hero</p>
                   <div className="flex justify-center gap-1 text-accent mb-4">
-                    {Array.from({ length: companionResult.rarity }).map((_, j) => (
+                    {Array.from({ length: Number(companionResult.rarity) }).map((_, j) => (
                       <motion.div key={j} initial={{ opacity: 0, scale: 2 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.3 + (j * 0.1) }}>
                         <Star size={28} fill="currentColor" />
                       </motion.div>

@@ -1104,7 +1104,7 @@ export async function registerRoutes(
   // Gacha
   app.post(api.gacha.pull.path, isAuthenticated, async (req: any, res) => {
     const userId = req.user.claims.sub;
-    const { isSpecial } = req.body;
+    const isSpecial = req.body?.isSpecial || false;
     const user = await storage.getUser(userId);
     if (!user) return res.status(401).json({ message: "Unauthorized" });
     
