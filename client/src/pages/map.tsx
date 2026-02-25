@@ -372,6 +372,10 @@ export default function MapPage() {
                         </div>
                         <div className="grid grid-cols-4 gap-1 mb-2">
                           <div className="bg-background/40 p-1 rounded text-center">
+                            <span className="text-zinc-500 text-[8px] block uppercase">HP</span>
+                            <span className="text-red-400 font-mono text-xs leading-none">{playerStatus?.player?.hp}</span>
+                          </div>
+                          <div className="bg-background/40 p-1 rounded text-center">
                             <span className="text-zinc-500 text-[8px] block uppercase">ATK</span>
                             <span className="text-orange-400 font-mono text-xs leading-none">{(playerStatus?.player as any)?.attack || 0}</span>
                           </div>
@@ -476,6 +480,10 @@ export default function MapPage() {
                             <span className="text-[9px] text-zinc-400 font-mono">Lv {companion.level}</span>
                           </div>
                           <div className="grid grid-cols-4 gap-1 mb-2">
+                            <div className="bg-background/40 p-1 rounded text-center">
+                              <span className="text-zinc-500 text-[8px] block uppercase">HP</span>
+                              <span className="text-red-400 font-mono text-xs leading-none">{companion.hp}</span>
+                            </div>
                             <div className="bg-background/40 p-1 rounded text-center">
                               <span className="text-zinc-500 text-[8px] block uppercase">ATK</span>
                               <span className="text-orange-400 font-mono text-xs leading-none">{companion.attack}</span>
@@ -595,6 +603,10 @@ export default function MapPage() {
                     <span className="text-[9px] text-zinc-400 font-mono">Lv {preBattleInfo?.enemy.level}</span>
                   </div>
                   <div className="grid grid-cols-4 gap-1 mb-2">
+                    <div className="bg-background/40 p-1 rounded text-center">
+                      <span className="text-zinc-500 text-[8px] block uppercase">HP</span>
+                      <span className="text-red-400 font-mono text-xs leading-none">{preBattleInfo?.enemy.hp}</span>
+                    </div>
                     <div className="bg-background/40 p-1 rounded text-center">
                       <span className="text-zinc-500 text-[8px] block uppercase">ATK</span>
                       <span className="text-orange-400 font-mono text-xs leading-none">{preBattleInfo?.enemy.attack}</span>
