@@ -1,0 +1,329 @@
+You’re right: enemies are missing core stats (STR/AGI/VIT/DEX/LUK, HIT/FLEE, hardDEF/softDEF, weaponATK/level), so your new Classic‑RO formulas can’t work correctly. Below is a **direct patch spec** for `generateEnemyStats` to make enemies compatible with the combat changes.
+
+I’ll keep your HP/ATK/DEF/Speed curves, but derive RO‑style stats from them.
+
+-------------------------------
+1. DESIGN GOAL FOR ENEMY STATS
+-------------------------------
+
+For each enemy we want to output, at minimum:
+
+- `level`
+- Core stats (approximate): `str, agi, vit, dex, luk`
+- Attack fields: `weaponATK, weaponLevel`
+- Defense fields: `hardDEF, softDEF`
+- Derived: `hit, flee`
+
+So that `CombatUnit` created in `runTurnBasedCombat` can either:
+
+- Use these directly (preferred), or  
+- Use them as default when player data is missing.
+
+Below is a modified version of `generateEnemyStats`.
+
+---------------------------------
+2. UPDATED generateEnemyStats
+---------------------------------
+
+Drop‑in replacement suggestion:
+
+```ts
+function generateEnemyStats(
+  type: 'field' | 'boss' | 'special',
+  playerLevel: number,
+  locationId: number = 1
+) {
+  // Determine targetLevel from location
+  let targetLevel = 1;
+  if (locationId >= 100) {
+    // 101 -> 7, 102 -> 8, etc.
+    targetLevel = 7 + (locationId - 101);
+  } else {
+    // 1 -> 1, 2 -> 2, etc.
+    targetLevel = locationId;
+  }
+
+  const locationMultiplier = 1 + (targetLevel - 1) * 0.1;
+
+  // Helper: approximate RO-style core stats for enemies from level
+  const makeBaseStats = (lvl: number) => {
+    // Simple patterns: can be tuned later
+    return {
+      str: Math.floor(lvl * 1.5),   // physical power
+      agi: Math.floor(lvl * 1.2),   // flee / speed
+      vit: Math.floor(lvl * 1.3),   // hp / soft def
+      int: Math.floor(lvl * 0.8),   // magic placeholder
+      dex: Math.floor(lvl * 1.4),   // hit / ranged
+      luk: Math.max(1, Math.floor(lvl * 0.5)), // crit / dodge
+    };
+  };
+
+  if (type === 'field') {
+    const name =
+      locationId >= 100
+        ? pick(["Terracotta Guard", "Silk Road Bandit", "Mountain Cultivator"])
+        : pick(YOKAI_NAMES);
+
+    const lvl = targetLevel;
+    const baseHp = lvl * 40 + 100;
+    const baseAtk = lvl * 10 + 20;
+    const baseDef = lvl * 6 + 15;
+    const baseSpd = lvl * 5 + 10;
+
+    const stats = makeBaseStats(lvl);
+
+    // Map your "defense" to HardDEF; SoftDEF will be derived from VIT/AGI in combat
+    const hardDEF = Math.floor(baseDef * locationMultiplier);
+
+    // Weapon: treat "attack" as weaponATK for now
+    const weaponATK = Math.floor(baseAtk * locationMultiplier);
+    const weaponLevel = 1; // early field mobs
+
+    // Classic-style HIT/FLEE using stats
+    const hit =
+      175 +
+      lvl +
+      stats.dex +
+      Math.floor(stats.luk / 3);
+
+    const fleeA =
+      100 +
+      lvl +
+      stats.agi +
+      Math.floor(stats.luk / 5);
+    const perfectDodge = Math.floor(stats.luk / 10);
+    const flee = fleeA + perfectDodge;
+
+    return {
+      name,
+      level: lvl,
+      hp: Math.floor(baseHp * locationMultiplier),
+      maxHp: Math.floor(baseHp * locationMultiplier),
+
+      // legacy fields
+      attack: weaponATK,
+      defense: hardDEF,
+      speed: Math.floor(baseSpd * locationMultiplier),
+
+      // new RO-style stats
+      str: stats.str,
+      agi: stats.agi,
+      vit: stats.vit,
+      int: stats.int,
+      dex: stats.dex,
+      luk: stats.luk,
+
+      weaponATK,
+      weaponLevel,
+      hardDEF,
+      softDEF: 0, // extra soft DEF from gear if needed
+
+      hit,
+      flee,
+
+      skills: ["Scratch", "Bite"],
+    };
+  } else if (type === 'boss') {
+    const name =
+      locationId >= 100 ? pick(CN_BOSS_NAMES) : pick(JP_BOSS_NAMES);
+    const lvl = targetLevel + 2; // Boss slightly higher level
+
+    const baseHp = lvl * 200 + 1000;
+    const baseAtk = lvl * 30 + 100;
+    const baseDef = lvl * 25 + 80;
+    const baseSpd = lvl * 15 + 50;
+
+    const stats = makeBaseStats(lvl);
+    // Bosses a bit tougher in VIT / AGI
+    stats.vit = Math.floor(stats.vit * 1.3);
+    stats.agi = Math.floor(stats.agi * 1.2);
+
+    const hardDEF = Math.floor(baseDef * locationMultiplier);
+    const weaponATK = Math.floor(baseAtk * locationMultiplier);
+    const weaponLevel = 2; // bosses hit harder variance-wise
+
+    const hit =
+      175 +
+      lvl +
+      stats.dex +
+      Math.floor(stats.luk / 3);
+
+    const fleeA =
+      100 +
+      lvl +
+      stats.agi +
+      Math.floor(stats.luk / 5);
+    const perfectDodge = Math.floor(stats.luk / 10);
+    const flee = fleeA + perfectDodge;
+
+    return {
+      name,
+      level: lvl,
+      hp: Math.floor(baseHp * locationMultiplier),
+      maxHp: Math.floor(baseHp * locationMultiplier),
+
+      attack: weaponATK,
+      defense: hardDEF,
+      speed: Math.floor(baseSpd * locationMultiplier),
+
+      str: stats.str,
+      agi: stats.agi,
+      vit: stats.vit,
+      int: stats.int,
+      dex: stats.dex,
+      luk: stats.luk,
+
+      weaponATK,
+      weaponLevel,
+      hardDEF,
+      softDEF: 0,
+
+      hit,
+      flee,
+
+      skills: ["War Cry", "Shield Wall", "Charge", "Strategic Strike"],
+    };
+  } else {
+    // special boss
+    const sb = pick(SPECIAL_BOSSES);
+    const name = locationId >= 100 ? "Celestial Dragon Emperor" : sb.name;
+    const lvl = targetLevel + 5;
+
+    const baseHp = lvl * 400 + 5000;
+    const baseAtk = lvl * 60 + 300;
+    const baseDef = lvl * 50 + 250;
+    const baseSpd = lvl * 30 + 100;
+
+    const stats = makeBaseStats(lvl);
+    // special bosses much tougher
+    stats.vit = Math.floor(stats.vit * 1.6);
+    stats.agi = Math.floor(stats.agi * 1.3);
+    stats.dex = Math.floor(stats.dex * 1.2);
+
+    const hardDEF = Math.floor(baseDef * locationMultiplier);
+    const weaponATK = Math.floor(baseAtk * locationMultiplier);
+    const weaponLevel = 3;
+
+    const hit =
+      175 +
+      lvl +
+      stats.dex +
+      Math.floor(stats.luk / 3);
+
+    const fleeA =
+      100 +
+      lvl +
+      stats.agi +
+      Math.floor(stats.luk / 5);
+    const perfectDodge = Math.floor(stats.luk / 10);
+    const flee = fleeA + perfectDodge;
+
+    return {
+      name,
+      level: lvl,
+      hp: Math.floor(baseHp * locationMultiplier),
+      maxHp: Math.floor(baseHp * locationMultiplier),
+
+      attack: weaponATK,
+      defense: hardDEF,
+      speed: Math.floor(baseSpd * locationMultiplier),
+
+      str: stats.str,
+      agi: stats.agi,
+      vit: stats.vit,
+      int: stats.int,
+      dex: stats.dex,
+      luk: stats.luk,
+
+      weaponATK,
+      weaponLevel,
+      hardDEF,
+      softDEF: 0,
+
+      hit,
+      flee,
+
+      skills: [sb.skill, "Roar", "Dark Aura", "Divine Intervention"],
+    };
+  }
+}
+```
+
+---------------------------------
+3. HOW THIS FIXES HIT / FLEE %
+---------------------------------
+
+Previously for enemies:
+
+```ts
+hit: Number(e.level) * 3,
+flee: Number(e.level) * 3,
+```
+
+That makes HIT and FLEE far too low relative to players, because your player HIT/FLEE were ~100+ and enemy values only ~3×level. With the new logic:
+
+- Enemy HIT:
+
+  HIT = 175 + level + DEX + floor(LUK / 3)
+
+  So a level‑10 mob with DEX ~14, LUK ~5 gets HIT ≈ 175 + 10 + 14 + 1 = 200+ (same scale as player). [irowiki](https://irowiki.org/wiki/Stats)
+
+- Enemy FLEE:
+
+  FLEE = 100 + level + AGI + floor(LUK / 5) + PerfectDodge
+
+  Which also matches the same RO scale as the player’s FLEE. [irowiki](https://irowiki.org/classic/Stats)
+
+Now your `calculateHitChance`:
+
+HitChance = clamp(attacker.hit − defender.flee, 5, 95)
+
+will produce **reasonable percentages** for both sides, instead of attacker ≈ 200 vs enemy ≈ 30.
+
+---------------------------------
+4. WHAT IT NEEDS TO DO
+---------------------------------
+
+For IT:
+
+1) Replace `generateEnemyStats` with the updated version above.  
+2) Ensure `EnemyStats` interface in `use-game` includes new fields:  
+   - `str, agi, vit, int, dex, luk`  
+   - `weaponATK, weaponLevel, hardDEF, softDEF`  
+   - `hit, flee`  
+3) In `runTurnBasedCombat`, when creating `CombatUnit` from `EnemyStats`, **use these fields directly** instead of recomputing `hit` and `flee`. Example:
+
+```ts
+units.push({
+  id: `enemy-${i}`,
+  name: e.name,
+  hp: Number(e.hp) || 0,
+  maxHp: Number(e.maxHp) || 0,
+  attack: e.weaponATK ?? e.attack ?? 0,
+  defense: e.hardDEF ?? e.defense ?? 0,
+  speed: Number(e.speed) || 0,
+
+  str: (e as any).str,
+  agi: (e as any).agi,
+  vit: (e as any).vit,
+  int: (e as any).int,
+  dex: (e as any).dex,
+  luk: (e as any).luk,
+
+  hardDEF: (e as any).hardDEF,
+  softDEF: (e as any).softDEF ?? 0,
+  weaponATK: (e as any).weaponATK ?? e.attack ?? 0,
+  weaponLevel: (e as any).weaponLevel ?? 1,
+
+  hit: (e as any).hit,
+  flee: (e as any).flee,
+
+  isPlayer: false,
+  statusEffects: [],
+  isGuarding: false,
+  critChance: 0,
+  critDamage: 0,
+});
+```
+
+With this, both players and enemies operate on the same Classic‑RO stat scale and your new combat formulas will behave consistently.
