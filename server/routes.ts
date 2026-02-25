@@ -509,19 +509,19 @@ async function getPlayerTeamStats(userId: string) {
 
 function generateEnemyStats(type: 'field' | 'boss' | 'special', playerLevel: number, locationId: number = 1) {
   // Use a fixed level based on location instead of player level
-  // Japan (1-6): Levels 5, 15, 25, 35, 45, 55
-  // China (100+): Levels 70, 90, 110, etc.
+  // Japan (1-6): Levels 1, 2, 3, 4, 5, 6
+  // China (100+): Levels 7, 8, 9, 10, 11, 12
   let targetLevel = 1;
   if (locationId >= 100) {
-    targetLevel = 70 + (locationId - 100) * 20;
+    targetLevel = 7 + (locationId - 100);
   } else {
-    targetLevel = 5 + (locationId - 1) * 10;
+    targetLevel = locationId;
   }
 
   // Linear scaling instead of exponential
   const locationMultiplier = locationId >= 100 
-    ? 3 + (locationId - 100) * 1.5 
-    : 1 + (locationId - 1) * 0.5;
+    ? 1.5 + (locationId - 100) * 0.2 
+    : 1 + (locationId - 1) * 0.1;
 
   if (type === 'field') {
     const name = locationId >= 100 ? pick(["Terracotta Guard", "Silk Road Bandit", "Mountain Cultivator"]) : pick(YOKAI_NAMES);
