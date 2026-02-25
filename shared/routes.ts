@@ -196,6 +196,12 @@ export const api = {
       path: '/api/player/stats/upgrade' as const,
       input: z.object({ stat: z.enum(['str', 'agi', 'vit', 'int', 'dex', 'luk']) }),
       responses: { 200: z.any(), 400: errorSchemas.validation, 401: errorSchemas.unauthorized },
+    },
+    bulkUpgrade: {
+      method: 'POST' as const,
+      path: '/api/player/stats/bulk-upgrade' as const,
+      input: z.object({ upgrades: z.record(z.string(), z.number()) }),
+      responses: { 200: z.any(), 400: errorSchemas.validation, 401: errorSchemas.unauthorized },
     }
   }
 };

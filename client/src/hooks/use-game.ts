@@ -715,3 +715,37 @@ export function useUpgradeStat() {
     }
   });
 }
+
+export function useBulkUpgradeStats() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  return useMutation({
+    mutationFn: async (upgrades: Record<string, number>) => {
+      const res = await fetchWithAuth(api.stats.bulkUpgrade.path, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ upgrades }),
+      });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || "Failed to upgrade stats");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [api.player.get.path] });
+      queryClient.invalidateQueries({ queryKey: [api.player.fullStatus.path] });
+      toast({
+        title: "Stats Saved",
+        description: "Your attributes have been permanently increased.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Bulk Upgrade Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  });
+}

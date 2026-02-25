@@ -1,11 +1,12 @@
-import { usePlayer, usePlayerFullStatus, useEquipment, useTransformations, useUpgradeStat } from "@/hooks/use-game";
+import { usePlayer, usePlayerFullStatus, useEquipment, useTransformations, useUpgradeStat, useBulkUpgradeStats } from "@/hooks/use-game";
 import { MainLayout } from "@/components/layout/main-layout";
-import { Shield, Sword, Coins, Wheat, Trophy, Zap, Heart, Sparkles, RefreshCcw, BookOpen, Users, Info, Plus, ChevronUp, ChevronDown } from "lucide-react";
+import { Shield, Sword, Coins, Wheat, Trophy, Zap, Heart, Sparkles, RefreshCcw, BookOpen, Users, Info, Plus, ChevronUp, ChevronDown, Check, X } from "lucide-react";
 import { motion } from "framer-motion";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useState, useMemo } from "react";
 import { Badge } from "@/components/ui/badge";
 import {
   Tooltip,
@@ -38,7 +39,74 @@ export default function Home() {
   const { data: equipment } = useEquipment();
   const { data: transforms } = useTransformations();
   const upgradeStat = useUpgradeStat();
+  const bulkUpgrade = useBulkUpgradeStats();
   const { toast } = useToast();
+
+  const [pendingUpgrades, setPendingUpgrades] = useState<Record<string, number>>({});
+
+  const getStatUpgradeCost = (currentVal: number) => {
+    return Math.floor((currentVal - 1) / 10) + 2;
+  };
+
+  const stagedInfo = useMemo(() => {
+    if (!teamStatus?.player) return { totalCost: 0, pointsLeft: 0 };
+    let cost = 0;
+    let tempPoints = teamStatus.player.statPoints;
+    const stats = { ...pendingUpgrades };
+    
+    // We need to calculate cost sequentially because it increases
+    const entries = Object.entries(pendingUpgrades);
+    entries.forEach(([stat, amount]) => {
+      let val = (teamStatus.player as any)[stat];
+      for(let i=0; i<amount; i++) {
+        cost += getStatUpgradeCost(val + i);
+      }
+    });
+
+    return {
+      totalCost: cost,
+      pointsLeft: teamStatus.player.statPoints - cost
+    };
+  }, [pendingUpgrades, teamStatus?.player]);
+
+  const handleStageUpgrade = (stat: string) => {
+    const currentVal = (teamStatus?.player as any)[stat] + (pendingUpgrades[stat] || 0);
+    if (currentVal >= 99) return;
+    
+    const cost = getStatUpgradeCost(currentVal);
+    if (stagedInfo.pointsLeft < cost) {
+      toast({
+        title: "Not enough points",
+        description: `You need ${cost} points for this upgrade.`,
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setPendingUpgrades(prev => ({
+      ...prev,
+      [stat]: (prev[stat] || 0) + 1
+    }));
+  };
+
+  const handleUnstageUpgrade = (stat: string) => {
+    if (!pendingUpgrades[stat]) return;
+    setPendingUpgrades(prev => ({
+      ...prev,
+      [stat]: Math.max(0, prev[stat] - 1)
+    }));
+  };
+
+  const handleConfirmUpgrades = async () => {
+    try {
+      await bulkUpgrade.mutateAsync(pendingUpgrades);
+      setPendingUpgrades({});
+    } catch (e) {}
+  };
+
+  const handleCancelUpgrades = () => {
+    setPendingUpgrades({});
+  };
 
   const mechanics = [
     {
@@ -113,22 +181,6 @@ export default function Home() {
     { key: 'dex', label: "DEX", value: teamStatus.player.dex, color: "text-yellow-500", description: "Dexterity: Increases HIT and Status ATK", bonus: (teamStatus.player as any).dexBonus || 0 },
     { key: 'luk', label: "LUK", value: teamStatus.player.luk, color: "text-purple-400", description: "Luck: Increases Critical Rate and Perfect Dodge", bonus: (teamStatus.player as any).lukBonus || 0 },
   ] : [];
-
-  const handleStatUpgrade = async (stat: string) => {
-    try {
-      await upgradeStat.mutateAsync(stat as any);
-      toast({
-        title: "Stat Upgraded",
-        description: `Successfully increased your ${stat.toUpperCase()}!`,
-      });
-    } catch (error: any) {
-      // Error handled by mutation hook
-    }
-  };
-
-  const getStatUpgradeCost = (currentVal: number) => {
-    return Math.floor((currentVal - 1) / 10) + 2;
-  };
 
   const derivedStats = teamStatus?.player ? [
     { label: "ATK", value: teamStatus.player.attack, formula: "STR + DEX/5 + LUK/3" },
@@ -334,7 +386,10 @@ export default function Home() {
               {teamStatus?.player && (
                 <div className="bg-primary/20 border border-primary/30 rounded px-3 py-1 backdrop-blur-sm z-10 flex flex-col items-center">
                   <span className="text-[10px] text-primary-foreground font-bold uppercase tracking-wider">Stat Points</span>
-                  <span className="text-xl font-display font-bold text-white">{teamStatus.player.statPoints}</span>
+                  <span className="text-xl font-display font-bold text-white">{stagedInfo.pointsLeft}</span>
+                  {stagedInfo.totalCost > 0 && (
+                    <span className="text-[10px] text-red-400 font-bold">-{stagedInfo.totalCost} staged</span>
+                  )}
                 </div>
               )}
             </div>
@@ -343,65 +398,83 @@ export default function Home() {
               Core Attributes
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              <TooltipProvider>
-                {coreStats.map((stat) => {
-                  const cost = getStatUpgradeCost(stat.value);
-                  const canAfford = teamStatus?.player && teamStatus.player.statPoints >= cost;
-                  const isMax = stat.value >= 99;
+              {coreStats.map((stat) => {
+                const staged = pendingUpgrades[stat.key] || 0;
+                const currentTotal = stat.value + staged;
+                const cost = getStatUpgradeCost(currentTotal);
+                const canAfford = stagedInfo.pointsLeft >= cost;
+                const isMax = currentTotal >= 99;
 
-                  return (
-                    <div key={stat.label} className="bg-background/40 border border-border/30 rounded-lg p-3 group hover:border-primary/50 transition-colors flex items-center justify-between gap-4">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className={`text-xs font-bold ${stat.color}`}>{stat.label}</span>
-                          <span className="text-lg font-display font-bold text-white">{stat.value}</span>
-                          {stat.bonus > 0 && <span className="text-xs text-accent font-bold">+{stat.bonus}</span>}
-                        </div>
-                        <p className="text-[10px] text-muted-foreground leading-tight">{stat.description}</p>
+                return (
+                  <div key={stat.label} className="bg-background/40 border border-border/30 rounded-lg p-3 group hover:border-primary/50 transition-colors flex items-center justify-between gap-4">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className={`text-xs font-bold ${stat.color}`}>{stat.label}</span>
+                        <span className="text-lg font-display font-bold text-white">{stat.value}</span>
+                        {staged > 0 && <span className="text-lg font-display font-bold text-primary"> +{staged}</span>}
+                        {stat.bonus > 0 && <span className="text-xs text-accent font-bold">({stat.bonus})</span>}
                       </div>
-                      
-                      {!isMax && teamStatus?.player && (
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <div className="flex flex-col gap-1">
-                              <Button 
-                                size="icon" 
-                                variant="outline" 
-                                className={`h-8 w-8 rounded border-primary/20 hover:bg-primary/20 ${!canAfford ? 'opacity-30' : ''}`}
-                                disabled={!canAfford || upgradeStat.isPending}
-                                data-testid={`button-upgrade-${stat.key}`}
-                              >
-                                <ChevronUp size={16} className="text-primary" />
-                              </Button>
-                              <div className="text-[10px] text-center font-bold text-primary">{cost}P</div>
-                            </div>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent className="bg-card border-border">
-                            <AlertDialogHeader>
-                              <AlertDialogTitle className="font-display">Confirm Stat Upgrade</AlertDialogTitle>
-                              <AlertDialogDescription className="text-zinc-400">
-                                Do you want to spend <span className="text-primary font-bold">{cost}</span> stat points to increase your <span className="text-white font-bold">{stat.label}</span>? 
-                                <br /><br />
-                                <span className="text-xs italic text-zinc-500">This action is permanent for your current incarnation.</span>
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel className="bg-zinc-800 text-white border-zinc-700">Cancel</AlertDialogCancel>
-                              <AlertDialogAction 
-                                onClick={() => handleStatUpgrade(stat.key)}
-                                className="bg-primary hover:bg-primary/90 text-white"
-                              >
-                                Confirm Upgrade
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                      )}
+                      <p className="text-[10px] text-muted-foreground leading-tight">{stat.description}</p>
                     </div>
-                  );
-                })}
-              </TooltipProvider>
+                    
+                    {!isMax && teamStatus?.player && (
+                      <div className="flex flex-col items-center gap-1">
+                        <div className="flex gap-1">
+                          {staged > 0 && (
+                            <Button 
+                              size="icon" 
+                              variant="outline" 
+                              className="h-7 w-7 rounded border-muted-foreground/20 hover:bg-muted/20"
+                              onClick={() => handleUnstageUpgrade(stat.key)}
+                            >
+                              <ChevronDown size={14} className="text-muted-foreground" />
+                            </Button>
+                          )}
+                          <Button 
+                            size="icon" 
+                            variant="outline" 
+                            className={`h-7 w-7 rounded border-primary/20 hover:bg-primary/20 ${!canAfford ? 'opacity-30' : ''}`}
+                            disabled={!canAfford}
+                            onClick={() => handleStageUpgrade(stat.key)}
+                          >
+                            <ChevronUp size={14} className="text-primary" />
+                          </Button>
+                        </div>
+                        <div className="text-[9px] font-bold text-primary/70">{cost}P</div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
+
+            {stagedInfo.totalCost > 0 && (
+              <motion.div 
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mt-8 flex justify-end gap-3 border-t border-border/30 pt-6"
+              >
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="text-muted-foreground hover:text-white"
+                  onClick={handleCancelUpgrades}
+                >
+                  <X size={16} className="mr-2" />
+                  Discard Changes
+                </Button>
+                <Button 
+                  variant="default" 
+                  size="sm" 
+                  className="bg-primary hover:bg-primary/90 text-white"
+                  onClick={handleConfirmUpgrades}
+                  disabled={bulkUpgrade.isPending}
+                >
+                  <Check size={16} className="mr-2" />
+                  Confirm & Save Stats ({stagedInfo.totalCost} pts)
+                </Button>
+              </motion.div>
+            )}
           </motion.div>
 
           <motion.div

@@ -500,6 +500,36 @@ export async function registerRoutes(
     res.json(updatedUser);
   });
 
+  app.post(api.stats.bulkUpgrade.path, isAuthenticated, async (req: any, res) => {
+    const userId = req.user.claims.sub;
+    const { upgrades } = req.body;
+    const user = await storage.getUser(userId);
+    if (!user) return res.status(401).json({ message: "Unauthorized" });
+
+    let currentStatPoints = user.statPoints || 0;
+    const updates: any = {};
+    const stats = ['str', 'agi', 'vit', 'int', 'dex', 'luk'];
+
+    for (const [stat, amount] of Object.entries(upgrades)) {
+      if (!stats.includes(stat)) continue;
+      let val = (user as any)[stat] || 1;
+      for (let i = 0; i < (amount as number); i++) {
+        if (val >= 99) break;
+        const cost = Math.floor((val - 1) / 10) + 2;
+        if (currentStatPoints < cost) {
+          return res.status(400).json({ message: "Not enough stat points for all upgrades" });
+        }
+        currentStatPoints -= cost;
+        val++;
+      }
+      updates[stat] = val;
+    }
+
+    updates.statPoints = currentStatPoints;
+    const updatedUser = await storage.updateUser(userId, updates);
+    res.json(updatedUser);
+  });
+
   app.post("/api/companions/:id/recycle", isAuthenticated, async (req: any, res) => {
     const userId = req.user.claims.sub;
     const compId = Number(req.params.id);
