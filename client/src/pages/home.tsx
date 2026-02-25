@@ -136,8 +136,8 @@ export default function Home() {
       await apiRequest('POST', '/api/restart');
       queryClient.invalidateQueries();
       toast({
-        title: "Ascension Complete",
-        description: "Your spirit has passed its strength to the next generation.",
+        title: "Ritual Complete",
+        description: "Your journey begins anew, unburdened by the past.",
       });
     } catch (error) {
       toast({
@@ -330,12 +330,12 @@ export default function Home() {
               </AlertDialogTrigger>
               <AlertDialogContent className="bg-card border-destructive/50">
                 <AlertDialogHeader>
-                  <AlertDialogTitle className="text-destructive font-display">Are you absolutely sure?</AlertDialogTitle>
+                  <AlertDialogTitle className="text-destructive font-display">Confirm Final Sacrifice</AlertDialogTitle>
                   <AlertDialogDescription className="text-zinc-400 space-y-2">
                     <p>This will permanently delete all your companions, equipment, pets, and current progress.</p>
                     <div className="bg-destructive/10 border border-destructive/20 rounded p-3 text-destructive-foreground">
-                      <p className="font-bold text-xs uppercase tracking-wider mb-1">Ancestral Inheritance</p>
-                      <p className="text-sm">You will gain <span className="font-bold">10% of your current stats</span> as a permanent bonus for your next incarnation. These bonuses stack every time you perform Seppuku.</p>
+                      <p className="font-bold text-xs uppercase tracking-wider mb-1">Total Reset</p>
+                      <p className="text-sm">There are <span className="font-bold">no permanent bonuses</span> passed down. Your next incarnation will start from absolute zero.</p>
                     </div>
                   </AlertDialogDescription>
                 </AlertDialogHeader>
@@ -368,7 +368,7 @@ export default function Home() {
               <p className="text-lg font-bold font-display text-white">{stat.value}</p>
               {stat.bonus && stat.bonus > 0 && (
                 <span className="text-[10px] text-accent font-bold mt-1">
-                  +{stat.bonus} Ancestral
+                  +{stat.bonus} Legacy
                 </span>
               )}
             </motion.div>
