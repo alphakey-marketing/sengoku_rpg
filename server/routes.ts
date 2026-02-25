@@ -1757,12 +1757,6 @@ function generatePet(userId: string, locationId: number = 1) {
   app.post('/api/quests/:key/claim', isAuthenticated, async (req: any, res) => {
     const userId = req.user.claims.sub;
     const result = await storage.claimQuest(userId, req.params.key);
-    if (result.victory) {
-      await storage.updateQuestProgress(userId, 'daily_skirmish', 1);
-    }
-    if (result.victory) {
-      await storage.updateQuestProgress(userId, 'daily_boss', 1);
-    }
     res.json(result);
   });
 
