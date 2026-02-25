@@ -975,6 +975,7 @@ export async function registerRoutes(
 
       if (victory) {
         await storage.updateQuestProgress(userId, 'daily_skirmish', 1);
+        await storage.updateQuestProgress(userId, 'daily_skirmish_elite', 1);
         // Update user stats with level up logic
         const expGained = Math.floor(Math.random() * 50) + 30 + enemy.level * 5;
         const goldGained = Math.floor(Math.random() * 20) + 10 + enemy.level * 2;
@@ -1551,6 +1552,7 @@ function generatePet(userId: string, locationId: number = 1) {
     }
     
     await storage.updateQuestProgress(userId, 'daily_gacha', count);
+    await storage.updateQuestProgress(userId, 'daily_gacha_elite', count);
     res.json({ companions: results });
   });
 
@@ -1642,6 +1644,7 @@ function generatePet(userId: string, locationId: number = 1) {
     }
     
     await storage.updateQuestProgress(userId, 'daily_gacha', count);
+    await storage.updateQuestProgress(userId, 'daily_gacha_elite', count);
     res.json({ equipment: results });
   });
 
@@ -1730,18 +1733,21 @@ function generatePet(userId: string, locationId: number = 1) {
   app.get('/api/quests', isAuthenticated, async (req: any, res) => {
     const userId = req.user.claims.sub;
     const quests = await storage.getQuests(userId);
-    const QUEST_DEFS = [
-      { key: 'daily_skirmish', name: 'Daily Skirmisher', desc: 'Win 5 skirmishes', goal: 5, reward: '100 Gold' },
-      { key: 'daily_boss', name: 'Giant Slayer', desc: 'Defeat a boss', goal: 1, reward: '50 Rice' },
-      { key: 'daily_gacha', name: 'Summoner', desc: 'Perform 3 summons', goal: 3, reward: '10 Upgrade Stones' }
-    ];
+    const QUEST_DEFS_POOL: Record<string, { name: string, desc: string, goal: number, reward: string }> = {
+      'daily_skirmish': { name: 'Daily Skirmisher', desc: 'Win 5 skirmishes', goal: 5, reward: '50 Rice' },
+      'daily_boss': { name: 'Giant Slayer', desc: 'Defeat a boss', goal: 1, reward: '30 Rice' },
+      'daily_gacha': { name: 'Summoner', desc: 'Perform 3 summons', goal: 3, reward: '40 Rice' },
+      'daily_skirmish_elite': { name: 'Elite Skirmisher', desc: 'Win 10 skirmishes', goal: 10, reward: '100 Rice' },
+      'daily_gacha_elite': { name: 'Elite Summoner', desc: 'Perform 5 summons', goal: 5, reward: '80 Rice' }
+    };
     
-    const status = QUEST_DEFS.map(def => {
-      const q = quests.find(uq => uq.questKey === def.key);
+    const status = quests.map(q => {
+      const def = QUEST_DEFS_POOL[q.questKey] || { name: 'Unknown Quest', desc: 'Unknown', goal: 1, reward: 'Unknown' };
       return {
         ...def,
-        progress: q?.progress || 0,
-        isClaimed: q?.isClaimed || false
+        key: q.questKey,
+        progress: q.progress,
+        isClaimed: q.isClaimed
       };
     });
     

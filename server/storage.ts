@@ -210,14 +210,35 @@ export class DatabaseStorage implements IStorage {
     
     // Auto-reset quests if they are from a previous day
     const quests = await db.select().from(userQuests).where(eq(userQuests.userId, userId));
-    const outdated = quests.filter(q => {
+    
+    // If no quests exist or they are from a previous day, generate new ones
+    const isOutdated = quests.length === 0 || quests.some(q => {
       const lu = q.lastUpdated ? new Date(q.lastUpdated) : new Date(0);
       return lu < today;
     });
 
-    if (outdated.length > 0) {
-      for (const q of outdated) {
-        await db.update(userQuests).set({ progress: 0, isClaimed: false, lastUpdated: new Date() }).where(eq(userQuests.id, q.id));
+    if (isOutdated) {
+      const QUEST_POOL = [
+        { key: 'daily_skirmish', goal: 5, rewardType: 'rice', amount: 50 },
+        { key: 'daily_boss', goal: 1, rewardType: 'rice', amount: 30 },
+        { key: 'daily_gacha', goal: 3, rewardType: 'rice', amount: 40 },
+        { key: 'daily_skirmish_elite', goal: 10, rewardType: 'rice', amount: 100 },
+        { key: 'daily_gacha_elite', goal: 5, rewardType: 'rice', amount: 80 }
+      ];
+      
+      // Select 3 random quests
+      const selected = [...QUEST_POOL].sort(() => 0.5 - Math.random()).slice(0, 3);
+      
+      await db.delete(userQuests).where(eq(userQuests.userId, userId));
+      
+      for (const q of selected) {
+        await db.insert(userQuests).values({
+          userId,
+          questKey: q.key,
+          progress: 0,
+          isClaimed: false,
+          lastUpdated: new Date()
+        });
       }
       return await db.select().from(userQuests).where(eq(userQuests.userId, userId));
     }
@@ -253,13 +274,15 @@ export class DatabaseStorage implements IStorage {
 
     if (!quest || !user || quest.isClaimed) return { success: false };
 
-    const QUEST_DEFS: Record<string, { goal: number, rewardType: string, amount: number }> = {
-      'daily_skirmish': { goal: 5, rewardType: 'gold', amount: 100 },
-      'daily_boss': { goal: 1, rewardType: 'rice', amount: 50 },
-      'daily_gacha': { goal: 3, rewardType: 'upgradeStones', amount: 10 }
+    const QUEST_DEFS_LOOKUP: Record<string, { goal: number, rewardType: string, amount: number }> = {
+      'daily_skirmish': { goal: 5, rewardType: 'rice', amount: 50 },
+      'daily_boss': { goal: 1, rewardType: 'rice', amount: 30 },
+      'daily_gacha': { goal: 3, rewardType: 'rice', amount: 40 },
+      'daily_skirmish_elite': { goal: 10, rewardType: 'rice', amount: 100 },
+      'daily_gacha_elite': { goal: 5, rewardType: 'rice', amount: 80 }
     };
 
-    const def = QUEST_DEFS[questKey];
+    const def = QUEST_DEFS_LOOKUP[questKey];
     if (!def || quest.progress < def.goal) return { success: false };
 
     await db.transaction(async (tx) => {
