@@ -41,7 +41,7 @@ export function calculateHitChance(attacker: CombatUnit, defender: CombatUnit): 
   const attackerHit = attacker.hit ?? 0;
   const defenderFlee = defender.flee ?? 0;
   let hitChance = attackerHit - defenderFlee;
-  if (hitChance < 10) hitChance = 10;
+  if (hitChance < 5) hitChance = 5;
   if (hitChance > 95) hitChance = 95;
   return hitChance;
 }
