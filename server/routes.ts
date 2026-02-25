@@ -974,6 +974,7 @@ export async function registerRoutes(
       allLogs.push(...battleResult.logs);
 
       if (victory) {
+        await storage.updateQuestProgress(userId, 'daily_skirmish', 1);
         // Update user stats with level up logic
         const expGained = Math.floor(Math.random() * 50) + 30 + enemy.level * 5;
         const goldGained = Math.floor(Math.random() * 20) + 10 + enemy.level * 2;
@@ -1228,6 +1229,7 @@ function generatePet(userId: string, locationId: number = 1) {
     const logs = battleResult.logs;
 
     if (victory) {
+      await storage.updateQuestProgress(userId, 'daily_boss', 1);
       const expGained = 100 + (locationId * 50);
       const goldGained = 50 + (locationId * 25);
       const riceGained = 10 + (locationId * 5);
@@ -1548,6 +1550,7 @@ function generatePet(userId: string, locationId: number = 1) {
       results.push(companion);
     }
     
+    await storage.updateQuestProgress(userId, 'daily_gacha', count);
     res.json({ companions: results });
   });
 
@@ -1638,6 +1641,7 @@ function generatePet(userId: string, locationId: number = 1) {
       results.push(equipment);
     }
     
+    await storage.updateQuestProgress(userId, 'daily_gacha', count);
     res.json({ equipment: results });
   });
 
@@ -1721,6 +1725,39 @@ function generatePet(userId: string, locationId: number = 1) {
     const userId = req.user.claims.sub;
     await (storage as any).restartGame(userId);
     res.json({ success: true });
+  });
+
+  app.get('/api/quests', isAuthenticated, async (req: any, res) => {
+    const userId = req.user.claims.sub;
+    const quests = await storage.getQuests(userId);
+    const QUEST_DEFS = [
+      { key: 'daily_skirmish', name: 'Daily Skirmisher', desc: 'Win 5 skirmishes', goal: 5, reward: '100 Gold' },
+      { key: 'daily_boss', name: 'Giant Slayer', desc: 'Defeat a boss', goal: 1, reward: '50 Rice' },
+      { key: 'daily_gacha', name: 'Summoner', desc: 'Perform 3 summons', goal: 3, reward: '10 Upgrade Stones' }
+    ];
+    
+    const status = QUEST_DEFS.map(def => {
+      const q = quests.find(uq => uq.questKey === def.key);
+      return {
+        ...def,
+        progress: q?.progress || 0,
+        isClaimed: q?.isClaimed || false
+      };
+    });
+    
+    res.json(status);
+  });
+
+  app.post('/api/quests/:key/claim', isAuthenticated, async (req: any, res) => {
+    const userId = req.user.claims.sub;
+    const result = await storage.claimQuest(userId, req.params.key);
+    if (result.victory) {
+      await storage.updateQuestProgress(userId, 'daily_skirmish', 1);
+    }
+    if (result.victory) {
+      await storage.updateQuestProgress(userId, 'daily_boss', 1);
+    }
+    res.json(result);
   });
 
   return httpServer;

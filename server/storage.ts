@@ -37,8 +37,9 @@ export interface IStorage {
   createTransformation(t: InsertTransformation): Promise<Transformation>;
   updateTransformation(id: number, updates: Partial<Transformation>): Promise<Transformation>;
 
-  getCampaignEvents(userId: string): Promise<CampaignEvent[]>;
-  createCampaignEvent(event: any): Promise<CampaignEvent>;
+  getQuests(userId: string): Promise<UserQuest[]>;
+  updateQuestProgress(userId: string, questKey: string, increment: number): Promise<void>;
+  claimQuest(userId: string, questKey: string): Promise<{ success: boolean; reward?: string }>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -201,6 +202,74 @@ export class DatabaseStorage implements IStorage {
   async createCampaignEvent(insertEvent: any): Promise<CampaignEvent> {
     const [event] = await db.insert(campaignEvents).values(insertEvent).returning();
     return event;
+  }
+
+  async getQuests(userId: string): Promise<UserQuest[]> {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    // Auto-reset quests if they are from a previous day
+    const quests = await db.select().from(userQuests).where(eq(userQuests.userId, userId));
+    const outdated = quests.filter(q => {
+      const lu = q.lastUpdated ? new Date(q.lastUpdated) : new Date(0);
+      return lu < today;
+    });
+
+    if (outdated.length > 0) {
+      for (const q of outdated) {
+        await db.update(userQuests).set({ progress: 0, isClaimed: false, lastUpdated: new Date() }).where(eq(userQuests.id, q.id));
+      }
+      return await db.select().from(userQuests).where(eq(userQuests.userId, userId));
+    }
+
+    return quests;
+  }
+
+  async updateQuestProgress(userId: string, questKey: string, increment: number): Promise<void> {
+    const quests = await this.getQuests(userId);
+    const quest = quests.find(q => q.questKey === questKey);
+    
+    if (quest) {
+      if (!quest.isClaimed) {
+        await db.update(userQuests)
+          .set({ progress: quest.progress + increment, lastUpdated: new Date() })
+          .where(eq(userQuests.id, quest.id));
+      }
+    } else {
+      await db.insert(userQuests).values({
+        userId,
+        questKey,
+        progress: increment,
+        isClaimed: false,
+        lastUpdated: new Date()
+      });
+    }
+  }
+
+  async claimQuest(userId: string, questKey: string): Promise<{ success: boolean; reward?: string }> {
+    const quests = await this.getQuests(userId);
+    const quest = quests.find(q => q.questKey === questKey);
+    const user = await this.getUser(userId);
+
+    if (!quest || !user || quest.isClaimed) return { success: false };
+
+    const QUEST_DEFS: Record<string, { goal: number, rewardType: string, amount: number }> = {
+      'daily_skirmish': { goal: 5, rewardType: 'gold', amount: 100 },
+      'daily_boss': { goal: 1, rewardType: 'rice', amount: 50 },
+      'daily_gacha': { goal: 3, rewardType: 'upgradeStones', amount: 10 }
+    };
+
+    const def = QUEST_DEFS[questKey];
+    if (!def || quest.progress < def.goal) return { success: false };
+
+    await db.transaction(async (tx) => {
+      await tx.update(userQuests).set({ isClaimed: true }).where(eq(userQuests.id, quest.id));
+      const update: any = {};
+      update[def.rewardType] = (user as any)[def.rewardType] + def.amount;
+      await tx.update(users).set(update).where(eq(users.id, userId));
+    });
+
+    return { success: true, reward: `${def.amount} ${def.rewardType}` };
   }
 
   async restartGame(userId: string): Promise<void> {

@@ -177,6 +177,18 @@ export const api = {
     method: 'POST' as const,
     path: '/api/restart' as const,
     responses: { 200: z.object({ success: z.boolean() }), 401: errorSchemas.unauthorized },
+  },
+  quests: {
+    list: {
+      method: 'GET' as const,
+      path: '/api/quests' as const,
+      responses: { 200: z.array(z.any()), 401: errorSchemas.unauthorized },
+    },
+    claim: {
+      method: 'POST' as const,
+      path: '/api/quests/:key/claim' as const,
+      responses: { 200: z.any(), 401: errorSchemas.unauthorized },
+    }
   }
 };
 

@@ -146,6 +146,15 @@ export const campaignEvents = pgTable("campaign_events", {
   completedAt: timestamp("completed_at"),
 });
 
+export const userQuests = pgTable("user_quests", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull(),
+  questKey: text("quest_key").notNull(),
+  progress: integer("progress").notNull().default(0),
+  isClaimed: boolean("is_claimed").notNull().default(false),
+  lastUpdated: timestamp("last_updated").defaultNow(),
+});
+
 export const usersRelations = relations(users, ({ many }) => ({
   companions: many(companions),
   equipment: many(equipment),
@@ -153,7 +162,14 @@ export const usersRelations = relations(users, ({ many }) => ({
   horses: many(horses),
   transformations: many(transformations),
   campaignEvents: many(campaignEvents),
+  quests: many(userQuests),
 }));
+
+export const userQuestsRelations = relations(userQuests, ({ one }) => ({
+  user: one(users, { fields: [userQuests.userId], references: [users.id] }),
+}));
+
+export type UserQuest = typeof userQuests.$inferSelect;
 
 export const companionsRelations = relations(companions, ({ one }) => ({
   user: one(users, { fields: [companions.userId], references: [users.id] }),
