@@ -1510,7 +1510,7 @@ export async function registerRoutes(
         await storage.updateUser(userId, userUpdate);
 
         // Revised Equipment Drop logic using CLASSIC_DROPS
-        if (Math.random() < 0.03) {
+        if (Math.random() < 0.05) {
           const eqData = generateEquipment(userId, locationId);
           try {
             const eq = await storage.createEquipment(eqData);
