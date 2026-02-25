@@ -185,7 +185,9 @@ export default function MapPage() {
     const action = type === 'field' ? doFieldBattle : type === 'boss' ? doBossBattle : doSpecialBoss;
     
     // Important: boss and special battles expect just the number, field expects the object
-    const params = type === 'field' ? { locationId: locIdNum, repeatCount: repeatNum } : { locationId: locIdNum };
+    const params = type === 'field' 
+      ? { locationId: locIdNum, repeatCount: repeatNum, enemyName: preBattleInfo.enemy.name } 
+      : { locationId: locIdNum, enemyName: preBattleInfo.enemy.name };
     
     action(params as any, {
       onSuccess: (data: any) => {

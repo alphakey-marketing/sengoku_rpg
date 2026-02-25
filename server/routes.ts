@@ -964,8 +964,12 @@ export async function registerRoutes(
         break; // Stop auto-battle for the encounter
       }
 
-    const enemy = generateEnemyStats('field', user.level, locationId);
-    const battleResult = runTurnBasedCombat(teamStats, Array(count).fill(null).map(() => ({...enemy})));
+      const enemy = generateEnemyStats('field', user.level, locationId);
+      // Use the name from the request if provided (for first battle of a repeat or single battle)
+      if (i === 0 && req.body.enemyName) {
+        enemy.name = req.body.enemyName;
+      }
+      const battleResult = runTurnBasedCombat(teamStats, [enemy]);
       const victory = battleResult.victory;
       allLogs.push(...battleResult.logs);
 
@@ -1213,6 +1217,9 @@ function generatePet(userId: string, locationId: number = 1) {
     const locationId = Number(req.body.locationId) || 1;
     const teamStats = await getPlayerTeamStats(userId);
     const enemyData = generateEnemyStats('boss', user.level, locationId);
+    if (req.body.enemyName) {
+      enemyData.name = req.body.enemyName;
+    }
     
     if (!teamStats) return res.status(400).json({ message: "Team not found" });
 
@@ -1335,6 +1342,9 @@ function generatePet(userId: string, locationId: number = 1) {
     const locationId = Number(req.body.locationId) || 1;
     const teamStats = await getPlayerTeamStats(userId);
     const enemyData = generateEnemyStats('special', user.level, locationId);
+    if (req.body.enemyName) {
+      enemyData.name = req.body.enemyName;
+    }
     
     if (!teamStats) return res.status(400).json({ message: "Team not found" });
 
