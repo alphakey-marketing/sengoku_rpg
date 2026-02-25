@@ -1219,22 +1219,29 @@ export async function registerRoutes(
     for (let i = 0; i < count; i++) {
       if (count > 1) allLogs.push(`--- BATTLE ${i + 1} ---`);
 
-      // Chance reduced from 10/15% to 3/5%
-      // ninjaEncounter check ensures only one encounter per auto-battle session
+      // Ninja Encounter Logic
       if (!ninjaEncounter && Math.random() < (locationId >= 100 ? 0.05 : 0.03)) {
         ninjaEncounteredInThisSkirmish = true;
         const ninjaNames = locationId >= 100 ? ["Zhuge Liang (Ghost)", "Lu Bu's Spirit", "Empress Wu Zetian"] : ["Hattori Hanzo", "Fuma Kotaro", "Ishikawa Goemon", "Mochizuki Chiyome"];
         const ninjaName = pick(ninjaNames);
         const isSuperStrong = Math.random() < (locationId >= 100 ? 0.5 : 0.3);
         
+        // Target Level based on Location ID, NOT player level
+        let targetLevel = 1;
+        if (locationId >= 100) {
+          targetLevel = 7 + (locationId - 100);
+        } else {
+          targetLevel = locationId;
+        }
+
         const ninjaStats = {
           name: ninjaName,
-          level: isSuperStrong ? user.level + 20 : user.level + 2,
-          hp: isSuperStrong ? user.maxHp * 3 : user.maxHp * 1.2,
-          maxHp: isSuperStrong ? user.maxHp * 3 : user.maxHp * 1.2,
-          attack: isSuperStrong ? user.attack * 2 : user.attack * 1.1,
-          defense: isSuperStrong ? user.defense * 1.5 : user.defense * 1.05,
-          speed: isSuperStrong ? user.speed * 1.5 : user.speed * 1.1,
+          level: isSuperStrong ? targetLevel + 20 : targetLevel + 2,
+          hp: isSuperStrong ? 5000 : 1000, // Static values or relative to location level
+          maxHp: isSuperStrong ? 5000 : 1000,
+          attack: isSuperStrong ? 500 : 100,
+          defense: isSuperStrong ? 300 : 50,
+          speed: isSuperStrong ? 200 : 40,
           skills: ["Shadow Strike", "Smoke Bomb", "Assassinate"],
           isNinja: true,
           goldDemanded: Math.floor(user.gold * 0.1)
@@ -1381,15 +1388,23 @@ export async function registerRoutes(
       const teamStats = await getPlayerTeamStats(userId);
       if (!teamStats) return res.status(400).json({ message: "Team not found" });
 
+      // Target Level based on Location ID, NOT player level
+      let targetLevel = 1;
+      if (locationId >= 100) {
+        targetLevel = 7 + (locationId - 100);
+      } else {
+        targetLevel = locationId;
+      }
+
       const isSuperStrong = Math.random() < 0.3;
       const enemy = {
         name: ninjaName,
-        level: isSuperStrong ? user.level + 20 : user.level + 2,
-        hp: isSuperStrong ? user.maxHp * 3 : user.maxHp * 1.2,
-        maxHp: isSuperStrong ? user.maxHp * 3 : user.maxHp * 1.2,
-        attack: isSuperStrong ? user.attack * 2 : user.attack * 1.1,
-        defense: isSuperStrong ? user.defense * 1.5 : user.defense * 1.05,
-        speed: isSuperStrong ? user.speed * 1.5 : user.speed * 1.1,
+        level: isSuperStrong ? targetLevel + 20 : targetLevel + 2,
+        hp: isSuperStrong ? 5000 : 1000,
+        maxHp: isSuperStrong ? 5000 : 1000,
+        attack: isSuperStrong ? 500 : 100,
+        defense: isSuperStrong ? 300 : 50,
+        speed: isSuperStrong ? 200 : 40,
         skills: ["Shadow Strike", "Smoke Bomb", "Assassinate"],
       };
 
