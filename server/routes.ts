@@ -1481,8 +1481,10 @@ export async function registerRoutes(
         
         // Items dropped during this sub-battle
         const drops = [];
-        if (Math.random() < 0.2) {
+        // Normal rarity equipment drop only (5% chance)
+        if (Math.random() < 0.05) {
           const item = generateEquipment(userId, locationId);
+          item.rarity = 'white'; // Force normal rarity
           const created = await storage.createEquipment(item);
           drops.push(created);
           allEquipmentDropped.push(created);
@@ -1677,6 +1679,7 @@ export async function registerRoutes(
       // Significantly improved drop for boss using generateEquipment
       if (Math.random() < 0.05) {
         const eqData = generateEquipment(userId, locationId, true);
+        eqData.rarity = 'white'; // Force normal rarity
         const eq = await storage.createEquipment(eqData);
         res.json({ 
           victory: true, 
