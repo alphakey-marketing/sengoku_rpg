@@ -206,42 +206,36 @@ export function runTurnBasedCombat(playerTeam: TeamStats, enemies: EnemyStats[])
   });
 
   enemies.forEach((e, i) => {
-    const eLevel = Number(e.level) || 1;
-    const eDEX = Number((e as any).dex || eLevel);
-    const eAGI = Number((e as any).agi || eLevel);
-    const eLUK = Number((e as any).luk || 1);
     units.push({
       id: `enemy-${i}`,
       name: e.name,
       hp: Number(e.hp) || 0,
       maxHp: Number(e.maxHp) || 0,
-      attack: Number(e.attack) || 0,
-      defense: Number(e.defense) || 0,
+      attack: (e as any).weaponATK ?? e.attack ?? 0,
+      defense: (e as any).hardDEF ?? e.defense ?? 0,
       speed: Number(e.speed) || 0,
-      str: Number((e as any).str || eLevel),
-      agi: eAGI,
-      vit: Number((e as any).vit || eLevel),
-      int: Number((e as any).int || eLevel),
-      dex: eDEX,
-      luk: eLUK,
-      hardDEF: Number(e.defense) || 0,
-      softDEF: 0,
-      weaponATK: Number(e.attack) || 0,
-      weaponLevel: 1,
-      refinementBonus: 0,
-      bonusATK: 0,
-      hit: 175 + eLevel + eDEX + Math.floor(eLUK / 3),
-      flee: ((): number => {
-        const fleeA = 100 + eLevel + eAGI + Math.floor(eLUK / 5);
-        const perfectDodge = Math.floor(eLUK / 10);
-        return fleeA + perfectDodge;
-      })(),
+
+      str: (e as any).str,
+      agi: (e as any).agi,
+      vit: (e as any).vit,
+      int: (e as any).int,
+      dex: (e as any).dex,
+      luk: (e as any).luk,
+
+      hardDEF: (e as any).hardDEF,
+      softDEF: (e as any).softDEF ?? 0,
+      weaponATK: (e as any).weaponATK ?? e.attack ?? 0,
+      weaponLevel: (e as any).weaponLevel ?? 1,
+
+      hit: (e as any).hit,
+      flee: (e as any).flee,
+
       isPlayer: false,
       statusEffects: [],
       isGuarding: false,
       critChance: 0,
       critDamage: 0,
-      level: eLevel
+      level: Number(e.level) || 1
     } as any);
   });
 

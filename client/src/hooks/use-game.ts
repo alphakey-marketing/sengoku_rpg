@@ -160,6 +160,18 @@ export interface EnemyStats {
   defense: number;
   speed: number;
   skills: string[];
+  str?: number;
+  agi?: number;
+  vit?: number;
+  int?: number;
+  dex?: number;
+  luk?: number;
+  weaponATK?: number;
+  weaponLevel?: number;
+  hardDEF?: number;
+  softDEF?: number;
+  hit?: number;
+  flee?: number;
   stamina?: number;
   maxStamina?: number;
 }

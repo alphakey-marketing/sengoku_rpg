@@ -516,10 +516,12 @@ async function getPlayerTeamStats(userId: string) {
   return stats;
 }
 
-function generateEnemyStats(type: 'field' | 'boss' | 'special', playerLevel: number, locationId: number = 1) {
-  // Use a fixed level based on location
-  // Japan (1-6): Levels 1, 2, 3, 4, 5, 6
-  // China (101-104): Levels 7, 8, 9, 10
+function generateEnemyStats(
+  type: 'field' | 'boss' | 'special',
+  playerLevel: number,
+  locationId: number = 1
+) {
+  // Determine targetLevel from location
   let targetLevel = 1;
   if (locationId >= 100) {
     // 101 -> 7, 102 -> 8, etc.
@@ -529,57 +531,206 @@ function generateEnemyStats(type: 'field' | 'boss' | 'special', playerLevel: num
     targetLevel = locationId;
   }
 
-  // Linear scaling based on targetLevel
-  // Multiplier starts at 1.0 and increases by 0.1 per location level
   const locationMultiplier = 1 + (targetLevel - 1) * 0.1;
 
+  // Helper: approximate RO-style core stats for enemies from level
+  const makeBaseStats = (lvl: number) => {
+    // Simple patterns: can be tuned later
+    return {
+      str: Math.floor(lvl * 1.5),   // physical power
+      agi: Math.floor(lvl * 1.2),   // flee / speed
+      vit: Math.floor(lvl * 1.3),   // hp / soft def
+      int: Math.floor(lvl * 0.8),   // magic placeholder
+      dex: Math.floor(lvl * 1.4),   // hit / ranged
+      luk: Math.max(1, Math.floor(lvl * 0.5)), // crit / dodge
+    };
+  };
+
   if (type === 'field') {
-    const name = locationId >= 100 ? pick(["Terracotta Guard", "Silk Road Bandit", "Mountain Cultivator"]) : pick(YOKAI_NAMES);
+    const name =
+      locationId >= 100
+        ? pick(["Terracotta Guard", "Silk Road Bandit", "Mountain Cultivator"])
+        : pick(YOKAI_NAMES);
+
     const lvl = targetLevel;
-    
-    // Linear scaling formulas
     const baseHp = lvl * 40 + 100;
     const baseAtk = lvl * 10 + 20;
     const baseDef = lvl * 6 + 15;
     const baseSpd = lvl * 5 + 10;
+
+    const stats = makeBaseStats(lvl);
+
+    // Map your "defense" to HardDEF; SoftDEF will be derived from VIT/AGI in combat
+    const hardDEF = Math.floor(baseDef * locationMultiplier);
+
+    // Weapon: treat "attack" as weaponATK for now
+    const weaponATK = Math.floor(baseAtk * locationMultiplier);
+    const weaponLevel = 1; // early field mobs
+
+    // Classic-style HIT/FLEE using stats
+    const hit =
+      175 +
+      lvl +
+      stats.dex +
+      Math.floor(stats.luk / 3);
+
+    const fleeA =
+      100 +
+      lvl +
+      stats.agi +
+      Math.floor(stats.luk / 5);
+    const perfectDodge = Math.floor(stats.luk / 10);
+    const flee = fleeA + perfectDodge;
 
     return {
       name,
       level: lvl,
       hp: Math.floor(baseHp * locationMultiplier),
       maxHp: Math.floor(baseHp * locationMultiplier),
-      attack: Math.floor(baseAtk * locationMultiplier),
-      defense: Math.floor(baseDef * locationMultiplier),
+
+      // legacy fields
+      attack: weaponATK,
+      defense: hardDEF,
       speed: Math.floor(baseSpd * locationMultiplier),
+
+      // new RO-style stats
+      str: stats.str,
+      agi: stats.agi,
+      vit: stats.vit,
+      int: stats.int,
+      dex: stats.dex,
+      luk: stats.luk,
+
+      weaponATK,
+      weaponLevel,
+      hardDEF,
+      softDEF: 0, // extra soft DEF from gear if needed
+
+      hit,
+      flee,
+
       skills: ["Scratch", "Bite"],
     };
   } else if (type === 'boss') {
-    const name = locationId >= 100 ? pick(CN_BOSS_NAMES) : pick(JP_BOSS_NAMES);
-    const lvl = targetLevel + 2; // Boss is slightly higher level than skirmish
-    
+    const name =
+      locationId >= 100 ? pick(CN_BOSS_NAMES) : pick(JP_BOSS_NAMES);
+    const lvl = targetLevel + 2; // Boss slightly higher level
+
+    const baseHp = lvl * 200 + 1000;
+    const baseAtk = lvl * 30 + 100;
+    const baseDef = lvl * 25 + 80;
+    const baseSpd = lvl * 15 + 50;
+
+    const stats = makeBaseStats(lvl);
+    // Bosses a bit tougher in VIT / AGI
+    stats.vit = Math.floor(stats.vit * 1.3);
+    stats.agi = Math.floor(stats.agi * 1.2);
+
+    const hardDEF = Math.floor(baseDef * locationMultiplier);
+    const weaponATK = Math.floor(baseAtk * locationMultiplier);
+    const weaponLevel = 2; // bosses hit harder variance-wise
+
+    const hit =
+      175 +
+      lvl +
+      stats.dex +
+      Math.floor(stats.luk / 3);
+
+    const fleeA =
+      100 +
+      lvl +
+      stats.agi +
+      Math.floor(stats.luk / 5);
+    const perfectDodge = Math.floor(stats.luk / 10);
+    const flee = fleeA + perfectDodge;
+
     return {
       name,
       level: lvl,
-      hp: Math.floor((lvl * 200 + 1000) * locationMultiplier),
-      maxHp: Math.floor((lvl * 200 + 1000) * locationMultiplier),
-      attack: Math.floor((lvl * 30 + 100) * locationMultiplier),
-      defense: Math.floor((lvl * 25 + 80) * locationMultiplier),
-      speed: Math.floor((lvl * 15 + 50) * locationMultiplier),
+      hp: Math.floor(baseHp * locationMultiplier),
+      maxHp: Math.floor(baseHp * locationMultiplier),
+
+      attack: weaponATK,
+      defense: hardDEF,
+      speed: Math.floor(baseSpd * locationMultiplier),
+
+      str: stats.str,
+      agi: stats.agi,
+      vit: stats.vit,
+      int: stats.int,
+      dex: stats.dex,
+      luk: stats.luk,
+
+      weaponATK,
+      weaponLevel,
+      hardDEF,
+      softDEF: 0,
+
+      hit,
+      flee,
+
       skills: ["War Cry", "Shield Wall", "Charge", "Strategic Strike"],
     };
   } else {
+    // special boss
     const sb = pick(SPECIAL_BOSSES);
     const name = locationId >= 100 ? "Celestial Dragon Emperor" : sb.name;
-    const lvl = targetLevel + 5; // Special Boss is even higher
-    
+    const lvl = targetLevel + 5;
+
+    const baseHp = lvl * 400 + 5000;
+    const baseAtk = lvl * 60 + 300;
+    const baseDef = lvl * 50 + 250;
+    const baseSpd = lvl * 30 + 100;
+
+    const stats = makeBaseStats(lvl);
+    // special bosses much tougher
+    stats.vit = Math.floor(stats.vit * 1.6);
+    stats.agi = Math.floor(stats.agi * 1.3);
+    stats.dex = Math.floor(stats.dex * 1.2);
+
+    const hardDEF = Math.floor(baseDef * locationMultiplier);
+    const weaponATK = Math.floor(baseAtk * locationMultiplier);
+    const weaponLevel = 3;
+
+    const hit =
+      175 +
+      lvl +
+      stats.dex +
+      Math.floor(stats.luk / 3);
+
+    const fleeA =
+      100 +
+      lvl +
+      stats.agi +
+      Math.floor(stats.luk / 5);
+    const perfectDodge = Math.floor(stats.luk / 10);
+    const flee = fleeA + perfectDodge;
+
     return {
       name,
       level: lvl,
-      hp: Math.floor((lvl * 400 + 5000) * locationMultiplier),
-      maxHp: Math.floor((lvl * 400 + 5000) * locationMultiplier),
-      attack: Math.floor((lvl * 60 + 300) * locationMultiplier),
-      defense: Math.floor((lvl * 50 + 250) * locationMultiplier),
-      speed: Math.floor((lvl * 30 + 100) * locationMultiplier),
+      hp: Math.floor(baseHp * locationMultiplier),
+      maxHp: Math.floor(baseHp * locationMultiplier),
+
+      attack: weaponATK,
+      defense: hardDEF,
+      speed: Math.floor(baseSpd * locationMultiplier),
+
+      str: stats.str,
+      agi: stats.agi,
+      vit: stats.vit,
+      int: stats.int,
+      dex: stats.dex,
+      luk: stats.luk,
+
+      weaponATK,
+      weaponLevel,
+      hardDEF,
+      softDEF: 0,
+
+      hit,
+      flee,
+
       skills: [sb.skill, "Roar", "Dark Aura", "Divine Intervention"],
     };
   }
