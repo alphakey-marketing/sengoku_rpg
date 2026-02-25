@@ -175,9 +175,21 @@ async function getPlayerTeamStats(userId: string) {
     // Base stats
     let hp = user.hp + (user.permHpBonus || 0);
     let maxHp = user.maxHp + (user.permHpBonus || 0);
-    let attack = user.attack + totalAtkBonus + (user.permAttackBonus || 0);
-    let defense = user.defense + totalDefBonus + (user.permDefenseBonus || 0);
-    let speed = user.speed + totalSpdBonus + (user.permSpeedBonus || 0);
+    
+    // Core stats influence derived stats
+    // STR: +1 ATK per point
+    // VIT: +1% HP per point
+    // INT: +1% Magic effectiveness (if implemented later)
+    // DEX: Handled in HIT chance
+    // AGI: Handled in FLEE chance
+    // LUK: +0.3% Crit per point
+    
+    let attack = user.attack + totalAtkBonus + (user.permAttackBonus || 0) + (user.str || 1);
+    let defense = user.defense + totalDefBonus + (user.permDefenseBonus || 0) + Math.floor((user.vit || 1) / 2);
+    let speed = user.speed + totalSpdBonus + (user.permSpeedBonus || 0) + Math.floor((user.agi || 1) / 2);
+    
+    maxHp = Math.floor(maxHp * (1 + (user.vit || 1) / 100));
+    hp = Math.min(hp, maxHp);
 
     // Apply transformation bonuses
     if (activeTransform) {
@@ -199,7 +211,13 @@ async function getPlayerTeamStats(userId: string) {
         attack,
         defense,
         speed,
-        critChance: playerEquipped.reduce((s, e) => s + (e.critChance || 0), 0),
+        str: user.str || 1,
+        agi: user.agi || 1,
+        vit: user.vit || 1,
+        int: user.int || 1,
+        dex: user.dex || 1,
+        luk: user.luk || 1,
+        critChance: playerEquipped.reduce((s, e) => s + (e.critChance || 0), 0) + Math.floor((user.luk || 1) * 0.3),
         critDamage: playerEquipped.reduce((s, e) => s + (e.critDamage || 0), 0),
         endowmentPoints: playerEquipped.reduce((s, e) => s + (e.endowmentPoints || 0), 0),
         equipped: playerEquipped.map(e => ({ name: e.name, type: e.type, level: e.level, rarity: e.rarity })),
@@ -221,16 +239,29 @@ async function getPlayerTeamStats(userId: string) {
       const cAtkBonus = compEquipped.reduce((s, e) => s + Math.floor(e.attackBonus * (1 + (e.level - 1) * 0.05)), 0);
       const cDefBonus = compEquipped.reduce((s, e) => s + Math.floor(e.defenseBonus * (1 + (e.level - 1) * 0.08)), 0);
       const cSpdBonus = compEquipped.reduce((s, e) => s + Math.floor(e.speedBonus * (1 + (e.level - 1) * 0.1)), 0);
+      
+      let cMaxHp = c.maxHp + Math.floor(c.maxHp * ((c as any).vit || 1) / 100);
+      let cHp = Math.min(c.hp, cMaxHp);
+      let cAttack = c.attack + cAtkBonus + ((c as any).str || 1);
+      let cDefense = c.defense + cDefBonus + Math.floor(((c as any).vit || 1) / 2);
+      let cSpeed = c.speed + cSpdBonus + Math.floor(((c as any).agi || 1) / 2);
+
       return {
         id: c.id,
         name: c.name,
         level: c.level,
-        hp: c.hp,
-        maxHp: c.maxHp,
-        attack: c.attack + cAtkBonus,
-        defense: c.defense + cDefBonus,
-        speed: c.speed + cSpdBonus,
-        critChance: compEquipped.reduce((s, e) => s + (e.critChance || 0), 0),
+        hp: cHp,
+        maxHp: cMaxHp,
+        attack: cAttack,
+        defense: cDefense,
+        speed: cSpeed,
+        str: (c as any).str || 1,
+        agi: (c as any).agi || 1,
+        vit: (c as any).vit || 1,
+        int: (c as any).int || 1,
+        dex: (c as any).dex || 1,
+        luk: (c as any).luk || 1,
+        critChance: compEquipped.reduce((s, e) => s + (e.critChance || 0), 0) + Math.floor(((c as any).luk || 1) * 0.3),
         critDamage: compEquipped.reduce((s, e) => s + (e.critDamage || 0), 0),
         endowmentPoints: compEquipped.reduce((s, e) => s + (e.endowmentPoints || 0), 0),
         skill: c.skill,
