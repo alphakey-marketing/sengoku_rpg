@@ -2108,6 +2108,7 @@ export async function registerRoutes(
       name: "Training Sword",
       type: "weapon",
       weaponType: "sword",
+      rarity: "white",
       level: 1,
       experience: 0,
       expToNext: 100,
@@ -2124,8 +2125,7 @@ export async function registerRoutes(
       isEquipped: true,
       equippedToId: null,
       equippedToType: "player",
-      cardSlots: 1,
-      rarity: 'white'
+      cardSlots: 1
     });
 
     res.json({ success: true });
