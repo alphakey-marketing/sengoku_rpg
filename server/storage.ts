@@ -1,9 +1,9 @@
 import {
-  users, companions, equipment, pets, horses, transformations, campaignEvents, userQuests,
+  users, companions, equipment, pets, horses, transformations, campaignEvents, userQuests, cards,
   type User, type UpsertUser, type InsertCompanion, type InsertEquipment,
   type Companion, type Equipment, type Pet, type Horse, type Transformation,
   type InsertPet, type InsertHorse, type InsertTransformation, type CampaignEvent,
-  type UserQuest
+  type UserQuest, type Card, type InsertCard
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and } from "drizzle-orm";
@@ -46,6 +46,9 @@ export interface IStorage {
   updateQuestProgress(userId: string, questKey: string, increment: number): Promise<void>;
   claimQuest(userId: string, questKey: string): Promise<{ success: boolean; reward?: string }>;
   recycleEquipment(userId: string): Promise<{ count: number; stonesGained: number }>;
+
+  // Equipment Database Seed/Sync
+  syncBaseEquipment(userId: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -93,10 +96,11 @@ export class DatabaseStorage implements IStorage {
     await db.delete(companions).where(eq(companions.id, id));
   }
 
-  async getEquipment(userId: string): Promise<(Equipment & { cards: any[] })[]> {
+  async getEquipment(userId: string): Promise<(Equipment & { cards: Card[] })[]> {
+    // Auto-seed basic items
+    await this.syncBaseEquipment(userId);
     const items = await db.select().from(equipment).where(eq(equipment.userId, userId));
     const equipmentWithCards = await Promise.all(items.map(async (item) => {
-      // Stubbing cards if table doesn't exist or is not imported
       try {
         const itemCards = await db.select().from(cards).where(eq(cards.equipmentId, item.id));
         return { ...item, cards: itemCards };
@@ -115,6 +119,10 @@ export class DatabaseStorage implements IStorage {
   async updateEquipment(id: number, updates: Partial<Equipment>): Promise<Equipment> {
     const [eqp] = await db.update(equipment).set(updates).where(eq(equipment.id, id)).returning();
     return eqp;
+  }
+
+  async deleteEquipment(id: number): Promise<void> {
+    await db.delete(equipment).where(eq(equipment.id, id));
   }
 
   async getCards(userId: string): Promise<Card[]> {
@@ -233,10 +241,8 @@ export class DatabaseStorage implements IStorage {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
-    // Auto-reset quests if they are from a previous day
     const quests = await db.select().from(userQuests).where(eq(userQuests.userId, userId));
     
-    // If no quests exist or they are from a previous day, generate new ones
     const isOutdated = quests.length === 0 || quests.some(q => {
       const lu = q.lastUpdated ? new Date(q.lastUpdated) : new Date(0);
       return lu < today;
@@ -251,7 +257,6 @@ export class DatabaseStorage implements IStorage {
         { key: 'daily_gacha_elite', goal: 5, rewardType: 'rice', amount: 80 }
       ];
       
-      // Select 3 random quests
       const selected = [...QUEST_POOL].sort(() => 0.5 - Math.random()).slice(0, 3);
       
       await db.delete(userQuests).where(eq(userQuests.userId, userId));
@@ -281,11 +286,6 @@ export class DatabaseStorage implements IStorage {
           .set({ progress: (quest.progress || 0) + increment, lastUpdated: new Date() })
           .where(eq(userQuests.id, quest.id));
       }
-    } else {
-      // If quest doesn't exist in the active set but we're trying to update it,
-      // it might be a quest not selected for today, so we ignore it or 
-      // we could proactively insert it. Given the current design, we only
-      // update if it was one of the 3 selected quests.
     }
   }
 
@@ -315,6 +315,61 @@ export class DatabaseStorage implements IStorage {
     });
 
     return { success: true, reward: `${def.amount} ${def.rewardType}` };
+  }
+
+  async syncBaseEquipment(userId: string): Promise<void> {
+    const existing = await db.select().from(equipment).where(eq(equipment.userId, userId));
+    const existingNames = new Set(existing.map(e => e.name));
+
+    const BASE_ITEMS: InsertEquipment[] = [
+      // Melee Weapons
+      { userId, name: "Knife", type: "Weapon", weaponType: "dagger", level: 1, attackBonus: 17, isEquipped: false },
+      { userId, name: "Cutter", type: "Weapon", weaponType: "dagger", level: 1, attackBonus: 28, isEquipped: false },
+      { userId, name: "Main Gauche", type: "Weapon", weaponType: "dagger", level: 1, attackBonus: 43, isEquipped: false },
+      { userId, name: "Sword", type: "Weapon", weaponType: "sword", level: 2, attackBonus: 25, isEquipped: false },
+      { userId, name: "Falchion", type: "Weapon", weaponType: "sword", level: 2, attackBonus: 39, isEquipped: false },
+      { userId, name: "Blade", type: "Weapon", weaponType: "sword", level: 2, attackBonus: 53, isEquipped: false },
+      { userId, name: "Spear", type: "Weapon", weaponType: "spear", level: 2, attackBonus: 37, isEquipped: false },
+      // Ranged Weapons
+      { userId, name: "Bow", type: "Weapon", weaponType: "bow", level: 1, attackBonus: 15, isEquipped: false },
+      { userId, name: "Composite Bow", type: "Weapon", weaponType: "bow", level: 1, attackBonus: 29, isEquipped: false },
+      { userId, name: "Great Bow", type: "Weapon", weaponType: "bow", level: 10, attackBonus: 43, isEquipped: false },
+      // Magic Weapons
+      { userId, name: "Rod", type: "Weapon", weaponType: "staff", level: 1, attackBonus: 15, matkBonus: 15, isEquipped: false },
+      { userId, name: "Wand", type: "Weapon", weaponType: "staff", level: 1, attackBonus: 34, matkBonus: 15, isEquipped: false },
+      // Armor
+      { userId, name: "Cotton Shirt", type: "Armor", level: 1, defenseBonus: 1, isEquipped: false },
+      { userId, name: "Jacket", type: "Armor", level: 1, defenseBonus: 2, isEquipped: false },
+      { userId, name: "Adventurer Suit", type: "Armor", level: 1, defenseBonus: 3, isEquipped: false },
+      { userId, name: "Mantle", type: "Armor", level: 1, defenseBonus: 4, isEquipped: false },
+      { userId, name: "Coat", type: "Armor", level: 14, defenseBonus: 5, isEquipped: false },
+      { userId, name: "Padded Armor", type: "Armor", level: 14, defenseBonus: 6, isEquipped: false },
+      // Shields
+      { userId, name: "Guard", type: "Shield", level: 1, defenseBonus: 3, isEquipped: false },
+      { userId, name: "Buckler", type: "Shield", level: 14, defenseBonus: 4, isEquipped: false },
+      // Garments
+      { userId, name: "Hood", type: "Garment", level: 1, defenseBonus: 1, isEquipped: false },
+      { userId, name: "Muffler", type: "Garment", level: 14, defenseBonus: 2, isEquipped: false },
+      // Footgear
+      { userId, name: "Sandals", type: "Footgear", level: 1, defenseBonus: 1, isEquipped: false },
+      { userId, name: "Shoes", type: "Footgear", level: 14, defenseBonus: 2, isEquipped: false },
+      // Accessories
+      { userId, name: "Novice Armlet", type: "Accessory", level: 1, hpBonus: 10, isEquipped: false },
+      { userId, name: "Ring", type: "Accessory", level: 20, isEquipped: false },
+      { userId, name: "Brooch", type: "Accessory", level: 20, isEquipped: false },
+      { userId, name: "Rosary", type: "Accessory", level: 20, isEquipped: false },
+      // Headgear
+      { userId, name: "Bandana", type: "HeadgearUpper", level: 1, defenseBonus: 1, isEquipped: false },
+      { userId, name: "Cap", type: "HeadgearUpper", level: 14, defenseBonus: 3, isEquipped: false },
+      { userId, name: "Ribbon", type: "HeadgearUpper", level: 1, defenseBonus: 1, mdefBonus: 3, isEquipped: false },
+      { userId, name: "Glasses", type: "HeadgearMiddle", level: 1, isEquipped: false },
+      { userId, name: "Flu Mask", type: "HeadgearLower", level: 1, isEquipped: false },
+    ];
+
+    const toInsert = BASE_ITEMS.filter(item => !existingNames.has(item.name));
+    if (toInsert.length > 0) {
+      await db.insert(equipment).values(toInsert);
+    }
   }
 
   async restartGame(userId: string): Promise<void> {
@@ -358,6 +413,9 @@ export class DatabaseStorage implements IStorage {
         updatedAt: new Date()
       }).where(eq(users.id, userId));
     });
+    
+    // Auto-seed basic items after restart
+    await this.syncBaseEquipment(userId);
   }
 }
 
