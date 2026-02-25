@@ -565,8 +565,8 @@ export default function MapPage() {
                   const eLuk   = e?.luk   || 1;
 
                   // Use backend-provided hit/flee if present, fallback to formula
-                  const eHit   = e?.hit  ?? calcHIT(eLevel, eDex, eLuk);
-                  const eFlee  = e?.flee ?? calcFLEE(eLevel, eAgi, eLuk);
+                  const eHit   = e?.hit  ?? (eLevel ? calcHIT(eLevel, eDex, eLuk) : 175);
+                  const eFlee  = e?.flee ?? (eLevel ? calcFLEE(eLevel, eAgi, eLuk) : 100);
 
                   // vs main player
                   const p      = playerStatus?.player as any;
