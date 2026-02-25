@@ -799,16 +799,6 @@ export async function registerRoutes(
       [stat]: currentVal + 1
     };
 
-    // RO-style stat effects
-    if (stat === 'str') {
-      updates.attack = (user.attack || 10) + 1;
-    } else if (stat === 'agi') {
-      updates.speed = (user.speed || 10) + 1;
-    } else if (stat === 'vit') {
-      updates.maxHp = (user.maxHp || 100) + 10;
-      updates.hp = (user.hp || 100) + 10;
-    }
-
     const updatedUser = await storage.updateUser(userId, updates);
     res.json(updatedUser);
   });
@@ -834,16 +824,6 @@ export async function registerRoutes(
         }
         currentStatPoints -= cost;
         val++;
-
-        // RO-style stat effects for bulk upgrade
-        if (stat === 'str') {
-          updates.attack = (updates.attack || user.attack || 10) + 1;
-        } else if (stat === 'agi') {
-          updates.speed = (updates.speed || user.speed || 10) + 1;
-        } else if (stat === 'vit') {
-          updates.maxHp = (updates.maxHp || user.maxHp || 100) + 10;
-          updates.hp = (updates.hp || user.hp || 100) + 10;
-        }
       }
       updates[stat] = val;
     }

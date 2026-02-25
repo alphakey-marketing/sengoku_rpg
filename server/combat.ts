@@ -52,7 +52,6 @@ function getStatusATK(attacker: CombatUnit, isRanged: boolean): number {
   const DEX = attacker.dex ?? 1;
   const LUK = attacker.luk ?? 1;
 
-  // statusAttack = floor(STR + DEX/5 + LUK/3 + BaseLevel/4)
   if (!isRanged) {
     return Math.floor(lv / 4) + STR + Math.floor(DEX / 5) + Math.floor(LUK / 3);
   } else {
