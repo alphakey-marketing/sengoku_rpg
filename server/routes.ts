@@ -1494,8 +1494,8 @@ export async function registerRoutes(
 
         await storage.updateUser(userId, userUpdate);
 
-        // Revised Equipment Drop logic using CLASSIC_DROPS
-        if (Math.random() < 0.15) {
+        // low Equipment Drop logic using CLASSIC_DROPS
+        if (Math.random() < 0.02) {
           const eqData = generateEquipment(userId, locationId);
           try {
             const eq = await storage.createEquipment(eqData);
@@ -2102,7 +2102,7 @@ export async function registerRoutes(
     // Create initial equipment
     await storage.createEquipment({
       userId,
-      name: "Training Sword",
+      name: "Training Bow",
       type: "weapon",
       weaponType: "sword",
       rarity: "white",
