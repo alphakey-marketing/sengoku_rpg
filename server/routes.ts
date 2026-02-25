@@ -1495,7 +1495,7 @@ export async function registerRoutes(
         await storage.updateUser(userId, userUpdate);
 
         // Revised Equipment Drop logic using CLASSIC_DROPS
-        if (Math.random() < (locationId >= 100 ? 0.10 : 0.05)) {
+        if (Math.random() < 0.01) {
           const eqData = generateEquipment(userId, locationId);
           try {
             const eq = await storage.createEquipment(eqData);
@@ -1667,32 +1667,29 @@ export async function registerRoutes(
       });
       
       // Significantly improved drop for boss using generateEquipment
-      const eqData = generateEquipment(userId, locationId, true);
-      const eq = await storage.createEquipment(eqData);
-
-      // Pet Drop (10% chance from Boss)
-      /* Disabled by user request
-      let droppedPet = null;
-      if (Math.random() < 0.10) {
-        const petData = generatePet(userId, locationId);
-        try {
-          droppedPet = await storage.createPet(petData as any);
-          logs.push(`PETS: You rescued a ${droppedPet.name} from the castle!`);
-        } catch (err) {
-          console.error("Failed to create pet drop from boss:", err);
-        }
+      if (Math.random() < 0.05) {
+        const eqData = generateEquipment(userId, locationId, true);
+        const eq = await storage.createEquipment(eqData);
+        res.json({ 
+          victory: true, 
+          experienceGained: expGained, 
+          goldGained: goldGained, 
+          riceGained: riceGained, 
+          equipmentDropped: [eq],
+          petDropped: null, // droppedPet
+          logs 
+        });
+      } else {
+        res.json({ 
+          victory: true, 
+          experienceGained: expGained, 
+          goldGained: goldGained, 
+          riceGained: riceGained, 
+          equipmentDropped: [],
+          petDropped: null, // droppedPet
+          logs 
+        });
       }
-      */
-
-      res.json({ 
-        victory: true, 
-        experienceGained: expGained, 
-        goldGained: goldGained, 
-        riceGained: riceGained, 
-        equipmentDropped: [eq],
-        petDropped: null, // droppedPet
-        logs 
-      });
     } else {
       logs.push("Defeat!");
       res.json({ victory: false, logs });
