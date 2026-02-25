@@ -97,8 +97,6 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getEquipment(userId: string): Promise<(Equipment & { cards: Card[] })[]> {
-    // Auto-seed basic items
-    await this.syncBaseEquipment(userId);
     const items = await db.select().from(equipment).where(eq(equipment.userId, userId));
     const equipmentWithCards = await Promise.all(items.map(async (item) => {
       try {
@@ -321,54 +319,20 @@ export class DatabaseStorage implements IStorage {
     const existing = await db.select().from(equipment).where(eq(equipment.userId, userId));
     const existingNames = new Set(existing.map(e => e.name));
 
-    const BASE_ITEMS: InsertEquipment[] = [
-      // Melee Weapons
-      { userId, name: "Knife", type: "Weapon", weaponType: "dagger", rarity: "white", level: 1, attackBonus: 17, isEquipped: false },
-      { userId, name: "Cutter", type: "Weapon", weaponType: "dagger", rarity: "white", level: 1, attackBonus: 28, isEquipped: false },
-      { userId, name: "Main Gauche", type: "Weapon", weaponType: "dagger", rarity: "white", level: 1, attackBonus: 43, isEquipped: false },
-      { userId, name: "Sword", type: "Weapon", weaponType: "sword", rarity: "white", level: 2, attackBonus: 25, isEquipped: false },
-      { userId, name: "Falchion", type: "Weapon", weaponType: "sword", rarity: "white", level: 2, attackBonus: 39, isEquipped: false },
-      { userId, name: "Blade", type: "Weapon", weaponType: "sword", rarity: "white", level: 2, attackBonus: 53, isEquipped: false },
-      { userId, name: "Spear", type: "Weapon", weaponType: "spear", rarity: "white", level: 2, attackBonus: 37, isEquipped: false },
-      // Ranged Weapons
-      { userId, name: "Bow", type: "Weapon", weaponType: "bow", rarity: "white", level: 1, attackBonus: 15, isEquipped: false },
-      { userId, name: "Composite Bow", type: "Weapon", weaponType: "bow", rarity: "white", level: 1, attackBonus: 29, isEquipped: false },
-      { userId, name: "Great Bow", type: "Weapon", weaponType: "bow", rarity: "white", level: 10, attackBonus: 43, isEquipped: false },
-      // Magic Weapons
-      { userId, name: "Rod", type: "Weapon", weaponType: "staff", rarity: "white", level: 1, attackBonus: 15, matkBonus: 15, isEquipped: false },
-      { userId, name: "Wand", type: "Weapon", weaponType: "staff", rarity: "white", level: 1, attackBonus: 34, matkBonus: 15, isEquipped: false },
-      // Armor
-      { userId, name: "Cotton Shirt", type: "Armor", rarity: "white", level: 1, defenseBonus: 1, isEquipped: false },
-      { userId, name: "Jacket", type: "Armor", rarity: "white", level: 1, defenseBonus: 2, isEquipped: false },
-      { userId, name: "Adventurer Suit", type: "Armor", rarity: "white", level: 1, defenseBonus: 3, isEquipped: false },
-      { userId, name: "Mantle", type: "Armor", rarity: "white", level: 1, defenseBonus: 4, isEquipped: false },
-      { userId, name: "Coat", type: "Armor", rarity: "white", level: 14, defenseBonus: 5, isEquipped: false },
-      { userId, name: "Padded Armor", type: "Armor", rarity: "white", level: 14, defenseBonus: 6, isEquipped: false },
-      // Shields
-      { userId, name: "Guard", type: "Shield", rarity: "white", level: 1, defenseBonus: 3, isEquipped: false },
-      { userId, name: "Buckler", type: "Shield", rarity: "white", level: 14, defenseBonus: 4, isEquipped: false },
-      // Garments
-      { userId, name: "Hood", type: "Garment", rarity: "white", level: 1, defenseBonus: 1, isEquipped: false },
-      { userId, name: "Muffler", type: "Garment", rarity: "white", level: 14, defenseBonus: 2, isEquipped: false },
-      // Footgear
-      { userId, name: "Sandals", type: "Footgear", rarity: "white", level: 1, defenseBonus: 1, isEquipped: false },
-      { userId, name: "Shoes", type: "Footgear", rarity: "white", level: 14, defenseBonus: 2, isEquipped: false },
-      // Accessories
-      { userId, name: "Novice Armlet", type: "Accessory", rarity: "white", level: 1, hpBonus: 10, isEquipped: false },
-      { userId, name: "Ring", type: "Accessory", rarity: "white", level: 20, isEquipped: false },
-      { userId, name: "Brooch", type: "Accessory", rarity: "white", level: 20, isEquipped: false },
-      { userId, name: "Rosary", type: "Accessory", rarity: "white", level: 20, isEquipped: false },
-      // Headgear
-      { userId, name: "Bandana", type: "HeadgearUpper", rarity: "white", level: 1, defenseBonus: 1, isEquipped: false },
-      { userId, name: "Cap", type: "HeadgearUpper", rarity: "white", level: 14, defenseBonus: 3, isEquipped: false },
-      { userId, name: "Ribbon", type: "HeadgearUpper", rarity: "white", level: 1, defenseBonus: 1, mdefBonus: 3, isEquipped: false },
-      { userId, name: "Glasses", type: "HeadgearMiddle", rarity: "white", level: 1, isEquipped: false },
-      { userId, name: "Flu Mask", type: "HeadgearLower", rarity: "white", level: 1, isEquipped: false },
-    ];
+    const TRAINING_SWORD: InsertEquipment = { 
+      userId, 
+      name: "Training Sword", 
+      type: "Weapon", 
+      weaponType: "sword", 
+      rarity: "white", 
+      level: 1, 
+      attackBonus: 10, 
+      isEquipped: true,
+      equippedToType: 'player'
+    };
 
-    const toInsert = BASE_ITEMS.filter(item => !existingNames.has(item.name));
-    if (toInsert.length > 0) {
-      await db.insert(equipment).values(toInsert);
+    if (!existingNames.has(TRAINING_SWORD.name)) {
+      await db.insert(equipment).values(TRAINING_SWORD);
     }
   }
 
