@@ -104,7 +104,8 @@ export default function MapPage() {
 
   useEffect(() => {
     // Random IF trigger check
-    if (!activeEvent && Math.random() < 0.05) {
+    // Reduced chance from 0.05 to 0.02
+    if (!activeEvent && Math.random() < 0.02) {
        const isDone = events?.some(e => e.eventKey === 'yokai_random');
        if (!isDone) setActiveEvent(STORY_EVENTS[2]);
     }
