@@ -1,0 +1,96 @@
+Recommended Base Hit/Dodge Rates
+The golden rule from RO's design: a fair fight (same-level player vs same-level enemy) should land ~70–80% of the time. This gives 1-in-5 misses on average — enough to feel meaningful without frustrating the player every turn.
+​
+
+Scenario	Hit Chance	Design Intent
+Player vs same-level enemy	75%	Default "fair fight" feel 
+​
+Player vs easy enemy (underlevelled)	90–95%	Grinding feels rewarding and fast
+Player vs hard enemy (overlevelled)	45–55%	Danger signal; player needs better gear
+Enemy vs Player (default)	65%	Enemy slightly less accurate than player; keeps player agency 
+​
+Boss vs Player	80–85%	Boss feels threatening; harder to dodge
+Why enemy base (65%) is lower than player (75%)? In turn-based RPGs, players need to feel slightly "favored" to stay engaged — if enemies match player accuracy exactly, combat feels punishing rather than skillful.
+
+How to Derive Base Stats
+Set your baseline at character creation / Level 1 with these anchor values, then scale with level:
+
+Player Base HIT = 100 + (Level × 2) + (DEX × 1.5)
+​
+
+Player Base FLEE = 100 + (Level × 1) + (AGI × 1.5)
+​
+
+Enemy HIT = Enemy Level × 3 (simple scaling for monster design)
+​
+
+Enemy FLEE = Enemy Level × 2
+​
+
+Then plug into the RO-derived formula: Hit Chance % = 
+100
+−
+(
+A
+t
+t
+a
+c
+k
+e
+r
+H
+I
+T
++
+80
+−
+D
+e
+f
+e
+n
+d
+e
+r
+F
+L
+E
+E
+)
+100−(AttackerHIT+80−DefenderFLEE), clamped 5–95%.
+​
+
+Sanity check at Level 10 (no gear):
+Player: HIT = 100 + 20 + 15 (DEX 10) = 135. Enemy FLEE = 30. Hit% = 
+100
+−
+(
+135
++
+80
+−
+30
+)
+100−(135+80−30) = capped at 95% — too easy.
+→ Adjust: add monster FLEE scaling by ×3 instead of ×2, or raise the base formula offset from 80 to 120. Tune until Level 10 fair fight hits ~75%.
+​
+
+Equipment Bonuses: How Much Should Gear Add?
+Use small, stackable increments — RO's gear never adds giant leaps in HIT/FLEE, making each upgrade feel meaningful without breaking balance.
+​
+
+Equipment Tier	HIT Bonus	FLEE Bonus	Design Rationale
+Common (e.g., Iron Sword)	+3–5 HIT	—	Small but noticeable improvement 
+​
+Uncommon (e.g., Steel Bow)	+8–12 HIT	—	~2–3% hit chance gain per upgrade
+Rare/Named (e.g., Hunter's Bow)	+15–20 HIT	+5 FLEE	Meaningful power spike; justifies grind 
+​
+Legendary	+25–30 HIT	+10–15 FLEE	Endgame cap; used for boss fights
+Accessory (e.g., Scope Ring)	+5–10 HIT	—	Secondary slot; stacks with weapon 
+​
+Light Armor (e.g., Leather Vest)	—	+8–12 FLEE	Evasion-focused build option
+Heavy Armor (e.g., Plate Mail)	—	−5 FLEE	Trade-off: more DEF but less dodge 
+​
+Rule of thumb: Full best-in-slot gear should raise hit chance by at most +15–20% over naked baseline. This prevents gear from making fights trivial; player skill and level still matter most.
+​
