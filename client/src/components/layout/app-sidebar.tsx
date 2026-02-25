@@ -30,6 +30,7 @@ const navItems = [
   { title: "Battle Prep (Gear)", url: "/gear", icon: ShieldAlert },
   { title: "Armory (Upgrade)", url: "/equipment", icon: Sword },
   { title: "Shrine (Gacha)", url: "/gacha", icon: Zap },
+  { title: "Daily Quests", url: "/quests", icon: Sparkles },
   { title: "Campaign (Map)", url: "/map", icon: Map },
 ];
 
