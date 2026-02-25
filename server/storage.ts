@@ -297,12 +297,6 @@ export class DatabaseStorage implements IStorage {
     const user = await this.getUser(userId);
     if (!user) return;
 
-    // Calculate bonuses: 10% of current stats added to permanent pool
-    const bonusAtk = Math.floor(user.attack * 0.1);
-    const bonusDef = Math.floor(user.defense * 0.1);
-    const bonusSpd = Math.floor(user.speed * 0.1);
-    const bonusHp = Math.floor(user.maxHp * 0.1);
-
     await db.transaction(async (tx) => {
       await tx.delete(companions).where(eq(companions.userId, userId));
       await tx.delete(equipment).where(eq(equipment.userId, userId));
@@ -333,10 +327,10 @@ export class DatabaseStorage implements IStorage {
         activeTransformId: null,
         upgradeStones: 0,
         seppukuCount: (user.seppukuCount || 0) + 1,
-        permAttackBonus: (user.permAttackBonus || 0) + bonusAtk,
-        permDefenseBonus: (user.permDefenseBonus || 0) + bonusDef,
-        permSpeedBonus: (user.permSpeedBonus || 0) + bonusSpd,
-        permHpBonus: (user.permHpBonus || 0) + bonusHp,
+        permAttackBonus: 0,
+        permDefenseBonus: 0,
+        permSpeedBonus: 0,
+        permHpBonus: 0,
         updatedAt: new Date()
       }).where(eq(users.id, userId));
     });
