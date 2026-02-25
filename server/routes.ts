@@ -946,8 +946,9 @@ export async function registerRoutes(
     for (let i = 0; i < count; i++) {
       if (count > 1) allLogs.push(`--- BATTLE ${i + 1} ---`);
 
-      // 10% chance for a famous ninja encounter (at most once per skirmish)
-      if (!ninjaEncounteredInThisSkirmish && Math.random() < (locationId >= 100 ? 0.15 : 0.10)) {
+      // Chance reduced from 10/15% to 3/5%
+      // ninjaEncounter check ensures only one encounter per auto-battle session
+      if (!ninjaEncounter && Math.random() < (locationId >= 100 ? 0.05 : 0.03)) {
         ninjaEncounteredInThisSkirmish = true;
         const ninjaNames = locationId >= 100 ? ["Zhuge Liang (Ghost)", "Lu Bu's Spirit", "Empress Wu Zetian"] : ["Hattori Hanzo", "Fuma Kotaro", "Ishikawa Goemon", "Mochizuki Chiyome"];
         const ninjaName = pick(ninjaNames);
