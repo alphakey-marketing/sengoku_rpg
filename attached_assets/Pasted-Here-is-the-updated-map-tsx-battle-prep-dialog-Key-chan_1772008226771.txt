@@ -1,0 +1,353 @@
+Here is the updated `map.tsx` battle prep dialog. Key changes:
+
+1. All HIT/FLEE calculations updated to Classic-RO formulas.
+2. Hit% and Dodge% now computed correctly using the new enemy `hit`/`flee` fields.
+3. Added HIT and FLEE raw value display alongside the %.
+
+***
+
+First, add two helper functions **at the top of your map.tsx file** (outside the component), so you don't repeat the same logic inline:
+
+```ts
+// ── helpers (put above the component) ───────────────────────────────────────
+
+function calcHIT(level: number, dex: number, luk: number): number {
+  return 175 + level + dex + Math.floor(luk / 3);
+}
+
+function calcFLEE(level: number, agi: number, luk: number): number {
+  const fleeA = 100 + level + agi + Math.floor(luk / 5);
+  const perfectDodge = Math.floor(luk / 10);
+  return fleeA + perfectDodge;
+}
+
+function calcHitChance(attackerHIT: number, defenderFLEE: number): number {
+  return Math.max(5, Math.min(95, attackerHIT - defenderFLEE));
+}
+```
+
+***
+
+Now replace the entire `<Dialog>` block with the following:
+
+```tsx
+<Dialog open={preBattleInfo !== null} onOpenChange={(open) => !open && setPreBattleInfo(null)}>
+  <DialogContent className="bg-card border-border text-foreground sm:max-w-md max-h-[90vh] flex flex-col p-0 overflow-hidden">
+    <DialogHeader className="p-4 pb-2">
+      <DialogTitle className="font-display text-xl text-center text-white">Battle Preparation</DialogTitle>
+    </DialogHeader>
+
+    <div className="flex-1 overflow-y-auto p-4 pt-0 space-y-3">
+      <div className="space-y-3">
+
+        {/* ── YOUR TEAM ── */}
+        <div className="space-y-1">
+          <div className="flex justify-between items-center px-1">
+            <h4 className="text-[10px] font-bold text-blue-400 uppercase tracking-widest">Your Team</h4>
+            <span className="text-[9px] text-zinc-500 italic">Slide to switch</span>
+          </div>
+
+          <Carousel className="w-full">
+            <CarouselContent>
+
+              {/* ── Main Player ── */}
+              <CarouselItem>
+                {(() => {
+                  const p = playerStatus?.player as any;
+                  const level  = p?.level  || 1;
+                  const dex    = p?.dex    || 1;
+                  const agi    = p?.agi    || 1;
+                  const luk    = p?.luk    || 1;
+
+                  // enemy RO stats (now provided by backend)
+                  const e      = preBattleInfo?.enemy as any;
+                  const eHit   = e?.hit  ?? (175 + (e?.level || 1));
+                  const eFlee  = e?.flee ?? (100 + (e?.level || 1));
+
+                  // player RO stats
+                  const pHit   = calcHIT(level, dex, luk);
+                  const pFlee  = calcFLEE(level, agi, luk);
+
+                  // hit% = player hitting enemy
+                  const hitPct    = calcHitChance(pHit, eFlee);
+                  // dodge% = player dodging enemy
+                  const dodgePct  = 100 - calcHitChance(eHit, pFlee);
+
+                  return (
+                    <div className="bg-blue-950/20 p-2 rounded border border-blue-900/30">
+                      <div className="flex justify-between items-center mb-1">
+                        <p className="font-bold text-white text-xs truncate">{p?.firstName || 'Warrior'} (You)</p>
+                        <span className="text-[9px] text-zinc-400 font-mono">Lv {level}</span>
+                      </div>
+
+                      {/* Base stats row */}
+                      <div className="grid grid-cols-4 gap-1 mb-2">
+                        <div className="bg-background/40 p-1 rounded text-center">
+                          <span className="text-zinc-500 text-[8px] block uppercase">HP</span>
+                          <span className="text-red-400 font-mono text-xs leading-none">{p?.hp}</span>
+                        </div>
+                        <div className="bg-background/40 p-1 rounded text-center">
+                          <span className="text-zinc-500 text-[8px] block uppercase">ATK</span>
+                          <span className="text-orange-400 font-mono text-xs leading-none">{p?.attack}</span>
+                        </div>
+                        <div className="bg-background/40 p-1 rounded text-center">
+                          <span className="text-zinc-500 text-[8px] block uppercase">DEF</span>
+                          <span className="text-blue-400 font-mono text-xs leading-none">{p?.defense}</span>
+                        </div>
+                        <div className="bg-background/40 p-1 rounded text-center">
+                          <span className="text-zinc-500 text-[8px] block uppercase">SPD</span>
+                          <span className="text-cyan-400 font-mono text-xs leading-none">{p?.speed}</span>
+                        </div>
+                      </div>
+
+                      {/* HIT / FLEE row */}
+                      <div className="grid grid-cols-2 gap-1 mb-2">
+                        <div className="bg-background/40 p-1 rounded text-center">
+                          <span className="text-zinc-500 text-[8px] block uppercase">HIT</span>
+                          <span className="text-green-400 font-mono text-xs leading-none">{pHit}</span>
+                        </div>
+                        <div className="bg-background/40 p-1 rounded text-center">
+                          <span className="text-zinc-500 text-[8px] block uppercase">FLEE</span>
+                          <span className="text-yellow-400 font-mono text-xs leading-none">{pFlee}</span>
+                        </div>
+                      </div>
+
+                      {/* Hit% / Dodge% row */}
+                      <div className="flex justify-between items-center border-t border-blue-900/20 pt-1">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[9px] text-zinc-500 font-bold uppercase">HIT%</span>
+                          <span className="text-primary font-bold text-xs">{hitPct}%</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[9px] text-zinc-500 font-bold uppercase">DODGE%</span>
+                          <span className="text-amber-500 font-bold text-xs">{dodgePct}%</span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </CarouselItem>
+
+              {/* ── Companions ── */}
+              {playerStatus?.companions?.map((companion, index) => (
+                <CarouselItem key={(companion as any).id || index}>
+                  {(() => {
+                    const c      = companion as any;
+                    const level  = c?.level || 1;
+                    const dex    = c?.dex   || 1;
+                    const agi    = c?.agi   || 1;
+                    const luk    = c?.luk   || 1;
+
+                    const e      = preBattleInfo?.enemy as any;
+                    const eHit   = e?.hit  ?? (175 + (e?.level || 1));
+                    const eFlee  = e?.flee ?? (100 + (e?.level || 1));
+
+                    const cHit   = calcHIT(level, dex, luk);
+                    const cFlee  = calcFLEE(level, agi, luk);
+
+                    const hitPct   = calcHitChance(cHit, eFlee);
+                    const dodgePct = 100 - calcHitChance(eHit, cFlee);
+
+                    return (
+                      <div className="bg-blue-950/20 p-2 rounded border border-blue-900/30">
+                        <div className="flex justify-between items-center mb-1">
+                          <p className="font-bold text-white text-xs truncate">{c.name}</p>
+                          <span className="text-[9px] text-zinc-400 font-mono">Lv {level}</span>
+                        </div>
+
+                        <div className="grid grid-cols-4 gap-1 mb-2">
+                          <div className="bg-background/40 p-1 rounded text-center">
+                            <span className="text-zinc-500 text-[8px] block uppercase">HP</span>
+                            <span className="text-red-400 font-mono text-xs leading-none">{c.hp}</span>
+                          </div>
+                          <div className="bg-background/40 p-1 rounded text-center">
+                            <span className="text-zinc-500 text-[8px] block uppercase">ATK</span>
+                            <span className="text-orange-400 font-mono text-xs leading-none">{c.attack}</span>
+                          </div>
+                          <div className="bg-background/40 p-1 rounded text-center">
+                            <span className="text-zinc-500 text-[8px] block uppercase">DEF</span>
+                            <span className="text-blue-400 font-mono text-xs leading-none">{c.defense}</span>
+                          </div>
+                          <div className="bg-background/40 p-1 rounded text-center">
+                            <span className="text-zinc-500 text-[8px] block uppercase">SPD</span>
+                            <span className="text-cyan-400 font-mono text-xs leading-none">{c.speed}</span>
+                          </div>
+                        </div>
+
+                        {/* HIT / FLEE row */}
+                        <div className="grid grid-cols-2 gap-1 mb-2">
+                          <div className="bg-background/40 p-1 rounded text-center">
+                            <span className="text-zinc-500 text-[8px] block uppercase">HIT</span>
+                            <span className="text-green-400 font-mono text-xs leading-none">{cHit}</span>
+                          </div>
+                          <div className="bg-background/40 p-1 rounded text-center">
+                            <span className="text-zinc-500 text-[8px] block uppercase">FLEE</span>
+                            <span className="text-yellow-400 font-mono text-xs leading-none">{cFlee}</span>
+                          </div>
+                        </div>
+
+                        <div className="flex justify-between items-center border-t border-blue-900/20 pt-1">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[9px] text-zinc-500 font-bold uppercase">HIT%</span>
+                            <span className="text-primary font-bold text-xs">{hitPct}%</span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[9px] text-zinc-500 font-bold uppercase">DODGE%</span>
+                            <span className="text-amber-500 font-bold text-xs">{dodgePct}%</span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </CarouselItem>
+              ))}
+
+            </CarouselContent>
+            {playerStatus?.companions && playerStatus.companions.length > 0 && (
+              <>
+                <CarouselPrevious className="left-1 h-5 w-5 bg-background/50 border-none hover:bg-background/80" />
+                <CarouselNext className="right-1 h-5 w-5 bg-background/50 border-none hover:bg-background/80" />
+              </>
+            )}
+          </Carousel>
+        </div>
+
+        {/* ── VS DIVIDER ── */}
+        <div className="relative flex items-center justify-center">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-border/20"></div>
+          </div>
+          <span className="relative px-2 bg-card text-[9px] font-bold text-zinc-600 uppercase italic">VS</span>
+        </div>
+
+        {/* ── ENEMY ── */}
+        <div className="space-y-1">
+          <h4 className="text-[10px] font-bold text-red-400 uppercase tracking-widest px-1 text-right">Enemy</h4>
+
+          {(() => {
+            const e      = preBattleInfo?.enemy as any;
+            const eLevel = e?.level || 1;
+            const eDex   = e?.dex   || eLevel;
+            const eAgi   = e?.agi   || eLevel;
+            const eLuk   = e?.luk   || 1;
+
+            // Use backend-provided hit/flee if present, fallback to formula
+            const eHit   = e?.hit  ?? calcHIT(eLevel, eDex, eLuk);
+            const eFlee  = e?.flee ?? calcFLEE(eLevel, eAgi, eLuk);
+
+            // vs main player
+            const p      = playerStatus?.player as any;
+            const pLevel = p?.level || 1;
+            const pDex   = p?.dex   || 1;
+            const pAgi   = p?.agi   || 1;
+            const pLuk   = p?.luk   || 1;
+            const pHit   = calcHIT(pLevel, pDex, pLuk);
+            const pFlee  = calcFLEE(pLevel, pAgi, pLuk);
+
+            // enemy hitting player
+            const eHitPct   = calcHitChance(eHit, pFlee);
+            // enemy dodging player
+            const eDodgePct = 100 - calcHitChance(pHit, eFlee);
+
+            return (
+              <div className="bg-red-950/20 p-2 rounded border border-red-900/30">
+                <div className="flex justify-between items-center mb-1">
+                  <p className="font-bold text-white text-xs truncate">{e?.name}</p>
+                  <span className="text-[9px] text-zinc-400 font-mono">Lv {eLevel}</span>
+                </div>
+
+                <div className="grid grid-cols-4 gap-1 mb-2">
+                  <div className="bg-background/40 p-1 rounded text-center">
+                    <span className="text-zinc-500 text-[8px] block uppercase">HP</span>
+                    <span className="text-red-400 font-mono text-xs leading-none">{e?.hp}</span>
+                  </div>
+                  <div className="bg-background/40 p-1 rounded text-center">
+                    <span className="text-zinc-500 text-[8px] block uppercase">ATK</span>
+                    <span className="text-orange-400 font-mono text-xs leading-none">{e?.attack}</span>
+                  </div>
+                  <div className="bg-background/40 p-1 rounded text-center">
+                    <span className="text-zinc-500 text-[8px] block uppercase">DEF</span>
+                    <span className="text-blue-400 font-mono text-xs leading-none">{e?.defense}</span>
+                  </div>
+                  <div className="bg-background/40 p-1 rounded text-center">
+                    <span className="text-zinc-500 text-[8px] block uppercase">SPD</span>
+                    <span className="text-cyan-400 font-mono text-xs leading-none">{e?.speed}</span>
+                  </div>
+                </div>
+
+                {/* Enemy HIT / FLEE row */}
+                <div className="grid grid-cols-2 gap-1 mb-2">
+                  <div className="bg-background/40 p-1 rounded text-center">
+                    <span className="text-zinc-500 text-[8px] block uppercase">HIT</span>
+                    <span className="text-green-400 font-mono text-xs leading-none">{eHit}</span>
+                  </div>
+                  <div className="bg-background/40 p-1 rounded text-center">
+                    <span className="text-zinc-500 text-[8px] block uppercase">FLEE</span>
+                    <span className="text-yellow-400 font-mono text-xs leading-none">{eFlee}</span>
+                  </div>
+                </div>
+
+                {/* Enemy HIT% / DODGE% vs your main player */}
+                <div className="flex justify-between items-center border-t border-red-900/20 pt-1">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[9px] text-zinc-500 font-bold uppercase">HIT%</span>
+                    <span className="text-red-500 font-bold text-xs">{eHitPct}%</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[9px] text-zinc-500 font-bold uppercase">DODGE%</span>
+                    <span className="text-amber-500 font-bold text-xs">{eDodgePct}%</span>
+                  </div>
+                </div>
+
+                {/* small note */}
+                <p className="text-[8px] text-zinc-600 text-right pt-1 italic">
+                  HIT%/DODGE% shown vs your character
+                </p>
+              </div>
+            );
+          })()}
+        </div>
+      </div>
+
+      {preBattleInfo?.type === 'field' && (
+        <div className="pt-2 border-t border-border/20 px-4">
+          <div className="flex justify-between items-center mb-1">
+            <span className="text-[10px] font-bold text-white uppercase">Repeat X{preBattleInfo.repeatCount}</span>
+          </div>
+          <Slider
+            defaultValue={[1]}
+            max={10}
+            min={1}
+            step={1}
+            onValueChange={(val) => setPreBattleInfo({ ...preBattleInfo, repeatCount: val[0] })}
+            className="py-2"
+          />
+        </div>
+      )}
+
+      <DialogFooter className="p-4 pt-2 gap-2 sm:gap-0 flex-row">
+        <Button variant="ghost" onClick={() => setPreBattleInfo(null)} className="flex-1 h-9 text-xs">Withdraw</Button>
+        <Button onClick={handleBattle} className="flex-1 h-9 bg-primary hover:bg-primary/80 text-black font-bold text-xs">Charge!</Button>
+      </DialogFooter>
+    </div>
+  </DialogContent>
+</Dialog>
+```
+
+***
+
+### Summary of changes for IT
+
+1. **Add 3 helper functions** above the component: `calcHIT`, `calcFLEE`, `calcHitChance`. These replace all inline formulas.
+
+2. **HIT/FLEE formulas updated** to Classic-RO style everywhere:
+   - `HIT = 175 + level + DEX + floor(LUK/3)`
+   - `FLEE = 100 + level + AGI + floor(LUK/5) + floor(LUK/10)`
+
+3. **Enemy HIT/FLEE** now reads directly from backend fields `e?.hit` and `e?.flee` (set by your updated `generateEnemyStats`), with formula fallback if those fields are missing.
+
+4. **New HIT/FLEE value row** added to all cards (player, companions, enemy) showing raw numbers in green/yellow.
+
+5. **Hit% and Dodge%** renamed to `HIT%` / `DODGE%` for clarity, and computed correctly using the shared helpers.
+
+6. **Enemy HIT%/DODGE%** shown vs main player stats (not per companion), with a small italic note clarifying this.
