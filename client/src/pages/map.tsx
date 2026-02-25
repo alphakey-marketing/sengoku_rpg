@@ -394,9 +394,15 @@ export default function MapPage() {
                             <span className="text-[9px] text-zinc-500 font-bold uppercase">HIT</span>
                             <span className="text-primary font-bold text-xs">
                               {(() => {
-                                const hit = (playerStatus?.player?.attack || 0) + (playerStatus?.player?.speed || 0);
-                                const flee = (preBattleInfo?.enemy?.defense || 0) + (preBattleInfo?.enemy?.speed || 0);
-                                const dodge = Math.max(0, Math.min(95, 100 - (hit + 80 - flee)));
+                                const level = playerStatus?.player?.level || 1;
+                                const attack = playerStatus?.player?.attack || 0;
+                                const speed = playerStatus?.player?.speed || 0;
+                                const hit = 100 + (level * 2) + (attack * 1.5);
+                                
+                                const eLevel = preBattleInfo?.enemy?.level || 1;
+                                const flee = eLevel * 3;
+                                
+                                const dodge = Math.max(5, Math.min(95, 100 - (hit + 80 - flee)));
                                 return `${100 - dodge}%`;
                               })()}
                             </span>
@@ -405,13 +411,14 @@ export default function MapPage() {
                             <span className="text-[9px] text-zinc-500 font-bold uppercase">DODGE</span>
                             <span className="text-amber-500 font-bold text-xs">
                               {(() => {
-                                const eAtk = preBattleInfo?.enemy?.attack || 0;
-                                const eSpd = preBattleInfo?.enemy?.speed || 0;
-                                const eHit = eAtk + eSpd;
-                                const pDef = playerStatus?.player?.defense || 0;
-                                const pSpd = playerStatus?.player?.speed || 0;
-                                const pFlee = pDef + pSpd;
-                                const dodge = Math.max(0, Math.min(95, 100 - (eHit + 80 - pFlee)));
+                                const eLevel = preBattleInfo?.enemy?.level || 1;
+                                const hit = eLevel * 3;
+                                
+                                const level = playerStatus?.player?.level || 1;
+                                const speed = playerStatus?.player?.speed || 0;
+                                const flee = 100 + (level * 1) + (speed * 1.5);
+                                
+                                const dodge = Math.max(5, Math.min(95, 100 - (hit + 80 - flee)));
                                 return `${dodge}%`;
                               })()}
                             </span>
@@ -451,9 +458,14 @@ export default function MapPage() {
                               <span className="text-[9px] text-zinc-500 font-bold uppercase">HIT</span>
                               <span className="text-primary font-bold text-xs">
                                 {(() => {
-                                  const hit = (companion.attack || 0) + (companion.speed || 0);
-                                  const flee = (preBattleInfo?.enemy?.defense || 0) + (preBattleInfo?.enemy?.speed || 0);
-                                  const dodge = Math.max(0, Math.min(95, 100 - (hit + 80 - flee)));
+                                  const level = companion.level || 1;
+                                  const attack = companion.attack || 0;
+                                  const hit = 100 + (level * 2) + (attack * 1.5);
+                                  
+                                  const eLevel = preBattleInfo?.enemy?.level || 1;
+                                  const flee = eLevel * 3;
+                                  
+                                  const dodge = Math.max(5, Math.min(95, 100 - (hit + 80 - flee)));
                                   return `${100 - dodge}%`;
                                 })()}
                                 </span>
@@ -462,13 +474,14 @@ export default function MapPage() {
                               <span className="text-[9px] text-zinc-500 font-bold uppercase">DODGE</span>
                               <span className="text-amber-500 font-bold text-xs">
                                 {(() => {
-                                  const eAtk = preBattleInfo?.enemy?.attack || 0;
-                                  const eSpd = preBattleInfo?.enemy?.speed || 0;
-                                  const eHit = eAtk + eSpd;
-                                  const cDef = companion.defense || 0;
-                                  const cSpd = companion.speed || 0;
-                                  const cFlee = cDef + cSpd;
-                                  const dodge = Math.max(0, Math.min(95, 100 - (eHit + 80 - cFlee)));
+                                  const eLevel = preBattleInfo?.enemy?.level || 1;
+                                  const hit = eLevel * 3;
+                                  
+                                  const level = companion.level || 1;
+                                  const speed = companion.speed || 0;
+                                  const flee = 100 + (level * 1) + (speed * 1.5);
+                                  
+                                  const dodge = Math.max(5, Math.min(95, 100 - (hit + 80 - flee)));
                                   return `${dodge}%`;
                                 })()}
                               </span>
@@ -524,13 +537,14 @@ export default function MapPage() {
                       <span className="text-[9px] text-zinc-500 font-bold uppercase">HIT</span>
                       <span className="text-red-500 font-bold text-xs">
                         {(() => {
-                          const eAtk = preBattleInfo?.enemy?.attack || 0;
-                          const eSpd = preBattleInfo?.enemy?.speed || 0;
-                          const eHit = eAtk + eSpd;
-                          const pDef = playerStatus?.player?.defense || 0;
-                          const pSpd = playerStatus?.player?.speed || 0;
-                          const pFlee = pDef + pSpd;
-                          const dodge = Math.max(0, Math.min(95, 100 - (eHit + 80 - pFlee)));
+                          const eLevel = preBattleInfo?.enemy?.level || 1;
+                          const hit = eLevel * 3;
+                          
+                          const pLevel = playerStatus?.player?.level || 1;
+                          const pSpeed = playerStatus?.player?.speed || 0;
+                          const flee = 100 + (pLevel * 1) + (pSpeed * 1.5);
+                          
+                          const dodge = Math.max(5, Math.min(95, 100 - (hit + 80 - flee)));
                           return `${100 - dodge}%`;
                         })()}
                       </span>
@@ -539,13 +553,14 @@ export default function MapPage() {
                       <span className="text-[9px] text-zinc-500 font-bold uppercase">DODGE</span>
                       <span className="text-amber-500 font-bold text-xs">
                         {(() => {
+                          const pLevel = playerStatus?.player?.level || 1;
                           const pAtk = playerStatus?.player?.attack || 0;
-                          const pSpd = playerStatus?.player?.speed || 0;
-                          const pHit = pAtk + pSpd;
-                          const eDef = preBattleInfo?.enemy?.defense || 0;
-                          const eSpd = preBattleInfo?.enemy?.speed || 0;
-                          const eFlee = eDef + eSpd;
-                          const dodge = Math.max(0, Math.min(95, 100 - (pHit + 80 - eFlee)));
+                          const hit = 100 + (pLevel * 2) + (pAtk * 1.5);
+                          
+                          const eLevel = preBattleInfo?.enemy?.level || 1;
+                          const flee = eLevel * 3;
+                          
+                          const dodge = Math.max(5, Math.min(95, 100 - (hit + 80 - flee)));
                           return `${dodge}%`;
                         })()}
                       </span>

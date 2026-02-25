@@ -22,14 +22,13 @@ export interface CombatUnit {
 
 export function calculateHitChance(attacker: CombatUnit, defender: CombatUnit): number {
   // Accuracy Calculation based on user's specific RO-inspired formula
-  // Dodge Rate (%) = 100 − (Attacker HIT + 80 − Defender FLEE)
-  // Hit Chance (%) = 100 − Dodge Rate
+  // Hit Chance % = 100 − (AttackerHIT + 80 − DefenderFLEE), clamped 5–95%
   
-  const attackerHit = attacker.hit ?? (attacker.attack + attacker.speed);
-  const defenderFlee = defender.flee ?? (defender.defense + defender.speed);
+  const attackerHit = attacker.hit ?? 0;
+  const defenderFlee = defender.flee ?? 0;
   
   const dodgeRateRaw = 100 - (attackerHit + 80 - defenderFlee);
-  const dodgeRate = Math.max(0, Math.min(95, dodgeRateRaw));
+  const dodgeRate = Math.max(5, Math.min(95, dodgeRateRaw));
   
   const hitChance = 100 - dodgeRate;
   return hitChance;
@@ -67,8 +66,12 @@ export function runTurnBasedCombat(playerTeam: TeamStats, enemies: EnemyStats[])
       attack: Number(playerTeam.player.attack) || 0,
       defense: Number(playerTeam.player.defense) || 0,
       speed: Number(playerTeam.player.speed) || 0,
-      hit: (Number(playerTeam.player.attack) || 0) + (Number(playerTeam.player.speed) || 0),
-      flee: (Number(playerTeam.player.defense) || 0) + (Number(playerTeam.player.speed) || 0),
+      // Player Base HIT = 100 + (Level × 2) + (DEX × 1.5)
+      // Using attack as DEX proxy for now as DEX isn't in schema yet
+      hit: 100 + (Number(playerTeam.player.level) * 2) + (Number(playerTeam.player.attack) * 1.5),
+      // Player Base FLEE = 100 + (Level × 1) + (AGI × 1.5) 
+      // Using speed as AGI proxy
+      flee: 100 + (Number(playerTeam.player.level) * 1) + (Number(playerTeam.player.speed) * 1.5),
       critChance: Number((playerTeam.player as any).critChance) || 0,
       critDamage: Number((playerTeam.player as any).critDamage) || 0,
       isPlayer: true,
@@ -88,8 +91,8 @@ export function runTurnBasedCombat(playerTeam: TeamStats, enemies: EnemyStats[])
         attack: Number(c.attack) || 0,
         defense: Number(c.defense) || 0,
         speed: Number(c.speed) || 0,
-        hit: (Number(c.attack) || 0) + (Number(c.speed) || 0),
-        flee: (Number(c.defense) || 0) + (Number(c.speed) || 0),
+        hit: 100 + (Number(c.level) * 2) + (Number(c.attack) * 1.5),
+        flee: 100 + (Number(c.level) * 1) + (Number(c.speed) * 1.5),
         critChance: Number((c as any).critChance) || 0,
         critDamage: Number((c as any).critDamage) || 0,
         isPlayer: true,
@@ -109,8 +112,10 @@ export function runTurnBasedCombat(playerTeam: TeamStats, enemies: EnemyStats[])
       attack: Number(e.attack) || 0,
       defense: Number(e.defense) || 0,
       speed: Number(e.speed) || 0,
-      hit: (Number(e.attack) || 0) + (Number(e.speed) || 0),
-      flee: (Number(e.defense) || 0) + (Number(e.speed) || 0),
+      // Enemy HIT = Enemy Level × 3
+      hit: Number(e.level) * 3,
+      // Enemy FLEE = Enemy Level × 3 (Adjusted per recommendation to keep fair fight ~75%)
+      flee: Number(e.level) * 3,
       isPlayer: false,
       statusEffects: [],
       isGuarding: false,
