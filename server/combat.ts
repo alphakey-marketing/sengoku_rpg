@@ -8,6 +8,23 @@ export interface CombatUnit {
   attack: number;
   defense: number;
   speed: number;
+
+  // New RO Stats
+  str?: number;
+  agi?: number;
+  vit?: number;
+  int?: number;
+  dex?: number;
+  luk?: number;
+
+  hardDEF?: number;
+  softDEF?: number;
+
+  weaponATK?: number;
+  weaponLevel?: number;
+  refinementBonus?: number;
+  bonusATK?: number;
+
   hit?: number;
   flee?: number;
   critChance: number;
@@ -21,88 +38,178 @@ export interface CombatUnit {
 }
 
 export function calculateHitChance(attacker: CombatUnit, defender: CombatUnit): number {
-  // Accuracy Calculation based on RO-inspired formula
-  // HitChance = max(5%, min(95%, HIT_attacker − FLEE_defender))
-  
   const attackerHit = attacker.hit ?? 0;
   const defenderFlee = defender.flee ?? 0;
-  
-  const hitChance = Math.max(5, Math.min(95, attackerHit - defenderFlee));
+  let hitChance = attackerHit - defenderFlee;
+  if (hitChance < 5) hitChance = 5;
+  if (hitChance > 95) hitChance = 95;
   return hitChance;
 }
 
-export function calculateDamage(attacker: CombatUnit, defender: CombatUnit, isCritical: boolean = false) {
-  let baseDamage = Number(attacker.attack) || 0;
-  // Critical modifier: 1.5x base + critical damage from equipment
-  let critMod = isCritical ? (1.5 + ((Number(attacker.critDamage) || 0) / 100)) : 1.0;
-  
-  // Endowment points provide 0.5% damage reduction per point, capped at 35% (70 points)
+function getStatusATK(attacker: CombatUnit, isRanged: boolean): number {
+  const lv = (attacker as any).level ?? 1;
+  const STR = attacker.str ?? 1;
+  const DEX = attacker.dex ?? 1;
+  const LUK = attacker.luk ?? 1;
+
+  if (!isRanged) {
+    return Math.floor(lv / 4) + STR + Math.floor(DEX / 5) + Math.floor(LUK / 3);
+  } else {
+    return Math.floor(lv / 4) + Math.floor(STR / 5) + DEX + Math.floor(LUK / 3);
+  }
+}
+
+function getWeaponRoll(attacker: CombatUnit): number {
+  const baseWeaponATK = attacker.weaponATK ?? attacker.attack ?? 0;
+  const weaponLevel = attacker.weaponLevel ?? 1;
+  const varianceRange = 0.05 * weaponLevel * baseWeaponATK;
+  const variance = (Math.random() * 2 * varianceRange) - varianceRange;
+  const refinementBonus = attacker.refinementBonus ?? 0;
+  const bonusATK = attacker.bonusATK ?? 0;
+  return Math.floor(baseWeaponATK + variance + refinementBonus + bonusATK);
+}
+
+function getTotalATK(attacker: CombatUnit, isRanged: boolean): number {
+  const statusATK = getStatusATK(attacker, isRanged);
+  const weaponRoll = getWeaponRoll(attacker);
+  return statusATK + weaponRoll;
+}
+
+export function calculateDamage(
+  attacker: CombatUnit,
+  defender: CombatUnit,
+  isCritical: boolean = false,
+  isRanged: boolean = false
+) {
+  const rawATK = getTotalATK(attacker, isRanged);
+  let damage = rawATK;
+
+  const hardDEF = defender.hardDEF ?? defender.defense ?? 0;
+  const hardFactor = 100 / (100 + Math.max(0, hardDEF));
+  damage = Math.floor(damage * hardFactor);
+
+  const VIT = defender.vit ?? 1;
+  const AGI = defender.agi ?? 1;
+  const softFromStats = Math.floor(VIT / 2) + Math.floor(AGI / 5);
+  const extraSoft = defender.softDEF ?? 0;
+  const softDEF = softFromStats + extraSoft;
+
+  damage = damage - softDEF;
+  if (damage < 1) damage = 1;
+
+  if (isCritical) {
+    const critBonus = attacker.critDamage ?? 0;
+    const critMult = 1.5 + (critBonus / 100);
+    damage = Math.floor(damage * critMult);
+  }
+
   const endowmentPoints = Number((defender as any).endowmentPoints) || 0;
   const damageReduction = Math.min(0.35, (endowmentPoints * 0.5) / 100);
-  
-  // Final Damage = Base Damage × (ATK / Enemy DEF) × Critical Modifier × (1 - Damage Reduction)
-  const defenderDefense = Math.max(1, Number(defender.defense) || 1);
-  let damage = Math.floor(baseDamage * (baseDamage / defenderDefense) * critMod * (1 - damageReduction));
-  
+  damage = Math.floor(damage * (1 - damageReduction));
+
   if (defender.isGuarding) {
     damage = Math.floor(damage * 0.7);
   }
-  
-  return Math.max(1, damage);
+
+  if (damage < 1) damage = 1;
+  return damage;
 }
 
 export function runTurnBasedCombat(playerTeam: TeamStats, enemies: EnemyStats[]) {
   const logs: string[] = [];
   const units: CombatUnit[] = [];
-  
+
+  units.push({
+    id: 'player',
+    name: playerTeam.player.name,
+    hp: Number(playerTeam.player.hp) || 0,
+    maxHp: Number(playerTeam.player.maxHp) || 0,
+    attack: Number(playerTeam.player.attack) || 0,
+    defense: Number(playerTeam.player.defense) || 0,
+    speed: Number(playerTeam.player.speed) || 0,
+    str: Number((playerTeam.player as any).str || 1),
+    agi: Number((playerTeam.player as any).agi || 1),
+    vit: Number((playerTeam.player as any).vit || 1),
+    int: Number((playerTeam.player as any).int || 1),
+    dex: Number((playerTeam.player as any).dex || 1),
+    luk: Number((playerTeam.player as any).luk || 1),
+    hardDEF: Number(playerTeam.player.defense) || 0,
+    softDEF: 0,
+    weaponATK: Number(playerTeam.player.attack) || 0,
+    weaponLevel: 1,
+    refinementBonus: 0,
+    bonusATK: 0,
+    hit: ((): number => {
+      const lv = Number((playerTeam.player as any).level || 1);
+      const DEX = Number((playerTeam.player as any).dex || 1);
+      const LUK = Number((playerTeam.player as any).luk || 1);
+      return 175 + lv + DEX + Math.floor(LUK / 3);
+    })(),
+    flee: ((): number => {
+      const lv = Number((playerTeam.player as any).level || 1);
+      const AGI = Number((playerTeam.player as any).agi || 1);
+      const LUK = Number((playerTeam.player as any).luk || 1);
+      const fleeA = 100 + lv + AGI + Math.floor(LUK / 5);
+      const perfectDodge = Math.floor(LUK / 10);
+      return fleeA + perfectDodge;
+    })(),
+    critChance: Number((playerTeam.player as any).critChance) || 0,
+    critDamage: Number((playerTeam.player as any).critDamage) || 0,
+    isPlayer: true,
+    stamina: 100,
+    maxStamina: 100,
+    statusEffects: [],
+    isGuarding: false,
+    endowmentPoints: Number((playerTeam.player as any).endowmentPoints) || 0,
+    level: Number((playerTeam.player as any).level || 1)
+  } as any);
+
+  playerTeam.companions.forEach((c, i) => {
+    const cLevel = Number(c.level) || 1;
+    const cDEX = Number((c as any).dex || 10);
+    const cAGI = Number((c as any).agi || 10);
+    const cLUK = Number((c as any).luk || 1);
     units.push({
-      id: 'player',
-      name: playerTeam.player.name,
-      hp: Number(playerTeam.player.hp) || 0,
-      maxHp: Number(playerTeam.player.maxHp) || 0,
-      attack: Number(playerTeam.player.attack) || 0,
-      defense: Number(playerTeam.player.defense) || 0,
-      speed: Number(playerTeam.player.speed) || 0,
-      str: Number((playerTeam.player as any).str || 1),
-      agi: Number((playerTeam.player as any).agi || 1),
-      vit: Number((playerTeam.player as any).vit || 1),
-      int: Number((playerTeam.player as any).int || 1),
-      dex: Number((playerTeam.player as any).dex || 1),
-      luk: Number((playerTeam.player as any).luk || 1),
-      hit: 100 + (Number(playerTeam.player.level) * 2) + (Number((playerTeam.player as any).dex || 1) * 1.5),
-      flee: 100 + (Number(playerTeam.player.level) * 1) + (Number((playerTeam.player as any).agi || 1) * 1.5),
-      critChance: Number((playerTeam.player as any).critChance) || 0,
-      critDamage: Number((playerTeam.player as any).critDamage) || 0,
+      id: `comp-${i}`,
+      name: c.name,
+      hp: Number(c.hp) || 0,
+      maxHp: Number(c.maxHp) || 0,
+      attack: Number(c.attack) || 0,
+      defense: Number(c.defense) || 0,
+      speed: Number(c.speed) || 0,
+      str: Number((c as any).str || 10),
+      agi: cAGI,
+      vit: Number((c as any).vit || 10),
+      int: Number((c as any).int || 10),
+      dex: cDEX,
+      luk: cLUK,
+      hardDEF: Number(c.defense) || 0,
+      softDEF: 0,
+      weaponATK: Number(c.attack) || 0,
+      weaponLevel: 1,
+      refinementBonus: 0,
+      bonusATK: 0,
+      hit: 175 + cLevel + cDEX + Math.floor(cLUK / 3),
+      flee: ((): number => {
+        const fleeA = 100 + cLevel + cAGI + Math.floor(cLUK / 5);
+        const perfectDodge = Math.floor(cLUK / 10);
+        return fleeA + perfectDodge;
+      })(),
+      critChance: Number((c as any).critChance) || 0,
+      critDamage: Number((c as any).critDamage) || 0,
       isPlayer: true,
-      stamina: 100,
-      maxStamina: 100,
       statusEffects: [],
       isGuarding: false,
-      endowmentPoints: Number((playerTeam.player as any).endowmentPoints) || 0
+      endowmentPoints: Number((c as any).endowmentPoints) || 0,
+      level: cLevel
     } as any);
+  });
 
-    playerTeam.companions.forEach((c, i) => {
-      units.push({
-        id: `comp-${i}`,
-        name: c.name,
-        hp: Number(c.hp) || 0,
-        maxHp: Number(c.maxHp) || 0,
-        attack: Number(c.attack) || 0,
-        defense: Number(c.defense) || 0,
-        speed: Number(c.speed) || 0,
-        hit: 100 + (Number(c.level) * 2) + (Number((c as any).dex || 10) * 1.5),
-        flee: 100 + (Number(c.level) * 1) + (Number((c as any).agi || 10) * 1.5),
-        critChance: Number((c as any).critChance) || 0,
-        critDamage: Number((c as any).critDamage) || 0,
-        isPlayer: true,
-        statusEffects: [],
-        isGuarding: false,
-        endowmentPoints: Number((c as any).endowmentPoints) || 0
-      } as any);
-    });
-  
-  // Initialize enemies
   enemies.forEach((e, i) => {
+    const eLevel = Number(e.level) || 1;
+    const eDEX = Number((e as any).dex || eLevel);
+    const eAGI = Number((e as any).agi || eLevel);
+    const eLUK = Number((e as any).luk || 1);
     units.push({
       id: `enemy-${i}`,
       name: e.name,
@@ -111,43 +218,54 @@ export function runTurnBasedCombat(playerTeam: TeamStats, enemies: EnemyStats[])
       attack: Number(e.attack) || 0,
       defense: Number(e.defense) || 0,
       speed: Number(e.speed) || 0,
-      hit: Number(e.level) * 3,
-      flee: Number(e.level) * 3,
+      str: Number((e as any).str || eLevel),
+      agi: eAGI,
+      vit: Number((e as any).vit || eLevel),
+      int: Number((e as any).int || eLevel),
+      dex: eDEX,
+      luk: eLUK,
+      hardDEF: Number(e.defense) || 0,
+      softDEF: 0,
+      weaponATK: Number(e.attack) || 0,
+      weaponLevel: 1,
+      refinementBonus: 0,
+      bonusATK: 0,
+      hit: 175 + eLevel + eDEX + Math.floor(eLUK / 3),
+      flee: ((): number => {
+        const fleeA = 100 + eLevel + eAGI + Math.floor(eLUK / 5);
+        const perfectDodge = Math.floor(eLUK / 10);
+        return fleeA + perfectDodge;
+      })(),
       isPlayer: false,
       statusEffects: [],
       isGuarding: false,
       critChance: 0,
-      critDamage: 0
-    });
+      critDamage: 0,
+      level: eLevel
+    } as any);
   });
 
   let turn = 0;
   const maxTurns = 20;
-  
+
   while (turn < maxTurns) {
     turn++;
     logs.push(`--- TURN ${turn} ---`);
-    
-    // Initiative Phase: Sort by speed
     units.sort((a, b) => b.speed - a.speed);
-    
+
     for (const unit of units) {
       if (unit.hp <= 0) continue;
-
-      // Check if any enemies are still alive before this unit takes its turn
       const enemyAlive = units.filter(u => !u.isPlayer && u.hp > 0).length > 0;
       const playerAlive = units.filter(u => u.isPlayer && u.hp > 0).length > 0;
       if (!enemyAlive || !playerAlive) break;
-      
-      // Check for Stun
+
       const stun = unit.statusEffects.find(s => s.type === 'Stun');
       if (stun) {
         logs.push(`${unit.name} is stunned and skips turn!`);
         unit.statusEffects = unit.statusEffects.filter(s => s.type !== 'Stun');
         continue;
       }
-      
-      // Resolution Phase: Apply DOTs
+
       const poison = unit.statusEffects.find(s => s.type === 'Poison');
       if (poison) {
         const dot = Math.floor(unit.maxHp * 0.05);
@@ -159,46 +277,38 @@ export function runTurnBasedCombat(playerTeam: TeamStats, enemies: EnemyStats[])
         }
       }
 
-      // Simple AI for everyone for now (simulating turn flow)
       const targets = units.filter(u => u.isPlayer !== unit.isPlayer && u.hp > 0);
       if (targets.length === 0) break;
-      
       const target = targets[Math.floor(Math.random() * targets.length)];
-      
-      // Hit/Flee Check
+
       const hitChance = calculateHitChance(unit, target);
       const roll = Math.random() * 100;
-      
+
       if (roll > hitChance) {
         logs.push(`${unit.name} attacks ${target.name} but MISSES!`);
       } else {
-        // Critical chance: 5% base + critChance from equipment
         const critChance = (unit.critChance || 0) + 5;
         const isCrit = (Math.random() * 100) < critChance;
-        const damage = calculateDamage(unit, target, isCrit);
-        
+        const isRanged = false; 
+        const damage = calculateDamage(unit, target, isCrit, isRanged);
         target.hp -= damage;
         logs.push(`${unit.name} attacks ${target.name} for ${damage}${isCrit ? ' (CRITICAL!)' : ''} damage.`);
       }
-      
-      // Status Proc simulation
+
       if (unit.name.includes("Ninja") && Math.random() < 0.3) {
         target.statusEffects.push({ type: 'Stun', duration: 1 });
         logs.push(`${target.name} was stunned by the strike!`);
       }
-      
+
       if (target.hp <= 0) {
         logs.push(`${target.name} has been KO'd!`);
       }
-      
-      // Reset guard
       unit.isGuarding = false;
     }
-    
-    // Check Victory/Defeat
+
     const playerAlive = units.filter(u => u.isPlayer && u.hp > 0).length > 0;
     const enemyAlive = units.filter(u => !u.isPlayer && u.hp > 0).length > 0;
-    
+
     if (!enemyAlive) {
       logs.push("Victory! All enemies defeated.");
       return { victory: true, logs, turn };
@@ -208,7 +318,7 @@ export function runTurnBasedCombat(playerTeam: TeamStats, enemies: EnemyStats[])
       return { victory: false, logs, turn };
     }
   }
-  
+
   logs.push("Timeout! Battle exceeded 20 turns.");
   return { victory: false, logs, turn, timeout: true };
 }

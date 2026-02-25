@@ -354,9 +354,12 @@ async function getPlayerTeamStats(userId: string) {
     const critRate = 0.3 * LUK;
 
     // Final calculations for the response
-    let attack = user.attack + totalAtkBonus + (user.permAttackBonus || 0) + statusATK;
-    let defense = user.defense + totalDefBonus + (user.permDefenseBonus || 0) + softDEF;
-    let speed = user.speed + totalSpdBonus + (user.permSpeedBonus || 0) + Math.floor(AGI / 2); // Simplified ASPD influence
+    let attack = user.attack + totalAtkBonus + (user.permAttackBonus || 0);
+    let defense = user.defense + totalDefBonus + (user.permDefenseBonus || 0);
+    let speed = user.speed + totalSpdBonus + (user.permSpeedBonus || 0) + Math.floor(AGI / 2); 
+    
+    // StatusATK and softDEF are handled in combat.ts using the raw stats (STR, AGI, etc.)
+    // We pass the raw base attack/defense which will be used as weaponATK/hardDEF
     
     // MaxHP = ClassBaseHP(BaseLv) * (1 + 0.01 * VIT) + gearHP
     // Using user.maxHp as ClassBaseHP
@@ -365,7 +368,7 @@ async function getPlayerTeamStats(userId: string) {
     
     // MaxSP = ClassBaseSP(BaseLv) * (1 + 0.01 * INT) + gearSP
     // Assuming base SP logic or adding to schema if needed, for now we use a derived value or just pass it
-    const maxSp = Math.floor(100 * (1 + 0.01 * INT)); // Placeholder base SP 100
+    const maxSp = Math.floor(100 * (1 + 0.01 * INT)); 
 
     // Apply transformation bonuses
     if (activeTransform) {
@@ -384,8 +387,8 @@ async function getPlayerTeamStats(userId: string) {
         level: user.level,
         hp,
         maxHp,
-        attack,
-        defense,
+        attack, // This acts as base weapon attack
+        defense, // This acts as hard defense
         speed,
         str: STR,
         agi: AGI,
@@ -393,7 +396,7 @@ async function getPlayerTeamStats(userId: string) {
         int: INT,
         dex: DEX,
         luk: LUK,
-        strBonus: 0, // Placeholder for future gear/food bonuses
+        strBonus: 0, 
         agiBonus: 0,
         vitBonus: 0,
         intBonus: 0,
@@ -428,11 +431,17 @@ async function getPlayerTeamStats(userId: string) {
       const cDefBonus = compEquipped.reduce((s, e) => s + Math.floor(e.defenseBonus * (1 + (e.level - 1) * 0.08)), 0);
       const cSpdBonus = compEquipped.reduce((s, e) => s + Math.floor(e.speedBonus * (1 + (e.level - 1) * 0.1)), 0);
       
-      let cMaxHp = c.maxHp + Math.floor(c.maxHp * ((c as any).vit || 1) / 100);
+      const cSTR = (c as any).str || 10;
+      const cVIT = (c as any).vit || 10;
+      const cAGI = (c as any).agi || 10;
+      const cDEX = (c as any).dex || 10;
+      const cLUK = (c as any).luk || 1;
+
+      let cMaxHp = Math.floor(c.maxHp * (1 + 0.01 * cVIT));
       let cHp = Math.min(c.hp, cMaxHp);
-      let cAttack = c.attack + cAtkBonus + ((c as any).str || 1);
-      let cDefense = c.defense + cDefBonus + Math.floor(((c as any).vit || 1) / 2);
-      let cSpeed = c.speed + cSpdBonus + Math.floor(((c as any).agi || 1) / 2);
+      let cAttack = c.attack + cAtkBonus;
+      let cDefense = c.defense + cDefBonus;
+      let cSpeed = c.speed + cSpdBonus;
 
       return {
         id: c.id,
@@ -443,13 +452,13 @@ async function getPlayerTeamStats(userId: string) {
         attack: cAttack,
         defense: cDefense,
         speed: cSpeed,
-        str: (c as any).str || 1,
-        agi: (c as any).agi || 1,
-        vit: (c as any).vit || 1,
-        int: (c as any).int || 1,
-        dex: (c as any).dex || 1,
-        luk: (c as any).luk || 1,
-        critChance: compEquipped.reduce((s, e) => s + (e.critChance || 0), 0) + Math.floor(((c as any).luk || 1) * 0.3),
+        str: cSTR,
+        agi: cAGI,
+        vit: cVIT,
+        int: (c as any).int || 10,
+        dex: cDEX,
+        luk: cLUK,
+        critChance: compEquipped.reduce((s, e) => s + (e.critChance || 0), 0) + Math.floor(cLUK * 0.3),
         critDamage: compEquipped.reduce((s, e) => s + (e.critDamage || 0), 0),
         endowmentPoints: compEquipped.reduce((s, e) => s + (e.endowmentPoints || 0), 0),
         skill: c.skill,
