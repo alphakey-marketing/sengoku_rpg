@@ -382,7 +382,7 @@ export default function Home() {
           ))}
         </div>
 
-        <div className="grid grid-cols-1 gap-8 mt-12">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-12">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -404,7 +404,7 @@ export default function Home() {
               <Trophy size={20} className="text-primary" />
               Core Attributes
             </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {coreStats.map((stat) => {
                 const staged = pendingUpgrades[stat.key] || 0;
                 const currentTotal = stat.value + staged;
@@ -428,24 +428,20 @@ export default function Home() {
                       <div className="flex flex-col items-center gap-1">
                         <div className="flex gap-1">
                           {staged > 0 && (
-                            <Button 
-                              size="icon" 
-                              variant="outline" 
-                              className="h-7 w-7 rounded border-muted-foreground/20 hover:bg-muted/20"
+                            <button 
+                              className="h-7 w-7 flex items-center justify-center rounded border border-muted-foreground/20 hover:bg-muted/20 transition-colors"
                               onClick={() => handleUnstageUpgrade(stat.key)}
                             >
                               <ChevronDown size={14} className="text-muted-foreground" />
-                            </Button>
+                            </button>
                           )}
-                          <Button 
-                            size="icon" 
-                            variant="outline" 
-                            className={`h-7 w-7 rounded border-primary/20 hover:bg-primary/20 ${!canAfford ? 'opacity-30' : ''}`}
+                          <button 
+                            className={`h-7 w-7 flex items-center justify-center rounded border border-primary/20 hover:bg-primary/20 transition-colors ${!canAfford ? 'opacity-30 cursor-not-allowed' : ''}`}
                             disabled={!canAfford}
                             onClick={() => handleStageUpgrade(stat.key)}
                           >
                             <ChevronUp size={14} className="text-primary" />
-                          </Button>
+                          </button>
                         </div>
                         <div className="text-[9px] font-bold text-primary/70">{cost}P</div>
                       </div>
@@ -468,7 +464,7 @@ export default function Home() {
                   onClick={handleCancelUpgrades}
                 >
                   <X size={16} className="mr-2" />
-                  Discard Changes
+                  Discard
                 </Button>
                 <Button 
                   variant="default" 
@@ -478,7 +474,7 @@ export default function Home() {
                   disabled={bulkUpgrade.isPending}
                 >
                   <Check size={16} className="mr-2" />
-                  Confirm & Save Stats ({stagedInfo.totalCost} pts)
+                  Apply ({stagedInfo.totalCost} pts)
                 </Button>
               </motion.div>
             )}
@@ -494,10 +490,10 @@ export default function Home() {
             </div>
             <h3 className="text-xl font-display font-semibold mb-6 flex items-center gap-2">
               <Sparkles size={20} className="text-accent" />
-              Derived Combat Stats
+              Combat Stats
             </h3>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {derivedStats.map((stat) => (
+            <div className="grid grid-cols-2 gap-4">
+              {derivedStats.slice(0, 4).map((stat) => (
                 <div key={stat.label} className="bg-background/40 border border-border/30 rounded-lg p-3 flex flex-col items-center justify-center text-center group relative cursor-help">
                   <span className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">{stat.label}</span>
                   <span className="text-xl font-display font-bold text-white">{stat.value}</span>
@@ -508,9 +504,9 @@ export default function Home() {
               ))}
             </div>
 
-            <div className="mt-8 grid grid-cols-2 md:grid-cols-4 gap-4 pt-6 border-t border-border/30">
+            <div className="mt-8 grid grid-cols-2 gap-4 pt-6 border-t border-border/30">
               {combatStats.map((stat) => (
-                <div key={stat.label} className="flex items-center gap-3">
+                <div key={stat.label} className="flex items-center gap-3 bg-background/20 p-2 rounded-lg border border-border/20">
                   <div className={`p-2 rounded bg-background/60 border border-border/50 ${stat.color}`}>
                     <stat.icon size={14} />
                   </div>
