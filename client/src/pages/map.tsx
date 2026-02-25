@@ -133,7 +133,7 @@ export default function MapPage() {
       const baseSpd = lvl * 4 + 8;
 
       enemyPreview = {
-        name: locationId >= 100 ? "China Border Guard" : "Yokai Scout",
+        name: locationId >= 100 ? "Terracotta Guard" : "Oni Brute",
         level: lvl,
         hp: Math.floor(baseHp * Math.pow(locationMultiplier, 1.2)),
         attack: Math.floor(baseAtk * Math.pow(locationMultiplier, 1.1)),
@@ -144,8 +144,12 @@ export default function MapPage() {
       const difficultyMultiplier = locationId >= 100 ? (locationId - 100 + 5) * 3 : locationId * 1.5;
       const lvl = locationId >= 100 ? Math.floor(pLevel + 20 + ((locationId - 100) * 15)) : Math.floor(pLevel + 5 + (locationId * 8));
       
+      const jpBosses = ["Daimyo Takeda Shingen", "Shogun Ashikaga Yoshiaki", "General Uesugi Kenshin", "Lord Mori Motonari"];
+      const cnBosses = ["General Lu Bu", "Imperial Sorcerer Zuo Ci", "Guan Yu the God of War", "Prime Minister Cao Cao"];
+      const name = locationId >= 100 ? cnBosses[Math.floor(Math.random() * cnBosses.length)] : jpBosses[Math.floor(Math.random() * jpBosses.length)];
+
       enemyPreview = {
-        name: locationId >= 100 ? "China Stronghold General" : "Castle Guardian",
+        name: name,
         level: lvl,
         hp: Math.floor((lvl * 150 + 500 + Math.floor(difficultyMultiplier * 1000)) * locationMultiplier),
         attack: Math.floor((lvl * 25 + 60 + Math.floor(difficultyMultiplier * 50)) * locationMultiplier),
@@ -155,8 +159,10 @@ export default function MapPage() {
     } else {
       const difficultyMultiplier = locationId >= 100 ? (locationId - 100 + 10) * 5 : locationId;
       const lvl = locationId >= 100 ? Math.floor(pLevel + 50 + ((locationId - 100) * 20)) : Math.floor(pLevel + 15 + (locationId * 12));
+      const name = locationId >= 100 ? "Celestial Dragon Emperor" : "Nine-Tailed Fox (九尾の狐)";
+      
       enemyPreview = {
-        name: locationId >= 100 ? "Celestial Dragon Emperor" : "Legendary Demon",
+        name: name,
         level: lvl,
         hp: Math.floor((lvl * 250 + 2000 + (difficultyMultiplier * 3000)) * locationMultiplier),
         attack: Math.floor((lvl * 50 + 250 + (difficultyMultiplier * 150)) * locationMultiplier),
