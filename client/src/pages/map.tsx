@@ -372,52 +372,94 @@ export default function MapPage() {
                         </div>
                         <div className="grid grid-cols-4 gap-1 mb-2">
                           <div className="bg-background/40 p-1 rounded text-center">
-                            <span className="text-zinc-500 text-[8px] block uppercase">HP</span>
-                            <span className="text-red-400 font-mono text-xs leading-none">{playerStatus?.player?.hp}</span>
+                            <span className="text-zinc-500 text-[8px] block uppercase">ATK</span>
+                            <span className="text-orange-400 font-mono text-xs leading-none">{(playerStatus?.player as any)?.attack || 0}</span>
                           </div>
                           <div className="bg-background/40 p-1 rounded text-center">
-                            <span className="text-zinc-500 text-[8px] block uppercase">ATK</span>
-                            <span className="text-orange-400 font-mono text-xs leading-none">{playerStatus?.player?.attack}</span>
+                            <span className="text-zinc-500 text-[8px] block uppercase">MATK</span>
+                            <span className="text-purple-400 font-mono text-xs leading-none">{(playerStatus?.player as any)?.matk || 0}</span>
                           </div>
                           <div className="bg-background/40 p-1 rounded text-center">
                             <span className="text-zinc-500 text-[8px] block uppercase">DEF</span>
-                            <span className="text-blue-400 font-mono text-xs leading-none">{playerStatus?.player?.defense}</span>
+                            <span className="text-blue-400 font-mono text-xs leading-none">{(playerStatus?.player as any)?.defense || 0}</span>
                           </div>
                           <div className="bg-background/40 p-1 rounded text-center">
-                            <span className="text-zinc-500 text-[8px] block uppercase">SPD</span>
-                            <span className="text-cyan-400 font-mono text-xs leading-none">{playerStatus?.player?.speed}</span>
+                            <span className="text-zinc-500 text-[8px] block uppercase">MDEF</span>
+                            <span className="text-indigo-400 font-mono text-xs leading-none">{(playerStatus?.player as any)?.mdef || 0}</span>
+                          </div>
+                          <div className="bg-background/40 p-1 rounded text-center">
+                            <span className="text-zinc-500 text-[8px] block uppercase">HIT</span>
+                            <span className="text-green-400 font-mono text-xs leading-none">
+                              {(() => {
+                                const lv = playerStatus?.player?.level || 1;
+                                const dex = (playerStatus?.player as any)?.dex || 10;
+                                const luk = (playerStatus?.player as any)?.luk || 1;
+                                return 175 + lv + dex + Math.floor(luk / 3);
+                              })()}
+                            </span>
+                          </div>
+                          <div className="bg-background/40 p-1 rounded text-center">
+                            <span className="text-zinc-500 text-[8px] block uppercase">FLEE</span>
+                            <span className="text-yellow-400 font-mono text-xs leading-none">
+                              {(() => {
+                                const lv = playerStatus?.player?.level || 1;
+                                const agi = (playerStatus?.player as any)?.agi || 10;
+                                const luk = (playerStatus?.player as any)?.luk || 1;
+                                return 100 + lv + agi + Math.floor(luk / 5);
+                              })()}
+                            </span>
+                          </div>
+                          <div className="bg-background/40 p-1 rounded text-center">
+                            <span className="text-zinc-500 text-[8px] block uppercase">CRIT</span>
+                            <span className="text-red-500 font-mono text-xs leading-none">{(playerStatus?.player as any)?.critChance || 0}</span>
+                          </div>
+                          <div className="bg-background/40 p-1 rounded text-center">
+                            <span className="text-zinc-500 text-[8px] block uppercase">ASPD</span>
+                            <span className="text-cyan-400 font-mono text-xs leading-none">{(playerStatus?.player as any)?.speed || 0}</span>
                           </div>
                         </div>
                         <div className="flex justify-between items-center border-t border-blue-900/20 pt-1">
                           <div className="flex items-center gap-1.5">
-                            <span className="text-[9px] text-zinc-500 font-bold uppercase">HIT</span>
+                            <span className="text-[9px] text-zinc-500 font-bold uppercase">HIT %</span>
                             <span className="text-primary font-bold text-xs">
                               {(() => {
-                                const level = playerStatus?.player?.level || 1;
+                                const lv = playerStatus?.player?.level || 1;
                                 const dex = (playerStatus?.player as any)?.dex || 10;
-                                const hit = 100 + (level * 2) + (dex * 1.5);
+                                const luk = (playerStatus?.player as any)?.luk || 1;
+                                const myHit = 175 + lv + dex + Math.floor(luk / 3);
                                 
-                                const eLevel = preBattleInfo?.enemy?.level || 1;
-                                const flee = eLevel * 3;
+                                const eLv = preBattleInfo?.enemy?.level || 1;
+                                const eAgi = preBattleInfo?.enemy?.agi || (eLv * 2);
+                                const eLuk = preBattleInfo?.enemy?.luk || (eLv / 2);
+                                const enemyFlee = 100 + eLv + eAgi + Math.floor(eLuk / 5);
                                 
-                                const dodge = Math.max(5, Math.min(95, 100 - (hit + 80 - flee)));
-                                return `${100 - dodge}%`;
+                                let hitChance = myHit - enemyFlee;
+                                if (hitChance < 5) hitChance = 5;
+                                if (hitChance > 95) hitChance = 95;
+                                return `${hitChance}%`;
                               })()}
                             </span>
                           </div>
                           <div className="flex items-center gap-1.5">
-                            <span className="text-[9px] text-zinc-500 font-bold uppercase">DODGE</span>
+                            <span className="text-[9px] text-zinc-500 font-bold uppercase">FLEE %</span>
                             <span className="text-amber-500 font-bold text-xs">
                               {(() => {
-                                const eLevel = preBattleInfo?.enemy?.level || 1;
-                                const hit = eLevel * 3;
-                                
-                                const level = playerStatus?.player?.level || 1;
+                                const lv = playerStatus?.player?.level || 1;
                                 const agi = (playerStatus?.player as any)?.agi || 10;
-                                const flee = 100 + (level * 1) + (agi * 1.5);
+                                const luk = (playerStatus?.player as any)?.luk || 1;
+                                const myFlee = 100 + lv + agi + Math.floor(luk / 5);
                                 
-                                const dodge = Math.max(5, Math.min(95, 100 - (hit + 80 - flee)));
-                                return `${dodge}%`;
+                                const eLv = preBattleInfo?.enemy?.level || 1;
+                                const eDex = preBattleInfo?.enemy?.dex || (eLv * 2);
+                                const eLuk = preBattleInfo?.enemy?.luk || (eLv / 2);
+                                const enemyHit = 175 + eLv + eDex + Math.floor(eLuk / 3);
+                                
+                                let fleeChance = myFlee - enemyHit;
+                                // In RO logic, usually it's (100 - (enemyHit - myFlee))
+                                let hitOnMe = enemyHit - myFlee;
+                                if (hitOnMe < 5) hitOnMe = 5;
+                                if (hitOnMe > 95) hitOnMe = 95;
+                                return `${100 - hitOnMe}%`;
                               })()}
                             </span>
                           </div>
@@ -435,52 +477,92 @@ export default function MapPage() {
                           </div>
                           <div className="grid grid-cols-4 gap-1 mb-2">
                             <div className="bg-background/40 p-1 rounded text-center">
-                              <span className="text-zinc-500 text-[8px] block uppercase">HP</span>
-                              <span className="text-red-400 font-mono text-xs leading-none">{companion.hp}</span>
-                            </div>
-                            <div className="bg-background/40 p-1 rounded text-center">
                               <span className="text-zinc-500 text-[8px] block uppercase">ATK</span>
                               <span className="text-orange-400 font-mono text-xs leading-none">{companion.attack}</span>
+                            </div>
+                            <div className="bg-background/40 p-1 rounded text-center">
+                              <span className="text-zinc-500 text-[8px] block uppercase">MATK</span>
+                              <span className="text-purple-400 font-mono text-xs leading-none">{(companion as any).matk || 0}</span>
                             </div>
                             <div className="bg-background/40 p-1 rounded text-center">
                               <span className="text-zinc-500 text-[8px] block uppercase">DEF</span>
                               <span className="text-blue-400 font-mono text-xs leading-none">{companion.defense}</span>
                             </div>
                             <div className="bg-background/40 p-1 rounded text-center">
-                              <span className="text-zinc-500 text-[8px] block uppercase">SPD</span>
+                              <span className="text-zinc-500 text-[8px] block uppercase">MDEF</span>
+                              <span className="text-indigo-400 font-mono text-xs leading-none">{(companion as any).mdef || 0}</span>
+                            </div>
+                            <div className="bg-background/40 p-1 rounded text-center">
+                              <span className="text-zinc-500 text-[8px] block uppercase">HIT</span>
+                              <span className="text-green-400 font-mono text-xs leading-none">
+                                {(() => {
+                                  const lv = companion.level || 1;
+                                  const dex = (companion as any).dex || 10;
+                                  const luk = (companion as any).luk || 1;
+                                  return 175 + lv + dex + Math.floor(luk / 3);
+                                })()}
+                              </span>
+                            </div>
+                            <div className="bg-background/40 p-1 rounded text-center">
+                              <span className="text-zinc-500 text-[8px] block uppercase">FLEE</span>
+                              <span className="text-yellow-400 font-mono text-xs leading-none">
+                                {(() => {
+                                  const lv = companion.level || 1;
+                                  const agi = (companion as any).agi || 10;
+                                  const luk = (companion as any).luk || 1;
+                                  return 100 + lv + agi + Math.floor(luk / 5);
+                                })()}
+                              </span>
+                            </div>
+                            <div className="bg-background/40 p-1 rounded text-center">
+                              <span className="text-zinc-500 text-[8px] block uppercase">CRIT</span>
+                              <span className="text-red-500 font-mono text-xs leading-none">{(companion as any).critChance || 0}</span>
+                            </div>
+                            <div className="bg-background/40 p-1 rounded text-center">
+                              <span className="text-zinc-500 text-[8px] block uppercase">ASPD</span>
                               <span className="text-cyan-400 font-mono text-xs leading-none">{companion.speed}</span>
                             </div>
                           </div>
                           <div className="flex justify-between items-center border-t border-blue-900/20 pt-1">
                             <div className="flex items-center gap-1.5">
-                              <span className="text-[9px] text-zinc-500 font-bold uppercase">HIT</span>
+                              <span className="text-[9px] text-zinc-500 font-bold uppercase">HIT %</span>
                               <span className="text-primary font-bold text-xs">
                                 {(() => {
-                                  const level = companion.level || 1;
+                                  const lv = companion.level || 1;
                                   const dex = (companion as any).dex || 10;
-                                  const hit = 100 + (level * 2) + (dex * 1.5);
+                                  const luk = (companion as any).luk || 1;
+                                  const myHit = 175 + lv + dex + Math.floor(luk / 3);
                                   
-                                  const eLevel = preBattleInfo?.enemy?.level || 1;
-                                  const flee = eLevel * 3;
+                                  const eLv = preBattleInfo?.enemy?.level || 1;
+                                  const eAgi = preBattleInfo?.enemy?.agi || (eLv * 2);
+                                  const eLuk = preBattleInfo?.enemy?.luk || (eLv / 2);
+                                  const enemyFlee = 100 + eLv + eAgi + Math.floor(eLuk / 5);
                                   
-                                  const dodge = Math.max(5, Math.min(95, 100 - (hit + 80 - flee)));
-                                  return `${100 - dodge}%`;
+                                  let hitChance = myHit - enemyFlee;
+                                  if (hitChance < 5) hitChance = 5;
+                                  if (hitChance > 95) hitChance = 95;
+                                  return `${hitChance}%`;
                                 })()}
-                                </span>
+                              </span>
                             </div>
                             <div className="flex items-center gap-1.5">
-                              <span className="text-[9px] text-zinc-500 font-bold uppercase">DODGE</span>
+                              <span className="text-[9px] text-zinc-500 font-bold uppercase">FLEE %</span>
                               <span className="text-amber-500 font-bold text-xs">
                                 {(() => {
-                                  const eLevel = preBattleInfo?.enemy?.level || 1;
-                                  const hit = eLevel * 3;
-                                  
-                                  const level = companion.level || 1;
+                                  const lv = companion.level || 1;
                                   const agi = (companion as any).agi || 10;
-                                  const flee = 100 + (level * 1) + (agi * 1.5);
+                                  const luk = (companion as any).luk || 1;
+                                  const myFlee = 100 + lv + agi + Math.floor(luk / 5);
                                   
-                                  const dodge = Math.max(5, Math.min(95, 100 - (hit + 80 - flee)));
-                                  return `${dodge}%`;
+                                  const eLv = preBattleInfo?.enemy?.level || 1;
+                                  const eDex = preBattleInfo?.enemy?.dex || (eLv * 2);
+                                  const eLuk = preBattleInfo?.enemy?.luk || (eLv / 2);
+                                  const enemyHit = 175 + eLv + eDex + Math.floor(eLuk / 3);
+                                  
+                                  let hitOnMe = enemyHit - myFlee;
+                                  if (hitOnMe < 5) hitOnMe = 5;
+                                  if (hitOnMe > 95) hitOnMe = 95;
+                                  return `${100 - hitOnMe}%`;
                                 })()}
                               </span>
                             </div>
@@ -514,52 +596,92 @@ export default function MapPage() {
                   </div>
                   <div className="grid grid-cols-4 gap-1 mb-2">
                     <div className="bg-background/40 p-1 rounded text-center">
-                      <span className="text-zinc-500 text-[8px] block uppercase">HP</span>
-                      <span className="text-red-400 font-mono text-xs leading-none">{preBattleInfo?.enemy.hp}</span>
-                    </div>
-                    <div className="bg-background/40 p-1 rounded text-center">
                       <span className="text-zinc-500 text-[8px] block uppercase">ATK</span>
                       <span className="text-orange-400 font-mono text-xs leading-none">{preBattleInfo?.enemy.attack}</span>
+                    </div>
+                    <div className="bg-background/40 p-1 rounded text-center">
+                      <span className="text-zinc-500 text-[8px] block uppercase">MATK</span>
+                      <span className="text-purple-400 font-mono text-xs leading-none">{(preBattleInfo?.enemy as any).matk || 0}</span>
                     </div>
                     <div className="bg-background/40 p-1 rounded text-center">
                       <span className="text-zinc-500 text-[8px] block uppercase">DEF</span>
                       <span className="text-blue-400 font-mono text-xs leading-none">{preBattleInfo?.enemy.defense}</span>
                     </div>
                     <div className="bg-background/40 p-1 rounded text-center">
-                      <span className="text-zinc-500 text-[8px] block uppercase">SPD</span>
+                      <span className="text-zinc-500 text-[8px] block uppercase">MDEF</span>
+                      <span className="text-indigo-400 font-mono text-xs leading-none">{(preBattleInfo?.enemy as any).mdef || 0}</span>
+                    </div>
+                    <div className="bg-background/40 p-1 rounded text-center">
+                      <span className="text-zinc-500 text-[8px] block uppercase">HIT</span>
+                      <span className="text-green-400 font-mono text-xs leading-none">
+                        {(() => {
+                          const eLv = preBattleInfo?.enemy?.level || 1;
+                          const eDex = preBattleInfo?.enemy?.dex || (eLv * 2);
+                          const eLuk = preBattleInfo?.enemy?.luk || (eLv / 2);
+                          return 175 + eLv + eDex + Math.floor(eLuk / 3);
+                        })()}
+                      </span>
+                    </div>
+                    <div className="bg-background/40 p-1 rounded text-center">
+                      <span className="text-zinc-500 text-[8px] block uppercase">FLEE</span>
+                      <span className="text-yellow-400 font-mono text-xs leading-none">
+                        {(() => {
+                          const eLv = preBattleInfo?.enemy?.level || 1;
+                          const eAgi = preBattleInfo?.enemy?.agi || (eLv * 2);
+                          const eLuk = preBattleInfo?.enemy?.luk || (eLv / 2);
+                          return 100 + eLv + eAgi + Math.floor(eLuk / 5);
+                        })()}
+                      </span>
+                    </div>
+                    <div className="bg-background/40 p-1 rounded text-center">
+                      <span className="text-zinc-500 text-[8px] block uppercase">CRIT</span>
+                      <span className="text-red-500 font-mono text-xs leading-none">{(preBattleInfo?.enemy as any).critChance || 0}</span>
+                    </div>
+                    <div className="bg-background/40 p-1 rounded text-center">
+                      <span className="text-zinc-500 text-[8px] block uppercase">ASPD</span>
                       <span className="text-cyan-400 font-mono text-xs leading-none">{preBattleInfo?.enemy.speed}</span>
                     </div>
                   </div>
                   <div className="flex justify-between items-center border-t border-red-900/20 pt-1">
                     <div className="flex items-center gap-1.5">
-                      <span className="text-[9px] text-zinc-500 font-bold uppercase">HIT</span>
+                      <span className="text-[9px] text-zinc-500 font-bold uppercase">HIT %</span>
                       <span className="text-red-500 font-bold text-xs">
                         {(() => {
-                          const eLevel = preBattleInfo?.enemy?.level || 1;
-                          const hit = eLevel * 3;
+                          const eLv = preBattleInfo?.enemy?.level || 1;
+                          const eDex = preBattleInfo?.enemy?.dex || (eLv * 2);
+                          const eLuk = preBattleInfo?.enemy?.luk || (eLv / 2);
+                          const enemyHit = 175 + eLv + eDex + Math.floor(eLuk / 3);
                           
-                          const pLevel = playerStatus?.player?.level || 1;
-                          const agi = (playerStatus?.player as any)?.agi || 10;
-                          const flee = 100 + (pLevel * 1) + (agi * 1.5);
+                          const pLv = playerStatus?.player?.level || 1;
+                          const pAgi = (playerStatus?.player as any)?.agi || 10;
+                          const pLuk = (playerStatus?.player as any)?.luk || 1;
+                          const myFlee = 100 + pLv + pAgi + Math.floor(pLuk / 5);
                           
-                          const dodge = Math.max(5, Math.min(95, 100 - (hit + 80 - flee)));
-                          return `${100 - dodge}%`;
+                          let hitChance = enemyHit - myFlee;
+                          if (hitChance < 5) hitChance = 5;
+                          if (hitChance > 95) hitChance = 95;
+                          return `${hitChance}%`;
                         })()}
                       </span>
                     </div>
                     <div className="flex items-center gap-1.5">
-                      <span className="text-[9px] text-zinc-500 font-bold uppercase">DODGE</span>
+                      <span className="text-[9px] text-zinc-500 font-bold uppercase">FLEE %</span>
                       <span className="text-amber-500 font-bold text-xs">
                         {(() => {
-                          const pLevel = playerStatus?.player?.level || 1;
-                          const dex = (playerStatus?.player as any)?.dex || 10;
-                          const hit = 100 + (pLevel * 2) + (dex * 1.5);
+                          const eLv = preBattleInfo?.enemy?.level || 1;
+                          const eAgi = preBattleInfo?.enemy?.agi || (eLv * 2);
+                          const eLuk = preBattleInfo?.enemy?.luk || (eLv / 2);
+                          const enemyFlee = 100 + eLv + eAgi + Math.floor(eLuk / 5);
                           
-                          const eLevel = preBattleInfo?.enemy?.level || 1;
-                          const flee = eLevel * 3;
+                          const pLv = playerStatus?.player?.level || 1;
+                          const pDex = (playerStatus?.player as any)?.dex || 10;
+                          const pLuk = (playerStatus?.player as any)?.luk || 1;
+                          const myHit = 175 + pLv + pDex + Math.floor(pLuk / 3);
                           
-                          const dodge = Math.max(5, Math.min(95, 100 - (hit + 80 - flee)));
-                          return `${dodge}%`;
+                          let hitOnMe = myHit - enemyFlee;
+                          if (hitOnMe < 5) hitOnMe = 5;
+                          if (hitOnMe > 95) hitOnMe = 95;
+                          return `${100 - hitOnMe}%`;
                         })()}
                       </span>
                     </div>
