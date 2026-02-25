@@ -101,14 +101,14 @@ export default function GachaPage() {
           <div className="flex justify-center flex-wrap gap-4 mt-8">
             <Button 
               variant={activeTab === 'companion' ? 'default' : 'outline'}
-              onClick={() => { setActiveTab('companion'); setCompanionResult(null); setEquipmentResult(null); }}
+              onClick={() => { setActiveTab('companion'); setCompanionResults([]); setEquipmentResults([]); }}
               className={activeTab === 'companion' ? 'bg-primary border-accent text-white' : 'border-border'}
             >
               Summon Companion
             </Button>
             <Button 
               variant={activeTab === 'special' ? 'default' : 'outline'}
-              onClick={() => { setActiveTab('special'); setCompanionResult(null); setEquipmentResult(null); }}
+              onClick={() => { setActiveTab('special'); setCompanionResults([]); setEquipmentResults([]); }}
               className={activeTab === 'special' ? 'bg-gradient-to-r from-amber-500 to-yellow-600 border-yellow-400 text-white shadow-[0_0_15px_rgba(234,179,8,0.4)]' : 'border-border'}
             >
               <Sparkles size={16} className="mr-2" />
@@ -116,14 +116,14 @@ export default function GachaPage() {
             </Button>
             <Button 
               variant={activeTab === 'equipment' ? 'default' : 'outline'}
-              onClick={() => { setActiveTab('equipment'); setCompanionResult(null); setEquipmentResult(null); }}
+              onClick={() => { setActiveTab('equipment'); setCompanionResults([]); setEquipmentResults([]); }}
               className={activeTab === 'equipment' ? 'bg-primary border-accent text-white' : 'border-border'}
             >
               Forge Equipment
             </Button>
             <Button 
               variant={activeTab === 'exchange' ? 'default' : 'outline'}
-              onClick={() => { setActiveTab('exchange'); setCompanionResult(null); setEquipmentResult(null); }}
+              onClick={() => { setActiveTab('exchange'); setCompanionResults([]); setEquipmentResults([]); }}
               className={activeTab === 'exchange' ? 'bg-primary border-accent text-white' : 'border-border'}
             >
               Sacred Exchange
