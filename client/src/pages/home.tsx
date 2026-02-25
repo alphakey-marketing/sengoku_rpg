@@ -386,12 +386,12 @@ export default function Home() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-card border border-border/50 rounded-xl p-6 bg-washi relative overflow-hidden"
+            className="bg-card border border-border/50 rounded-xl p-6 bg-washi relative overflow-hidden h-full flex flex-col"
           >
             <div className="absolute top-0 right-0 p-4 flex flex-col items-end gap-2">
               <Sword size={80} className="opacity-5 absolute top-0 right-0" />
               {teamStatus?.player && (
-                <div className="bg-primary/20 border border-primary/30 rounded px-3 py-1 backdrop-blur-sm z-10 flex flex-col items-center">
+                <div className="bg-primary/20 border border-primary/30 rounded px-3 py-1 backdrop-blur-sm z-10 flex flex-col items-center" data-testid="container-stat-points">
                   <span className="text-[10px] text-primary-foreground font-bold uppercase tracking-wider">Stat Points</span>
                   <span className="text-xl font-display font-bold text-white">{stagedInfo.pointsLeft}</span>
                   {stagedInfo.totalCost > 0 && (
@@ -404,7 +404,7 @@ export default function Home() {
               <Trophy size={20} className="text-primary" />
               Core Attributes
             </h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 flex-1">
               {coreStats.map((stat) => {
                 const staged = pendingUpgrades[stat.key] || 0;
                 const currentTotal = stat.value + staged;
@@ -431,6 +431,7 @@ export default function Home() {
                             <button 
                               className="h-7 w-7 flex items-center justify-center rounded border border-muted-foreground/20 hover:bg-muted/20 transition-colors"
                               onClick={() => handleUnstageUpgrade(stat.key)}
+                              data-testid={`button-unstage-${stat.key}`}
                             >
                               <ChevronDown size={14} className="text-muted-foreground" />
                             </button>
@@ -439,6 +440,7 @@ export default function Home() {
                             className={`h-7 w-7 flex items-center justify-center rounded border border-primary/20 hover:bg-primary/20 transition-colors ${!canAfford ? 'opacity-30 cursor-not-allowed' : ''}`}
                             disabled={!canAfford}
                             onClick={() => handleStageUpgrade(stat.key)}
+                            data-testid={`button-stage-${stat.key}`}
                           >
                             <ChevronUp size={14} className="text-primary" />
                           </button>
@@ -462,6 +464,7 @@ export default function Home() {
                   size="sm" 
                   className="text-muted-foreground hover:text-white"
                   onClick={handleCancelUpgrades}
+                  data-testid="button-discard-upgrades"
                 >
                   <X size={16} className="mr-2" />
                   Discard
@@ -472,6 +475,7 @@ export default function Home() {
                   className="bg-primary hover:bg-primary/90 text-white"
                   onClick={handleConfirmUpgrades}
                   disabled={bulkUpgrade.isPending}
+                  data-testid="button-apply-upgrades"
                 >
                   <Check size={16} className="mr-2" />
                   Apply ({stagedInfo.totalCost} pts)
@@ -479,59 +483,44 @@ export default function Home() {
               </motion.div>
             )}
           </motion.div>
-        </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-card border border-border/50 rounded-xl p-6 bg-washi relative overflow-hidden"
+            transition={{ delay: 0.1 }}
+            className="bg-card border border-border/50 rounded-xl p-6 bg-washi relative overflow-hidden h-full flex flex-col"
           >
             <div className="absolute top-0 right-0 p-4 opacity-5">
               <Shield size={80} />
             </div>
             <h3 className="text-xl font-display font-semibold mb-6 flex items-center gap-2">
-              <Sparkles size={20} className="text-accent" />
-              Combat Stats
+              <Sparkles size={20} className="text-primary" />
+              Combat Statistics
             </h3>
-            <div className="grid grid-cols-2 gap-4">
-              {[
-                { label: "ATK", value: teamStatus?.player?.attack || 0, formula: "STR + DEX/5 + LUK/3" },
-                { label: "MATK", value: (teamStatus?.player as any)?.statusMATK || 0, formula: "1.5 * INT + DEX/5 + LUK/3" },
-                { label: "DEF", value: teamStatus?.player?.defense || 0, formula: "VIT/2 + AGI/5" },
-                { label: "MDEF", value: (teamStatus?.player as any)?.softMDEF || 0, formula: "INT + VIT/5 + DEX/5" },
-                { label: "HIT", value: (teamStatus?.player as any)?.hit || 0, formula: "175 + LVL + DEX + LUK/3" },
-                { label: "FLEE", value: (teamStatus?.player as any)?.flee || 0, formula: "100 + LVL + AGI + LUK/5" },
-                { label: "CRIT", value: (teamStatus?.player as any)?.critChance || 0, formula: "0.3 * LUK" },
-                { label: "ASPD", value: (teamStatus?.player as any)?.aspd || 0, formula: "SPD + AGI/2" }
-              ].map((stat) => (
+            <div className="grid grid-cols-2 gap-4 flex-1">
+              {derivedStats.map((stat) => (
                 <TooltipProvider key={stat.label}>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <div className="bg-background/40 border border-border/30 rounded-lg p-3 flex flex-col items-center justify-center text-center group relative cursor-help">
-                        <span className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">{stat.label}</span>
-                        <span className="text-xl font-display font-bold text-white">{stat.value}</span>
+                      <div 
+                        className="bg-background/40 border border-border/30 rounded-lg p-3 group hover:border-primary/50 transition-colors cursor-help"
+                        data-testid={`combat-stat-${stat.label.toLowerCase()}`}
+                      >
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{stat.label}</span>
+                          <Info size={12} className="text-muted-foreground/30 group-hover:text-primary/50 transition-colors" />
+                        </div>
+                        <p className="text-2xl font-display font-bold text-white">{stat.value}</p>
                       </div>
                     </TooltipTrigger>
-                    <TooltipContent className="bg-zinc-900 border-zinc-700 text-zinc-300">
-                      <p className="text-xs font-mono">{stat.formula}</p>
+                    <TooltipContent className="bg-card border-border p-3 shadow-xl">
+                      <div className="space-y-1">
+                        <p className="text-xs font-bold text-white uppercase tracking-widest">{stat.label} Formula</p>
+                        <code className="text-[10px] text-primary bg-primary/10 px-1.5 py-0.5 rounded">{stat.formula}</code>
+                      </div>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
-              ))}
-            </div>
-
-            <div className="mt-8 grid grid-cols-2 gap-4 pt-6 border-t border-border/30">
-              {combatStats.map((stat) => (
-                <div key={stat.label} className="flex items-center gap-3 bg-background/20 p-2 rounded-lg border border-border/20">
-                  <div className={`p-2 rounded bg-background/60 border border-border/50 ${stat.color}`}>
-                    <stat.icon size={14} />
-                  </div>
-                  <div>
-                    <p className="text-[9px] text-muted-foreground uppercase font-bold">{stat.label}</p>
-                    <p className="text-sm font-bold text-white">{stat.value}</p>
-                  </div>
-                </div>
               ))}
             </div>
           </motion.div>
