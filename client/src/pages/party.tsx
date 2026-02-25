@@ -59,44 +59,53 @@ export default function Party() {
             <h1 className="text-3xl font-display font-bold text-white mb-2" data-testid="text-page-title">War Council</h1>
             <p className="text-muted-foreground">Select up to 5 unique warriors for your active party.</p>
           </div>
-          <div className="flex flex-wrap items-center gap-4 bg-background/80 p-4 rounded-xl border border-border/50 backdrop-blur-md shadow-2xl">
-            <div className="flex items-center gap-2 bg-zinc-900 border-2 border-primary/50 px-4 py-2.5 rounded-xl relative z-30 hover:border-primary transition-all shadow-[0_0_15px_rgba(220,38,38,0.1)]">
-              <Star size={18} className="text-yellow-500 animate-pulse" />
-              <select 
-                value={starFilter} 
-                onChange={(e) => setStarFilter(e.target.value)}
-                className="bg-transparent text-sm font-black text-white outline-none cursor-pointer appearance-none pr-10 min-w-[120px] uppercase tracking-tighter"
-                style={{ WebkitAppearance: 'none', MozAppearance: 'none' }}
-                data-testid="select-star-filter"
-              >
-                <option value="all" className="bg-zinc-900 text-white font-bold">Show All</option>
-                <option value="5" className="bg-zinc-900 text-orange-500 font-bold">5 Stars</option>
-                <option value="4" className="bg-zinc-900 text-purple-400 font-bold">4 Stars</option>
-                <option value="3" className="bg-zinc-900 text-blue-400 font-bold">3 Stars</option>
-                <option value="2" className="bg-zinc-900 text-green-500 font-bold">2 Stars</option>
-                <option value="1" className="bg-zinc-900 text-zinc-400 font-bold">1 Star</option>
-              </select>
-              <div className="absolute right-4 pointer-events-none text-primary">
-                <svg width="12" height="8" viewBox="0 0 10 6" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M1 1L5 5L9 1" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              </div>
-            </div>
-            <div className="flex items-center gap-2 bg-orange-900/20 border border-orange-700/30 px-4 py-2 rounded-lg">
-              <Flame size={18} className="text-orange-400" />
+          <div className="flex flex-wrap items-center gap-4 bg-background/95 p-5 rounded-2xl border-2 border-primary/20 shadow-2xl relative z-[100] mb-4">
+            <div className="flex items-center gap-3 bg-zinc-900 border-2 border-primary px-4 py-3 rounded-xl relative z-[110] hover:border-accent transition-all shadow-[0_0_20px_rgba(220,38,38,0.2)] group">
+              <Star size={20} className="text-yellow-500 animate-pulse group-hover:scale-110 transition-transform" />
               <div className="flex flex-col">
-                <span className="text-[10px] text-orange-300 uppercase font-bold tracking-wider leading-none">Warrior Souls</span>
-                <span className="text-lg font-bold text-white leading-none">{player?.warriorSouls || 0}</span>
+                <span className="text-[10px] text-primary font-black uppercase tracking-tighter leading-none mb-1">Filter Rarity</span>
+                <div className="relative">
+                  <select 
+                    value={starFilter} 
+                    onChange={(e) => setStarFilter(e.target.value)}
+                    className="bg-transparent text-sm font-black text-white outline-none cursor-pointer appearance-none pr-10 min-w-[140px] uppercase tracking-widest relative z-[120]"
+                    data-testid="select-star-filter"
+                  >
+                    <option value="all" className="bg-zinc-900 text-white font-bold">★ All Warriors</option>
+                    <option value="5" className="bg-zinc-900 text-orange-500 font-bold">★★★★★ 5 Stars</option>
+                    <option value="4" className="bg-zinc-900 text-purple-400 font-bold">★★★★ 4 Stars</option>
+                    <option value="3" className="bg-zinc-900 text-blue-400 font-bold">★★★ 3 Stars</option>
+                    <option value="2" className="bg-zinc-900 text-green-500 font-bold">★★ 2 Stars</option>
+                    <option value="1" className="bg-zinc-900 text-zinc-400 font-bold">★ 1 Star</option>
+                  </select>
+                  <div className="absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none text-primary">
+                    <svg width="12" height="8" viewBox="0 0 10 6" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M1 1L5 5L9 1" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </div>
+                </div>
               </div>
             </div>
-            <div className="flex items-center gap-3">
-              <span className="text-xs font-bold bg-secondary/20 px-3 py-2 rounded border border-secondary/30 text-secondary-foreground whitespace-nowrap">
-                {selectedIds.length} / 5 Selected
-              </span>
+
+            <div className="flex items-center gap-3 bg-orange-950/40 border-2 border-orange-700/50 px-5 py-3 rounded-xl shadow-inner">
+              <Flame size={24} className="text-orange-500" />
+              <div className="flex flex-col">
+                <span className="text-[10px] text-orange-300 uppercase font-black tracking-widest leading-none mb-1">Warrior Souls</span>
+                <span className="text-2xl font-black text-white leading-none tracking-tighter">{player?.warriorSouls || 0}</span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-4 ml-auto">
+              <div className="flex flex-col items-end">
+                <span className="text-[10px] text-muted-foreground uppercase font-black tracking-widest mb-1">Party Size</span>
+                <span className="text-sm font-black bg-secondary/30 px-4 py-1.5 rounded-lg border-2 border-secondary/50 text-white shadow-lg">
+                  {selectedIds.length} <span className="text-zinc-500">/</span> 5
+                </span>
+              </div>
               <Button
                 onClick={handleSave}
                 disabled={isPending || selectedIds.length === 0}
-                className="bg-accent hover:bg-accent/90 text-accent-foreground font-bold shadow-lg shadow-accent/20"
+                className="h-14 px-8 bg-primary hover:bg-primary/90 text-white font-black text-lg uppercase tracking-widest rounded-xl shadow-[0_0_20px_rgba(220,38,38,0.3)] hover:shadow-[0_0_30px_rgba(220,38,38,0.5)] transition-all active:scale-95"
                 data-testid="button-deploy-party"
               >
                 {isPending ? "Updating..." : "Deploy Party"}
