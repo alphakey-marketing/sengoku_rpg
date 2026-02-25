@@ -108,8 +108,8 @@ export class DatabaseStorage implements IStorage {
 
   async recycleEquipmentByRarity(userId: string, rarity: string): Promise<{ count: number; stonesGained: number }> {
     const rarityStones: Record<string, number> = { 
-      white: 1, green: 2, blue: 5, purple: 10, gold: 25,
-      mythic: 50, exotic: 100, transcendent: 250, celestial: 500, primal: 1000
+      white: 1, green: 2, blue: 3, purple: 5, gold: 10,
+      mythic: 20, exotic: 40, transcendent: 80, celestial: 150, primal: 300
     };
     
     return await db.transaction(async (tx) => {
