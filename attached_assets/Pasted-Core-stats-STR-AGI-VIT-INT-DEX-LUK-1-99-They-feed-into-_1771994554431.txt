@@ -1,0 +1,149 @@
+Core stats: STR, AGI, VIT, INT, DEX, LUK (1–99). They feed into ATK, MATK, DEF, MDEF, HIT, FLEE, CRIT, ASPD, Max HP, Max SP.
+​
+
+STR – Strength (Physical Power)
+Design meaning: Increases melee damage and carry weight.
+
+Melee weapon equipped:
+StatusATK_STR = STR
+WeaponATK_bonus%_from_STR = 0.5% × STR (applied only to base weapon ATK, optional).
+
+Ranged weapon equipped:
+StatusATK_STR = floor(STR / 5)
+
+Weight limit:
+WeightLimit = BaseWeight + 30 × STR
+
+AGI – Agility (Speed & Dodge)
+Design meaning: Increases attack speed and dodge.
+
+FLEE_A (basic dodge):
+FLEE_A = 100 + BaseLv + AGI + floor(LUK / 5)
+
+Total FLEE shown:
+FLEE = FLEE_A + PerfectDodge
+
+SoftDEF from AGI:
+SoftDEF_from_AGI = floor(AGI / 5)
+
+ASPD (conceptual):
+ASPD = ASPD_Base(class, weapon) + f(AGI, DEX)
+(capped at 190 for pre‑3rd style).
+
+VIT – Vitality (HP & Toughness)
+Design meaning: Increases HP, item healing, and resistance.
+
+Max HP:
+MaxHP = ClassBaseHP(BaseLv) × (1 + 0.01 × VIT) + gearHP
+
+SoftDEF from VIT:
+SoftDEF_from_VIT = floor(VIT / 2)
+
+SoftMDEF from VIT:
+SoftMDEF_from_VIT = floor(VIT / 5)
+
+HP regen bonus:
+HPRegen_bonus = floor(VIT / 5)
+
+Healing item multiplier:
+HealItemHP_multiplier = 1 + 0.02 × VIT
+
+INT – Intelligence (Magic & SP)
+Design meaning: Increases magic damage, SP, and magic defense.
+
+Status MATK:
+StatusMATK_INT = 1.5 × INT
+
+SoftMDEF from INT:
+SoftMDEF_INT = INT
+
+Max SP:
+MaxSP = ClassBaseSP(BaseLv) × (1 + 0.01 × INT) + gearSP
+
+SP regen bonus:
+SPRegen_bonus = floor(INT / 6)
+
+SP item multiplier:
+HealItemSP_multiplier = 1 + 0.01 × INT
+
+Variable cast time (simplified RO‑like):
+VarCastFactor = 1 − (DEX / 150) − (INT / 300)
+VarCastTime = VarCastBase × max(0.1, VarCastFactor)
+
+DEX – Dexterity (Accuracy & Ranged)
+Design meaning: Increases hit rate, cast speed, and ranged damage.
+
+With ranged weapon:
+StatusATK_DEX_ranged = DEX
+WeaponATK_bonus%_from_DEX = 0.5% × DEX
+
+With melee weapon:
+StatusATK_DEX_melee = floor(DEX / 5)
+
+HIT (accuracy):
+HIT = 175 + BaseLv + DEX + floor(LUK / 3)
+
+MATK from DEX (optional):
+MATK_from_DEX = floor(DEX / 5)
+
+SoftMDEF from DEX (optional):
+SoftMDEF_from_DEX = floor(DEX / 5)
+
+ASPD: DEX adds a small bonus together with AGI.
+
+LUK – Luck (Crit & Misc)
+Design meaning: Adds crits, perfect dodge, and small global bonuses.
+
+Crit rate:
+CRIT_rate = 0.3 × LUK + CRIT_from_gear
+
+Perfect dodge:
+PerfectDodge = floor(LUK / 10)
+
+FLEE bonus from LUK:
+FLEE_bonus_LUK = floor(LUK / 5)
+
+ATK, MATK, HIT from LUK (RO‑like):
+ATK_from_LUK = floor(LUK / 3)
+MATK_from_LUK = floor(LUK / 3)
+HIT_from_LUK = floor(LUK / 3)
+
+Derived Stat Summary (recommended for your system)
+
+StatusATK (physical):
+StatusATK = STR + StatusATK_from_DEX + ATK_from_LUK
+
+Total ATK as “A + B”:
+A (Status ATK) = from STR/DEX/LUK.
+B (Weapon ATK + refine + gear).
+
+StatusMATK:
+StatusMATK = 1.5 × INT + floor(DEX / 5) + floor(LUK / 3)
+
+SoftDEF:
+SoftDEF = floor(VIT / 2) + floor(AGI / 5) + gear/skills
+
+SoftMDEF:
+SoftMDEF = INT + floor(VIT / 5) + floor(DEX / 5) + gear/skills
+
+HIT:
+HIT = 175 + BaseLv + DEX + floor(LUK / 3) + gear/skills
+
+FLEE_A and total FLEE:
+FLEE_A = 100 + BaseLv + AGI + floor(LUK / 5) + gear/skills
+PerfectDodge = floor(LUK / 10) + gear/skills
+FLEE = FLEE_A + PerfectDodge
+
+CRIT_rate:
+CRIT_rate = 0.3 × LUK + gear/skills
+
+Hit chance vs target:
+HitChance = max(5%, min(95%, HIT_attacker − FLEE_defender))
+
+Max HP / Max SP:
+MaxHP = ClassBaseHP(BaseLv) × (1 + 0.01 × VIT) + gearHP
+MaxSP = ClassBaseSP(BaseLv) × (1 + 0.01 × INT) + gearSP
+
+ASPD (conceptual, with hard cap):
+ASPD = ASPD_Base(class, weapon) + f(AGI, DEX)
+ASPD ≤ 190

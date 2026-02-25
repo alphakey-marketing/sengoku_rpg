@@ -21,16 +21,13 @@ export interface CombatUnit {
 }
 
 export function calculateHitChance(attacker: CombatUnit, defender: CombatUnit): number {
-  // Accuracy Calculation based on user's specific RO-inspired formula
-  // Hit Chance % = 100 − (AttackerHIT + 80 − DefenderFLEE), clamped 5–95%
+  // Accuracy Calculation based on RO-inspired formula
+  // HitChance = max(5%, min(95%, HIT_attacker − FLEE_defender))
   
   const attackerHit = attacker.hit ?? 0;
   const defenderFlee = defender.flee ?? 0;
   
-  const dodgeRateRaw = 100 - (attackerHit + 80 - defenderFlee);
-  const dodgeRate = Math.max(5, Math.min(95, dodgeRateRaw));
-  
-  const hitChance = 100 - dodgeRate;
+  const hitChance = Math.max(5, Math.min(95, attackerHit - defenderFlee));
   return hitChance;
 }
 

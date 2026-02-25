@@ -172,24 +172,49 @@ async function getPlayerTeamStats(userId: string) {
     const totalDefBonus = playerEquipped.reduce((s, e) => s + Math.floor(e.defenseBonus * (1 + (e.level - 1) * 0.08)), 0);
     const totalSpdBonus = playerEquipped.reduce((s, e) => s + Math.floor(e.speedBonus * (1 + (e.level - 1) * 0.1)), 0);
 
-    // Base stats
-    let hp = user.hp + (user.permHpBonus || 0);
-    let maxHp = user.maxHp + (user.permHpBonus || 0);
+    // Core stats (STR, AGI, VIT, INT, DEX, LUK)
+    const STR = user.str || 1;
+    const AGI = user.agi || 1;
+    const VIT = user.vit || 1;
+    const INT = user.int || 1;
+    const DEX = user.dex || 1;
+    const LUK = user.luk || 1;
+    const BaseLv = user.level;
+
+    // Derived Stats based on RO formulas
+    // StatusATK: STR + floor(DEX / 5) + floor(LUK / 3)
+    const statusATK = STR + Math.floor(DEX / 5) + Math.floor(LUK / 3);
+    // StatusMATK: 1.5 * INT + floor(DEX / 5) + floor(LUK / 3)
+    const statusMATK = Math.floor(1.5 * INT) + Math.floor(DEX / 5) + Math.floor(LUK / 3);
     
-    // Core stats influence derived stats
-    // STR: +1 ATK per point
-    // VIT: +1% HP per point
-    // INT: +1% Magic effectiveness (if implemented later)
-    // DEX: Handled in HIT chance
-    // AGI: Handled in FLEE chance
-    // LUK: +0.3% Crit per point
+    // SoftDEF: floor(VIT / 2) + floor(AGI / 5)
+    const softDEF = Math.floor(VIT / 2) + Math.floor(AGI / 5);
+    // SoftMDEF: INT + floor(VIT / 5) + floor(DEX / 5)
+    const softMDEF = INT + Math.floor(VIT / 5) + Math.floor(DEX / 5);
+
+    // HIT: 175 + BaseLv + DEX + floor(LUK / 3)
+    const hit = 175 + BaseLv + DEX + Math.floor(LUK / 3);
+    // FLEE_A: 100 + BaseLv + AGI + floor(LUK / 5)
+    const fleeA = 100 + BaseLv + AGI + Math.floor(LUK / 5);
+    const perfectDodge = Math.floor(LUK / 10);
+    const flee = fleeA + perfectDodge;
+
+    // CRIT_rate: 0.3 * LUK
+    const critRate = 0.3 * LUK;
+
+    // Final calculations for the response
+    let attack = user.attack + totalAtkBonus + (user.permAttackBonus || 0) + statusATK;
+    let defense = user.defense + totalDefBonus + (user.permDefenseBonus || 0) + softDEF;
+    let speed = user.speed + totalSpdBonus + (user.permSpeedBonus || 0) + Math.floor(AGI / 2); // Simplified ASPD influence
     
-    let attack = user.attack + totalAtkBonus + (user.permAttackBonus || 0) + (user.str || 1);
-    let defense = user.defense + totalDefBonus + (user.permDefenseBonus || 0) + Math.floor((user.vit || 1) / 2);
-    let speed = user.speed + totalSpdBonus + (user.permSpeedBonus || 0) + Math.floor((user.agi || 1) / 2);
+    // MaxHP = ClassBaseHP(BaseLv) * (1 + 0.01 * VIT) + gearHP
+    // Using user.maxHp as ClassBaseHP
+    let maxHp = Math.floor((user.maxHp + (user.permHpBonus || 0)) * (1 + 0.01 * VIT));
+    let hp = Math.min(user.hp + (user.permHpBonus || 0), maxHp);
     
-    maxHp = Math.floor(maxHp * (1 + (user.vit || 1) / 100));
-    hp = Math.min(hp, maxHp);
+    // MaxSP = ClassBaseSP(BaseLv) * (1 + 0.01 * INT) + gearSP
+    // Assuming base SP logic or adding to schema if needed, for now we use a derived value or just pass it
+    const maxSp = Math.floor(100 * (1 + 0.01 * INT)); // Placeholder base SP 100
 
     // Apply transformation bonuses
     if (activeTransform) {
@@ -211,13 +236,18 @@ async function getPlayerTeamStats(userId: string) {
         attack,
         defense,
         speed,
-        str: user.str || 1,
-        agi: user.agi || 1,
-        vit: user.vit || 1,
-        int: user.int || 1,
-        dex: user.dex || 1,
-        luk: user.luk || 1,
-        critChance: playerEquipped.reduce((s, e) => s + (e.critChance || 0), 0) + Math.floor((user.luk || 1) * 0.3),
+        str: STR,
+        agi: AGI,
+        vit: VIT,
+        int: INT,
+        dex: DEX,
+        luk: LUK,
+        hit,
+        flee,
+        statusMATK,
+        softMDEF,
+        maxSp,
+        critChance: playerEquipped.reduce((s, e) => s + (e.critChance || 0), 0) + Math.floor(critRate),
         critDamage: playerEquipped.reduce((s, e) => s + (e.critDamage || 0), 0),
         endowmentPoints: playerEquipped.reduce((s, e) => s + (e.endowmentPoints || 0), 0),
         equipped: playerEquipped.map(e => ({ name: e.name, type: e.type, level: e.level, rarity: e.rarity })),
