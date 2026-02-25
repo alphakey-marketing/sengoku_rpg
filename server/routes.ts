@@ -78,6 +78,10 @@ const CLASSIC_DROPS = {
   ]
 };
 
+function calcEquipExpToNext(level: number) {
+  return Math.floor(100 * Math.pow(1.3, level - 1));
+}
+
 function generateEquipment(userId: string, locationId: number = 1, forceGood: boolean = false) {
   const categories = Object.keys(CLASSIC_DROPS);
   const category = pick(categories) as keyof typeof CLASSIC_DROPS;
@@ -1253,7 +1257,50 @@ export async function registerRoutes(
           }
         }
 
-function generatePet(userId: string, locationId: number = 1) {
+        // Horse Drop (5% chance)
+        if (Math.random() < 0.05) {
+          const horseData = generateHorse(userId, locationId);
+          try {
+            const horse = await storage.createHorse(horseData as any);
+            allHorsesDropped.push(horse);
+            allLogs.push(`HORSES: You managed to tame a wild ${horse.name}!`);
+          } catch (err) {
+            console.error("Failed to create horse drop:", err);
+          }
+        }
+
+        // Pet Drop (3% chance)
+        if (Math.random() < 0.03) {
+          const petData = generatePet(userId, locationId);
+          try {
+            const pet = await storage.createPet(petData as any);
+            allPetsDropped.push(pet);
+            allLogs.push(`PETS: A wild ${pet.name} decided to follow you!`);
+          } catch (err) {
+            console.error("Failed to create pet drop:", err);
+          }
+        }
+      }
+    }
+
+    // Total battle rewards...
+    await giveEquipmentExp(userId, totalExpGained);
+
+    res.json({
+      victory: totalExpGained > 0,
+      experienceGained: totalExpGained,
+      goldGained: totalGoldGained,
+      equipmentDropped: allEquipmentDropped,
+      petDropped: allPetsDropped[0] || null,
+      allPetsDropped,
+      horseDropped: allHorsesDropped[0] || null,
+      allHorsesDropped,
+      logs: allLogs,
+      ninjaEncounter
+    });
+  });
+
+  function generatePet(userId: string, locationId: number = 1) {
   const pInfo = pick(PET_NAMES);
   const r = Math.random();
   const isChina = locationId >= 100;
