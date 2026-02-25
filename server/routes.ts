@@ -1495,7 +1495,7 @@ export async function registerRoutes(
         await storage.updateUser(userId, userUpdate);
 
         // Revised Equipment Drop logic using CLASSIC_DROPS
-        if (Math.random() < 0.15) {
+        if (Math.random() < 0.03) {
           const eqData = generateEquipment(userId, locationId);
           try {
             const eq = await storage.createEquipment(eqData);
@@ -2096,36 +2096,18 @@ export async function registerRoutes(
   });
 
   app.post("/api/restart", isAuthenticated, async (req: any, res) => {
-    const userId = req.user.claims.sub;
-    await (storage as any).restartGame(userId);
-    
-    // Create initial equipment
-    await storage.createEquipment({
-      userId,
-      name: "Training Sword",
-      type: "weapon",
-      weaponType: "sword",
-      rarity: "white",
-      level: 1,
-      experience: 0,
-      expToNext: 100,
-      attackBonus: 5,
-      defenseBonus: 0,
-      speedBonus: 0,
-      hpBonus: 0,
-      mdefBonus: 0,
-      fleeBonus: 0,
-      matkBonus: 0,
-      critChance: 5,
-      critDamage: 0,
-      endowmentPoints: 0,
-      isEquipped: true,
-      equippedToId: null,
-      equippedToType: "player",
-      cardSlots: 1
-    } as any);
+    try {
+      const userId = req.user.claims.sub;
+      await storage.restartGame(userId);
+      
+      // Create initial equipment via storage logic
+      await storage.syncBaseEquipment(userId);
 
-    res.json({ success: true });
+      res.json({ success: true });
+    } catch (err: any) {
+      console.error("Restart error:", err);
+      res.status(500).json({ message: err.message });
+    }
   });
 
   app.get('/api/quests', isAuthenticated, async (req: any, res) => {

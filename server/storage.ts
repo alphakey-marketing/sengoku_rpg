@@ -327,12 +327,28 @@ export class DatabaseStorage implements IStorage {
       rarity: "white", 
       level: 1, 
       attackBonus: 10, 
-      isEquipped: true,
+      isEquipped: false,
+      equippedToType: 'player'
+    };
+
+    const TRAINING_BOW: InsertEquipment = { 
+      userId, 
+      name: "Training Bow", 
+      type: "Weapon", 
+      weaponType: "bow", 
+      rarity: "white", 
+      level: 1, 
+      attackBonus: 5, 
+      critChance: 5,
+      isEquipped: false,
       equippedToType: 'player'
     };
 
     if (!existingNames.has(TRAINING_SWORD.name)) {
       await db.insert(equipment).values(TRAINING_SWORD);
+    }
+    if (!existingNames.has(TRAINING_BOW.name)) {
+      await db.insert(equipment).values(TRAINING_BOW);
     }
   }
 
