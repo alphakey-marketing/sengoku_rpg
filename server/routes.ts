@@ -173,12 +173,12 @@ async function getPlayerTeamStats(userId: string) {
     const totalSpdBonus = playerEquipped.reduce((s, e) => s + Math.floor(e.speedBonus * (1 + (e.level - 1) * 0.1)), 0);
 
     // Core stats (STR, AGI, VIT, INT, DEX, LUK)
-    const STR = user.str || 1;
-    const AGI = user.agi || 1;
-    const VIT = user.vit || 1;
-    const INT = user.int || 1;
-    const DEX = user.dex || 1;
-    const LUK = user.luk || 1;
+    const STR = (user as any).str || 1;
+    const AGI = (user as any).agi || 1;
+    const VIT = (user as any).vit || 1;
+    const INT = (user as any).int || 1;
+    const DEX = (user as any).dex || 1;
+    const LUK = (user as any).luk || 1;
     const BaseLv = user.level;
 
     // Derived Stats based on RO formulas
