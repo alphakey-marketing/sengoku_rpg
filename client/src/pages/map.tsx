@@ -395,9 +395,8 @@ export default function MapPage() {
                             <span className="text-primary font-bold text-xs">
                               {(() => {
                                 const level = playerStatus?.player?.level || 1;
-                                const attack = playerStatus?.player?.attack || 0;
-                                const speed = playerStatus?.player?.speed || 0;
-                                const hit = 100 + (level * 2) + (attack * 1.5);
+                                const dex = (playerStatus?.player as any)?.dex || 10;
+                                const hit = 100 + (level * 2) + (dex * 1.5);
                                 
                                 const eLevel = preBattleInfo?.enemy?.level || 1;
                                 const flee = eLevel * 3;
@@ -415,8 +414,8 @@ export default function MapPage() {
                                 const hit = eLevel * 3;
                                 
                                 const level = playerStatus?.player?.level || 1;
-                                const speed = playerStatus?.player?.speed || 0;
-                                const flee = 100 + (level * 1) + (speed * 1.5);
+                                const agi = (playerStatus?.player as any)?.agi || 10;
+                                const flee = 100 + (level * 1) + (agi * 1.5);
                                 
                                 const dodge = Math.max(5, Math.min(95, 100 - (hit + 80 - flee)));
                                 return `${dodge}%`;
@@ -459,8 +458,8 @@ export default function MapPage() {
                               <span className="text-primary font-bold text-xs">
                                 {(() => {
                                   const level = companion.level || 1;
-                                  const attack = companion.attack || 0;
-                                  const hit = 100 + (level * 2) + (attack * 1.5);
+                                  const dex = (companion as any).dex || 10;
+                                  const hit = 100 + (level * 2) + (dex * 1.5);
                                   
                                   const eLevel = preBattleInfo?.enemy?.level || 1;
                                   const flee = eLevel * 3;
@@ -478,8 +477,8 @@ export default function MapPage() {
                                   const hit = eLevel * 3;
                                   
                                   const level = companion.level || 1;
-                                  const speed = companion.speed || 0;
-                                  const flee = 100 + (level * 1) + (speed * 1.5);
+                                  const agi = (companion as any).agi || 10;
+                                  const flee = 100 + (level * 1) + (agi * 1.5);
                                   
                                   const dodge = Math.max(5, Math.min(95, 100 - (hit + 80 - flee)));
                                   return `${dodge}%`;
@@ -541,8 +540,8 @@ export default function MapPage() {
                           const hit = eLevel * 3;
                           
                           const pLevel = playerStatus?.player?.level || 1;
-                          const pSpeed = playerStatus?.player?.speed || 0;
-                          const flee = 100 + (pLevel * 1) + (pSpeed * 1.5);
+                          const agi = (playerStatus?.player as any)?.agi || 10;
+                          const flee = 100 + (pLevel * 1) + (agi * 1.5);
                           
                           const dodge = Math.max(5, Math.min(95, 100 - (hit + 80 - flee)));
                           return `${100 - dodge}%`;
@@ -554,8 +553,8 @@ export default function MapPage() {
                       <span className="text-amber-500 font-bold text-xs">
                         {(() => {
                           const pLevel = playerStatus?.player?.level || 1;
-                          const pAtk = playerStatus?.player?.attack || 0;
-                          const hit = 100 + (pLevel * 2) + (pAtk * 1.5);
+                          const dex = (playerStatus?.player as any)?.dex || 10;
+                          const hit = 100 + (pLevel * 2) + (dex * 1.5);
                           
                           const eLevel = preBattleInfo?.enemy?.level || 1;
                           const flee = eLevel * 3;
