@@ -1,0 +1,72 @@
+In Classic Ragnarok Online (RO), battles rely on six core stats that shape how characters fight, survive, and win. These start at 1 when you create a character and go up to 99 as you level up and spend points—perfect for introducing one by one in your game to teach players step by step.
+
+## Core Stats Basics
+
+Each stat affects combat in clear ways, like damage or dodging. They mix together for "derived stats" like total attack power or health. Start with just STR for simple punching fights, then add others to build depth without confusing new players. [reddit](https://www.reddit.com/r/DnD/comments/1qzkigq/coming_from_bg3_my_friends_and_i_are_new_to/)
+
+This keeps early game basic (melee focus) and later game complex (magic, crits, speed). Total points to spend reach about 1273 by max level, with rising costs to prevent overpowered single-stat builds.
+
+## STR (Strength)
+
+Boosts physical attack damage (ATK) by +1 per point, plus bonuses every 10 points—like extra punch at STR 10 (+1), 20 (+4 total). Also raises carry weight limit and slight ranged damage. [reddit](https://www.reddit.com/r/DnD/comments/1qzkigq/coming_from_bg3_my_friends_and_i_are_new_to/)
+
+**Design Note:** Roll this out first. Players feel "stronger = hit harder" right away. Use for warriors or tanks. In your game, tie it to melee weapons only at launch.
+
+## AGI (Agility)
+
+Raises flee (dodge chance) by +1 per point and attack speed (ASPD) by speeding up swings—about 4-10 AGI for one extra attack per turn, up to cap of 190 speed. [reddit](https://www.reddit.com/r/DnD/comments/1qzkigq/coming_from_bg3_my_friends_and_i_are_new_to/)
+
+**Design Note:** Add after STR for fast-paced combat. Teaches evasion without overwhelming. Great for rogues; cap it early to avoid "untouchable" exploits.
+
+## VIT (Vitality)
+
+Increases max HP by 1% per point, defense (DEF) slightly, heal item power (+2%), and resist status effects like stun or poison. Adds natural HP regen every 5 points. [reddit](https://www.reddit.com/r/DnD/comments/1qzkigq/coming_from_bg3_my_friends_and_i_are_new_to/)
+
+**Design Note:** Introduce mid-game for survival. Turns squishy fighters into tanks. Balance by making high VIT slow regen in long fights—encourages team play.
+
+## INT (Intelligence)
+
+Powers magic attack (MATK) with formulas like base + (INT/5)^2 for max damage. Boosts max SP (mana), SP regen, and magic defense (MDEF). [reddit](https://www.reddit.com/r/DnD/comments/1qzkigq/coming_from_bg3_my_friends_and_i_are_new_to/)
+
+**Design Note:** Save for later phases when players master physical fights. Unlocks spellcasters. Design spells to scale hard with INT but fizzle without it.
+
+## DEX (Dexterity)
+
+Improves hit rate (+1 per point), cast time (faster spells at high values), ranged ATK, and a bit of ASPD. Stabilizes damage to avoid "miss everything" frustration. [reddit](https://www.reddit.com/r/DnD/comments/1qzkigq/coming_from_bg3_my_friends_and_i_are_new_to/)
+
+**Design Note:** Add with AGI for accuracy. Fixes "whiffing attacks" complaints. Essential for archers/mages; make it prereq for advanced weapons.
+
+## LUK (Luck)
+
+Ups crit chance (+0.3% per point), perfect dodge (+0.1%), and resist enemy crits. Minor ATK boost every 5 points—no direct drop rate impact. [reddit](https://www.reddit.com/r/DnD/comments/1qzkigq/coming_from_bg3_my_friends_and_i_are_new_to/)
+
+**Design Note:** Last stat to unlock—adds RNG thrill. High risk/reward for crit builds. Cap low early to prevent luck-stacking cheese.
+
+## Derived Stats Overview
+
+These auto-calculate from core stats + gear + level:
+- ATK/MATK: Raw damage output.
+- DEF/MDEF: Damage reduction (physical/magic).
+- HIT/FLEE: To-hit vs. dodge.
+- CRIT: Ignore-defense hits.
+- HP/SP: Health/mana pools.
+- ASPD: Attacks per second. [matematika.fmipa.unp.ac](https://matematika.fmipa.unp.ac.id/id/wp-content/uploads/2023/04/NCTM_principles-and-standards-for-school-mathematics.pdf)
+
+**Design Note:** Hide formulas at first; show tooltips later. Use tables in UI for transparency.
+
+| Stat | Main Battle Role | Intro Order | Why That Order |
+|------|------------------|-------------|----------------|
+| STR | Melee Damage | 1 | Basic power fantasy |
+| AGI | Speed & Dodge | 2 | Adds mobility fun |
+| VIT | Health & Resist | 3 | Teaches defense |
+| DEX | Accuracy & Cast | 4 | Fixes misses |
+| INT | Magic Damage | 5 | Expands to ranged |
+| LUK | Crits & Luck | 6 | RNG depth last | [reddit](https://www.reddit.com/r/DnD/comments/1qzkigq/coming_from_bg3_my_friends_and_i_are_new_to/)
+
+## Game Design Rollout Plan
+
+Phase 1 (Launch): STR + AGI + VIT = Pure melee survival.
+Phase 2: Add DEX + INT = Ranged/magic hybrid.
+Phase 3: LUK = High-end crit PvP/endgame.
+
+This mirrors RO's feel: Stats interlock, so solo-maxing one hurts overall. Test with RO's point cost curve (next point costs more) to balance. Players learn "why" each stat matters through play, not walls of text. [reddit](https://www.reddit.com/r/DnD/comments/1qzkigq/coming_from_bg3_my_friends_and_i_are_new_to/)
