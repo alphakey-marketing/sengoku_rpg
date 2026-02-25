@@ -319,8 +319,15 @@ function generateEnemyStats(type: 'field' | 'boss' | 'special', playerLevel: num
   } else if (type === 'boss') {
     const name = locationId >= 100 ? pick(CN_BOSS_NAMES) : pick(JP_BOSS_NAMES);
     // Bosses scale more significantly with location
-    const difficultyMultiplier = locationId >= 100 ? (locationId - 100 + 5) * 3 : locationId * 1.5;
-    const lvl = locationId >= 100 ? Math.floor(playerLevel + 20 + ((locationId - 100) * 15)) : Math.floor(playerLevel + 5 + (locationId * 8));
+    // Added a more aggressive scaling for Japan maps (1-6) as well
+    const difficultyMultiplier = locationId >= 100 
+      ? (locationId - 100 + 5) * 3 
+      : 1.5 + ((locationId - 1) * 0.8); // Starts at 1.5, grows by 0.8 per Japan map
+    
+    const lvl = locationId >= 100 
+      ? Math.floor(playerLevel + 20 + ((locationId - 100) * 15)) 
+      : Math.floor(playerLevel + 5 + (locationId * 6));
+    
     return {
       name,
       level: lvl,
