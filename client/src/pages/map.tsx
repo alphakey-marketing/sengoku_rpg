@@ -13,6 +13,13 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from "@/components/ui/carousel";
 import { motion, AnimatePresence } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
 
@@ -358,59 +365,105 @@ export default function MapPage() {
                 {/* Attacker Side */}
                 <div className="space-y-2">
                   <h4 className="text-xs font-bold text-blue-400 uppercase tracking-widest px-1">Your Team</h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    {/* Main Player */}
-                    <div className="bg-blue-950/20 p-3 rounded border border-blue-900/30">
-                      <div className="flex justify-between items-center mb-2">
-                        <p className="font-bold text-white text-sm truncate">{(playerStatus?.player as any)?.firstName || 'Warrior'}</p>
-                        <span className="text-[10px] text-zinc-400">Lv {playerStatus?.player?.level}</span>
-                      </div>
-                      <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-[11px]">
-                        <div className="flex justify-between"><span className="text-zinc-500">HP</span> <span className="text-red-400 font-mono">{playerStatus?.player?.hp}</span></div>
-                        <div className="flex justify-between"><span className="text-zinc-500">ATK</span> <span className="text-orange-400 font-mono">{playerStatus?.player?.attack}</span></div>
-                        <div className="flex justify-between"><span className="text-zinc-500">DEF</span> <span className="text-blue-400 font-mono">{playerStatus?.player?.defense}</span></div>
-                        <div className="flex justify-between"><span className="text-zinc-500">SPD</span> <span className="text-cyan-400 font-mono">{playerStatus?.player?.speed}</span></div>
-                        <div className="col-span-2 border-t border-blue-900/20 mt-1 pt-1 flex justify-between">
-                          <span className="text-zinc-400 font-bold">HIT RATE</span>
-                          <span className="text-primary font-bold">
-                            {(() => {
-                              const hit = (playerStatus?.player?.attack || 0) + (playerStatus?.player?.speed || 0);
-                              const flee = (preBattleInfo?.enemy?.defense || 0) + (preBattleInfo?.enemy?.speed || 0);
-                              const dodge = Math.max(0, Math.min(95, 100 - (hit + 80 - flee)));
-                              return `${100 - dodge}%`;
-                            })()}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Companion (if exists) */}
-                    {playerStatus?.companions && playerStatus.companions.length > 0 && (
-                      <div className="bg-blue-950/20 p-3 rounded border border-blue-900/30">
-                        <div className="flex justify-between items-center mb-2">
-                          <p className="font-bold text-white text-sm truncate">{playerStatus.companions[0].name}</p>
-                          <span className="text-[10px] text-zinc-400">Lv {playerStatus.companions[0].level}</span>
-                        </div>
-                        <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-[11px]">
-                          <div className="flex justify-between"><span className="text-zinc-500">HP</span> <span className="text-red-400 font-mono">{playerStatus.companions[0].hp}</span></div>
-                          <div className="flex justify-between"><span className="text-zinc-500">ATK</span> <span className="text-orange-400 font-mono">{playerStatus.companions[0].attack}</span></div>
-                          <div className="flex justify-between"><span className="text-zinc-500">DEF</span> <span className="text-blue-400 font-mono">{playerStatus.companions[0].defense}</span></div>
-                          <div className="flex justify-between"><span className="text-zinc-500">SPD</span> <span className="text-cyan-400 font-mono">{playerStatus.companions[0].speed}</span></div>
-                          <div className="col-span-2 border-t border-blue-900/20 mt-1 pt-1 flex justify-between">
-                            <span className="text-zinc-400 font-bold">HIT RATE</span>
-                            <span className="text-primary font-bold">
-                              {(() => {
-                                const hit = (playerStatus.companions[0].attack || 0) + (playerStatus.companions[0].speed || 0);
-                                const flee = (preBattleInfo?.enemy?.defense || 0) + (preBattleInfo?.enemy?.speed || 0);
-                                const dodge = Math.max(0, Math.min(95, 100 - (hit + 80 - flee)));
-                                return `${100 - dodge}%`;
-                              })()}
-                            </span>
+                  <Carousel className="w-full">
+                    <CarouselContent>
+                      {/* Main Player */}
+                      <CarouselItem className="basis-full">
+                        <div className="bg-blue-950/20 p-3 rounded border border-blue-900/30 h-full">
+                          <div className="flex justify-between items-center mb-2">
+                            <p className="font-bold text-white text-sm truncate">{(playerStatus?.player as any)?.firstName || 'Warrior'} (You)</p>
+                            <span className="text-[10px] text-zinc-400">Lv {playerStatus?.player?.level}</span>
+                          </div>
+                          <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-[11px]">
+                            <div className="flex justify-between"><span className="text-zinc-500">HP</span> <span className="text-red-400 font-mono">{playerStatus?.player?.hp}</span></div>
+                            <div className="flex justify-between"><span className="text-zinc-500">ATK</span> <span className="text-orange-400 font-mono">{playerStatus?.player?.attack}</span></div>
+                            <div className="flex justify-between"><span className="text-zinc-500">DEF</span> <span className="text-blue-400 font-mono">{playerStatus?.player?.defense}</span></div>
+                            <div className="flex justify-between"><span className="text-zinc-500">SPD</span> <span className="text-cyan-400 font-mono">{playerStatus?.player?.speed}</span></div>
+                            <div className="col-span-2 border-t border-blue-900/20 mt-1 pt-1 flex justify-between gap-4">
+                              <div className="flex flex-col">
+                                <span className="text-[9px] text-zinc-500 font-bold uppercase">Hit Rate</span>
+                                <span className="text-primary font-bold text-xs">
+                                  {(() => {
+                                    const hit = (playerStatus?.player?.attack || 0) + (playerStatus?.player?.speed || 0);
+                                    const flee = (preBattleInfo?.enemy?.defense || 0) + (preBattleInfo?.enemy?.speed || 0);
+                                    const dodge = Math.max(0, Math.min(95, 100 - (hit + 80 - flee)));
+                                    return `${100 - dodge}%`;
+                                  })()}
+                                </span>
+                              </div>
+                              <div className="flex flex-col items-end">
+                                <span className="text-[9px] text-zinc-500 font-bold uppercase">Dodge Rate</span>
+                                <span className="text-amber-500 font-bold text-xs">
+                                  {(() => {
+                                    const eAtk = preBattleInfo?.enemy?.attack || 0;
+                                    const eSpd = preBattleInfo?.enemy?.speed || 0;
+                                    const eHit = eAtk + eSpd;
+                                    const pDef = playerStatus?.player?.defense || 0;
+                                    const pSpd = playerStatus?.player?.speed || 0;
+                                    const pFlee = pDef + pSpd;
+                                    const dodge = Math.max(0, Math.min(95, 100 - (eHit + 80 - pFlee)));
+                                    return `${dodge}%`;
+                                  })()}
+                                </span>
+                              </div>
+                            </div>
                           </div>
                         </div>
-                      </div>
+                      </CarouselItem>
+
+                      {/* Companions */}
+                      {playerStatus?.companions?.map((companion, index) => (
+                        <CarouselItem key={companion.id || index} className="basis-full">
+                          <div className="bg-blue-950/20 p-3 rounded border border-blue-900/30 h-full">
+                            <div className="flex justify-between items-center mb-2">
+                              <p className="font-bold text-white text-sm truncate">{companion.name}</p>
+                              <span className="text-[10px] text-zinc-400">Lv {companion.level}</span>
+                            </div>
+                            <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-[11px]">
+                              <div className="flex justify-between"><span className="text-zinc-500">HP</span> <span className="text-red-400 font-mono">{companion.hp}</span></div>
+                              <div className="flex justify-between"><span className="text-zinc-500">ATK</span> <span className="text-orange-400 font-mono">{companion.attack}</span></div>
+                              <div className="flex justify-between"><span className="text-zinc-500">DEF</span> <span className="text-blue-400 font-mono">{companion.defense}</span></div>
+                              <div className="flex justify-between"><span className="text-zinc-500">SPD</span> <span className="text-cyan-400 font-mono">{companion.speed}</span></div>
+                              <div className="col-span-2 border-t border-blue-900/20 mt-1 pt-1 flex justify-between gap-4">
+                                <div className="flex flex-col">
+                                  <span className="text-[9px] text-zinc-500 font-bold uppercase">Hit Rate</span>
+                                  <span className="text-primary font-bold text-xs">
+                                    {(() => {
+                                      const hit = (companion.attack || 0) + (companion.speed || 0);
+                                      const flee = (preBattleInfo?.enemy?.defense || 0) + (preBattleInfo?.enemy?.speed || 0);
+                                      const dodge = Math.max(0, Math.min(95, 100 - (hit + 80 - flee)));
+                                      return `${100 - dodge}%`;
+                                    })()}
+                                  </span>
+                                </div>
+                                <div className="flex flex-col items-end">
+                                  <span className="text-[9px] text-zinc-500 font-bold uppercase">Dodge Rate</span>
+                                  <span className="text-amber-500 font-bold text-xs">
+                                    {(() => {
+                                      const eAtk = preBattleInfo?.enemy?.attack || 0;
+                                      const eSpd = preBattleInfo?.enemy?.speed || 0;
+                                      const eHit = eAtk + eSpd;
+                                      const cDef = companion.defense || 0;
+                                      const cSpd = companion.speed || 0;
+                                      const cFlee = cDef + cSpd;
+                                      const dodge = Math.max(0, Math.min(95, 100 - (eHit + 80 - cFlee)));
+                                      return `${dodge}%`;
+                                    })()}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </CarouselItem>
+                      ))}
+                    </CarouselContent>
+                    {playerStatus?.companions && playerStatus.companions.length > 0 && (
+                      <>
+                        <CarouselPrevious className="-left-2 h-6 w-6 bg-background/50" />
+                        <CarouselNext className="-right-2 h-6 w-6 bg-background/50" />
+                      </>
                     )}
-                  </div>
+                  </Carousel>
                 </div>
 
                 {/* VS Divider */}
