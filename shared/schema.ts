@@ -44,6 +44,7 @@ export const users = pgTable("users", {
   petEssence: integer("pet_essence").notNull().default(0),
   warriorSouls: integer("warrior_soul").notNull().default(0),
   seppukuCount: integer("seppuku_count").notNull().default(0),
+  statPoints: integer("stat_points").notNull().default(48),
   permAttackBonus: integer("perm_attack_bonus").notNull().default(0),
   permDefenseBonus: integer("perm_defense_bonus").notNull().default(0),
   permSpeedBonus: integer("perm_speed_bonus").notNull().default(0),

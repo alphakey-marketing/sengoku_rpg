@@ -1,0 +1,172 @@
+1. Stat points gained per level (Classic 1–99)
+In Classic RO (pre‑Renewal, 1–99):
+
+Stat points gained going from BaseLv x to x+1:
+
+StatPointsGained = floor(x / 5) + 3
+
+Example: from 94 → 95: floor(94 / 5) + 3 = 18 + 3 = 21 points.
+
+Total stat points from 1 → 99:
+
+1225 points from leveling.
+
+Plus extra starting points from character creation:
+
+48 points invested during creation (the starting STR/AGI/etc).
+
+Total usable stat budget (1–99 normal char): 1273 points.
+​
+
+Design takeaway for your game:
+
+You can copy the same pattern: “few points early, more points per level as you go up”.
+
+The formula floor(x/5)+3 is simple and scales smoothly.
+
+2. Cost to raise a core stat (1 → 99)
+Classic RO uses increasing cost per stat point:
+
+Cost to raise a stat from value n to n+1:
+
+Cost(n → n+1) = floor((n − 1) / 10) + 2.
+​
+
+Interpretation:
+
+Stat 1 → 2 costs 2 points.
+
+Stat 2 → 3 costs 2 points.
+
+…
+
+Stat 10 → 11 costs 3 points.
+
+Stat 20 → 21 costs 4 points.
+
+…
+
+The cost increases by 1 every 10 stat points.
+​
+
+Total cost to reach 99 in one stat:
+
+Roughly 120–130+ points worth of cost; in practice, with six stats, players spread points.
+​
+
+Design takeaway:
+
+Yes, higher stats cost more: this is exactly how RO prevents 99 in everything.
+
+The step function (every 10 points) is easy to implement and explain:
+
+Stat 1–9: 2 points each
+
+10–19: 3 points each
+
+20–29: 4 points each
+
+…
+
+90–99: 11 points each
+
+You can tune these base numbers (start at 2 and +1 every 10) to make your game more or less “grindy” in stat building.
+
+3. How “leveling up core stats” feels to the player
+In practice, in RO:
+
+Early levels:
+
+You get few stat points per level, but each stat point is cheap.
+
+Players can quickly push their main stat to 20–40.
+​
+
+Mid levels:
+
+Per‑level stat gain rises, but each stat step becomes more expensive.
+
+Players feel they must “commit” to a build (AGI build, VIT tank, etc).
+​
+
+Late levels:
+
+You gain a lot of stat points per level (20+), but each extra stat point can cost 8–11 points.
+
+Most builds reach “one or two stats at 90+” rather than everything high.
+​
+
+Design takeaway:
+
+This structure naturally creates identity builds (full AGI, full VIT, etc) without needing explicit class restrictions.
+
+Extra stat points at high levels make level‑ups still feel meaningful even late game.
+
+4. Base EXP curve (Classic 1–99)
+Classic RO uses a steep, non‑linear EXP curve. Exact numbers are in the base EXP chart.
+​
+
+Key characteristics:
+
+Levels 1–10:
+
+Very low EXP requirements, quick early levels.
+
+Levels 11–40:
+
+Gradually rising EXP; still fairly fast.
+​
+
+Levels 41–80:
+
+EXP per level starts to jump noticeably.
+
+Levels 81–98:
+
+Very steep; each level takes significantly more EXP than the last.
+
+Level 98 → 99:
+
+One of the biggest jumps; this is the “grind wall” that makes 99 special.
+​
+
+The curve is essentially exponential / super‑linear. If you want a simple model for your own game:
+
+Example “RO‑inspired” formula for required EXP from level x to x+1:
+
+RequiredEXP(x → x+1) ≈ A × x^B
+
+A: base constant (sets overall pace)
+
+B: exponent (e.g. 2.5–3.0 for strong late‑game grind)
+
+Or copy the idea: handcrafted table with small numbers 1–10, medium 11–70, huge spike 80–99.
+​
+
+Design takeaway:
+
+RO makes high level (99) feel like an achievement by making the last ~20 levels much slower.
+
+You can mirror this structure but flatten it if you want a more casual game.
+
+5. How to apply this to your game
+If you want a “Classic‑like” feel:
+
+Stat point gain per level:
+
+Use: StatPointsGained = floor(Level / 5) + 3 (for 1–99).
+
+This gives ≈1225 points total, enough for one or two 90+ stats plus secondary stats.
+
+Stat cost:
+
+Use: Cost(n → n+1) = floor((n − 1) / 10) + 2.
+
+This ensures high stats are expensive and forces meaningful choices.
+​
+
+EXP curve:
+
+Use a steep, late‑game‑heavy curve (handcrafted table or x^B function).
+
+Make 1–30 fast, 30–80 moderate, 80–99 slow.

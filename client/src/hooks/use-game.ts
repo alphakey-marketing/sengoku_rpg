@@ -27,6 +27,7 @@ export interface PlayerData {
   flameEmperorTalisman: number;
   petEssence: number;
   warriorSouls: number;
+  statPoints: number;
 }
 
 export interface Companion {
@@ -678,6 +679,36 @@ export function useEndowEquipment() {
     onError: (error: Error) => {
       toast({
         title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  });
+}
+
+export function useUpgradeStat() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  return useMutation({
+    mutationFn: async (stat: 'str' | 'agi' | 'vit' | 'int' | 'dex' | 'luk') => {
+      const res = await fetchWithAuth(api.stats.upgrade.path, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ stat }),
+      });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || "Failed to upgrade stat");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [api.player.get.path] });
+      queryClient.invalidateQueries({ queryKey: [api.player.fullStatus.path] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Stat Point Allocation Failed",
         description: error.message,
         variant: "destructive",
       });

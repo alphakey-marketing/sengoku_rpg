@@ -242,6 +242,7 @@ async function getPlayerTeamStats(userId: string) {
         int: INT,
         dex: DEX,
         luk: LUK,
+        statPoints: user.statPoints || 0,
         hit,
         flee,
         statusMATK,
@@ -468,6 +469,29 @@ export async function registerRoutes(
       }
     }
     res.json(await storage.getCompanions(userId));
+  });
+
+  app.post(api.stats.upgrade.path, isAuthenticated, async (req: any, res) => {
+    const userId = req.user.claims.sub;
+    const { stat } = req.body;
+    const user = await storage.getUser(userId);
+    if (!user) return res.status(401).json({ message: "Unauthorized" });
+
+    const currentVal = (user as any)[stat] || 1;
+    if (currentVal >= 99) return res.status(400).json({ message: "Stat already at maximum" });
+
+    const cost = Math.floor((currentVal - 1) / 10) + 2;
+    if ((user.statPoints || 0) < cost) {
+      return res.status(400).json({ message: `Not enough stat points. Need ${cost}.` });
+    }
+
+    const updates: any = {
+      statPoints: user.statPoints - cost,
+      [stat]: currentVal + 1
+    };
+
+    const updatedUser = await storage.updateUser(userId, updates);
+    res.json(updatedUser);
   });
 
   app.post("/api/companions/:id/recycle", isAuthenticated, async (req: any, res) => {
@@ -996,6 +1020,7 @@ export async function registerRoutes(
     if (!teamStats) return res.status(400).json({ message: "Team not found" });
 
     let totalExpGained = 0;
+    let totalStatPointsGained = 0;
     let totalGoldGained = 0;
     const allEquipmentDropped = [];
     const allPetsDropped = [];

@@ -189,6 +189,14 @@ export const api = {
       path: '/api/quests/:key/claim' as const,
       responses: { 200: z.any(), 401: errorSchemas.unauthorized },
     }
+  },
+  stats: {
+    upgrade: {
+      method: 'POST' as const,
+      path: '/api/player/stats/upgrade' as const,
+      input: z.object({ stat: z.enum(['str', 'agi', 'vit', 'int', 'dex', 'luk']) }),
+      responses: { 200: z.any(), 400: errorSchemas.validation, 401: errorSchemas.unauthorized },
+    }
   }
 };
 

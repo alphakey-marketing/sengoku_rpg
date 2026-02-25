@@ -1,12 +1,18 @@
-import { usePlayer, usePlayerFullStatus, useEquipment, useTransformations } from "@/hooks/use-game";
+import { usePlayer, usePlayerFullStatus, useEquipment, useTransformations, useUpgradeStat } from "@/hooks/use-game";
 import { MainLayout } from "@/components/layout/main-layout";
-import { Shield, Sword, Coins, Wheat, Trophy, Zap, Heart, Sparkles, RefreshCcw, BookOpen, Users, Info } from "lucide-react";
+import { Shield, Sword, Coins, Wheat, Trophy, Zap, Heart, Sparkles, RefreshCcw, BookOpen, Users, Info, Plus } from "lucide-react";
 import { motion } from "framer-motion";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -31,6 +37,7 @@ export default function Home() {
   const { data: teamStatus } = usePlayerFullStatus();
   const { data: equipment } = useEquipment();
   const { data: transforms } = useTransformations();
+  const upgradeStat = useUpgradeStat();
   const { toast } = useToast();
 
   const mechanics = [
@@ -99,13 +106,29 @@ export default function Home() {
   ];
 
   const coreStats = teamStatus?.player ? [
-    { label: "STR", value: teamStatus.player.str, color: "text-red-500", description: "Strength: Increases Physical ATK" },
-    { label: "AGI", value: teamStatus.player.agi, color: "text-orange-400", description: "Agility: Increases Flee and Speed" },
-    { label: "VIT", value: teamStatus.player.vit, color: "text-green-500", description: "Vitality: Increases Max HP and Soft DEF" },
-    { label: "INT", value: teamStatus.player.int, color: "text-blue-400", description: "Intelligence: Increases MATK and Soft MDEF" },
-    { label: "DEX", value: teamStatus.player.dex, color: "text-yellow-500", description: "Dexterity: Increases HIT and Status ATK" },
-    { label: "LUK", value: teamStatus.player.luk, color: "text-purple-400", description: "Luck: Increases Critical Rate and Perfect Dodge" },
+    { key: 'str', label: "STR", value: teamStatus.player.str, color: "text-red-500", description: "Strength: Increases Physical ATK" },
+    { key: 'agi', label: "AGI", value: teamStatus.player.agi, color: "text-orange-400", description: "Agility: Increases Flee and Speed" },
+    { key: 'vit', label: "VIT", value: teamStatus.player.vit, color: "text-green-500", description: "Vitality: Increases Max HP and Soft DEF" },
+    { key: 'int', label: "INT", value: teamStatus.player.int, color: "text-blue-400", description: "Intelligence: Increases MATK and Soft MDEF" },
+    { key: 'dex', label: "DEX", value: teamStatus.player.dex, color: "text-yellow-500", description: "Dexterity: Increases HIT and Status ATK" },
+    { key: 'luk', label: "LUK", value: teamStatus.player.luk, color: "text-purple-400", description: "Luck: Increases Critical Rate and Perfect Dodge" },
   ] : [];
+
+  const handleStatUpgrade = async (stat: string) => {
+    try {
+      await upgradeStat.mutateAsync(stat as any);
+      toast({
+        title: "Stat Upgraded",
+        description: `Successfully increased your ${stat.toUpperCase()}!`,
+      });
+    } catch (error: any) {
+      // Error handled by mutation hook
+    }
+  };
+
+  const getStatUpgradeCost = (currentVal: number) => {
+    return Math.floor((currentVal - 1) / 10) + 2;
+  };
 
   const derivedStats = teamStatus?.player ? [
     { label: "HIT", value: teamStatus.player.hit },
@@ -304,23 +327,56 @@ export default function Home() {
             animate={{ opacity: 1, x: 0 }}
             className="bg-card border border-border/50 rounded-xl p-6 bg-washi relative overflow-hidden"
           >
-            <div className="absolute top-0 right-0 p-4 opacity-5">
-              <Sword size={80} />
+            <div className="absolute top-0 right-0 p-4 flex flex-col items-end gap-2">
+              <Sword size={80} className="opacity-5 absolute top-0 right-0" />
+              {teamStatus?.player && (
+                <div className="bg-primary/20 border border-primary/30 rounded px-3 py-1 backdrop-blur-sm z-10 flex flex-col items-center">
+                  <span className="text-[10px] text-primary-foreground font-bold uppercase tracking-wider">Stat Points</span>
+                  <span className="text-xl font-display font-bold text-white">{teamStatus.player.statPoints}</span>
+                </div>
+              )}
             </div>
             <h3 className="text-xl font-display font-semibold mb-6 flex items-center gap-2">
               <Trophy size={20} className="text-primary" />
               Core Attributes
             </h3>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-              {coreStats.map((stat) => (
-                <div key={stat.label} className="bg-background/40 border border-border/30 rounded-lg p-3 group hover:border-primary/50 transition-colors">
-                  <div className="flex justify-between items-center mb-1">
-                    <span className={`text-xs font-bold ${stat.color}`}>{stat.label}</span>
-                    <span className="text-lg font-display font-bold text-white">{stat.value}</span>
-                  </div>
-                  <p className="text-[10px] text-muted-foreground leading-tight">{stat.description}</p>
-                </div>
-              ))}
+              <TooltipProvider>
+                {coreStats.map((stat) => {
+                  const cost = getStatUpgradeCost(stat.value);
+                  const canAfford = teamStatus?.player && teamStatus.player.statPoints >= cost;
+                  const isMax = stat.value >= 99;
+
+                  return (
+                    <div key={stat.label} className="bg-background/40 border border-border/30 rounded-lg p-3 group hover:border-primary/50 transition-colors relative">
+                      <div className="flex justify-between items-center mb-1">
+                        <span className={`text-xs font-bold ${stat.color}`}>{stat.label}</span>
+                        <span className="text-lg font-display font-bold text-white">{stat.value}</span>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground leading-tight mb-2">{stat.description}</p>
+                      
+                      {!isMax && teamStatus?.player && (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button 
+                              size="icon" 
+                              variant="ghost" 
+                              className={`absolute bottom-2 right-2 h-6 w-6 rounded-full border border-primary/20 hover:bg-primary/20 ${!canAfford ? 'opacity-30' : ''}`}
+                              onClick={() => handleStatUpgrade(stat.key)}
+                              disabled={!canAfford || upgradeStat.isPending}
+                            >
+                              <Plus size={12} className="text-primary" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p className="text-xs">Upgrade for <span className="text-primary font-bold">{cost}</span> points</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      )}
+                    </div>
+                  );
+                })}
+              </TooltipProvider>
             </div>
           </motion.div>
 
