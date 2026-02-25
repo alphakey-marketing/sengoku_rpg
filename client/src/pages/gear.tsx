@@ -1,6 +1,6 @@
 import { usePlayerFullStatus, useEquipment, useEquip, useUnequip } from "@/hooks/use-game";
 import { MainLayout } from "@/components/layout/main-layout";
-import { Shield, Sword, Zap, Sparkles, Plus, Package, Heart } from "lucide-react";
+import { Shield, Sword, Zap, Sparkles, Plus, Package, Heart, Crosshair } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -112,6 +112,11 @@ export default function GearPage() {
                     <p className="font-bold text-sm truncate">
                       {item.name}{item.endowmentPoints > 0 ? ` +${item.endowmentPoints}` : ''}
                     </p>
+                    {item.weaponType && (
+                      <p className="text-[9px] text-zinc-500 font-mono uppercase leading-none mb-1">
+                        {item.weaponType}
+                      </p>
+                    )}
                     <div className="flex gap-2 text-[10px] mt-1 flex-wrap">
                       <span className="font-bold">Lv{item.level}</span>
                       {item.attackBonus > 0 && <span className="text-red-400">+{item.attackBonus} ATK</span>}

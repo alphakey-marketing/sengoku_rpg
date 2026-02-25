@@ -151,10 +151,20 @@ function generateEquipment(userId: string, locationId: number = 1, forceGood: bo
   
   const locMult = 1 + (locationId - 1) * 0.1;
 
+  let weaponType = null;
+  if (category === 'weapon') {
+    const lowerName = itemDef.name.toLowerCase();
+    if (lowerName.includes('bow')) weaponType = 'bow';
+    else if (lowerName.includes('rod') || lowerName.includes('staff') || lowerName.includes('wand')) weaponType = 'staff';
+    else if (lowerName.includes('knife') || lowerName.includes('cutter') || lowerName.includes('gauche')) weaponType = 'dagger';
+    else weaponType = 'sword';
+  }
+
   return {
     userId,
     name: itemDef.name + (slots > 0 ? ` [${slots}]` : ""),
     type: (itemDef as any).type || category,
+    weaponType,
     level: 1,
     experience: 0,
     expToNext: calcEquipExpToNext(1),
@@ -303,6 +313,8 @@ async function getPlayerTeamStats(userId: string) {
   const activeHorse = allHorses.find(h => h.isActive);
 
     const playerEquipped = equips.filter(e => e.isEquipped && e.equippedToType === 'player');
+    const weapon = playerEquipped.find(e => e.type === 'Weapon');
+    const weaponType = (weapon as any)?.weaponType;
     
     // Check for active transformation
     let activeTransform = null;
@@ -382,6 +394,7 @@ async function getPlayerTeamStats(userId: string) {
         attack, // This acts as base weapon attack
         defense, // This acts as hard defense
         speed,
+        weaponType,
         str: STR,
         agi: AGI,
         vit: VIT,
@@ -419,6 +432,9 @@ async function getPlayerTeamStats(userId: string) {
       } as any,
     companions: partyCompanions.map(c => {
       const compEquipped = equips.filter(e => e.isEquipped && e.equippedToType === 'companion' && Number(e.equippedToId) === Number(c.id));
+      const cWeapon = compEquipped.find(e => e.type === 'Weapon');
+      const cWeaponType = (cWeapon as any)?.weaponType;
+      
       const cAtkBonus = compEquipped.reduce((s, e) => s + Math.floor(e.attackBonus * (1 + (e.level - 1) * 0.05)), 0);
       const cDefBonus = compEquipped.reduce((s, e) => s + Math.floor(e.defenseBonus * (1 + (e.level - 1) * 0.08)), 0);
       const cSpdBonus = compEquipped.reduce((s, e) => s + Math.floor(e.speedBonus * (1 + (e.level - 1) * 0.1)), 0);
@@ -444,6 +460,7 @@ async function getPlayerTeamStats(userId: string) {
         attack: cAttack,
         defense: cDefense,
         speed: cSpeed,
+        weaponType: cWeaponType,
         str: cSTR,
         agi: cAGI,
         vit: cVIT,
@@ -586,6 +603,7 @@ function generateEnemyStats(
       speed: Math.floor(baseSpd * locationMultiplier),
 
       // new RO-style stats
+      weaponType: 'none',
       str: stats.str,
       agi: stats.agi,
       vit: stats.vit,
@@ -646,6 +664,7 @@ function generateEnemyStats(
       defense: hardDEF,
       speed: Math.floor(baseSpd * locationMultiplier),
 
+      weaponType: 'none',
       str: stats.str,
       agi: stats.agi,
       vit: stats.vit,
@@ -708,6 +727,7 @@ function generateEnemyStats(
       defense: hardDEF,
       speed: Math.floor(baseSpd * locationMultiplier),
 
+      weaponType: 'none',
       str: stats.str,
       agi: stats.agi,
       vit: stats.vit,
@@ -1952,10 +1972,20 @@ export async function registerRoutes(
       let defBonus = type === 'armor' || type === 'accessory' ? baseStats.def : 0;
       let spdBonus = type === 'horse_gear' || type === 'accessory' ? baseStats.spd : 0;
 
+      let weaponType = null;
+      if (type === 'weapon') {
+        const lowerName = name.toLowerCase();
+        if (lowerName.includes('bow')) weaponType = 'bow';
+        else if (lowerName.includes('rod') || lowerName.includes('staff') || lowerName.includes('wand')) weaponType = 'staff';
+        else if (lowerName.includes('knife') || lowerName.includes('cutter') || lowerName.includes('gauche')) weaponType = 'dagger';
+        else weaponType = 'sword';
+      }
+
       const equipment = await storage.createEquipment({
         userId,
         name,
         type,
+        weaponType,
         rarity,
         level: 1,
         experience: 0,
@@ -2048,9 +2078,36 @@ export async function registerRoutes(
     });
   });
 
-  app.post(api.restart.path, isAuthenticated, async (req: any, res) => {
+  app.post("/api/restart", isAuthenticated, async (req: any, res) => {
     const userId = req.user.claims.sub;
     await (storage as any).restartGame(userId);
+    
+    // Create initial equipment
+    await storage.createEquipment({
+      userId,
+      name: "Training Sword",
+      type: "weapon",
+      weaponType: "sword",
+      level: 1,
+      experience: 0,
+      expToNext: 100,
+      attackBonus: 5,
+      defenseBonus: 0,
+      speedBonus: 0,
+      hpBonus: 0,
+      mdefBonus: 0,
+      fleeBonus: 0,
+      matkBonus: 0,
+      critChance: 5,
+      critDamage: 0,
+      endowmentPoints: 0,
+      isEquipped: true,
+      equippedToId: null,
+      equippedToType: "player",
+      cardSlots: 1,
+      rarity: 'white'
+    });
+
     res.json({ success: true });
   });
 

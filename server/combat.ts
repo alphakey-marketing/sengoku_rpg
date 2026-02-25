@@ -1,5 +1,22 @@
 import { EnemyStats, TeamStats } from "../client/src/hooks/use-game";
 
+export type WeaponType =
+  | "dagger"
+  | "sword"
+  | "twoHandSword"
+  | "axe"
+  | "mace"
+  | "spear"
+  | "knuckle"
+  | "katar"
+  | "book"
+  | "staff"
+  | "bow"
+  | "gun"
+  | "instrument"
+  | "whip"
+  | "none";
+
 export interface CombatUnit {
   id: string;
   name: string;
@@ -8,6 +25,7 @@ export interface CombatUnit {
   attack: number;
   defense: number;
   speed: number;
+  weaponType?: WeaponType;
 
   // New RO Stats
   str?: number;
@@ -37,6 +55,28 @@ export interface CombatUnit {
   endowmentPoints?: number;
 }
 
+export function isMeleeWeapon(type: WeaponType | undefined): boolean {
+  if (!type) return true; // bare hands
+  return [
+    "dagger",
+    "sword",
+    "twoHandSword",
+    "axe",
+    "mace",
+    "spear",
+    "knuckle",
+    "katar",
+    "book",
+    "staff",
+    "none",
+  ].includes(type);
+}
+
+export function isRangedWeapon(type: WeaponType | undefined): boolean {
+  if (!type) return false;
+  return ["bow", "gun", "instrument", "whip"].includes(type);
+}
+
 export function calculateHitChance(attacker: CombatUnit, defender: CombatUnit): number {
   const attackerHit = attacker.hit ?? 0;
   const defenderFlee = defender.flee ?? 0;
@@ -46,31 +86,51 @@ export function calculateHitChance(attacker: CombatUnit, defender: CombatUnit): 
   return hitChance;
 }
 
-function getStatusATK(attacker: CombatUnit, isRanged: boolean): number {
+function getStatusATK(attacker: CombatUnit): number {
   const lv = (attacker as any).level ?? 1;
   const STR = attacker.str ?? 1;
   const DEX = attacker.dex ?? 1;
   const LUK = attacker.luk ?? 1;
 
-  if (!isRanged) {
-    return Math.floor(lv / 4) + STR + Math.floor(DEX / 5) + Math.floor(LUK / 3);
-  } else {
+  if (isRangedWeapon(attacker.weaponType)) {
     return Math.floor(lv / 4) + Math.floor(STR / 5) + DEX + Math.floor(LUK / 3);
+  } else {
+    // default to melee formula
+    return Math.floor(lv / 4) + STR + Math.floor(DEX / 5) + Math.floor(LUK / 3);
   }
 }
 
+function getWeaponATKWithStatBonus(unit: CombatUnit): number {
+  const baseWeaponATK = unit.weaponATK ?? unit.attack ?? 0;
+  const STR = unit.str ?? 1;
+  const DEX = unit.dex ?? 1;
+
+  let weaponATK = baseWeaponATK;
+
+  if (isRangedWeapon(unit.weaponType)) {
+    const bonusPercent = 0.005 * DEX; // 0.5% per DEX
+    weaponATK = baseWeaponATK * (1 + bonusPercent);
+  } else {
+    // default to melee
+    const bonusPercent = 0.005 * STR; // 0.5% per STR
+    weaponATK = baseWeaponATK * (1 + bonusPercent);
+  }
+
+  return Math.floor(weaponATK);
+}
+
 function getWeaponRoll(attacker: CombatUnit): number {
-  const baseWeaponATK = attacker.weaponATK ?? attacker.attack ?? 0;
+  const weaponATK = getWeaponATKWithStatBonus(attacker);
   const weaponLevel = attacker.weaponLevel ?? 1;
-  const varianceRange = 0.05 * weaponLevel * baseWeaponATK;
+  const varianceRange = 0.05 * weaponLevel * weaponATK;
   const variance = (Math.random() * 2 * varianceRange) - varianceRange;
   const refinementBonus = attacker.refinementBonus ?? 0;
   const bonusATK = attacker.bonusATK ?? 0;
-  return Math.floor(baseWeaponATK + variance + refinementBonus + bonusATK);
+  return Math.floor(weaponATK + variance + refinementBonus + bonusATK);
 }
 
-function getTotalATK(attacker: CombatUnit, isRanged: boolean): number {
-  const statusATK = getStatusATK(attacker, isRanged);
+function getTotalATK(attacker: CombatUnit): number {
+  const statusATK = getStatusATK(attacker);
   const weaponRoll = getWeaponRoll(attacker);
   return statusATK + weaponRoll;
 }
@@ -79,9 +139,8 @@ export function calculateDamage(
   attacker: CombatUnit,
   defender: CombatUnit,
   isCritical: boolean = false,
-  isRanged: boolean = false
 ) {
-  const rawATK = getTotalATK(attacker, isRanged);
+  const rawATK = getTotalATK(attacker);
   let damage = rawATK;
 
   const hardDEF = defender.hardDEF ?? defender.defense ?? 0;
@@ -136,7 +195,8 @@ export function runTurnBasedCombat(playerTeam: TeamStats, enemies: EnemyStats[])
     hardDEF: Number(playerTeam.player.defense) || 0,
     softDEF: 0,
     weaponATK: Number(playerTeam.player.attack) || 0,
-    weaponLevel: 1,
+    weaponLevel: (playerTeam.player as any).weaponLevel || 1,
+    weaponType: (playerTeam.player as any).weaponType,
     refinementBonus: 0,
     bonusATK: 0,
     hit: ((): number => {
@@ -177,6 +237,7 @@ export function runTurnBasedCombat(playerTeam: TeamStats, enemies: EnemyStats[])
       attack: Number(c.attack) || 0,
       defense: Number(c.defense) || 0,
       speed: Number(c.speed) || 0,
+      weaponType: (c as any).weaponType,
       str: Number((c as any).str || 10),
       agi: cAGI,
       vit: Number((c as any).vit || 10),
@@ -214,22 +275,19 @@ export function runTurnBasedCombat(playerTeam: TeamStats, enemies: EnemyStats[])
       attack: (e as any).weaponATK ?? e.attack ?? 0,
       defense: (e as any).hardDEF ?? e.defense ?? 0,
       speed: Number(e.speed) || 0,
-
+      weaponType: (e as any).weaponType,
       str: (e as any).str,
       agi: (e as any).agi,
       vit: (e as any).vit,
       int: (e as any).int,
       dex: (e as any).dex,
       luk: (e as any).luk,
-
       hardDEF: (e as any).hardDEF,
       softDEF: (e as any).softDEF ?? 0,
       weaponATK: (e as any).weaponATK ?? e.attack ?? 0,
       weaponLevel: (e as any).weaponLevel ?? 1,
-
       hit: (e as any).hit,
       flee: (e as any).flee,
-
       isPlayer: false,
       statusEffects: [],
       isGuarding: false,
@@ -283,8 +341,7 @@ export function runTurnBasedCombat(playerTeam: TeamStats, enemies: EnemyStats[])
       } else {
         const critChance = (unit.critChance || 0) + 5;
         const isCrit = (Math.random() * 100) < critChance;
-        const isRanged = false; 
-        const damage = calculateDamage(unit, target, isCrit, isRanged);
+        const damage = calculateDamage(unit, target, isCrit);
         target.hp -= damage;
         logs.push(`${unit.name} attacks ${target.name} for ${damage}${isCrit ? ' (CRITICAL!)' : ''} damage.`);
       }

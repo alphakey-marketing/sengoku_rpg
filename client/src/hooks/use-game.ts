@@ -54,6 +54,7 @@ export interface Equipment {
   userId: string;
   name: string;
   type: string;
+  weaponType: string | null;
   level: number;
   experience: number;
   expToNext: number;

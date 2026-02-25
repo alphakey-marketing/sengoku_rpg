@@ -1,0 +1,256 @@
+Below is a **clear game design guide** you can hand directly to IT. It defines melee vs ranged weapons (Classic RO–style) and how core stats affect each via formulas.
+
+--------------------------------
+1. Weapon types and classification
+--------------------------------
+
+We will classify weapons into **melee** and **ranged**, similar to Classic RO.
+
+1.1. Melee weapons
+
+These are treated as **melee** for all formulas:
+
+- Dagger
+- Sword (1H/2H)
+- Axe
+- Mace
+- Spear
+- Knuckle
+- Katar
+- Book
+- (Bare hands)
+
+In code, you can represent them as:
+
+```ts
+type WeaponType =
+  | "dagger"
+  | "sword"
+  | "twoHandSword"
+  | "axe"
+  | "mace"
+  | "spear"
+  | "knuckle"
+  | "katar"
+  | "book"
+  | "staff"
+  | "bow"
+  | "gun"
+  | "instrument"
+  | "whip"
+  | "none";
+```
+
+For **melee check**:
+
+```ts
+function isMeleeWeapon(type: WeaponType): boolean {
+  return [
+    "dagger",
+    "sword",
+    "twoHandSword",
+    "axe",
+    "mace",
+    "spear",
+    "knuckle",
+    "katar",
+    "book",
+    "staff",  // if you want staves to be melee for physical
+    "none",   // bare hands
+  ].includes(type);
+}
+```
+
+1.2. Ranged weapons
+
+These are treated as **ranged**:
+
+- Bow / Crossbow
+- Gun
+- Instrument (Bard)
+- Whip (Dancer)
+
+For **ranged check**:
+
+```ts
+function isRangedWeapon(type: WeaponType): boolean {
+  return ["bow", "gun", "instrument", "whip"].includes(type);
+}
+```
+
+(Each `CombatUnit` should have `weaponType: WeaponType` so we can branch formulas.)
+
+--------------------------------
+2. Core stats that affect ATK
+--------------------------------
+
+We will use these core stats:
+
+- STR: main physical stat for melee power.
+- DEX: main physical stat for ranged power + HIT.
+- LUK: small bonus to both ATK and CRIT.
+- BaseLv: contributes to StatusATK.
+
+In Classic RO, **melee** and **ranged** attacks use different StatusATK formulas. [irowiki](https://irowiki.org/wiki/Stats)
+
+--------------------------------
+3. StatusATK formulas (melee vs ranged)
+--------------------------------
+
+3.1. Melee StatusATK
+
+When `isMeleeWeapon(weaponType) === true`:
+
+```text
+StatusATK_melee =
+  floor(BaseLv / 4)
+  + STR
+  + floor(DEX / 5)
+  + floor(LUK / 3)
+```
+
+3.2. Ranged StatusATK
+
+When `isRangedWeapon(weaponType) === true`:
+
+```text
+StatusATK_ranged =
+  floor(BaseLv / 4)
+  + floor(STR / 5)
+  + DEX
+  + floor(LUK / 3)
+```
+
+Implementation helper:
+
+```ts
+function getStatusATK(unit: CombatUnit): number {
+  const lv  = unit.level ?? 1;
+  const STR = unit.str ?? 1;
+  const DEX = unit.dex ?? 1;
+  const LUK = unit.luk ?? 1;
+
+  if (isRangedWeapon(unit.weaponType)) {
+    return Math.floor(lv / 4)
+         + Math.floor(STR / 5)
+         + DEX
+         + Math.floor(LUK / 3);
+  } else {
+    // default to melee formula if not ranged
+    return Math.floor(lv / 4)
+         + STR
+         + Math.floor(DEX / 5)
+         + Math.floor(LUK / 3);
+  }
+}
+```
+
+--------------------------------
+4. STR and DEX impact on Weapon ATK
+--------------------------------
+
+We will also mirror Classic RO’s **Weapon ATK bonuses**: [irowiki](https://irowiki.org/wiki/ATK)
+
+4.1. Melee weapons – STR bonus
+
+When using melee weapons:
+
+- Each 1 STR:
+  - `StatusATK +1` (already in formula above)
+  - `WeaponATK bonus% = 0.5% * STR`
+
+Implementation:
+
+```ts
+function getWeaponATKWithStatBonus(unit: CombatUnit): number {
+  const baseWeaponATK = unit.weaponATK ?? unit.attack ?? 0;
+  const STR = unit.str ?? 1;
+  const DEX = unit.dex ?? 1;
+
+  let weaponATK = baseWeaponATK;
+
+  if (isMeleeWeapon(unit.weaponType)) {
+    const bonusPercent = 0.005 * STR;  // 0.5% per STR
+    weaponATK = baseWeaponATK * (1 + bonusPercent);
+  } else if (isRangedWeapon(unit.weaponType)) {
+    // Optional: DEX-based bonus for ranged
+    const bonusPercent = 0.005 * DEX;  // 0.5% per DEX, RO-inspired
+    weaponATK = baseWeaponATK * (1 + bonusPercent);
+  }
+
+  return Math.floor(weaponATK);
+}
+```
+
+4.2. Ranged weapons – DEX bonus
+
+In Classic RO, DEX is the main ranged damage stat. For your game, you can:
+
+- Keep STR’s effect small (as in StatusATK_ranged: floor(STR/5)).
+- Add a **DEX‑based WeaponATK bonus** similar to STR for melee, e.g.:
+
+```text
+WeaponATK_ranged = BaseWeaponATK * (1 + 0.005 * DEX)
+```
+
+This keeps **melee = STR‑centric**, **ranged = DEX‑centric**.
+
+--------------------------------
+5. TotalATK and damage pipeline
+--------------------------------
+
+5.1. TotalATK per hit
+
+Putting it together per hit:
+
+```ts
+function getTotalATK(unit: CombatUnit): number {
+  const statusATK  = getStatusATK(unit);
+  const weaponATK  = getWeaponATKWithStatBonus(unit);
+  const variance   = getWeaponVariance(unit.weaponLevel ?? 1, weaponATK); // optional
+  const refineATK  = unit.refinementBonus ?? 0;
+  const bonusATK   = unit.bonusATK ?? 0;
+
+  // If using variance, WeaponRoll = weaponATK + random(-variance, +variance)
+  const weaponRoll = weaponATK + variance;
+
+  return statusATK + weaponRoll + refineATK + bonusATK;
+}
+```
+
+A simple RO‑like variance helper:
+
+```ts
+function getWeaponVariance(weaponLevel: number, baseWeaponATK: number): number {
+  const range = 0.05 * weaponLevel * baseWeaponATK;
+  return Math.floor((Math.random() * 2 * range) - range); // -range..+range
+}
+```
+
+5.2. Damage steps (for IT reference)
+
+- `RawDamage = TotalATK`
+- Apply HardDEF (armor):  
+  `AfterHardDEF = floor(RawDamage * 100 / (100 + HardDEF_target))`
+- Apply SoftDEF (VIT/AGI):  
+  `Damage = max(1, AfterHardDEF - SoftDEF_target)`
+- Apply skill/element/race/crit multipliers afterward.
+
+--------------------------------
+6. Summary for IT (copy‑paste spec)
+--------------------------------
+
+1) Add `weaponType: WeaponType` to `CombatUnit`.  
+2) Implement `isMeleeWeapon` and `isRangedWeapon` as above.  
+3) Compute `StatusATK` using:
+   - Melee: `floor(BaseLv/4) + STR + floor(DEX/5) + floor(LUK/3)`  
+   - Ranged: `floor(BaseLv/4) + floor(STR/5) + DEX + floor(LUK/3)`
+4) Compute `weaponATK` with stat bonuses:
+   - Melee: `WeaponATK = BaseWeaponATK * (1 + 0.005 * STR)`  
+   - Ranged: `WeaponATK = BaseWeaponATK * (1 + 0.005 * DEX)` (optional but recommended)
+5) TotalATK per hit:
+   - `TotalATK = StatusATK + WeaponRoll + RefineATK + BonusATK`
+   - `WeaponRoll = weaponATK + random(-varianceRange, +varianceRange)`
+6) Use `TotalATK` as input into your existing Classic‑RO‑style DEF & damage pipeline.
+
+This gives you a clean, Classic‑accurate separation between melee and ranged weapons, and a clear role for STR/DEX/LUK in your combat formulas.

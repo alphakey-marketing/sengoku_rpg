@@ -195,8 +195,15 @@ export default function EquipmentPage() {
                         {item.name}{item.endowmentPoints > 0 ? ` +${item.endowmentPoints}` : ''}
                       </h3>
                     </div>
-                    <div className="shrink-0 uppercase text-[10px] font-bold tracking-wider px-2 py-1 rounded bg-black/40 border border-white/10">
-                      {typeLabel(item.type)}
+                    <div className="shrink-0 flex flex-col items-end gap-1">
+                      <div className="uppercase text-[10px] font-bold tracking-wider px-2 py-1 rounded bg-black/40 border border-white/10">
+                        {typeLabel(item.type)}
+                      </div>
+                      {item.weaponType && (
+                        <div className="text-[9px] text-zinc-500 font-mono uppercase">
+                          {item.weaponType}
+                        </div>
+                      )}
                     </div>
                   </div>
 
