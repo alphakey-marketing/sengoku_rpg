@@ -2101,28 +2101,6 @@ export async function registerRoutes(
     
     // Create initial equipment
     await storage.createEquipment({
-      userId,
-      name: "Training Bow",
-      type: "weapon",
-      weaponType: "sword",
-      rarity: "white",
-      level: 1,
-      experience: 0,
-      expToNext: 100,
-      attackBonus: 5,
-      defenseBonus: 0,
-      speedBonus: 0,
-      hpBonus: 0,
-      mdefBonus: 0,
-      fleeBonus: 0,
-      matkBonus: 0,
-      critChance: 5,
-      critDamage: 0,
-      endowmentPoints: 0,
-      isEquipped: true,
-      equippedToId: null,
-      equippedToType: "player",
-      cardSlots: 1
     } as any);
 
     res.json({ success: true });
