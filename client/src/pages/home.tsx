@@ -356,22 +356,38 @@ export default function Home() {
                       <p className="text-[10px] text-muted-foreground leading-tight mb-2">{stat.description}</p>
                       
                       {!isMax && teamStatus?.player && (
-                        <Tooltip>
-                          <TooltipTrigger asChild>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
                             <Button 
                               size="icon" 
                               variant="ghost" 
                               className={`absolute bottom-2 right-2 h-6 w-6 rounded-full border border-primary/20 hover:bg-primary/20 ${!canAfford ? 'opacity-30' : ''}`}
-                              onClick={() => handleStatUpgrade(stat.key)}
                               disabled={!canAfford || upgradeStat.isPending}
+                              data-testid={`button-upgrade-${stat.key}`}
                             >
                               <Plus size={12} className="text-primary" />
                             </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p className="text-xs">Upgrade for <span className="text-primary font-bold">{cost}</span> points</p>
-                          </TooltipContent>
-                        </Tooltip>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent className="bg-card border-border">
+                            <AlertDialogHeader>
+                              <AlertDialogTitle className="font-display">Confirm Stat Upgrade</AlertDialogTitle>
+                              <AlertDialogDescription className="text-zinc-400">
+                                Do you want to spend <span className="text-primary font-bold">{cost}</span> stat points to increase your <span className="text-white font-bold">{stat.label}</span>? 
+                                <br /><br />
+                                <span className="text-xs italic text-zinc-500">This action is permanent for your current incarnation.</span>
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel className="bg-zinc-800 text-white border-zinc-700">Cancel</AlertDialogCancel>
+                              <AlertDialogAction 
+                                onClick={() => handleStatUpgrade(stat.key)}
+                                className="bg-primary hover:bg-primary/90 text-white"
+                              >
+                                Confirm Upgrade
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
                       )}
                     </div>
                   );
