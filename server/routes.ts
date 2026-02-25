@@ -242,6 +242,12 @@ async function getPlayerTeamStats(userId: string) {
         int: INT,
         dex: DEX,
         luk: LUK,
+        strBonus: 0, // Placeholder for future gear/food bonuses
+        agiBonus: 0,
+        vitBonus: 0,
+        intBonus: 0,
+        dexBonus: 0,
+        lukBonus: 0,
         statPoints: user.statPoints || 0,
         hit,
         flee,

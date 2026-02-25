@@ -1,6 +1,6 @@
 import { usePlayer, usePlayerFullStatus, useEquipment, useTransformations, useUpgradeStat } from "@/hooks/use-game";
 import { MainLayout } from "@/components/layout/main-layout";
-import { Shield, Sword, Coins, Wheat, Trophy, Zap, Heart, Sparkles, RefreshCcw, BookOpen, Users, Info, Plus } from "lucide-react";
+import { Shield, Sword, Coins, Wheat, Trophy, Zap, Heart, Sparkles, RefreshCcw, BookOpen, Users, Info, Plus, ChevronUp, ChevronDown } from "lucide-react";
 import { motion } from "framer-motion";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
@@ -106,12 +106,12 @@ export default function Home() {
   ];
 
   const coreStats = teamStatus?.player ? [
-    { key: 'str', label: "STR", value: teamStatus.player.str, color: "text-red-500", description: "Strength: Increases Physical ATK" },
-    { key: 'agi', label: "AGI", value: teamStatus.player.agi, color: "text-orange-400", description: "Agility: Increases Flee and Speed" },
-    { key: 'vit', label: "VIT", value: teamStatus.player.vit, color: "text-green-500", description: "Vitality: Increases Max HP and Soft DEF" },
-    { key: 'int', label: "INT", value: teamStatus.player.int, color: "text-blue-400", description: "Intelligence: Increases MATK and Soft MDEF" },
-    { key: 'dex', label: "DEX", value: teamStatus.player.dex, color: "text-yellow-500", description: "Dexterity: Increases HIT and Status ATK" },
-    { key: 'luk', label: "LUK", value: teamStatus.player.luk, color: "text-purple-400", description: "Luck: Increases Critical Rate and Perfect Dodge" },
+    { key: 'str', label: "STR", value: teamStatus.player.str, color: "text-red-500", description: "Strength: Increases Physical ATK", bonus: (teamStatus.player as any).strBonus || 0 },
+    { key: 'agi', label: "AGI", value: teamStatus.player.agi, color: "text-orange-400", description: "Agility: Increases Flee and Speed", bonus: (teamStatus.player as any).agiBonus || 0 },
+    { key: 'vit', label: "VIT", value: teamStatus.player.vit, color: "text-green-500", description: "Vitality: Increases Max HP and Soft DEF", bonus: (teamStatus.player as any).vitBonus || 0 },
+    { key: 'int', label: "INT", value: teamStatus.player.int, color: "text-blue-400", description: "Intelligence: Increases MATK and Soft MDEF", bonus: (teamStatus.player as any).intBonus || 0 },
+    { key: 'dex', label: "DEX", value: teamStatus.player.dex, color: "text-yellow-500", description: "Dexterity: Increases HIT and Status ATK", bonus: (teamStatus.player as any).dexBonus || 0 },
+    { key: 'luk', label: "LUK", value: teamStatus.player.luk, color: "text-purple-400", description: "Luck: Increases Critical Rate and Perfect Dodge", bonus: (teamStatus.player as any).lukBonus || 0 },
   ] : [];
 
   const handleStatUpgrade = async (stat: string) => {
@@ -131,12 +131,14 @@ export default function Home() {
   };
 
   const derivedStats = teamStatus?.player ? [
-    { label: "HIT", value: teamStatus.player.hit },
-    { label: "FLEE", value: teamStatus.player.flee },
-    { label: "MATK", value: teamStatus.player.statusMATK },
-    { label: "MDEF", value: teamStatus.player.softMDEF },
-    { label: "CRIT", value: `${teamStatus.player.critChance}%` },
-    { label: "C.DMG", value: `+${teamStatus.player.critDamage}%` },
+    { label: "ATK", value: teamStatus.player.attack, formula: "STR + DEX/5 + LUK/3" },
+    { label: "MATK", value: teamStatus.player.statusMATK, formula: "1.5 * INT + DEX/5 + LUK/3" },
+    { label: "DEF", value: teamStatus.player.defense, formula: "VIT/2 + AGI/5" },
+    { label: "MDEF", value: teamStatus.player.softMDEF, formula: "INT + VIT/5 + DEX/5" },
+    { label: "HIT", value: teamStatus.player.hit, formula: "175 + LVL + DEX + LUK/3" },
+    { label: "FLEE", value: teamStatus.player.flee, formula: "100 + LVL + AGI + LUK/5" },
+    { label: "CRIT", value: `${teamStatus.player.critChance}%`, formula: "0.3 * LUK" },
+    { label: "ASPD", value: teamStatus.player.speed, formula: "SPD + AGI/2" },
   ] : [];
 
   const equippedItems = equipment?.filter(e => e.isEquipped && e.equippedToType === 'player') || [];
@@ -321,10 +323,10 @@ export default function Home() {
           ))}
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-12">
+        <div className="grid grid-cols-1 gap-8 mt-12">
           <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
             className="bg-card border border-border/50 rounded-xl p-6 bg-washi relative overflow-hidden"
           >
             <div className="absolute top-0 right-0 p-4 flex flex-col items-end gap-2">
@@ -340,7 +342,7 @@ export default function Home() {
               <Trophy size={20} className="text-primary" />
               Core Attributes
             </h3>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               <TooltipProvider>
                 {coreStats.map((stat) => {
                   const cost = getStatUpgradeCost(stat.value);
@@ -348,25 +350,31 @@ export default function Home() {
                   const isMax = stat.value >= 99;
 
                   return (
-                    <div key={stat.label} className="bg-background/40 border border-border/30 rounded-lg p-3 group hover:border-primary/50 transition-colors relative">
-                      <div className="flex justify-between items-center mb-1">
-                        <span className={`text-xs font-bold ${stat.color}`}>{stat.label}</span>
-                        <span className="text-lg font-display font-bold text-white">{stat.value}</span>
+                    <div key={stat.label} className="bg-background/40 border border-border/30 rounded-lg p-3 group hover:border-primary/50 transition-colors flex items-center justify-between gap-4">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className={`text-xs font-bold ${stat.color}`}>{stat.label}</span>
+                          <span className="text-lg font-display font-bold text-white">{stat.value}</span>
+                          {stat.bonus > 0 && <span className="text-xs text-accent font-bold">+{stat.bonus}</span>}
+                        </div>
+                        <p className="text-[10px] text-muted-foreground leading-tight">{stat.description}</p>
                       </div>
-                      <p className="text-[10px] text-muted-foreground leading-tight mb-2">{stat.description}</p>
                       
                       {!isMax && teamStatus?.player && (
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
-                            <Button 
-                              size="icon" 
-                              variant="ghost" 
-                              className={`absolute bottom-2 right-2 h-6 w-6 rounded-full border border-primary/20 hover:bg-primary/20 ${!canAfford ? 'opacity-30' : ''}`}
-                              disabled={!canAfford || upgradeStat.isPending}
-                              data-testid={`button-upgrade-${stat.key}`}
-                            >
-                              <Plus size={12} className="text-primary" />
-                            </Button>
+                            <div className="flex flex-col gap-1">
+                              <Button 
+                                size="icon" 
+                                variant="outline" 
+                                className={`h-8 w-8 rounded border-primary/20 hover:bg-primary/20 ${!canAfford ? 'opacity-30' : ''}`}
+                                disabled={!canAfford || upgradeStat.isPending}
+                                data-testid={`button-upgrade-${stat.key}`}
+                              >
+                                <ChevronUp size={16} className="text-primary" />
+                              </Button>
+                              <div className="text-[10px] text-center font-bold text-primary">{cost}P</div>
+                            </div>
                           </AlertDialogTrigger>
                           <AlertDialogContent className="bg-card border-border">
                             <AlertDialogHeader>
@@ -397,8 +405,8 @@ export default function Home() {
           </motion.div>
 
           <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
             className="bg-card border border-border/50 rounded-xl p-6 bg-washi relative overflow-hidden"
           >
             <div className="absolute top-0 right-0 p-4 opacity-5">
@@ -408,11 +416,14 @@ export default function Home() {
               <Sparkles size={20} className="text-accent" />
               Derived Combat Stats
             </h3>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {derivedStats.map((stat) => (
-                <div key={stat.label} className="bg-background/40 border border-border/30 rounded-lg p-3 flex flex-col items-center justify-center text-center">
+                <div key={stat.label} className="bg-background/40 border border-border/30 rounded-lg p-3 flex flex-col items-center justify-center text-center group relative cursor-help">
                   <span className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">{stat.label}</span>
                   <span className="text-xl font-display font-bold text-white">{stat.value}</span>
+                  <div className="absolute -bottom-1 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 px-2 py-1 rounded text-[8px] text-accent font-mono z-20 pointer-events-none whitespace-nowrap border border-accent/20">
+                    {stat.formula}
+                  </div>
                 </div>
               ))}
             </div>
