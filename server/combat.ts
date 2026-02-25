@@ -122,7 +122,7 @@ export function runTurnBasedCombat(playerTeam: TeamStats, enemies: EnemyStats[])
   });
 
   let turn = 0;
-  const maxTurns = 20;
+  const maxTurns = 50;
   
   while (turn < maxTurns) {
     turn++;
@@ -209,6 +209,6 @@ export function runTurnBasedCombat(playerTeam: TeamStats, enemies: EnemyStats[])
     }
   }
   
-  logs.push("Timeout! Battle exceeded 20 turns.");
+  logs.push("Timeout! Battle exceeded 50 turns.");
   return { victory: false, logs, turn, timeout: true };
 }
