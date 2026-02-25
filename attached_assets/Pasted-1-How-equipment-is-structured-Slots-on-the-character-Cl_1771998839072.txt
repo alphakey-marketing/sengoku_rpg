@@ -1,0 +1,157 @@
+1. How equipment is structured
+Slots on the character (Classic/pre‑Renewal):
+
+Weapon
+
+Shield (off‑hand)
+
+Armor (body)
+
+Garment (cloak, manteau)
+
+Footgear (shoes, boots)
+
+Accessory 1
+
+Accessory 2
+
+Headgear: Upper / Middle / Lower (three separate head slots)
+
+Each item is just “one piece” that goes into one slot (e.g. “Chain Mail” = body armor, “Poo Poo Hat” = upper headgear). There is no formal item “set bonus” system originally; some sets exist but are hard‑coded per item combination.
+​
+
+Design takeaway:
+
+Clear physical slots make it easy for players to understand gear.
+
+You can copy the same layout or reduce it (e.g. 1–2 head slots, 1 accessory slot) if you want simpler gearing.
+
+2. Do they have rarity tiers?
+Classic RO does not really use “common / rare / epic / legendary” color tiers like modern MMOs.
+
+Instead, “rarity” is felt through:
+
+Drop rate:
+
+Normal equipment: moderate drop rates (1%–30% depending on item).
+
+“Slot gear” (same armor but with card slot): much rarer drops.
+​
+
+Refinement potential:
+
+Some items refine better or have higher base DEF/ATK, so they are more valuable.
+
+Cards:
+
+Cards are very rare (often 0.01% drop). The item itself might be common, but a specific card inside that item becomes extremely “rare” and powerful.
+
+So: rarity is mostly “invisible” (by drop % and slot count), not a colored tier on the UI.
+
+Design takeaway for your game:
+
+You can keep RO’s feel by:
+
+Using drop rate + slot count + cards as the real rarity, without color tiers.
+
+Or you can add visual rarity (colors, borders) on top if you want more modern feedback.
+
+3. What stats do equipment add?
+Equipment adds a mix of:
+
+Base defensive/offensive values
+
+Armor: DEF and sometimes MDEF.
+
+Garment: DEF, sometimes FLEE or specific reductions.
+
+Footgear: DEF, Max HP/SP, sometimes movement or FLEE.
+
+Shield: DEF, sometimes racial/size element reductions.
+
+Weapon: ATK (base weapon damage), sometimes MATK on staves.
+
+Flat stat bonuses
+Many items give +STR, +AGI, +VIT, +INT, +DEX, +LUK.
+Example patterns:
+
++1~+3 to a single stat
+
++1 to multiple stats
+These feed directly into the formulas you already took (ATK, MATK, HIT, FLEE, etc.).
+
+Percentage modifiers
+Some equipment adds multipliers, such as:
+
+“+10% damage to Undead”
+
+“-15% damage from Demi‑Human”
+
+“+10% Max HP”
+
+“+15% walking speed”
+These usually apply after base ATK/DEF calculations.
+
+Special effects / conditions
+Many items (especially headgears and accessories) do quirky things:
+
+Auto‑cast certain skills when attacking or when being hit.
+
+Increase specific skill levels or reduce SP cost of one skill.
+
+Conditional bonuses: “When HP < 30%, ATK +20%” or “when wearing with X armor, gain Y buff”.
+
+Design takeaway:
+
+Base gear gives ATK/DEF + small stats.
+
+“Interesting” design lives in conditional bonuses and special effects, especially on headgear/accessories.
+
+4. Slot and card system (the real depth)
+Each equippable item may have 0–4 “card slots” (shown as,,, in the item name).
+
+Example:
+
+“Chain Mail ” = no slot.
+
+“Chain Mail ” = one card slot.
+​
+
+Better gear with slots is very rare and highly valued.
+​
+
+Cards:
+
+Dropped by monsters at very low chance.
+
+Each card can be inserted into a slotted item of the right type:
+
+Weapon cards (go into weapons)
+
+Armor cards (body armor)
+
+Shield cards, Garment cards, Footgear cards, Accessory cards, etc.
+​
+
+Once inserted, the card is permanent (cannot be removed in official rules).
+​
+
+Card effects are usually stronger and more specific than normal gear:
+
+“+15% damage to [Race]”
+
+“+20% damage with [Element] attacks”
+
+“+30% FLEE when HP < 50%”
+
+“+1 to All Stats”
+
+“Ignore DEF of Small enemies”, etc.
+
+Design takeaway:
+
+Base gear defines the skeleton (ATK/DEF/stats).
+
+Cards define the specialization / build (race killer, boss killer, tank, etc.).
+
+Very low drop rate + permanent socket = strong long‑term goals and meaningful choices.
