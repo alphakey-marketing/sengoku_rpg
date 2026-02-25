@@ -301,18 +301,18 @@ function generateEnemyStats(type: 'field' | 'boss' | 'special', playerLevel: num
     const name = locationId >= 100 ? pick(["Terracotta Guard", "Silk Road Bandit", "Mountain Cultivator"]) : pick(YOKAI_NAMES);
     const lvl = Math.max(1, playerLevel + Math.floor(Math.random() * 3) - 1);
     // Field enemies now scale much more aggressively in later maps
-    const baseHp = lvl * 30 + 50;
-    const baseAtk = lvl * 8 + 10;
-    const baseDef = lvl * 5 + 5;
-    const baseSpd = lvl * 4 + 8;
+    const baseHp = lvl * 150 + 200; // Increased base HP (was 30+50)
+    const baseAtk = lvl * 15 + 20;  // Increased base ATK (was 8+10)
+    const baseDef = lvl * 10 + 15;  // Increased base DEF (was 5+5)
+    const baseSpd = lvl * 8 + 15;   // Increased base SPD (was 4+8)
 
     return {
       name,
       level: lvl,
-      hp: Math.floor(baseHp * Math.pow(locationMultiplier, 1.2)),
-      maxHp: Math.floor(baseHp * Math.pow(locationMultiplier, 1.2)),
-      attack: Math.floor(baseAtk * Math.pow(locationMultiplier, 1.1)),
-      defense: Math.floor(baseDef * Math.pow(locationMultiplier, 1.1)),
+      hp: Math.floor(baseHp * Math.pow(locationMultiplier, 1.3)), // Higher scaling
+      maxHp: Math.floor(baseHp * Math.pow(locationMultiplier, 1.3)),
+      attack: Math.floor(baseAtk * Math.pow(locationMultiplier, 1.2)),
+      defense: Math.floor(baseDef * Math.pow(locationMultiplier, 1.2)),
       speed: Math.floor(baseSpd * locationMultiplier),
       skills: ["Scratch", "Bite"],
     };

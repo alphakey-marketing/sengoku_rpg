@@ -29,7 +29,13 @@ export function calculateDamage(attacker: CombatUnit, defender: CombatUnit, isCr
   
   // Final Damage = Base Damage × (ATK / Enemy DEF) × Critical Modifier × (1 - Damage Reduction)
   const defenderDefense = Math.max(1, Number(defender.defense) || 1);
-  let damage = Math.floor(baseDamage * (baseDamage / defenderDefense) * critMod * (1 - damageReduction));
+  const ratio = attacker.attack / defenderDefense;
+  
+  // Adjusted formula: 
+  // If ATK >> DEF, damage scales with ATK
+  // If ATK ~ DEF, damage is roughly ATK
+  // If ATK << DEF, damage is significantly reduced
+  let damage = Math.floor(attacker.attack * Math.sqrt(ratio) * critMod * (1 - damageReduction));
   
   if (defender.isGuarding) {
     damage = Math.floor(damage * 0.7);
