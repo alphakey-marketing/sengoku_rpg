@@ -186,11 +186,18 @@ export default function Home() {
     { label: "ATK", value: teamStatus.player.attack, formula: "STR + DEX/5 + LUK/3" },
     { label: "MATK", value: teamStatus.player.statusMATK, formula: "1.5 * INT + DEX/5 + LUK/3" },
     { label: "DEF", value: teamStatus.player.defense, formula: "VIT/2 + AGI/5" },
-    { label: "MDEF", value: teamStatus.player.softMDEF, formula: "INT + VIT/5 + DEX/5" },
-    { label: "HIT", value: teamStatus.player.hit, formula: "175 + LVL + DEX + LUK/3" },
-    { label: "FLEE", value: teamStatus.player.flee, formula: "100 + LVL + AGI + LUK/5" },
-    { label: "CRIT", value: `${teamStatus.player.critChance}%`, formula: "0.3 * LUK" },
-    { label: "ASPD", value: teamStatus.player.speed, formula: "SPD + AGI/2" },
+    { label: "MDEF", value: (teamStatus.player as any).softMDEF, formula: "INT + VIT/5 + DEX/5" },
+    { label: "HIT", value: (teamStatus.player as any).hit, formula: "175 + LVL + DEX + LUK/3" },
+    { label: "FLEE", value: (teamStatus.player as any).flee, formula: "100 + LVL + AGI + LUK/5" },
+    { label: "CRIT", value: `${(teamStatus.player as any).critChance}%`, formula: "0.3 * LUK" },
+    { label: "ASPD", value: (teamStatus.player as any).speed, formula: "SPD + AGI/2" },
+  ] : [];
+
+  const combatStats = teamStatus?.player ? [
+    { label: "HIT", value: (teamStatus.player as any).hit, icon: Sparkles, color: "text-blue-400" },
+    { label: "FLEE", value: (teamStatus.player as any).flee, icon: Zap, color: "text-green-400" },
+    { label: "CRIT", value: `${(teamStatus.player as any).critChance}%`, icon: Trophy, color: "text-red-400" },
+    { label: "MDEF", value: (teamStatus.player as any).softMDEF, icon: Shield, color: "text-purple-400" },
   ] : [];
 
   const equippedItems = equipment?.filter(e => e.isEquipped && e.equippedToType === 'player') || [];
@@ -496,6 +503,20 @@ export default function Home() {
                   <span className="text-xl font-display font-bold text-white">{stat.value}</span>
                   <div className="absolute -bottom-1 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 px-2 py-1 rounded text-[8px] text-accent font-mono z-20 pointer-events-none whitespace-nowrap border border-accent/20">
                     {stat.formula}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-8 grid grid-cols-2 md:grid-cols-4 gap-4 pt-6 border-t border-border/30">
+              {combatStats.map((stat) => (
+                <div key={stat.label} className="flex items-center gap-3">
+                  <div className={`p-2 rounded bg-background/60 border border-border/50 ${stat.color}`}>
+                    <stat.icon size={14} />
+                  </div>
+                  <div>
+                    <p className="text-[9px] text-muted-foreground uppercase font-bold">{stat.label}</p>
+                    <p className="text-sm font-bold text-white">{stat.value}</p>
                   </div>
                 </div>
               ))}
