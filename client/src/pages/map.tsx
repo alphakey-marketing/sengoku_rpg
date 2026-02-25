@@ -179,9 +179,9 @@ export default function MapPage() {
     const action = type === 'field' ? doFieldBattle : type === 'boss' ? doBossBattle : doSpecialBoss;
     
     // Important: boss and special battles expect just the number, field expects the object
-    const params = type === 'field' ? { locationId: locIdNum, repeatCount: repeatNum } : locIdNum;
+    const params = type === 'field' ? { locationId: locIdNum, repeatCount: repeatNum } : { locationId: locIdNum };
     
-    (action as any)(params, {
+    action(params as any, {
       onSuccess: (data: any) => {
         if (data.ninjaEncounter) {
           setNinjaEncounter(data.ninjaEncounter);
