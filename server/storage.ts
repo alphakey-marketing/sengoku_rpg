@@ -1,8 +1,9 @@
 import {
-  users, companions, equipment, pets, horses, transformations, campaignEvents,
+  users, companions, equipment, pets, horses, transformations, campaignEvents, userQuests,
   type User, type UpsertUser, type InsertCompanion, type InsertEquipment,
   type Companion, type Equipment, type Pet, type Horse, type Transformation,
-  type InsertPet, type InsertHorse, type InsertTransformation, type CampaignEvent
+  type InsertPet, type InsertHorse, type InsertTransformation, type CampaignEvent,
+  type UserQuest
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and } from "drizzle-orm";
