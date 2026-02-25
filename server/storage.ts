@@ -18,10 +18,14 @@ export interface IStorage {
   updateCompanion(id: number, updates: Partial<Companion>): Promise<Companion>;
   deleteCompanion(id: number): Promise<void>;
 
-  getEquipment(userId: string): Promise<Equipment[]>;
+  getEquipment(userId: string): Promise<(Equipment & { cards: Card[] })[]>;
   createEquipment(equip: InsertEquipment): Promise<Equipment>;
   updateEquipment(id: number, updates: Partial<Equipment>): Promise<Equipment>;
   deleteEquipment(id: number): Promise<void>;
+
+  getCards(userId: string): Promise<Card[]>;
+  createCard(card: InsertCard): Promise<Card>;
+  insertCardIntoEquipment(cardId: number, equipmentId: number): Promise<void>;
 
   getPets(userId: string): Promise<Pet[]>;
   createPet(pet: InsertPet): Promise<Pet>;
@@ -88,8 +92,13 @@ export class DatabaseStorage implements IStorage {
     await db.delete(companions).where(eq(companions.id, id));
   }
 
-  async getEquipment(userId: string): Promise<Equipment[]> {
-    return await db.select().from(equipment).where(eq(equipment.userId, userId));
+  async getEquipment(userId: string): Promise<(Equipment & { cards: Card[] })[]> {
+    const items = await db.select().from(equipment).where(eq(equipment.userId, userId));
+    const equipmentWithCards = await Promise.all(items.map(async (item) => {
+      const itemCards = await db.select().from(cards).where(eq(cards.equipmentId, item.id));
+      return { ...item, cards: itemCards };
+    }));
+    return equipmentWithCards;
   }
 
   async createEquipment(equip: InsertEquipment): Promise<Equipment> {
@@ -102,8 +111,25 @@ export class DatabaseStorage implements IStorage {
     return eqp;
   }
 
-  async deleteEquipment(id: number): Promise<void> {
-    await db.delete(equipment).where(eq(equipment.id, id));
+  async getCards(userId: string): Promise<Card[]> {
+    return await db.select().from(cards).where(eq(cards.userId, userId));
+  }
+
+  async createCard(card: InsertCard): Promise<Card> {
+    const [c] = await db.insert(cards).values(card as any).returning();
+    return c;
+  }
+
+  async insertCardIntoEquipment(cardId: number, equipmentId: number): Promise<void> {
+    const [eqp] = await db.select().from(equipment).where(eq(equipment.id, equipmentId));
+    if (!eqp) throw new Error("Equipment not found");
+    
+    const existingCards = await db.select().from(cards).where(eq(cards.equipmentId, equipmentId));
+    if (existingCards.length >= eqp.cardSlots) {
+      throw new Error("No available card slots");
+    }
+
+    await db.update(cards).set({ equipmentId }).where(eq(cards.id, cardId));
   }
 
   async recycleEquipmentByRarity(userId: string, rarity: string): Promise<{ count: number; stonesGained: number }> {

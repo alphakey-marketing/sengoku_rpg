@@ -79,7 +79,7 @@ export const equipment = pgTable("equipment", {
   id: serial("id").primaryKey(),
   userId: varchar("user_id").notNull(),
   name: text("name").notNull(),
-  type: text("type").notNull(),
+  type: text("type").notNull(), // Weapon, Shield, Armor, Garment, Footgear, Accessory, HeadgearUpper, HeadgearMiddle, HeadgearLower
   rarity: text("rarity").notNull(),
   level: integer("level").notNull().default(1),
   experience: integer("experience").notNull().default(0),
@@ -87,12 +87,29 @@ export const equipment = pgTable("equipment", {
   attackBonus: integer("attack_bonus").notNull().default(0),
   defenseBonus: integer("defense_bonus").notNull().default(0),
   speedBonus: integer("speed_bonus").notNull().default(0),
+  hpBonus: integer("hp_bonus").notNull().default(0),
+  mdefBonus: integer("mdef_bonus").notNull().default(0),
+  fleeBonus: integer("flee_bonus").notNull().default(0),
+  matkBonus: integer("matk_bonus").notNull().default(0),
   critChance: integer("crit_chance").notNull().default(0),
   critDamage: integer("crit_damage").notNull().default(0),
   endowmentPoints: integer("endowment_points").notNull().default(0),
   isEquipped: boolean("is_equipped").notNull().default(false),
   equippedToId: integer("equipped_to_id"),
   equippedToType: text("equipped_to_type"),
+  cardSlots: integer("card_slots").notNull().default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const cards = pgTable("cards", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull(),
+  name: text("name").notNull(),
+  type: text("type").notNull(), // Weapon, Armor, Shield, Garment, Footgear, Accessory, Headgear
+  effectDescription: text("effect_description").notNull(),
+  stats: text("stats"), // JSON string or comma-separated: "atk:10,str:1"
+  rarity: text("rarity").notNull(),
+  equipmentId: integer("equipment_id"), // Linked when inserted
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -178,14 +195,22 @@ export const userQuestsRelations = relations(userQuests, ({ one }) => ({
   user: one(users, { fields: [userQuests.userId], references: [users.id] }),
 }));
 
-export type UserQuest = typeof userQuests.$inferSelect;
+export const insertCardSchema = createInsertSchema(cards).omit({ id: true, createdAt: true });
+export type Card = typeof cards.$inferSelect;
+export type InsertCard = z.infer<typeof insertCardSchema>;
 
 export const companionsRelations = relations(companions, ({ one }) => ({
   user: one(users, { fields: [companions.userId], references: [users.id] }),
 }));
 
-export const equipmentRelations = relations(equipment, ({ one }) => ({
+export const equipmentRelations = relations(equipment, ({ one, many }) => ({
   user: one(users, { fields: [equipment.userId], references: [users.id] }),
+  cards: many(cards),
+}));
+
+export const cardsRelations = relations(cards, ({ one }) => ({
+  user: one(users, { fields: [cards.userId], references: [users.id] }),
+  equipment: one(equipment, { fields: [cards.equipmentId], references: [equipment.id] }),
 }));
 
 export const petsRelations = relations(pets, ({ one }) => ({
