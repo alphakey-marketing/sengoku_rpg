@@ -121,58 +121,57 @@ export default function MapPage() {
   const initiateBattle = (type: 'field' | 'boss' | 'special', locationId: number) => {
     // Generate a preview of the enemy based on location and type
     const loc = LOCATIONS.find(l => l.id === locationId);
-    const pLevel = playerStatus?.player.level || 1;
-    let locationMultiplier = 1 + (locationId - 1) * 0.75;
     
+    let targetLevel = 1;
     if (locationId >= 100) {
-      const chinaIndex = locationId - 100;
-      locationMultiplier = 5 + (chinaIndex * 2.5);
+      targetLevel = 7 + (locationId - 101);
+    } else {
+      targetLevel = locationId;
     }
+
+    const locationMultiplier = 1 + (targetLevel - 1) * 0.1;
     
     const commonFieldEnemies = locationId >= 100 ? ["Terracotta Guard", "Silk Road Bandit", "Mountain Cultivator"] : ["Oni Brute", "Kappa Scout", "Tengu Warrior", "Kitsune Trickster", "Jorogumo"];
     
     let enemyPreview: any;
     if (type === 'field') {
-      const lvl = Math.max(1, pLevel + 1);
-      const baseHp = lvl * 30 + 50;
-      const baseAtk = lvl * 8 + 10;
-      const baseDef = lvl * 5 + 5;
-      const baseSpd = lvl * 4 + 8;
+      const lvl = targetLevel;
+      const baseHp = lvl * 40 + 100;
+      const baseAtk = lvl * 10 + 20;
+      const baseDef = lvl * 6 + 15;
+      const baseSpd = lvl * 5 + 10;
 
       enemyPreview = {
         name: commonFieldEnemies[0],
         level: lvl,
-        hp: Math.floor(baseHp * Math.pow(locationMultiplier, 1.2)),
-        attack: Math.floor(baseAtk * Math.pow(locationMultiplier, 1.1)),
-        defense: Math.floor(baseDef * Math.pow(locationMultiplier, 1.1)),
+        hp: Math.floor(baseHp * locationMultiplier),
+        attack: Math.floor(baseAtk * locationMultiplier),
+        defense: Math.floor(baseDef * locationMultiplier),
         speed: Math.floor(baseSpd * locationMultiplier),
       };
     } else if (type === 'boss') {
-      const difficultyMultiplier = locationId >= 100 ? (locationId - 100 + 5) * 3 : locationId * 1.5;
-      const lvl = locationId >= 100 ? Math.floor(pLevel + 20 + ((locationId - 100) * 15)) : Math.floor(pLevel + 5 + (locationId * 8));
-      
+      const lvl = targetLevel + 2;
       const name = locationId >= 100 ? "General Lu Bu" : "Daimyo Takeda Shingen";
 
       enemyPreview = {
         name: name,
         level: lvl,
-        hp: Math.floor((lvl * 150 + 500 + Math.floor(difficultyMultiplier * 1000)) * locationMultiplier),
-        attack: Math.floor((lvl * 25 + 60 + Math.floor(difficultyMultiplier * 50)) * locationMultiplier),
-        defense: Math.floor((lvl * 20 + 50 + Math.floor(difficultyMultiplier * 40)) * locationMultiplier),
-        speed: Math.floor((lvl * 12 + 25 + Math.floor(difficultyMultiplier * 20)) * locationMultiplier),
+        hp: Math.floor((lvl * 200 + 1000) * locationMultiplier),
+        attack: Math.floor((lvl * 30 + 100) * locationMultiplier),
+        defense: Math.floor((lvl * 25 + 80) * locationMultiplier),
+        speed: Math.floor((lvl * 15 + 50) * locationMultiplier),
       };
     } else {
-      const difficultyMultiplier = locationId >= 100 ? (locationId - 100 + 10) * 5 : locationId;
-      const lvl = locationId >= 100 ? Math.floor(pLevel + 50 + ((locationId - 100) * 20)) : Math.floor(pLevel + 15 + (locationId * 12));
+      const lvl = targetLevel + 5;
       const name = locationId >= 100 ? "Celestial Dragon Emperor" : "Nine-Tailed Fox (九尾の狐)";
       
       enemyPreview = {
         name: name,
         level: lvl,
-        hp: Math.floor((lvl * 250 + 2000 + (difficultyMultiplier * 3000)) * locationMultiplier),
-        attack: Math.floor((lvl * 50 + 250 + (difficultyMultiplier * 150)) * locationMultiplier),
-        defense: Math.floor((lvl * 40 + 200 + (difficultyMultiplier * 120)) * locationMultiplier),
-        speed: Math.floor((lvl * 20 + 80 + (difficultyMultiplier * 50)) * locationMultiplier),
+        hp: Math.floor((lvl * 400 + 5000) * locationMultiplier),
+        attack: Math.floor((lvl * 60 + 300) * locationMultiplier),
+        defense: Math.floor((lvl * 50 + 250) * locationMultiplier),
+        speed: Math.floor((lvl * 30 + 100) * locationMultiplier),
       };
     }
     

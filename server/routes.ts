@@ -510,11 +510,11 @@ async function getPlayerTeamStats(userId: string) {
 function generateEnemyStats(type: 'field' | 'boss' | 'special', playerLevel: number, locationId: number = 1) {
   // Use a fixed level based on location
   // Japan (1-6): Levels 1, 2, 3, 4, 5, 6
-  // China (100-105): Levels 7, 8, 9, 10, 11, 12
+  // China (101-104): Levels 7, 8, 9, 10
   let targetLevel = 1;
   if (locationId >= 100) {
-    // 100 -> 7, 101 -> 8, etc.
-    targetLevel = 7 + (locationId - 100);
+    // 101 -> 7, 102 -> 8, etc.
+    targetLevel = 7 + (locationId - 101);
   } else {
     // 1 -> 1, 2 -> 2, etc.
     targetLevel = locationId;
