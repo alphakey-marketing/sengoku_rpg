@@ -215,8 +215,13 @@ export default function Home() {
     }
   };
 
-  const expToNext = Math.floor(100 * Math.pow(1.25, (player.level || 1) - 1));
-  const expPercent = player.level > 0 ? Math.min(100, (player.experience / expToNext) * 100) : 0;
+  const expToNext = useMemo(() => {
+    const L = player?.level || 1;
+    if (L < 11) return Math.floor(80 * Math.pow(L, 1.4));
+    if (L < 71) return Math.floor(120 * Math.pow(L, 2));
+    return Math.floor(150 * Math.pow(L, 2.4));
+  }, [player?.level]);
+  const expPercent = player?.level > 0 ? Math.min(100, (player.experience / expToNext) * 100) : 0;
 
   return (
     <MainLayout>

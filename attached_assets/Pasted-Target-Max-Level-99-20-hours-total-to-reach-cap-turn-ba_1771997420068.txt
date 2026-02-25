@@ -1,0 +1,239 @@
+Target: Max Level 99, ~20 hours total to reach cap, turn‑based battles with 1–3 enemies per encounter. Below is a **RO‑inspired but simplified** EXP curve and early‑zone monster table you can plug into your design. [dbc.reborn](https://dbc.reborn.cz/rodb.cgi?exp=list)
+
+***
+
+## 1. High‑level EXP curve concept (Lv 1–99, ~20h total)
+
+You want fast early game, steady mid game, and a grindy but not brutal 80–99.
+
+Assumptions:
+- Average pace: 20 hours = 72,000 seconds.
+- Average party uses auto‑battle / fast turns, so:
+  - ~1 encounter every 15 seconds on average.
+  - ~4 encounters per minute ⇒ ~240 encounters per hour.
+  - Over 20 hours ≈ 4,800 encounters total (single player grinding).  
+
+Rough design goals:
+- Lv 1–40: 4–5 hours total.  
+- Lv 41–70: 7–8 hours total.  
+- Lv 71–99: 7–9 hours total.  
+
+Sample “EXP to next level” curve (design numbers, not RO exact):
+- Lv 1–10: 100 → 1,000 EXP per level (linear).  
+- Lv 11–40: grows to ~10,000 EXP per level (almost quadratic).  
+- Lv 41–70: grows to ~80,000 EXP per level.  
+- Lv 71–98: grows to ~500,000 EXP per level.  
+- Lv 98→99: ~1,000,000 EXP (spike, but not insane like original RO). [dbc.reborn](https://dbc.reborn.cz/rodb.cgi?exp=list)
+
+You can express as a function:
+
+- For Level L (2 ≤ L ≤ 99):
+
+  Early (2–10):  
+  - EXP(L) ≈ 80 × L^1.4  
+
+  Mid (11–70):  
+  - EXP(L) ≈ 120 × L^2  
+
+  Late (71–99):  
+  - EXP(L) ≈ 150 × L^2.4  
+
+Then clamp or tweak values by hand to get nice round numbers and hit your “total 20 hours” target.
+
+***
+
+## 2. Expected kills per level and EXP per encounter
+
+If one level takes about 10–20 minutes in early game:
+
+- At ~240 encounters per hour:
+  - 10 min ≈ 40 encounters.  
+  - 20 min ≈ 80 encounters.  
+
+Design rule:  
+- Average “on‑level” player needs **50–80 encounters per level** early, then more later.  
+
+Let:
+- `E(L)` = EXP needed from L to L+1.
+- `N(L)` = target encounters per level at L (e.g. 60 early, 100 mid, 150 late).
+
+Then:
+- Average EXP per encounter at L ≈ E(L) / N(L).  
+
+You can then assign per‑monster EXP around that average (trash slightly below, tank/glass cannon slightly above).
+
+***
+
+## 3. Early zones (Lv 1–20) – example EXP and HP
+
+Assume:
+- Solo player, Lv 1–20 should take around 1.5–2 hours.  
+- Encounters: 1–3 monsters.  
+- Each encounter should last 2–4 turns.  
+
+### Zone 1: Beginner Area (Lv 1–5)
+
+Target:
+- 5–10 minutes to go from Lv 1 to 5.
+- Simple mobs, 1–2 per encounter.
+
+Approx EXP to next level (design example):
+- Lv 1 → 2: 100  
+- Lv 2 → 3: 180  
+- Lv 3 → 4: 260  
+- Lv 4 → 5: 360  
+
+If you want ~50 encounters total:
+- Average ~18–20 EXP per encounter.  
+
+Now define monsters (player basic attack maybe 10–20 damage with 2–3 hits to kill):
+
+Monster roles (Lv ~1–3):
+
+1) Slime  
+   - Level: 1  
+   - HP: 30  
+   - ATK: 3–5  
+   - DEF: 0  
+   - HIT: tuned so new players hit ~90%  
+   - FLEE: low, player is hit ~80–90%  
+   - EXP: 6  
+
+2) Small Bat  
+   - Level: 2  
+   - HP: 40  
+   - ATK: 4–6  
+   - DEF: 0  
+   - FLEE: slightly higher (harder to hit)  
+   - EXP: 8  
+
+3) Baby Wolf  
+   - Level: 3  
+   - HP: 60  
+   - ATK: 6–8  
+   - DEF: 1  
+   - EXP: 12  
+
+Encounter design:
+- 1–2 Slimes, sometimes 1 Slime + 1 Bat.  
+- Average EXP per encounter (1–2 kills): ≈ 10–20 EXP.  
+
+### Zone 2: Low Plains (Lv 5–10)
+
+Player now has some stats investment and basic gear.
+
+EXP to next level (example):
+- Lv 5 → 6: 600  
+- Lv 6 → 7: 800  
+- Lv 7 → 8: 1,000  
+- Lv 8 → 9: 1,300  
+- Lv 9 → 10: 1,700  
+
+If we want roughly 60–70 encounters per level:
+- Average 20–25 EXP per encounter at 5–7.  
+- 25–30 EXP per encounter at 8–10.  
+
+Monster roles (Lv 5–8):
+
+1) Field Poring  
+   - Level: 5  
+   - HP: 120  
+   - ATK: 10–14  
+   - DEF: 2  
+   - FLEE: low  
+   - EXP: 30  
+
+2) Hornet  
+   - Level: 6  
+   - HP: 100  
+   - ATK: 12–16  
+   - DEF: 1  
+   - FLEE: higher than Poring (dodge build gets value)  
+   - EXP: 28  
+
+3) Young Wolf (tankier)  
+   - Level: 7  
+   - HP: 180  
+   - ATK: 14–18  
+   - DEF: 3  
+   - EXP: 40  
+
+Encounters (1–3 mobs):
+- 2 Field Porings  
+- 1 Hornet + 1 Poring  
+- 1 Young Wolf (mini‑tank fight)  
+
+Expected:
+- 2–4 player turns to win fights.  
+- 25–50 EXP per encounter (depending on composition).  
+
+***
+
+## 4. Sample monster HP/EXP table (Lv 1–20)
+
+Text‑only design table (you can put in a spreadsheet):
+
+Area 1 – Beginner
+
+- Slime: Lv1, HP 30, ATK 3–5, DEF 0, EXP 6  
+- Small Bat: Lv2, HP 40, ATK 4–6, DEF 0, FLEE+, EXP 8  
+- Baby Wolf: Lv3, HP 60, ATK 6–8, DEF 1, EXP 12  
+
+Area 2 – Low Plains
+
+- Field Poring: Lv5, HP 120, ATK 10–14, DEF 2, EXP 30  
+- Hornet: Lv6, HP 100, ATK 12–16, FLEE+, DEF 1, EXP 28  
+- Young Wolf: Lv7, HP 180, ATK 14–18, DEF 3, EXP 40  
+
+Area 3 – Forest Edge (Lv 10–15 example)
+
+- Forest Mushroom: Lv10, HP 220, ATK 18–22, DEF 4, EXP 80  
+- Forest Fox: Lv11, HP 200, ATK 20–26, FLEE+, EXP 90  
+- Stone Golem (tank): Lv13, HP 350, ATK 22–28, DEF 8, EXP 140  
+
+You can tune so that:
+- Lv 10→15 total EXP ≈ 10,000–15,000.  
+- If ~80 encounters per level:
+  - ~125–190 EXP per encounter.  
+  - A 2–3 mob fight with Mushrooms/Foxes should total that.
+
+***
+
+## 5. Tying in level‑difference EXP modifiers
+
+Use a simple modifier on top of listed monster EXP:
+
+Let:
+- `d = monsterLv − playerLv`.
+
+Suggested modifier:
+- If |d| ≤ 5 ⇒ 100% EXP.  
+- If d ≥ 6:
+  - d = 6–10 ⇒ 110%  
+  - d = 11+ ⇒ 120% (cap)  
+- If d ≤ −6:
+  - d = −6 to −10 ⇒ 60%  
+  - d = −11 to −20 ⇒ 30%  
+  - d ≤ −21 ⇒ 10%  
+
+This keeps your designed EXP/level curve intact while punishing low‑level farming and giving a small bonus to challenging targets. [irowiki](https://irowiki.org/wiki/Experience)
+
+***
+
+## 6. How to expand this pattern up to 99
+
+1) Decide your EXP per level list using the rough formulas above, then hand‑tune some breakpoints (like RO’s spike near 98–99). [dbc.reborn](https://dbc.reborn.cz/rodb.cgi?exp=list)
+2) For each level band (10–20, 20–30, etc.), decide:
+   - Expected encounters per level (N(L)).  
+   - Baseline EXP per encounter = EXP(L) / N(L).  
+3) For each map:
+   - Make 3–6 monsters with:
+     - HP ≈ 2–5 hits to kill for an on‑level player.  
+     - ATK so they take 5–15% of HP on hit.  
+   - EXP ≈ baseline, with ±30–50% variation.  
+4) Add a few “elite” or “mini‑boss” monsters with:
+   - 3–5× HP.  
+   - 2× ATK.  
+   - 5–10× EXP.  
+
+If you want, next step I can draft a full Lv 1–30 EXP table plus 2 more zones (Lv 15–25, 25–35) in the same format, tuned to your “20 hours to 99” target.

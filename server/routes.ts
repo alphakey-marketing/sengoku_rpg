@@ -1,42 +1,8 @@
-import type { Express } from "express";
-import { type Server } from "http";
-import { storage } from "./storage";
-import { setupAuth, registerAuthRoutes, isAuthenticated } from "./replit_integrations/auth";
-import { api, buildUrl } from "@shared/routes";
-import { runTurnBasedCombat } from "./combat";
-
-const EQUIP_TYPES = ['weapon', 'armor', 'accessory', 'horse_gear'];
-
-const YOKAI_NAMES = ["Oni Brute", "Kappa Scout", "Tengu Warrior", "Kitsune Trickster", "Jorogumo"];
-const JP_BOSS_NAMES = [
-  "Daimyo Takeda Shingen", "Shogun Ashikaga Yoshiaki", "General Uesugi Kenshin", 
-  "Lord Mori Motonari", "Toyotomi Hideyoshi", "Akechi Mitsuhide", 
-  "Sanada Yukimura", "Date Masamune", "Hojo Ujiyasu", "Shimazu Yoshihiro"
-];
-const CN_BOSS_NAMES = [
-  "General Lu Bu", "Imperial Sorcerer Zuo Ci", "Terracotta Commander", 
-  "Guan Yu the God of War", "Prime Minister Cao Cao", "Emperor Sun Quan", 
-  "Zhuge Liang the Strategist", "Empress Wu Zetian", "General Zhao Yun", "Zhang Fei the Fierce"
-];
-const BOSS_NAMES = JP_BOSS_NAMES;
-const SPECIAL_BOSSES = [
-  { name: "Nine-Tailed Fox (九尾の狐)", transformName: "Fox Spirit", skill: "Foxfire Barrage (狐火乱射)", atkPct: 40, defPct: 25, spdPct: 50, hpPct: 35 },
-  { name: "Vengeful Warlord (怨霊武将)", transformName: "Oni Lord", skill: "Demon Summon (鬼神召喚)", atkPct: 50, defPct: 40, spdPct: 20, hpPct: 45 },
-  { name: "Dragon King (龍王)", transformName: "Dragon Form", skill: "Tidal Wave (津波)", atkPct: 35, defPct: 50, spdPct: 30, hpPct: 50 },
-];
-
-const WEAPON_NAMES = ["Katana", "Yari Spear", "Naginata", "Nodachi", "Tanto"];
-const ARMOR_NAMES = ["Do (胴)", "Kabuto (兜)", "Kusazuri (草摺)", "Suneate (臑当)"];
-const ACCESSORY_NAMES = ["Ninja Kunai", "Omamori Charm", "Smoke Bomb", "Shuriken Set"];
-const HORSE_GEAR_NAMES = ["War Saddle", "Iron Stirrups", "Battle Reins", "Armored Barding"];
-const PET_NAMES = [
-  { name: "Spirit Fox (妖狐)", skill: "Heal (回復)" },
-  { name: "War Hawk (鷹)", skill: "Scout (偵察)" },
-  { name: "Shadow Cat (影猫)", skill: "Poison (毒)" },
-];
-const HORSE_NAMES = ["Kiso Horse (木曽馬)", "Misaki Pony (御崎馬)", "Tokara Stallion (トカラ馬)"];
-
-function pick<T>(arr: T[]): T { return arr[Math.floor(Math.random() * arr.length)]; }
+function getExpToNext(L: number): number {
+    if (L < 11) return Math.floor(80 * Math.pow(L, 1.4));
+    if (L < 71) return Math.floor(120 * Math.pow(L, 2));
+    return Math.floor(150 * Math.pow(L, 2.4));
+  }
 
 const HORSE_RARITY_STATS: Record<string, { speed: number, atk: number, def: number }> = {
   white: { speed: 10, atk: 5, def: 5 },
@@ -366,22 +332,58 @@ function generateEnemyStats(type: 'field' | 'boss' | 'special', playerLevel: num
   }
 
   if (type === 'field') {
-    const name = locationId >= 100 ? pick(["Terracotta Guard", "Silk Road Bandit", "Mountain Cultivator"]) : pick(YOKAI_NAMES);
+    const isChina = locationId >= 100;
     const lvl = Math.max(1, playerLevel + Math.floor(Math.random() * 3) - 1);
-    // Field enemies now scale much more aggressively in later maps
-    const baseHp = lvl * 30 + 50;
-    const baseAtk = lvl * 8 + 10;
-    const baseDef = lvl * 5 + 5;
-    const baseSpd = lvl * 4 + 8;
+    
+    // Data-driven monster definitions for early levels
+    const monsterData: Record<number, { name: string, hp: number, atk: [number, number], def: number, exp: number, flee?: number }[]> = {
+      1: [
+        { name: "Slime", hp: 30, atk: [3, 5], def: 0, exp: 6 },
+        { name: "Small Bat", hp: 40, atk: [4, 6], def: 0, exp: 8, flee: 10 },
+        { name: "Baby Wolf", hp: 60, atk: [6, 8], def: 1, exp: 12 }
+      ],
+      2: [
+        { name: "Field Poring", hp: 120, atk: [10, 14], def: 2, exp: 30 },
+        { name: "Hornet", hp: 100, atk: [12, 16], def: 1, exp: 28, flee: 15 },
+        { name: "Young Wolf", hp: 180, atk: [14, 18], def: 3, exp: 40 }
+      ],
+      3: [
+        { name: "Forest Mushroom", hp: 220, atk: [18, 22], def: 4, exp: 80 },
+        { name: "Forest Fox", hp: 200, atk: [20, 26], def: 2, exp: 90, flee: 20 },
+        { name: "Stone Golem", hp: 350, atk: [22, 28], def: 8, exp: 140 }
+      ]
+    };
+
+    const zone = Math.min(3, locationId);
+    const possibleMonsters = monsterData[zone] || monsterData[1];
+    const monster = pick(possibleMonsters);
+    
+    // Scaling for higher locations/levels not explicitly defined in the table
+    let scale = 1.0;
+    if (locationId > 3) {
+      scale = Math.pow(1.3, locationId - 3);
+    }
+    if (isChina) scale *= 5;
+
+    // Experience difference modifier
+    const d = (monster.name === "Stone Golem" ? 13 : (zone === 1 ? 2 : zone === 2 ? 7 : 12)) - playerLevel;
+    let expMod = 1.0;
+    if (Math.abs(d) <= 5) expMod = 1.0;
+    else if (d >= 6 && d <= 10) expMod = 1.1;
+    else if (d >= 11) expMod = 1.2;
+    else if (d <= -6 && d >= -10) expMod = 0.6;
+    else if (d <= -11 && d >= -20) expMod = 0.3;
+    else if (d <= -21) expMod = 0.1;
 
     return {
-      name,
+      name: monster.name,
       level: lvl,
-      hp: Math.floor(baseHp * Math.pow(locationMultiplier, 1.2)),
-      maxHp: Math.floor(baseHp * Math.pow(locationMultiplier, 1.2)),
-      attack: Math.floor(baseAtk * Math.pow(locationMultiplier, 1.1)),
-      defense: Math.floor(baseDef * Math.pow(locationMultiplier, 1.1)),
-      speed: Math.floor(baseSpd * locationMultiplier),
+      hp: Math.floor(monster.hp * scale),
+      maxHp: Math.floor(monster.hp * scale),
+      attack: Math.floor((pick(monster.atk) || 10) * scale),
+      defense: Math.floor(monster.def * scale),
+      speed: Math.floor((10 + (monster.flee || 0) + lvl * 2) * scale),
+      exp: Math.floor(monster.exp * scale * expMod),
       skills: ["Scratch", "Bite"],
     };
   } else if (type === 'boss') {
@@ -1107,7 +1109,7 @@ export async function registerRoutes(
         await storage.updateQuestProgress(userId, 'daily_skirmish', 1);
         await storage.updateQuestProgress(userId, 'daily_skirmish_elite', 1);
         // Update user stats with level up logic
-        const expGained = Math.floor(Math.random() * 50) + 30 + enemy.level * 5;
+        const expGained = (enemy as any).exp || (Math.floor(Math.random() * 50) + 30 + enemy.level * 5);
         const goldGained = Math.floor(Math.random() * 20) + 10 + enemy.level * 2;
         totalExpGained += expGained;
         totalGoldGained += goldGained;
@@ -1120,427 +1122,18 @@ export async function registerRoutes(
         let currentSpd = user.speed;
         let currentStatPoints = user.statPoints || 0;
 
-        while (currentExp >= Math.floor(100 * Math.pow(1.25, currentLevel - 1))) {
-          currentExp -= Math.floor(100 * Math.pow(1.25, currentLevel - 1));
-          currentStatPoints += Math.floor(currentLevel / 5) + 3;
-          currentLevel++;
-          currentMaxHp += 20;
-          currentAtk += 5;
-          currentDef += 3;
-          currentSpd += 2;
-        }
-        
-        const endowmentStoneGained = Math.random() < 0.2 ? 1 : 0;
-        const talismanGained = Math.random() < 0.05 ? 1 : 0;
-
-        const userUpdate: any = {
-          level: currentLevel,
-          experience: currentExp,
-          gold: user.gold + totalGoldGained,
-          maxHp: currentMaxHp,
-          hp: currentMaxHp,
-          attack: currentAtk,
-          defense: currentDef,
-          speed: currentSpd,
-          statPoints: currentStatPoints,
-          endowmentStones: (user.endowmentStones || 0) + endowmentStoneGained,
-          fireGodTalisman: (user.fireGodTalisman || 0) + talismanGained
-        };
-
-        await storage.updateUser(userId, userUpdate);
-        if (Math.random() < (locationId >= 100 ? 0.5 : 0.3)) {
-          const rDrop = Math.random();
-          let type: string;
-          if (rDrop < 0.1) {
-            type = 'accessory';
-          } else {
-            const others = ['weapon', 'armor', 'horse_gear'];
-            type = others[Math.floor(Math.random() * others.length)];
-          }
-          
-          const rarity = equipRarityFromRandom(locationId);
-          const name = pick(type === 'weapon' ? WEAPON_NAMES : type === 'armor' ? ARMOR_NAMES : type === 'accessory' ? ACCESSORY_NAMES : HORSE_GEAR_NAMES);
-          
-          const statsByRarity: Record<string, { atk: number, def: number, spd: number }> = {
-            white: { atk: 5, def: 5, spd: 2 },
-            green: { atk: 8, def: 8, spd: 4 },
-            blue: { atk: 12, def: 10, spd: 6 },
-            purple: { atk: 20, def: 15, spd: 10 },
-            gold: { atk: 35, def: 25, spd: 15 },
-            mythic: { atk: 60, def: 45, spd: 25 },
-            exotic: { atk: 100, def: 75, spd: 45 },
-            transcendent: { atk: 200, def: 150, spd: 80 },
-            celestial: { atk: 450, def: 350, spd: 150 }
-          };
-          const baseStats = statsByRarity[rarity] || statsByRarity.white;
-
-          let atkBonus = type === 'weapon' || type === 'accessory' ? baseStats.atk : 0;
-          let defBonus = type === 'armor' || type === 'accessory' ? baseStats.def : 0;
-          let spdBonus = type === 'horse_gear' || type === 'accessory' ? baseStats.spd : 0;
-
-          if (locationId >= 100) {
-            const chinaMult = 2 + ((locationId - 100) * 0.5);
-            atkBonus = Math.floor(atkBonus * chinaMult);
-            defBonus = Math.floor(defBonus * chinaMult);
-            spdBonus = Math.floor(spdBonus * chinaMult);
+                while (currentExp >= getExpToNext(currentLevel)) {
+            const expReq = getExpToNext(currentLevel);
+            currentExp -= expReq;
+            currentStatPoints += Math.floor(currentLevel / 5) + 3;
+            currentLevel++;
+            currentMaxHp += 20;
+            currentAtk += 5;
+            currentDef += 3;
+            currentSpd += 2;
           }
 
-          const eq = await storage.createEquipment({
-            userId,
-            name,
-            type,
-            rarity,
-            level: 1,
-            experience: 0,
-            expToNext: 100,
-            attackBonus: atkBonus,
-            defenseBonus: defBonus,
-            speedBonus: spdBonus,
-          });
-          allEquipmentDropped.push(eq);
-          allLogs.push(`Found ${rarity.toUpperCase()} ${name}!`);
-        }
-
-function generatePet(userId: string, locationId: number = 1) {
-  const pInfo = pick(PET_NAMES);
-  const r = Math.random();
-  const isChina = locationId >= 100;
-  const bonus = isChina ? (locationId - 100) * 0.05 + 0.1 : (locationId - 1) * 0.02;
-
-  let rarity = 'white';
-  if (r > 0.99 - bonus/2) rarity = 'primal';
-  else if (r > 0.98 - bonus) rarity = 'celestial';
-  else if (r > 0.97 - bonus) rarity = 'transcendent';
-  else if (r > 0.96 - bonus) rarity = 'exotic';
-  else if (r > 0.90 - bonus) rarity = 'mythic';
-  else if (r > 0.75 - bonus) rarity = 'gold';
-  else if (r > 0.55 - bonus) rarity = 'purple';
-  else if (r > 0.35 - bonus) rarity = 'blue';
-  else if (r > 0.15 - bonus) rarity = 'green';
-
-  const statsByRarity: Record<string, { hp: number, atk: number, def: number, spd: number }> = {
-    white: { hp: 30, atk: 5, def: 5, spd: 15 },
-    green: { hp: 50, atk: 10, def: 10, spd: 25 },
-    blue: { hp: 80, atk: 18, def: 15, spd: 35 },
-    purple: { hp: 120, atk: 28, def: 25, spd: 50 },
-    gold: { hp: 200, atk: 45, def: 40, spd: 75 },
-    mythic: { hp: 350, atk: 75, def: 65, spd: 110 },
-    exotic: { hp: 600, atk: 130, def: 110, spd: 160 },
-    transcendent: { hp: 1000, atk: 220, def: 190, spd: 240 },
-    celestial: { hp: 1800, atk: 400, def: 350, spd: 380 },
-    primal: { hp: 3500, atk: 800, def: 700, spd: 600 }
-  };
-
-  const stats = statsByRarity[rarity] || statsByRarity.white;
-  const variance = () => (0.9 + Math.random() * 0.2); // 0.9 to 1.1 multiplier
-  
-  // Location scaling for base stats
-  const locMult = isChina ? 2 + (locationId - 100) * 0.5 : 1 + (locationId - 1) * 0.2;
-  const hpValue = Math.floor(stats.hp * locMult * variance());
-
-  return {
-    userId,
-    name: pInfo.name,
-    type: 'spirit',
-    rarity,
-    level: 1,
-    experience: 0,
-    expToNext: 100,
-    hp: hpValue,
-    maxHp: hpValue,
-    attack: Math.floor(stats.atk * locMult * variance()),
-    defense: Math.floor(stats.def * locMult * variance()),
-    speed: Math.floor(stats.spd * locMult * variance()),
-    skill: pInfo.skill,
-    isActive: false,
-  };
-}
-
-        // Horse Drop (5% chance)
-        if (Math.random() < 0.05) {
-          const horseData = generateHorse(userId, locationId);
-          try {
-            const horse = await storage.createHorse(horseData as any);
-            allHorsesDropped.push(horse);
-            allLogs.push(`HORSES: You managed to tame a wild ${horse.name}!`);
-          } catch (err) {
-            console.error("Failed to create horse drop:", err);
-          }
-        }
-
-        // Pet Drop (3% chance)
-        if (Math.random() < 0.03) {
-          const petData = generatePet(userId, locationId);
-          try {
-            const pet = await storage.createPet(petData as any);
-            allPetsDropped.push(pet);
-            allLogs.push(`PETS: A wild ${pet.name} decided to follow you!`);
-          } catch (err) {
-            console.error("Failed to create pet drop:", err);
-          }
-        }
-      }
-    }
-
-    if (totalExpGained > 0) {
-      // Handled in loop
-    } else if (totalGoldGained > 0) {
-      await storage.updateUser(userId, {
-        gold: user.gold + totalGoldGained,
-      });
-    }
-    
-    // Always give equipment exp at the end
-    if (count > 0) {
-      await giveEquipmentExp(userId, 10 * count);
-    }
-
-    res.json({
-      victory: totalExpGained > 0,
-      experienceGained: totalExpGained,
-      goldGained: totalGoldGained,
-      equipmentDropped: allEquipmentDropped,
-      petDropped: allPetsDropped[0] || null,
-      allPetsDropped,
-      horseDropped: allHorsesDropped[0] || null,
-      allHorsesDropped,
-      logs: allLogs,
-      ninjaEncounter
-    });
-  });
-
-  app.post("/api/battle/ninja/resolve", isAuthenticated, async (req: any, res) => {
-    const userId = req.user.claims.sub;
-    const { action, ninjaName, goldDemanded, locationId = 1 } = req.body;
-    const user = await storage.getUser(userId);
-    if (!user) return res.status(401).json({ message: "Unauthorized" });
-
-    if (action === 'pay') {
-      const goldToPay = Math.floor(Number(goldDemanded));
-      const userStatus = await storage.getUser(userId);
-      if (!userStatus) return res.status(401).json({ message: "Unauthorized" });
-      
-      const currentGold = Number(userStatus.gold) || 0;
-      if (currentGold < goldToPay) {
-        return res.status(400).json({ message: `Not enough gold. You have ${currentGold}, but ${goldToPay} is required.` });
-      }
-      
-      await storage.updateUser(userId, { gold: currentGold - goldToPay });
-      return res.json({ success: true, message: `You paid ${goldToPay} gold to ${ninjaName}. He vanished into the shadows.` });
-    } else {
-      const teamStats = await getPlayerTeamStats(userId);
-      if (!teamStats) return res.status(400).json({ message: "Team not found" });
-
-      const isSuperStrong = Math.random() < 0.3;
-      const enemy = {
-        name: ninjaName,
-        level: isSuperStrong ? user.level + 20 : user.level + 2,
-        hp: isSuperStrong ? user.maxHp * 3 : user.maxHp * 1.2,
-        maxHp: isSuperStrong ? user.maxHp * 3 : user.maxHp * 1.2,
-        attack: isSuperStrong ? user.attack * 2 : user.attack * 1.1,
-        defense: isSuperStrong ? user.defense * 1.5 : user.defense * 1.05,
-        speed: isSuperStrong ? user.speed * 1.5 : user.speed * 1.1,
-        skills: ["Shadow Strike", "Smoke Bomb", "Assassinate"],
-      };
-
-      const battleResult = runTurnBasedCombat(teamStats, [enemy]);
-      if (battleResult.victory) {
-        const goldGained = goldDemanded * 2;
-        const stonesGained = 3 + Math.floor(Math.random() * 3); // 3-5 stones
         await storage.updateUser(userId, { 
-          gold: user.gold + goldGained,
-          endowmentStones: (user.endowmentStones || 0) + stonesGained
-        });
-        battleResult.logs.push(`You defeated ${ninjaName} and looted ${goldGained} gold and ${stonesGained} Endowment Stones!`);
-      }
-      res.json({ success: true, battleResult });
-    }
-  });
-
-  app.post(api.battle.boss.path, isAuthenticated, async (req: any, res) => {
-    const userId = req.user.claims.sub;
-    const user = await storage.getUser(userId);
-    if (!user) return res.status(401).json({ message: "Unauthorized" });
-    const locationId = Number(req.body.locationId) || 1;
-    const teamStats = await getPlayerTeamStats(userId);
-    const enemyData = generateEnemyStats('boss', user.level, locationId);
-    if (req.body.enemyName) {
-      enemyData.name = req.body.enemyName;
-    }
-    
-    if (!teamStats) return res.status(400).json({ message: "Team not found" });
-
-    const battleResult = runTurnBasedCombat(teamStats, [enemyData]);
-    const victory = battleResult.victory;
-    const logs = battleResult.logs;
-
-    if (victory) {
-      await storage.updateQuestProgress(userId, 'daily_boss', 1);
-      const expGained = 100 + (locationId * 50);
-      const goldGained = 50 + (locationId * 25);
-      const riceGained = 10 + (locationId * 5);
-      const endowmentStones = 2 + Math.floor(Math.random() * 3); // 2-4 stones
-
-      // Level up logic
-      let currentExp = user.experience + expGained;
-      let currentLevel = user.level;
-      let currentMaxHp = user.maxHp;
-      let currentAtk = user.attack;
-      let currentDef = user.defense;
-      let currentSpd = user.speed;
-      let currentStatPoints = user.statPoints || 0;
-
-      while (currentExp >= Math.floor(100 * Math.pow(1.25, currentLevel - 1))) {
-        currentExp -= Math.floor(100 * Math.pow(1.25, currentLevel - 1));
-        currentStatPoints += Math.floor(currentLevel / 5) + 3;
-        currentLevel++;
-        currentMaxHp += 20;
-        currentAtk += 5;
-        currentDef += 3;
-        currentSpd += 2;
-      }
-
-      await storage.updateUser(userId, { 
-        level: currentLevel,
-        experience: currentExp, 
-        gold: user.gold + goldGained, 
-        rice: user.rice + riceGained,
-        endowmentStones: (user.endowmentStones || 0) + endowmentStones,
-        maxHp: currentMaxHp,
-        hp: currentMaxHp,
-        attack: currentAtk,
-        defense: currentDef,
-        speed: currentSpd,
-        statPoints: currentStatPoints
-      });
-      
-      const type = pick(EQUIP_TYPES);
-      const isChina = locationId >= 100;
-      
-      // Significantly improved drop rates for field battles
-      const fieldRarity = equipRarityFromRandom(locationId);
-      const name = pick(type === 'weapon' ? WEAPON_NAMES : type === 'armor' ? ARMOR_NAMES : type === 'accessory' ? ACCESSORY_NAMES : HORSE_GEAR_NAMES);
-      
-      const statsByRarity: Record<string, { atk: number, def: number, spd: number, critC: number, critD: number }> = {
-        white: { atk: 5, def: 3, spd: 2, critC: 0, critD: 0 },
-        green: { atk: 10, def: 6, spd: 4, critC: 0, critD: 0 },
-        blue: { atk: 15, def: 10, spd: 6, critC: 0, critD: 0 },
-        purple: { atk: 25, def: 18, spd: 10, critC: 2, critD: 5 },
-        gold: { atk: 40, def: 30, spd: 20, critC: 5, critD: 15 },
-        mythic: { atk: 60, def: 45, spd: 25, critC: 8, critD: 20 },
-        exotic: { atk: 100, def: 75, spd: 45, critC: 12, critD: 35 },
-        transcendent: { atk: 200, def: 150, spd: 80, critC: 20, critD: 60 },
-        celestial: { atk: 450, def: 350, spd: 150, critC: 35, critD: 120 },
-        primal: { atk: 1000, def: 800, spd: 300, critC: 60, critD: 300 }
-      };
-      const baseStats = statsByRarity[fieldRarity] || statsByRarity.white;
-
-      let atkBonus = baseStats.atk + (locationId * 5);
-      let defBonus = baseStats.def + (locationId * 3);
-      let spdBonus = baseStats.spd + (locationId * 2);
-
-      if (isChina) {
-        const chinaMult = 2 + ((locationId - 100) * 0.5);
-        atkBonus = Math.floor(atkBonus * chinaMult);
-        defBonus = Math.floor(defBonus * chinaMult);
-        spdBonus = Math.floor(spdBonus * chinaMult);
-      }
-
-      const itemData: any = {
-        userId,
-        name,
-        type,
-        rarity: fieldRarity,
-        level: 1,
-        experience: 0,
-        expToNext: 100,
-        attackBonus: atkBonus,
-        defenseBonus: defBonus,
-        speedBonus: spdBonus,
-        critChance: 0,
-        critDamage: 0,
-      };
-
-      // Apply critical stats based on type and rarity
-      if (['gold', 'mythic', 'exotic', 'transcendent', 'celestial', 'primal'].includes(fieldRarity)) {
-        if (type === 'weapon') {
-          itemData.critDamage = isChina ? Math.floor(baseStats.critD * 1.5) : baseStats.critD;
-        } else if (type === 'accessory') {
-          itemData.critChance = isChina ? Math.floor(baseStats.critC * 1.5) : baseStats.critC;
-        }
-      }
-
-      const eq = await storage.createEquipment(itemData);
-
-      // Pet Drop (10% chance from Boss)
-      let droppedPet = null;
-      if (Math.random() < 0.10) {
-        const petData = generatePet(userId, locationId);
-        try {
-          droppedPet = await storage.createPet(petData as any);
-          logs.push(`PETS: You rescued a ${droppedPet.name} from the castle!`);
-        } catch (err) {
-          console.error("Failed to create pet drop from boss:", err);
-        }
-      }
-
-      res.json({ 
-        victory: true, 
-        experienceGained: expGained, 
-        goldGained: goldGained, 
-        riceGained: riceGained, 
-        equipmentDropped: [eq],
-        petDropped: droppedPet,
-        logs 
-      });
-    } else {
-      logs.push("Defeat!");
-      res.json({ victory: false, logs });
-    }
-  });
-
-  app.post(api.battle.specialBoss.path, isAuthenticated, async (req: any, res) => {
-    const userId = req.user.claims.sub;
-    const user = await storage.getUser(userId);
-    if (!user) return res.status(401).json({ message: "Unauthorized" });
-    const locationId = Number(req.body.locationId) || 1;
-    const teamStats = await getPlayerTeamStats(userId);
-    const enemyData = generateEnemyStats('special', user.level, locationId);
-    if (req.body.enemyName) {
-      enemyData.name = req.body.enemyName;
-    }
-    
-    if (!teamStats) return res.status(400).json({ message: "Team not found" });
-
-    const battleResult = runTurnBasedCombat(teamStats, [enemyData]);
-    const victory = battleResult.victory;
-    const logs = battleResult.logs;
-
-    if (victory) {
-      const expGained = 250 + (locationId * 100);
-      const goldGained = 150 + (locationId * 75);
-      const endowmentStones = 5 + Math.floor(Math.random() * 6); // 5-10 stones
-
-      let currentExp = user.experience + expGained;
-      let currentLevel = user.level;
-      let currentMaxHp = user.maxHp;
-      let currentAtk = user.attack;
-      let currentDef = user.defense;
-      let currentSpd = user.speed;
-      let currentStatPoints = user.statPoints || 0;
-
-      while (currentExp >= Math.floor(100 * Math.pow(1.25, currentLevel - 1))) {
-        currentExp -= Math.floor(100 * Math.pow(1.25, currentLevel - 1));
-        currentStatPoints += Math.floor(currentLevel / 5) + 3;
-        currentLevel++;
-        currentMaxHp += 20;
-        currentAtk += 5;
-        currentDef += 3;
-        currentSpd += 2;
-      }
-      
-      // Explicitly awaiting the database update
-      await storage.updateUser(userId, { 
         level: currentLevel,
         experience: currentExp, 
         gold: user.gold + goldGained,
