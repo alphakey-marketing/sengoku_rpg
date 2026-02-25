@@ -601,15 +601,15 @@ export default function MapPage() {
                     </div>
                     <div className="bg-background/40 p-1 rounded text-center">
                       <span className="text-zinc-500 text-[8px] block uppercase">MATK</span>
-                      <span className="text-purple-400 font-mono text-xs leading-none">{(preBattleInfo?.enemy as any).matk || 0}</span>
+                      <span className="text-purple-400 font-mono text-xs leading-none">{preBattleInfo?.enemy?.matk || 0}</span>
                     </div>
                     <div className="bg-background/40 p-1 rounded text-center">
                       <span className="text-zinc-500 text-[8px] block uppercase">DEF</span>
-                      <span className="text-blue-400 font-mono text-xs leading-none">{preBattleInfo?.enemy.defense}</span>
+                      <span className="text-blue-400 font-mono text-xs leading-none">{preBattleInfo?.enemy?.defense || 0}</span>
                     </div>
                     <div className="bg-background/40 p-1 rounded text-center">
                       <span className="text-zinc-500 text-[8px] block uppercase">MDEF</span>
-                      <span className="text-indigo-400 font-mono text-xs leading-none">{(preBattleInfo?.enemy as any).mdef || 0}</span>
+                      <span className="text-indigo-400 font-mono text-xs leading-none">{preBattleInfo?.enemy?.mdef || 0}</span>
                     </div>
                     <div className="bg-background/40 p-1 rounded text-center">
                       <span className="text-zinc-500 text-[8px] block uppercase">HIT</span>
@@ -635,11 +635,11 @@ export default function MapPage() {
                     </div>
                     <div className="bg-background/40 p-1 rounded text-center">
                       <span className="text-zinc-500 text-[8px] block uppercase">CRIT</span>
-                      <span className="text-red-500 font-mono text-xs leading-none">{(preBattleInfo?.enemy as any).critChance || 0}</span>
+                      <span className="text-red-500 font-mono text-xs leading-none">{preBattleInfo?.enemy?.critChance || 0}</span>
                     </div>
                     <div className="bg-background/40 p-1 rounded text-center">
                       <span className="text-zinc-500 text-[8px] block uppercase">ASPD</span>
-                      <span className="text-cyan-400 font-mono text-xs leading-none">{preBattleInfo?.enemy.speed}</span>
+                      <span className="text-cyan-400 font-mono text-xs leading-none">{preBattleInfo?.enemy?.speed || 0}</span>
                     </div>
                   </div>
                   <div className="flex justify-between items-center border-t border-red-900/20 pt-1">
