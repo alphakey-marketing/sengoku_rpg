@@ -254,17 +254,14 @@ export class DatabaseStorage implements IStorage {
     if (quest) {
       if (!quest.isClaimed) {
         await db.update(userQuests)
-          .set({ progress: quest.progress + increment, lastUpdated: new Date() })
+          .set({ progress: (quest.progress || 0) + increment, lastUpdated: new Date() })
           .where(eq(userQuests.id, quest.id));
       }
     } else {
-      await db.insert(userQuests).values({
-        userId,
-        questKey,
-        progress: increment,
-        isClaimed: false,
-        lastUpdated: new Date()
-      });
+      // If quest doesn't exist in the active set but we're trying to update it,
+      // it might be a quest not selected for today, so we ignore it or 
+      // we could proactively insert it. Given the current design, we only
+      // update if it was one of the 3 selected quests.
     }
   }
 
