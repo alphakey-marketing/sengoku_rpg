@@ -95,7 +95,7 @@ function getStatusATK(attacker: CombatUnit): number {
   if (isRangedWeapon(attacker.weaponType)) {
     return Math.floor(lv / 4) + Math.floor(STR / 5) + DEX + Math.floor(LUK / 3);
   } else {
-    // default to melee formula
+    // Melee formula: STR + floor(DEX/5) + floor(LUK/3)
     return Math.floor(lv / 4) + STR + Math.floor(DEX / 5) + Math.floor(LUK / 3);
   }
 }

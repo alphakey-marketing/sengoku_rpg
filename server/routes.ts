@@ -358,7 +358,16 @@ async function getPlayerTeamStats(userId: string) {
     const critRate = 0.3 * LUK;
 
     // Final calculations for the response
-    let attack = user.attack + totalAtkBonus + (user.permAttackBonus || 0);
+    const statusAtk = (weaponType === 'bow' || weaponType === 'gun' || weaponType === 'instrument' || weaponType === 'whip')
+      ? Math.floor(BaseLv / 4) + Math.floor(STR / 5) + DEX + Math.floor(LUK / 3)
+      : Math.floor(BaseLv / 4) + STR + Math.floor(DEX / 5) + Math.floor(LUK / 3);
+
+    const baseWeaponAtk = totalAtkBonus + (user.permAttackBonus || 0);
+    const finalWeaponAtk = (weaponType === 'bow' || weaponType === 'gun' || weaponType === 'instrument' || weaponType === 'whip')
+      ? Math.floor(baseWeaponAtk * (1 + 0.005 * DEX))
+      : Math.floor(baseWeaponAtk * (1 + 0.005 * STR));
+
+    let attack = statusAtk + finalWeaponAtk;
     let defense = user.defense + totalDefBonus + (user.permDefenseBonus || 0);
     let speed = user.speed + totalSpdBonus + (user.permSpeedBonus || 0) + Math.floor(AGI / 2); 
     
@@ -444,10 +453,21 @@ async function getPlayerTeamStats(userId: string) {
       const cAGI = (c as any).agi || 10;
       const cDEX = (c as any).dex || 10;
       const cLUK = (c as any).luk || 1;
+      const cLv = c.level || 1;
+
+      // Companion Status ATK
+      const cStatusAtk = (cWeaponType === 'bow' || cWeaponType === 'gun' || cWeaponType === 'instrument' || cWeaponType === 'whip')
+        ? Math.floor(cLv / 4) + Math.floor(cSTR / 5) + cDEX + Math.floor(cLUK / 3)
+        : Math.floor(cLv / 4) + cSTR + Math.floor(cDEX / 5) + Math.floor(cLUK / 3);
+
+      const cBaseWeaponAtk = cAtkBonus;
+      const cFinalWeaponAtk = (cWeaponType === 'bow' || cWeaponType === 'gun' || cWeaponType === 'instrument' || cWeaponType === 'whip')
+        ? Math.floor(cBaseWeaponAtk * (1 + 0.005 * cDEX))
+        : Math.floor(cBaseWeaponAtk * (1 + 0.005 * cSTR));
 
       let cMaxHp = Math.floor(c.maxHp * (1 + 0.01 * cVIT));
       let cHp = Math.min(c.hp, cMaxHp);
-      let cAttack = c.attack + cAtkBonus;
+      let cAttack = cStatusAtk + cFinalWeaponAtk;
       let cDefense = c.defense + cDefBonus;
       let cSpeed = c.speed + cSpdBonus;
 
