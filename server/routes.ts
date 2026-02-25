@@ -1118,6 +1118,7 @@ export async function registerRoutes(
         let currentAtk = user.attack;
         let currentDef = user.defense;
         let currentSpd = user.speed;
+        let currentStatPoints = user.statPoints || 0;
 
         while (currentExp >= Math.floor(100 * Math.pow(1.25, currentLevel - 1))) {
           currentExp -= Math.floor(100 * Math.pow(1.25, currentLevel - 1));
@@ -1126,6 +1127,7 @@ export async function registerRoutes(
           currentAtk += 5;
           currentDef += 3;
           currentSpd += 2;
+          currentStatPoints += 5;
         }
         
         const endowmentStoneGained = Math.random() < 0.2 ? 1 : 0;
@@ -1140,6 +1142,7 @@ export async function registerRoutes(
           attack: currentAtk,
           defense: currentDef,
           speed: currentSpd,
+          statPoints: currentStatPoints,
           endowmentStones: (user.endowmentStones || 0) + endowmentStoneGained,
           fireGodTalisman: (user.fireGodTalisman || 0) + talismanGained
         };
@@ -1385,6 +1388,7 @@ function generatePet(userId: string, locationId: number = 1) {
       let currentAtk = user.attack;
       let currentDef = user.defense;
       let currentSpd = user.speed;
+      let currentStatPoints = user.statPoints || 0;
 
       while (currentExp >= Math.floor(100 * Math.pow(1.25, currentLevel - 1))) {
         currentExp -= Math.floor(100 * Math.pow(1.25, currentLevel - 1));
@@ -1393,6 +1397,7 @@ function generatePet(userId: string, locationId: number = 1) {
         currentAtk += 5;
         currentDef += 3;
         currentSpd += 2;
+        currentStatPoints += 5;
       }
 
       await storage.updateUser(userId, { 
@@ -1405,7 +1410,8 @@ function generatePet(userId: string, locationId: number = 1) {
         hp: currentMaxHp,
         attack: currentAtk,
         defense: currentDef,
-        speed: currentSpd
+        speed: currentSpd,
+        statPoints: currentStatPoints
       });
       
       const type = pick(EQUIP_TYPES);
@@ -1521,6 +1527,7 @@ function generatePet(userId: string, locationId: number = 1) {
       let currentAtk = user.attack;
       let currentDef = user.defense;
       let currentSpd = user.speed;
+      let currentStatPoints = user.statPoints || 0;
 
       while (currentExp >= Math.floor(100 * Math.pow(1.25, currentLevel - 1))) {
         currentExp -= Math.floor(100 * Math.pow(1.25, currentLevel - 1));
@@ -1529,6 +1536,7 @@ function generatePet(userId: string, locationId: number = 1) {
         currentAtk += 5;
         currentDef += 3;
         currentSpd += 2;
+        currentStatPoints += 5;
       }
       
       // Explicitly awaiting the database update
@@ -1542,7 +1550,8 @@ function generatePet(userId: string, locationId: number = 1) {
         hp: currentMaxHp,
         attack: currentAtk,
         defense: currentDef,
-        speed: currentSpd
+        speed: currentSpd,
+        statPoints: currentStatPoints
       });
 
       const sb = pick(SPECIAL_BOSSES);
