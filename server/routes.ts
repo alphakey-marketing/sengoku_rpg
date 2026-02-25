@@ -1142,6 +1142,18 @@ function generatePet(userId: string, locationId: number = 1) {
             console.error("Failed to create horse drop:", err);
           }
         }
+
+        // Pet Drop (3% chance)
+        if (Math.random() < 0.03) {
+          const petData = generatePet(userId, locationId);
+          try {
+            const pet = await storage.createPet(petData as any);
+            allPetsDropped.push(pet);
+            allLogs.push(`PETS: A wild ${pet.name} decided to follow you!`);
+          } catch (err) {
+            console.error("Failed to create pet drop:", err);
+          }
+        }
       }
     }
 
@@ -1332,12 +1344,25 @@ function generatePet(userId: string, locationId: number = 1) {
 
       const eq = await storage.createEquipment(itemData);
 
+      // Pet Drop (10% chance from Boss)
+      let droppedPet = null;
+      if (Math.random() < 0.10) {
+        const petData = generatePet(userId, locationId);
+        try {
+          droppedPet = await storage.createPet(petData as any);
+          logs.push(`PETS: You rescued a ${droppedPet.name} from the castle!`);
+        } catch (err) {
+          console.error("Failed to create pet drop from boss:", err);
+        }
+      }
+
       res.json({ 
         victory: true, 
         experienceGained: expGained, 
         goldGained: goldGained, 
         riceGained: riceGained, 
         equipmentDropped: [eq],
+        petDropped: droppedPet,
         logs 
       });
     } else {
