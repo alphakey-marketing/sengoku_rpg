@@ -2,10 +2,23 @@ import { useState } from "react";
 import { useCompanions, useSetParty, useEquipment, usePlayer, useRecycleCompanion, useUpgradeCompanion, Companion } from "@/hooks/use-game";
 import { MainLayout } from "@/components/layout/main-layout";
 import { Button } from "@/components/ui/button";
-import { Users, Star, Sword, Shield, Zap, Heart, Trash2, Hammer, Flame } from "lucide-react";
+import { Users, Star, Sword, Shield, Zap, Heart, Trash2, Hammer, Flame, RefreshCw } from "lucide-react";
 import { motion } from "framer-motion";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { api } from "@shared/routes";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 export default function Party() {
   const { data: player } = usePlayer();
@@ -17,6 +30,25 @@ export default function Party() {
   const { toast } = useToast();
 
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [isRecycling, setIsRecycling] = useState(false);
+
+  const handleRecycleRarity = async (rarities: string[]) => {
+    setIsRecycling(true);
+    try {
+      const res = await apiRequest('POST', '/api/companions/recycle-rarity', { rarities });
+      const data = await res.json();
+      queryClient.invalidateQueries({ queryKey: [api.companions.list.path] });
+      queryClient.invalidateQueries({ queryKey: [api.player.get.path] });
+      toast({ 
+        title: "Recycle Complete", 
+        description: `Dismissed ${data.count} warriors and gained ${data.soulsGained} Warrior Souls.` 
+      });
+    } catch (error) {
+      toast({ variant: "destructive", title: "Error", description: "Failed to recycle warriors." });
+    } finally {
+      setIsRecycling(false);
+    }
+  };
 
   if (companions && selectedIds.length === 0 && companions.some(c => c.isInParty)) {
     setSelectedIds(companions.filter(c => c.isInParty).map(c => c.id));
@@ -57,6 +89,57 @@ export default function Party() {
             <p className="text-muted-foreground">Select up to 5 unique warriors for your active party.</p>
           </div>
           <div className="flex items-center gap-4">
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="outline" size="sm" className="border-red-900/50 text-red-400 hover:bg-red-900/20" disabled={isRecycling}>
+                  <RefreshCw size={16} className="mr-2" />
+                  Recycle All
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent className="bg-card border-border">
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Recycle Warriors</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Select which rarities to dismiss. Active party members will not be recycled.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <div className="grid grid-cols-1 gap-2 py-4">
+                  {[
+                    { stars: 1, label: "Common", rarity: "1", color: "text-zinc-400" },
+                    { stars: 2, label: "Uncommon", rarity: "2", color: "text-green-400" },
+                    { stars: 3, label: "Rare", rarity: "3", color: "text-blue-400" },
+                    { stars: 4, label: "Epic", rarity: "4", color: "text-purple-400" },
+                    { stars: 5, label: "Legendary", rarity: "5", color: "text-yellow-400" },
+                  ].map((r) => (
+                    <Button
+                      key={r.rarity}
+                      variant="outline"
+                      className="justify-between hover:bg-red-900/10 border-border/50"
+                      onClick={() => handleRecycleRarity([r.rarity])}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className={r.color}>{r.label}</span>
+                        <div className="flex text-amber-500">
+                          {Array.from({ length: r.stars }).map((_, i) => <Star key={i} size={10} fill="currentColor" />)}
+                        </div>
+                      </div>
+                      <span className="text-[10px] text-muted-foreground">Recycle All</span>
+                    </Button>
+                  ))}
+                  <Button
+                    variant="destructive"
+                    className="mt-2"
+                    onClick={() => handleRecycleRarity(["1", "2", "3", "4", "5"])}
+                  >
+                    Recycle EVERYONE (Not in Party)
+                  </Button>
+                </div>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+
             <div className="flex items-center gap-2 bg-orange-900/20 border border-orange-700/30 px-4 py-2 rounded-lg">
               <Flame size={18} className="text-orange-400" />
               <div className="flex flex-col">

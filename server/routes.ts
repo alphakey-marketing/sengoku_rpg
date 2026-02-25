@@ -422,6 +422,36 @@ export async function registerRoutes(
     res.json({ soulsGained });
   });
 
+  app.post("/api/companions/recycle-rarity", isAuthenticated, async (req: any, res) => {
+    const userId = req.user.claims.sub;
+    const { rarities } = req.body; // Expecting an array of rarity strings like ["1", "2"]
+    
+    if (!Array.isArray(rarities) || rarities.length === 0) {
+      return res.status(400).json({ message: "No rarities specified" });
+    }
+
+    const user = await storage.getUser(userId);
+    if (!user) return res.status(401).json({ message: "Unauthorized" });
+
+    const allComps = await storage.getCompanions(userId);
+    const targets = allComps.filter(c => !c.isInParty && rarities.includes(c.rarity));
+    
+    if (targets.length === 0) {
+      return res.json({ soulsGained: 0, count: 0 });
+    }
+
+    const raritySouls: Record<string, number> = { "1": 5, "2": 10, "3": 25, "4": 50, "5": 125 };
+    let totalSouls = 0;
+
+    for (const target of targets) {
+      totalSouls += raritySouls[target.rarity] || 5;
+      await storage.deleteCompanion(target.id);
+    }
+
+    await storage.updateUser(userId, { warriorSouls: (user.warriorSouls || 0) + totalSouls });
+    res.json({ soulsGained: totalSouls, count: targets.length });
+  });
+
   app.post("/api/companions/:id/upgrade", isAuthenticated, async (req: any, res) => {
     const userId = req.user.claims.sub;
     const compId = Number(req.params.id);
