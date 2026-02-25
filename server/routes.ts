@@ -1,8 +1,42 @@
-function getExpToNext(L: number): number {
-    if (L < 11) return Math.floor(80 * Math.pow(L, 1.4));
-    if (L < 71) return Math.floor(120 * Math.pow(L, 2));
-    return Math.floor(150 * Math.pow(L, 2.4));
-  }
+import type { Express } from "express";
+import { type Server } from "http";
+import { storage } from "./storage";
+import { setupAuth, registerAuthRoutes, isAuthenticated } from "./replit_integrations/auth";
+import { api, buildUrl } from "@shared/routes";
+import { runTurnBasedCombat } from "./combat";
+
+const EQUIP_TYPES = ['weapon', 'armor', 'accessory', 'horse_gear'];
+
+const YOKAI_NAMES = ["Oni Brute", "Kappa Scout", "Tengu Warrior", "Kitsune Trickster", "Jorogumo"];
+const JP_BOSS_NAMES = [
+  "Daimyo Takeda Shingen", "Shogun Ashikaga Yoshiaki", "General Uesugi Kenshin", 
+  "Lord Mori Motonari", "Toyotomi Hideyoshi", "Akechi Mitsuhide", 
+  "Sanada Yukimura", "Date Masamune", "Hojo Ujiyasu", "Shimazu Yoshihiro"
+];
+const CN_BOSS_NAMES = [
+  "General Lu Bu", "Imperial Sorcerer Zuo Ci", "Terracotta Commander", 
+  "Guan Yu the God of War", "Prime Minister Cao Cao", "Emperor Sun Quan", 
+  "Zhuge Liang the Strategist", "Empress Wu Zetian", "General Zhao Yun", "Zhang Fei the Fierce"
+];
+const BOSS_NAMES = JP_BOSS_NAMES;
+const SPECIAL_BOSSES = [
+  { name: "Nine-Tailed Fox (九尾の狐)", transformName: "Fox Spirit", skill: "Foxfire Barrage (狐火乱射)", atkPct: 40, defPct: 25, spdPct: 50, hpPct: 35 },
+  { name: "Vengeful Warlord (怨霊武将)", transformName: "Oni Lord", skill: "Demon Summon (鬼神召喚)", atkPct: 50, defPct: 40, spdPct: 20, hpPct: 45 },
+  { name: "Dragon King (龍王)", transformName: "Dragon Form", skill: "Tidal Wave (津波)", atkPct: 35, defPct: 50, spdPct: 30, hpPct: 50 },
+];
+
+const WEAPON_NAMES = ["Katana", "Yari Spear", "Naginata", "Nodachi", "Tanto"];
+const ARMOR_NAMES = ["Do (胴)", "Kabuto (兜)", "Kusazuri (草摺)", "Suneate (臑当)"];
+const ACCESSORY_NAMES = ["Ninja Kunai", "Omamori Charm", "Smoke Bomb", "Shuriken Set"];
+const HORSE_GEAR_NAMES = ["War Saddle", "Iron Stirrups", "Battle Reins", "Armored Barding"];
+const PET_NAMES = [
+  { name: "Spirit Fox (妖狐)", skill: "Heal (回復)" },
+  { name: "War Hawk (鷹)", skill: "Scout (偵察)" },
+  { name: "Shadow Cat (影猫)", skill: "Poison (毒)" },
+];
+const HORSE_NAMES = ["Kiso Horse (木曽馬)", "Misaki Pony (御崎馬)", "Tokara Stallion (トカラ馬)"];
+
+function pick<T>(arr: T[]): T { return arr[Math.floor(Math.random() * arr.length)]; }
 
 const HORSE_RARITY_STATS: Record<string, { speed: number, atk: number, def: number }> = {
   white: { speed: 10, atk: 5, def: 5 },
@@ -332,58 +366,22 @@ function generateEnemyStats(type: 'field' | 'boss' | 'special', playerLevel: num
   }
 
   if (type === 'field') {
-    const isChina = locationId >= 100;
+    const name = locationId >= 100 ? pick(["Terracotta Guard", "Silk Road Bandit", "Mountain Cultivator"]) : pick(YOKAI_NAMES);
     const lvl = Math.max(1, playerLevel + Math.floor(Math.random() * 3) - 1);
-    
-    // Data-driven monster definitions for early levels
-    const monsterData: Record<number, { name: string, hp: number, atk: [number, number], def: number, exp: number, flee?: number }[]> = {
-      1: [
-        { name: "Slime", hp: 30, atk: [3, 5], def: 0, exp: 6 },
-        { name: "Small Bat", hp: 40, atk: [4, 6], def: 0, exp: 8, flee: 10 },
-        { name: "Baby Wolf", hp: 60, atk: [6, 8], def: 1, exp: 12 }
-      ],
-      2: [
-        { name: "Field Poring", hp: 120, atk: [10, 14], def: 2, exp: 30 },
-        { name: "Hornet", hp: 100, atk: [12, 16], def: 1, exp: 28, flee: 15 },
-        { name: "Young Wolf", hp: 180, atk: [14, 18], def: 3, exp: 40 }
-      ],
-      3: [
-        { name: "Forest Mushroom", hp: 220, atk: [18, 22], def: 4, exp: 80 },
-        { name: "Forest Fox", hp: 200, atk: [20, 26], def: 2, exp: 90, flee: 20 },
-        { name: "Stone Golem", hp: 350, atk: [22, 28], def: 8, exp: 140 }
-      ]
-    };
-
-    const zone = Math.min(3, locationId);
-    const possibleMonsters = monsterData[zone] || monsterData[1];
-    const monster = pick(possibleMonsters);
-    
-    // Scaling for higher locations/levels not explicitly defined in the table
-    let scale = 1.0;
-    if (locationId > 3) {
-      scale = Math.pow(1.3, locationId - 3);
-    }
-    if (isChina) scale *= 5;
-
-    // Experience difference modifier
-    const d = (monster.name === "Stone Golem" ? 13 : (zone === 1 ? 2 : zone === 2 ? 7 : 12)) - playerLevel;
-    let expMod = 1.0;
-    if (Math.abs(d) <= 5) expMod = 1.0;
-    else if (d >= 6 && d <= 10) expMod = 1.1;
-    else if (d >= 11) expMod = 1.2;
-    else if (d <= -6 && d >= -10) expMod = 0.6;
-    else if (d <= -11 && d >= -20) expMod = 0.3;
-    else if (d <= -21) expMod = 0.1;
+    // Field enemies now scale much more aggressively in later maps
+    const baseHp = lvl * 30 + 50;
+    const baseAtk = lvl * 8 + 10;
+    const baseDef = lvl * 5 + 5;
+    const baseSpd = lvl * 4 + 8;
 
     return {
-      name: monster.name,
+      name,
       level: lvl,
-      hp: Math.floor(monster.hp * scale),
-      maxHp: Math.floor(monster.hp * scale),
-      attack: Math.floor((pick(monster.atk) || 10) * scale),
-      defense: Math.floor(monster.def * scale),
-      speed: Math.floor((10 + (monster.flee || 0) + lvl * 2) * scale),
-      exp: Math.floor(monster.exp * scale * expMod),
+      hp: Math.floor(baseHp * Math.pow(locationMultiplier, 1.2)),
+      maxHp: Math.floor(baseHp * Math.pow(locationMultiplier, 1.2)),
+      attack: Math.floor(baseAtk * Math.pow(locationMultiplier, 1.1)),
+      defense: Math.floor(baseDef * Math.pow(locationMultiplier, 1.1)),
+      speed: Math.floor(baseSpd * locationMultiplier),
       skills: ["Scratch", "Bite"],
     };
   } else if (type === 'boss') {
@@ -509,10 +507,621 @@ export async function registerRoutes(
     if (!user) return res.status(401).json({ message: "Unauthorized" });
 
     let currentStatPoints = user.statPoints || 0;
+    const updates: any = {};
+    const stats = ['str', 'agi', 'vit', 'int', 'dex', 'luk'];
 
-        while (currentExp >= getExpToNext(currentLevel)) {
-          const expReq = getExpToNext(currentLevel);
-          currentExp -= expReq;
+    for (const [stat, amount] of Object.entries(upgrades)) {
+      if (!stats.includes(stat)) continue;
+      let val = (user as any)[stat] || 1;
+      for (let i = 0; i < (amount as number); i++) {
+        if (val >= 99) break;
+        const cost = Math.floor((val - 1) / 10) + 2;
+        if (currentStatPoints < cost) {
+          return res.status(400).json({ message: "Not enough stat points for all upgrades" });
+        }
+        currentStatPoints -= cost;
+        val++;
+      }
+      updates[stat] = val;
+    }
+
+    updates.statPoints = currentStatPoints;
+    const updatedUser = await storage.updateUser(userId, updates);
+    res.json(updatedUser);
+  });
+
+  app.post("/api/companions/:id/recycle", isAuthenticated, async (req: any, res) => {
+    const userId = req.user.claims.sub;
+    const compId = Number(req.params.id);
+    const comps = await storage.getCompanions(userId);
+    const target = comps.find(c => c.id === compId);
+    if (!target) return res.status(404).json({ message: "Companion not found" });
+    if (target.isInParty) return res.status(400).json({ message: "Cannot dismiss active party member" });
+
+    const raritySouls: Record<string, number> = { "1": 5, "2": 10, "3": 25, "4": 50, "5": 125 };
+    const soulsGained = raritySouls[target.rarity] || 5;
+
+    const user = await storage.getUser(userId);
+    if (!user) return res.status(401).json({ message: "Unauthorized" });
+
+    await storage.updateUser(userId, { warriorSouls: (user.warriorSouls || 0) + soulsGained });
+    await storage.deleteCompanion(compId);
+
+    res.json({ soulsGained });
+  });
+
+  app.post("/api/companions/:id/upgrade", isAuthenticated, async (req: any, res) => {
+    const userId = req.user.claims.sub;
+    const compId = Number(req.params.id);
+    const user = await storage.getUser(userId);
+    if (!user) return res.status(401).json({ message: "Unauthorized" });
+
+    if ((user.warriorSouls || 0) < 10) return res.status(400).json({ message: "Not enough Warrior Souls" });
+
+    const allComps = await storage.getCompanions(userId);
+    const comp = allComps.find(c => c.id === compId);
+    if (!comp) return res.status(404).json({ message: "Companion not found" });
+
+    await storage.updateUser(userId, { warriorSouls: user.warriorSouls - 10 });
+
+    const expAmount = 50;
+    let newExp = comp.experience + expAmount;
+    let newLevel = comp.level;
+    let newExpToNext = comp.expToNext;
+    let hp = comp.hp;
+    let maxHp = comp.maxHp;
+    let atk = comp.attack;
+    let def = comp.defense;
+    let spd = comp.speed;
+
+    const RARITY_GROWTH: Record<string, { hp: number, atk: number, def: number, spd: number }> = {
+      "1": { hp: 1.05, atk: 1.02, def: 1.03, spd: 1.05 },
+      "2": { hp: 1.08, atk: 1.04, def: 1.06, spd: 1.08 },
+      "3": { hp: 1.12, atk: 1.06, def: 1.09, spd: 1.12 },
+      "4": { hp: 1.15, atk: 1.08, def: 1.12, spd: 1.15 },
+      "5": { hp: 1.25, atk: 1.12, def: 1.18, spd: 1.25 }
+    };
+
+    const growth = RARITY_GROWTH[comp.rarity] || RARITY_GROWTH["1"];
+    const specialBonus = (comp as any).isSpecial ? 1.25 : 1.0;
+
+    while (newExp >= newExpToNext) {
+      newExp -= newExpToNext;
+      newLevel++;
+      newExpToNext = Math.floor(100 * Math.pow(1.3, newLevel - 1));
+      maxHp = Math.floor(maxHp * growth.hp * specialBonus) + 10;
+      hp = maxHp;
+      atk = Math.floor(atk * growth.atk * specialBonus) + 3;
+      def = Math.floor(def * growth.def * specialBonus) + 3;
+      spd = Math.floor(spd * growth.spd * specialBonus) + 2;
+    }
+
+    const updated = await storage.updateCompanion(comp.id, {
+      experience: newExp,
+      level: newLevel,
+      expToNext: newExpToNext,
+      hp,
+      maxHp,
+      attack: atk,
+      defense: def,
+      speed: spd,
+    });
+
+    res.json(updated);
+  });
+
+  // Equipment
+  app.get(api.equipment.list.path, isAuthenticated, async (req: any, res) => {
+    const userId = req.user.claims.sub;
+    res.json(await storage.getEquipment(userId));
+  });
+
+  app.post(api.equipment.equip.path, isAuthenticated, async (req: any, res) => {
+    const userId = req.user.claims.sub;
+    const equipId = Number(req.params.id);
+    const { equippedToId, equippedToType } = req.body;
+
+    const equips = await storage.getEquipment(userId);
+    const targetEquip = equips.find(e => e.id === equipId);
+    if (!targetEquip) return res.status(404).json({ message: "Equipment not found" });
+
+    const sameTypeEquipped = equips.find(e =>
+      e.id !== equipId &&
+      e.isEquipped &&
+      e.type === targetEquip.type &&
+      e.equippedToType === equippedToType &&
+      (equippedToType === 'player' ? true : e.equippedToId === equippedToId)
+    );
+    if (sameTypeEquipped) {
+      await storage.updateEquipment(sameTypeEquipped.id, { isEquipped: false, equippedToId: null, equippedToType: null });
+    }
+
+    const updated = await storage.updateEquipment(equipId, {
+      isEquipped: true,
+      equippedToId,
+      equippedToType,
+    });
+    res.json(updated);
+  });
+
+  app.post(api.equipment.unequip.path, isAuthenticated, async (req: any, res) => {
+    const userId = req.user.claims.sub;
+    const equipId = Number(req.params.id);
+    const equips = await storage.getEquipment(userId);
+    const targetEquip = equips.find(e => e.id === equipId);
+    if (!targetEquip) return res.status(404).json({ message: "Equipment not found" });
+    const updated = await storage.updateEquipment(equipId, { isEquipped: false, equippedToId: null, equippedToType: null });
+    res.json(updated);
+  });
+
+  app.post(api.equipment.recycle.path, isAuthenticated, async (req: any, res) => {
+    const userId = req.user.claims.sub;
+    const equipId = Number(req.params.id);
+    const equips = await storage.getEquipment(userId);
+    const targetEquip = equips.find(e => e.id === equipId);
+    if (!targetEquip) return res.status(404).json({ message: "Equipment not found" });
+    if (targetEquip.isEquipped) return res.status(400).json({ message: "Cannot recycle equipped item" });
+
+    const rarityStones: Record<string, number> = { 
+      white: 1, green: 2, blue: 3, purple: 5, gold: 10,
+      mythic: 20, exotic: 40, transcendent: 80, celestial: 150, primal: 300
+    };
+    const stonesGained = rarityStones[targetEquip.rarity] || 1;
+
+    const user = await storage.getUser(userId);
+    if (!user) return res.status(401).json({ message: "Unauthorized" });
+
+    await storage.updateUser(userId, { upgradeStones: (user.upgradeStones || 0) + stonesGained });
+    await storage.deleteEquipment(equipId);
+
+    res.json({ stonesGained });
+  });
+
+  app.post("/api/equipment/recycle-rarity", isAuthenticated, async (req: any, res) => {
+    const userId = req.user.claims.sub;
+    const { rarity } = req.body;
+    
+    try {
+      const result = await (storage as any).recycleEquipmentByRarity(userId, rarity);
+      res.json(result);
+    } catch (error) {
+      console.error("Recycle rarity error:", error);
+      res.status(500).json({ message: "Failed to recycle items" });
+    }
+  });
+
+  app.post(api.equipment.upgrade.path, isAuthenticated, async (req: any, res) => {
+    const userId = req.user.claims.sub;
+    const equipId = Number(req.params.id);
+    const { amount = 1 } = req.body;
+    const upgradeAmount = Math.max(1, Math.floor(Number(amount)));
+
+    const user = await storage.getUser(userId);
+    if (!user) return res.status(401).json({ message: "Unauthorized" });
+
+    if ((user.upgradeStones || 0) < upgradeAmount) return res.status(400).json({ message: "Not enough upgrade stones" });
+
+    const equips = await storage.getEquipment(userId);
+    const eq = equips.find(e => e.id === equipId);
+    if (!eq) return res.status(404).json({ message: "Equipment not found" });
+
+    const MAX_LEVEL = 20;
+    if (eq.level >= MAX_LEVEL) return res.status(400).json({ message: "Equipment already at max level" });
+
+    await storage.updateUser(userId, { upgradeStones: user.upgradeStones - upgradeAmount });
+
+    const expPerStone = 50;
+    const totalExpGained = expPerStone * upgradeAmount;
+    let newExp = eq.experience + totalExpGained;
+    let newLevel = eq.level;
+    let newExpToNext = eq.expToNext;
+    let atkBonus = eq.attackBonus;
+    let defBonus = eq.defenseBonus;
+    let spdBonus = eq.speedBonus;
+
+    const RARITY_GROWTH: Record<string, { atk: number, def: number, spd: number }> = {
+      white: { atk: 1.02, def: 1.03, spd: 1.05 },
+      green: { atk: 1.04, def: 1.06, spd: 1.08 },
+      blue: { atk: 1.06, def: 1.09, spd: 1.12 },
+      purple: { atk: 1.08, def: 1.12, spd: 1.15 },
+      gold: { atk: 1.12, def: 1.18, spd: 1.25 },
+      mythic: { atk: 1.16, def: 1.25, spd: 1.35 },
+      exotic: { atk: 1.22, def: 1.35, spd: 1.50 },
+      transcendent: { atk: 1.30, def: 1.50, spd: 1.75 },
+      celestial: { atk: 1.45, def: 1.75, spd: 2.10 },
+      primal: { atk: 1.75, def: 2.25, spd: 3.00 }
+    };
+
+    const growth = RARITY_GROWTH[eq.rarity] || RARITY_GROWTH.white;
+
+    while (newExp >= newExpToNext) {
+      newExp -= newExpToNext;
+      newLevel++;
+      newExpToNext = calcEquipExpToNext(newLevel);
+      atkBonus = Math.floor(atkBonus * growth.atk) + 1;
+      defBonus = Math.floor(defBonus * growth.def) + 1;
+      spdBonus = Math.floor(spdBonus * growth.spd) + 1;
+    }
+
+    const updated = await storage.updateEquipment(eq.id, {
+      experience: newExp,
+      level: newLevel,
+      expToNext: newExpToNext,
+      attackBonus: atkBonus,
+      defenseBonus: defBonus,
+      speedBonus: spdBonus,
+    });
+
+    res.json(updated);
+  });
+
+  // Pets
+  app.get(api.pets.list.path, isAuthenticated, async (req: any, res) => {
+    const userId = req.user.claims.sub;
+    res.json(await storage.getPets(userId));
+  });
+
+  app.post(api.pets.setActive.path, isAuthenticated, async (req: any, res) => {
+    const userId = req.user.claims.sub;
+    const petId = Number(req.params.id);
+    const allPets = await storage.getPets(userId);
+    for (const p of allPets) {
+      if (p.isActive && p.id !== petId) await storage.updatePet(p.id, { isActive: false });
+    }
+    const pet = allPets.find(p => p.id === petId);
+    if (!pet) return res.status(404).json({ message: "Pet not found" });
+    const updated = await storage.updatePet(petId, { isActive: true });
+    res.json(updated);
+  });
+
+  app.post("/api/pets/:id/recycle", isAuthenticated, async (req: any, res) => {
+    const userId = req.user.claims.sub;
+    const petId = Number(req.params.id);
+    const pets = await storage.getPets(userId);
+    const targetPet = pets.find(p => p.id === petId);
+    if (!targetPet) return res.status(404).json({ message: "Pet not found" });
+    if (targetPet.isActive) return res.status(400).json({ message: "Cannot recycle active pet" });
+
+    const rarityEssence: Record<string, number> = { 
+      white: 5, green: 10, blue: 25, purple: 50, gold: 125,
+      mythic: 250, exotic: 500, transcendent: 1000, celestial: 2500, primal: 5000
+    };
+    const essenceGained = rarityEssence[targetPet.rarity] || 5;
+
+    const user = await storage.getUser(userId);
+    if (!user) return res.status(401).json({ message: "Unauthorized" });
+
+    await storage.updateUser(userId, { petEssence: (user.petEssence || 0) + essenceGained });
+    await storage.deletePet(petId);
+
+    res.json({ essenceGained });
+  });
+
+  app.post("/api/pets/:id/upgrade", isAuthenticated, async (req: any, res) => {
+    const userId = req.user.claims.sub;
+    const petId = Number(req.params.id);
+    const { amount = 1 } = req.body;
+    const upgradeAmount = Math.max(1, Math.floor(Number(amount)));
+
+    const user = await storage.getUser(userId);
+    if (!user) return res.status(401).json({ message: "Unauthorized" });
+
+    const costPerUpgrade = 1;
+    const totalCost = upgradeAmount;
+
+    if ((user.petEssence || 0) < totalCost) return res.status(400).json({ message: "Not enough pet essence" });
+
+    const allPets = await storage.getPets(userId);
+    const pet = allPets.find(p => p.id === petId);
+    if (!pet) return res.status(404).json({ message: "Pet not found" });
+
+    await storage.updateUser(userId, { petEssence: user.petEssence - totalCost });
+
+    const expPerEssence = 50;
+    const totalExpGained = expPerEssence * upgradeAmount;
+    let newExp = pet.experience + totalExpGained;
+    let newLevel = pet.level;
+    let newExpToNext = pet.expToNext;
+    let hp = pet.hp;
+    let maxHp = pet.maxHp;
+    let atk = pet.attack;
+    let def = pet.defense;
+    let spd = pet.speed;
+
+    const RARITY_GROWTH: Record<string, { hp: number, atk: number, def: number, spd: number }> = {
+      white: { hp: 1.05, atk: 1.02, def: 1.03, spd: 1.05 },
+      green: { hp: 1.08, atk: 1.04, def: 1.06, spd: 1.08 },
+      blue: { hp: 1.12, atk: 1.06, def: 1.09, spd: 1.12 },
+      purple: { hp: 1.15, atk: 1.08, def: 1.12, spd: 1.15 },
+      gold: { hp: 1.25, atk: 1.12, def: 1.18, spd: 1.25 },
+      mythic: { hp: 1.35, atk: 1.16, def: 1.25, spd: 1.35 },
+      exotic: { hp: 1.50, atk: 1.22, def: 1.35, spd: 1.50 },
+      transcendent: { hp: 1.75, atk: 1.30, def: 1.50, spd: 1.75 },
+      celestial: { hp: 2.10, atk: 1.45, def: 1.75, spd: 2.10 },
+      primal: { hp: 3.00, atk: 1.75, def: 2.25, spd: 3.00 }
+    };
+
+    const growth = RARITY_GROWTH[pet.rarity] || RARITY_GROWTH.white;
+
+    while (newExp >= newExpToNext) {
+      newExp -= newExpToNext;
+      newLevel++;
+      newExpToNext = Math.floor(100 * Math.pow(1.3, newLevel - 1));
+      maxHp = Math.floor(maxHp * growth.hp) + 5;
+      hp = maxHp;
+      atk = Math.floor(atk * growth.atk) + 2;
+      def = Math.floor(def * growth.def) + 2;
+      spd = Math.floor(spd * growth.spd) + 3;
+    }
+
+    const updated = await storage.updatePet(pet.id, {
+      experience: newExp,
+      level: newLevel,
+      expToNext: newExpToNext,
+      hp,
+      maxHp,
+      attack: atk,
+      defense: def,
+      speed: spd,
+    });
+
+    res.json(updated);
+  });
+
+  // Horses
+  app.get(api.horses.list.path, isAuthenticated, async (req: any, res) => {
+    const userId = req.user.claims.sub;
+    res.json(await storage.getHorses(userId));
+  });
+
+  app.post("/api/transformations/:id/use-stone", isAuthenticated, async (req: any, res) => {
+    const userId = req.user.claims.sub;
+    const transformId = Number(req.params.id);
+    const user = await storage.getUser(userId);
+    if (!user) return res.status(401).json({ message: "Unauthorized" });
+
+    if ((user.transformationStones || 0) < 10) {
+      return res.status(400).json({ message: "Not enough transformation stones (need 10)" });
+    }
+
+    const transforms = await storage.getTransformations(userId);
+    const transform = transforms.find(t => t.id === transformId);
+    if (!transform) return res.status(404).json({ message: "Transformation not found" });
+
+    const activeUntil = new Date();
+    activeUntil.setHours(activeUntil.getHours() + 1);
+
+    await storage.updateUser(userId, {
+      transformationStones: user.transformationStones - 10,
+      activeTransformId: transformId,
+      transformActiveUntil: activeUntil,
+    });
+
+    res.json({ message: "Transformation activated", activeUntil });
+  });
+
+  app.post(api.horses.setActive.path, isAuthenticated, async (req: any, res) => {
+    const userId = req.user.claims.sub;
+    const horseId = Number(req.params.id);
+    const allHorses = await storage.getHorses(userId);
+    for (const h of allHorses) {
+      if (h.isActive && h.id !== horseId) await storage.updateHorse(h.id, { isActive: false });
+    }
+    const horse = allHorses.find(h => h.id === horseId);
+    if (!horse) return res.status(404).json({ message: "Horse not found" });
+    const updated = await storage.updateHorse(horseId, { isActive: true });
+    res.json(updated);
+  });
+
+  app.post(api.horses.recycle.path, isAuthenticated, async (req: any, res) => {
+    const userId = req.user.claims.sub;
+    const horseId = Number(req.params.id);
+    const horse = await storage.getHorse(horseId);
+    if (!horse || horse.userId !== userId) {
+      return res.status(404).json({ message: "Horse not found" });
+    }
+    if (horse.isActive) {
+      return res.status(400).json({ message: "Cannot recycle active horse" });
+    }
+
+    const rarityValues: Record<string, number> = {
+      white: 10, green: 25, blue: 50, purple: 100, gold: 250,
+      mythic: 500, exotic: 1000, transcendent: 2000, celestial: 4000, primal: 8000
+    };
+    const goldGained = rarityValues[horse.rarity] || 10;
+    
+    await storage.deleteHorse(horseId);
+    const user = await storage.getUser(userId);
+    if (user) {
+      await storage.updateUser(userId, { gold: user.gold + goldGained });
+    }
+    res.json({ goldGained });
+  });
+
+  app.post(api.horses.combine.path, isAuthenticated, async (req: any, res) => {
+    const userId = req.user.claims.sub;
+    const { horseIds } = req.body;
+    
+    if (!horseIds || horseIds.length !== 3) {
+      return res.status(400).json({ message: "Must provide exactly 3 horses" });
+    }
+
+    const horses = await Promise.all(horseIds.map((id: number) => storage.getHorse(id)));
+    
+    if (horses.some(h => !h || h.userId !== userId)) {
+      return res.status(400).json({ message: "Invalid horses" });
+    }
+    if (horses.some(h => h.isActive)) {
+      return res.status(400).json({ message: "Cannot combine active horses" });
+    }
+
+    const baseRarity = horses[0].rarity;
+    if (!horses.every(h => h.rarity === baseRarity)) {
+      return res.status(400).json({ message: "All horses must be same rarity" });
+    }
+
+    const rarityOrder = ['white', 'green', 'blue', 'purple', 'gold', 'mythic', 'exotic', 'transcendent', 'celestial', 'primal'];
+    const currentIndex = rarityOrder.indexOf(baseRarity);
+    
+    const upgraded = Math.random() < 0.5;
+    const newRarityIndex = upgraded && currentIndex < rarityOrder.length - 1 ? currentIndex + 1 : currentIndex;
+    const newRarity = rarityOrder[newRarityIndex];
+
+    // Delete old horses first
+    for (const id of horseIds) {
+      await storage.deleteHorse(Number(id));
+    }
+
+    const newHorse = generateHorse(userId, 1);
+    newHorse.rarity = newRarity;
+    newHorse.name = `${newRarity.toUpperCase()} ${pick(HORSE_NAMES)}`;
+    const stats = HORSE_RARITY_STATS[newRarity] || HORSE_RARITY_STATS.white;
+    const variance = () => (0.9 + Math.random() * 0.2);
+    newHorse.speedBonus = Math.floor(stats.speed * variance());
+    newHorse.attackBonus = Math.floor(stats.atk * variance());
+    newHorse.defenseBonus = Math.floor(stats.def * variance());
+    
+    const created = await storage.createHorse(newHorse);
+    res.json({ success: true, newHorse: created, upgraded });
+  });
+
+  // Transformations
+  app.get(api.transformations.list.path, isAuthenticated, async (req: any, res) => {
+    const userId = req.user.claims.sub;
+    res.json(await storage.getTransformations(userId));
+  });
+
+  // Battles
+  async function giveEquipmentExp(userId: string, expAmount: number) {
+    const equips = await storage.getEquipment(userId);
+    const equipped = equips.filter(e => e.isEquipped);
+    for (const eq of equipped) {
+      let newExp = eq.experience + expAmount;
+      let newLevel = eq.level;
+      let newExpToNext = eq.expToNext;
+      let atkBonus = eq.attackBonus;
+      let defBonus = eq.defenseBonus;
+      let spdBonus = eq.speedBonus;
+
+      const RARITY_GROWTH: Record<string, { atk: number, def: number, spd: number }> = {
+        white: { atk: 1.02, def: 1.03, spd: 1.05 },
+        green: { atk: 1.04, def: 1.06, spd: 1.08 },
+        blue: { atk: 1.06, def: 1.09, spd: 1.12 },
+        purple: { atk: 1.08, def: 1.12, spd: 1.15 },
+        gold: { atk: 1.12, def: 1.18, spd: 1.25 },
+        mythic: { atk: 1.16, def: 1.25, spd: 1.35 },
+        exotic: { atk: 1.22, def: 1.35, spd: 1.50 },
+        transcendent: { atk: 1.30, def: 1.50, spd: 1.75 },
+        celestial: { atk: 1.45, def: 1.75, spd: 2.10 },
+        primal: { atk: 1.75, def: 2.25, spd: 3.00 }
+      };
+
+      const growth = RARITY_GROWTH[eq.rarity] || RARITY_GROWTH.white;
+
+      while (newExp >= newExpToNext) {
+        newExp -= newExpToNext;
+        newLevel++;
+        newExpToNext = calcEquipExpToNext(newLevel);
+        atkBonus = Math.floor(atkBonus * growth.atk) + 1;
+        defBonus = Math.floor(defBonus * growth.def) + 1;
+        spdBonus = Math.floor(spdBonus * growth.spd) + 1;
+      }
+
+      if (newLevel !== eq.level) {
+        await storage.updateEquipment(eq.id, {
+          experience: newExp,
+          level: newLevel,
+          expToNext: newExpToNext,
+          attackBonus: atkBonus,
+          defenseBonus: defBonus,
+          speedBonus: spdBonus,
+        });
+      } else if (newExp !== eq.experience) {
+        await storage.updateEquipment(eq.id, { experience: newExp });
+      }
+    }
+  }
+
+  app.post(api.battle.field.path, isAuthenticated, async (req: any, res) => {
+    const userId = req.user.claims.sub;
+    const user = await storage.getUser(userId);
+    if (!user) return res.status(401).json({ message: "Unauthorized" });
+
+    // Ensure locationId and repeatCount are parsed as numbers
+    const locationId = Number(req.body.locationId) || 1;
+    const repeatCount = Number(req.body.repeatCount) || 1;
+    const count = Math.min(Math.max(1, repeatCount), 10);
+
+    const teamStats = await getPlayerTeamStats(userId);
+    if (!teamStats) return res.status(400).json({ message: "Team not found" });
+
+    let totalExpGained = 0;
+    let totalStatPointsGained = 0;
+    let totalGoldGained = 0;
+    const allEquipmentDropped = [];
+    const allPetsDropped = [];
+    const allHorsesDropped = [];
+    const allLogs: string[] = [];
+    let ninjaEncounter = null;
+    let ninjaEncounteredInThisSkirmish = false;
+
+    for (let i = 0; i < count; i++) {
+      if (count > 1) allLogs.push(`--- BATTLE ${i + 1} ---`);
+
+      // Chance reduced from 10/15% to 3/5%
+      // ninjaEncounter check ensures only one encounter per auto-battle session
+      if (!ninjaEncounter && Math.random() < (locationId >= 100 ? 0.05 : 0.03)) {
+        ninjaEncounteredInThisSkirmish = true;
+        const ninjaNames = locationId >= 100 ? ["Zhuge Liang (Ghost)", "Lu Bu's Spirit", "Empress Wu Zetian"] : ["Hattori Hanzo", "Fuma Kotaro", "Ishikawa Goemon", "Mochizuki Chiyome"];
+        const ninjaName = pick(ninjaNames);
+        const isSuperStrong = Math.random() < (locationId >= 100 ? 0.5 : 0.3);
+        
+        const ninjaStats = {
+          name: ninjaName,
+          level: isSuperStrong ? user.level + 20 : user.level + 2,
+          hp: isSuperStrong ? user.maxHp * 3 : user.maxHp * 1.2,
+          maxHp: isSuperStrong ? user.maxHp * 3 : user.maxHp * 1.2,
+          attack: isSuperStrong ? user.attack * 2 : user.attack * 1.1,
+          defense: isSuperStrong ? user.defense * 1.5 : user.defense * 1.05,
+          speed: isSuperStrong ? user.speed * 1.5 : user.speed * 1.1,
+          skills: ["Shadow Strike", "Smoke Bomb", "Assassinate"],
+          isNinja: true,
+          goldDemanded: Math.floor(user.gold * 0.1)
+        };
+        
+        ninjaEncounter = ninjaStats;
+        allLogs.push(`A famous ninja, ${ninjaName}, blocks your path!`);
+        break; // Stop auto-battle for the encounter
+      }
+
+      const enemy = generateEnemyStats('field', user.level, locationId);
+      // Use the name from the request if provided (for first battle of a repeat or single battle)
+      if (i === 0 && req.body.enemyName) {
+        enemy.name = req.body.enemyName;
+      }
+      const battleResult = runTurnBasedCombat(teamStats, [enemy]);
+      const victory = battleResult.victory;
+      allLogs.push(...battleResult.logs);
+
+      if (victory) {
+        await storage.updateQuestProgress(userId, 'daily_skirmish', 1);
+        await storage.updateQuestProgress(userId, 'daily_skirmish_elite', 1);
+        // Update user stats with level up logic
+        const expGained = Math.floor(Math.random() * 50) + 30 + enemy.level * 5;
+        const goldGained = Math.floor(Math.random() * 20) + 10 + enemy.level * 2;
+        totalExpGained += expGained;
+        totalGoldGained += goldGained;
+        
+        let currentExp = user.experience + totalExpGained;
+        let currentLevel = user.level;
+        let currentMaxHp = user.maxHp;
+        let currentAtk = user.attack;
+        let currentDef = user.defense;
+        let currentSpd = user.speed;
+        let currentStatPoints = user.statPoints || 0;
+
+        while (currentExp >= Math.floor(100 * Math.pow(1.25, currentLevel - 1))) {
+          currentExp -= Math.floor(100 * Math.pow(1.25, currentLevel - 1));
           currentStatPoints += Math.floor(currentLevel / 5) + 3;
           currentLevel++;
           currentMaxHp += 20;
@@ -520,10 +1129,420 @@ export async function registerRoutes(
           currentDef += 3;
           currentSpd += 2;
         }
+        
+        const endowmentStoneGained = Math.random() < 0.2 ? 1 : 0;
+        const talismanGained = Math.random() < 0.05 ? 1 : 0;
 
-        await storage.updateUser(userId, { 
+        const userUpdate: any = {
           level: currentLevel,
-          experience: currentExp, 
+          experience: currentExp,
+          gold: user.gold + totalGoldGained,
+          maxHp: currentMaxHp,
+          hp: currentMaxHp,
+          attack: currentAtk,
+          defense: currentDef,
+          speed: currentSpd,
+          statPoints: currentStatPoints,
+          endowmentStones: (user.endowmentStones || 0) + endowmentStoneGained,
+          fireGodTalisman: (user.fireGodTalisman || 0) + talismanGained
+        };
+
+        await storage.updateUser(userId, userUpdate);
+        if (Math.random() < (locationId >= 100 ? 0.5 : 0.3)) {
+          const rDrop = Math.random();
+          let type: string;
+          if (rDrop < 0.1) {
+            type = 'accessory';
+          } else {
+            const others = ['weapon', 'armor', 'horse_gear'];
+            type = others[Math.floor(Math.random() * others.length)];
+          }
+          
+          const rarity = equipRarityFromRandom(locationId);
+          const name = pick(type === 'weapon' ? WEAPON_NAMES : type === 'armor' ? ARMOR_NAMES : type === 'accessory' ? ACCESSORY_NAMES : HORSE_GEAR_NAMES);
+          
+          const statsByRarity: Record<string, { atk: number, def: number, spd: number }> = {
+            white: { atk: 5, def: 5, spd: 2 },
+            green: { atk: 8, def: 8, spd: 4 },
+            blue: { atk: 12, def: 10, spd: 6 },
+            purple: { atk: 20, def: 15, spd: 10 },
+            gold: { atk: 35, def: 25, spd: 15 },
+            mythic: { atk: 60, def: 45, spd: 25 },
+            exotic: { atk: 100, def: 75, spd: 45 },
+            transcendent: { atk: 200, def: 150, spd: 80 },
+            celestial: { atk: 450, def: 350, spd: 150 }
+          };
+          const baseStats = statsByRarity[rarity] || statsByRarity.white;
+
+          let atkBonus = type === 'weapon' || type === 'accessory' ? baseStats.atk : 0;
+          let defBonus = type === 'armor' || type === 'accessory' ? baseStats.def : 0;
+          let spdBonus = type === 'horse_gear' || type === 'accessory' ? baseStats.spd : 0;
+
+          if (locationId >= 100) {
+            const chinaMult = 2 + ((locationId - 100) * 0.5);
+            atkBonus = Math.floor(atkBonus * chinaMult);
+            defBonus = Math.floor(defBonus * chinaMult);
+            spdBonus = Math.floor(spdBonus * chinaMult);
+          }
+
+          const eq = await storage.createEquipment({
+            userId,
+            name,
+            type,
+            rarity,
+            level: 1,
+            experience: 0,
+            expToNext: 100,
+            attackBonus: atkBonus,
+            defenseBonus: defBonus,
+            speedBonus: spdBonus,
+          });
+          allEquipmentDropped.push(eq);
+          allLogs.push(`Found ${rarity.toUpperCase()} ${name}!`);
+        }
+
+function generatePet(userId: string, locationId: number = 1) {
+  const pInfo = pick(PET_NAMES);
+  const r = Math.random();
+  const isChina = locationId >= 100;
+  const bonus = isChina ? (locationId - 100) * 0.05 + 0.1 : (locationId - 1) * 0.02;
+
+  let rarity = 'white';
+  if (r > 0.99 - bonus/2) rarity = 'primal';
+  else if (r > 0.98 - bonus) rarity = 'celestial';
+  else if (r > 0.97 - bonus) rarity = 'transcendent';
+  else if (r > 0.96 - bonus) rarity = 'exotic';
+  else if (r > 0.90 - bonus) rarity = 'mythic';
+  else if (r > 0.75 - bonus) rarity = 'gold';
+  else if (r > 0.55 - bonus) rarity = 'purple';
+  else if (r > 0.35 - bonus) rarity = 'blue';
+  else if (r > 0.15 - bonus) rarity = 'green';
+
+  const statsByRarity: Record<string, { hp: number, atk: number, def: number, spd: number }> = {
+    white: { hp: 30, atk: 5, def: 5, spd: 15 },
+    green: { hp: 50, atk: 10, def: 10, spd: 25 },
+    blue: { hp: 80, atk: 18, def: 15, spd: 35 },
+    purple: { hp: 120, atk: 28, def: 25, spd: 50 },
+    gold: { hp: 200, atk: 45, def: 40, spd: 75 },
+    mythic: { hp: 350, atk: 75, def: 65, spd: 110 },
+    exotic: { hp: 600, atk: 130, def: 110, spd: 160 },
+    transcendent: { hp: 1000, atk: 220, def: 190, spd: 240 },
+    celestial: { hp: 1800, atk: 400, def: 350, spd: 380 },
+    primal: { hp: 3500, atk: 800, def: 700, spd: 600 }
+  };
+
+  const stats = statsByRarity[rarity] || statsByRarity.white;
+  const variance = () => (0.9 + Math.random() * 0.2); // 0.9 to 1.1 multiplier
+  
+  // Location scaling for base stats
+  const locMult = isChina ? 2 + (locationId - 100) * 0.5 : 1 + (locationId - 1) * 0.2;
+  const hpValue = Math.floor(stats.hp * locMult * variance());
+
+  return {
+    userId,
+    name: pInfo.name,
+    type: 'spirit',
+    rarity,
+    level: 1,
+    experience: 0,
+    expToNext: 100,
+    hp: hpValue,
+    maxHp: hpValue,
+    attack: Math.floor(stats.atk * locMult * variance()),
+    defense: Math.floor(stats.def * locMult * variance()),
+    speed: Math.floor(stats.spd * locMult * variance()),
+    skill: pInfo.skill,
+    isActive: false,
+  };
+}
+
+        // Horse Drop (5% chance)
+        if (Math.random() < 0.05) {
+          const horseData = generateHorse(userId, locationId);
+          try {
+            const horse = await storage.createHorse(horseData as any);
+            allHorsesDropped.push(horse);
+            allLogs.push(`HORSES: You managed to tame a wild ${horse.name}!`);
+          } catch (err) {
+            console.error("Failed to create horse drop:", err);
+          }
+        }
+
+        // Pet Drop (3% chance)
+        if (Math.random() < 0.03) {
+          const petData = generatePet(userId, locationId);
+          try {
+            const pet = await storage.createPet(petData as any);
+            allPetsDropped.push(pet);
+            allLogs.push(`PETS: A wild ${pet.name} decided to follow you!`);
+          } catch (err) {
+            console.error("Failed to create pet drop:", err);
+          }
+        }
+      }
+    }
+
+    if (totalExpGained > 0) {
+      // Handled in loop
+    } else if (totalGoldGained > 0) {
+      await storage.updateUser(userId, {
+        gold: user.gold + totalGoldGained,
+      });
+    }
+    
+    // Always give equipment exp at the end
+    if (count > 0) {
+      await giveEquipmentExp(userId, 10 * count);
+    }
+
+    res.json({
+      victory: totalExpGained > 0,
+      experienceGained: totalExpGained,
+      goldGained: totalGoldGained,
+      equipmentDropped: allEquipmentDropped,
+      petDropped: allPetsDropped[0] || null,
+      allPetsDropped,
+      horseDropped: allHorsesDropped[0] || null,
+      allHorsesDropped,
+      logs: allLogs,
+      ninjaEncounter
+    });
+  });
+
+  app.post("/api/battle/ninja/resolve", isAuthenticated, async (req: any, res) => {
+    const userId = req.user.claims.sub;
+    const { action, ninjaName, goldDemanded, locationId = 1 } = req.body;
+    const user = await storage.getUser(userId);
+    if (!user) return res.status(401).json({ message: "Unauthorized" });
+
+    if (action === 'pay') {
+      const goldToPay = Math.floor(Number(goldDemanded));
+      const userStatus = await storage.getUser(userId);
+      if (!userStatus) return res.status(401).json({ message: "Unauthorized" });
+      
+      const currentGold = Number(userStatus.gold) || 0;
+      if (currentGold < goldToPay) {
+        return res.status(400).json({ message: `Not enough gold. You have ${currentGold}, but ${goldToPay} is required.` });
+      }
+      
+      await storage.updateUser(userId, { gold: currentGold - goldToPay });
+      return res.json({ success: true, message: `You paid ${goldToPay} gold to ${ninjaName}. He vanished into the shadows.` });
+    } else {
+      const teamStats = await getPlayerTeamStats(userId);
+      if (!teamStats) return res.status(400).json({ message: "Team not found" });
+
+      const isSuperStrong = Math.random() < 0.3;
+      const enemy = {
+        name: ninjaName,
+        level: isSuperStrong ? user.level + 20 : user.level + 2,
+        hp: isSuperStrong ? user.maxHp * 3 : user.maxHp * 1.2,
+        maxHp: isSuperStrong ? user.maxHp * 3 : user.maxHp * 1.2,
+        attack: isSuperStrong ? user.attack * 2 : user.attack * 1.1,
+        defense: isSuperStrong ? user.defense * 1.5 : user.defense * 1.05,
+        speed: isSuperStrong ? user.speed * 1.5 : user.speed * 1.1,
+        skills: ["Shadow Strike", "Smoke Bomb", "Assassinate"],
+      };
+
+      const battleResult = runTurnBasedCombat(teamStats, [enemy]);
+      if (battleResult.victory) {
+        const goldGained = goldDemanded * 2;
+        const stonesGained = 3 + Math.floor(Math.random() * 3); // 3-5 stones
+        await storage.updateUser(userId, { 
+          gold: user.gold + goldGained,
+          endowmentStones: (user.endowmentStones || 0) + stonesGained
+        });
+        battleResult.logs.push(`You defeated ${ninjaName} and looted ${goldGained} gold and ${stonesGained} Endowment Stones!`);
+      }
+      res.json({ success: true, battleResult });
+    }
+  });
+
+  app.post(api.battle.boss.path, isAuthenticated, async (req: any, res) => {
+    const userId = req.user.claims.sub;
+    const user = await storage.getUser(userId);
+    if (!user) return res.status(401).json({ message: "Unauthorized" });
+    const locationId = Number(req.body.locationId) || 1;
+    const teamStats = await getPlayerTeamStats(userId);
+    const enemyData = generateEnemyStats('boss', user.level, locationId);
+    if (req.body.enemyName) {
+      enemyData.name = req.body.enemyName;
+    }
+    
+    if (!teamStats) return res.status(400).json({ message: "Team not found" });
+
+    const battleResult = runTurnBasedCombat(teamStats, [enemyData]);
+    const victory = battleResult.victory;
+    const logs = battleResult.logs;
+
+    if (victory) {
+      await storage.updateQuestProgress(userId, 'daily_boss', 1);
+      const expGained = 100 + (locationId * 50);
+      const goldGained = 50 + (locationId * 25);
+      const riceGained = 10 + (locationId * 5);
+      const endowmentStones = 2 + Math.floor(Math.random() * 3); // 2-4 stones
+
+      // Level up logic
+      let currentExp = user.experience + expGained;
+      let currentLevel = user.level;
+      let currentMaxHp = user.maxHp;
+      let currentAtk = user.attack;
+      let currentDef = user.defense;
+      let currentSpd = user.speed;
+      let currentStatPoints = user.statPoints || 0;
+
+      while (currentExp >= Math.floor(100 * Math.pow(1.25, currentLevel - 1))) {
+        currentExp -= Math.floor(100 * Math.pow(1.25, currentLevel - 1));
+        currentStatPoints += Math.floor(currentLevel / 5) + 3;
+        currentLevel++;
+        currentMaxHp += 20;
+        currentAtk += 5;
+        currentDef += 3;
+        currentSpd += 2;
+      }
+
+      await storage.updateUser(userId, { 
+        level: currentLevel,
+        experience: currentExp, 
+        gold: user.gold + goldGained, 
+        rice: user.rice + riceGained,
+        endowmentStones: (user.endowmentStones || 0) + endowmentStones,
+        maxHp: currentMaxHp,
+        hp: currentMaxHp,
+        attack: currentAtk,
+        defense: currentDef,
+        speed: currentSpd,
+        statPoints: currentStatPoints
+      });
+      
+      const type = pick(EQUIP_TYPES);
+      const isChina = locationId >= 100;
+      
+      // Significantly improved drop rates for field battles
+      const fieldRarity = equipRarityFromRandom(locationId);
+      const name = pick(type === 'weapon' ? WEAPON_NAMES : type === 'armor' ? ARMOR_NAMES : type === 'accessory' ? ACCESSORY_NAMES : HORSE_GEAR_NAMES);
+      
+      const statsByRarity: Record<string, { atk: number, def: number, spd: number, critC: number, critD: number }> = {
+        white: { atk: 5, def: 3, spd: 2, critC: 0, critD: 0 },
+        green: { atk: 10, def: 6, spd: 4, critC: 0, critD: 0 },
+        blue: { atk: 15, def: 10, spd: 6, critC: 0, critD: 0 },
+        purple: { atk: 25, def: 18, spd: 10, critC: 2, critD: 5 },
+        gold: { atk: 40, def: 30, spd: 20, critC: 5, critD: 15 },
+        mythic: { atk: 60, def: 45, spd: 25, critC: 8, critD: 20 },
+        exotic: { atk: 100, def: 75, spd: 45, critC: 12, critD: 35 },
+        transcendent: { atk: 200, def: 150, spd: 80, critC: 20, critD: 60 },
+        celestial: { atk: 450, def: 350, spd: 150, critC: 35, critD: 120 },
+        primal: { atk: 1000, def: 800, spd: 300, critC: 60, critD: 300 }
+      };
+      const baseStats = statsByRarity[fieldRarity] || statsByRarity.white;
+
+      let atkBonus = baseStats.atk + (locationId * 5);
+      let defBonus = baseStats.def + (locationId * 3);
+      let spdBonus = baseStats.spd + (locationId * 2);
+
+      if (isChina) {
+        const chinaMult = 2 + ((locationId - 100) * 0.5);
+        atkBonus = Math.floor(atkBonus * chinaMult);
+        defBonus = Math.floor(defBonus * chinaMult);
+        spdBonus = Math.floor(spdBonus * chinaMult);
+      }
+
+      const itemData: any = {
+        userId,
+        name,
+        type,
+        rarity: fieldRarity,
+        level: 1,
+        experience: 0,
+        expToNext: 100,
+        attackBonus: atkBonus,
+        defenseBonus: defBonus,
+        speedBonus: spdBonus,
+        critChance: 0,
+        critDamage: 0,
+      };
+
+      // Apply critical stats based on type and rarity
+      if (['gold', 'mythic', 'exotic', 'transcendent', 'celestial', 'primal'].includes(fieldRarity)) {
+        if (type === 'weapon') {
+          itemData.critDamage = isChina ? Math.floor(baseStats.critD * 1.5) : baseStats.critD;
+        } else if (type === 'accessory') {
+          itemData.critChance = isChina ? Math.floor(baseStats.critC * 1.5) : baseStats.critC;
+        }
+      }
+
+      const eq = await storage.createEquipment(itemData);
+
+      // Pet Drop (10% chance from Boss)
+      let droppedPet = null;
+      if (Math.random() < 0.10) {
+        const petData = generatePet(userId, locationId);
+        try {
+          droppedPet = await storage.createPet(petData as any);
+          logs.push(`PETS: You rescued a ${droppedPet.name} from the castle!`);
+        } catch (err) {
+          console.error("Failed to create pet drop from boss:", err);
+        }
+      }
+
+      res.json({ 
+        victory: true, 
+        experienceGained: expGained, 
+        goldGained: goldGained, 
+        riceGained: riceGained, 
+        equipmentDropped: [eq],
+        petDropped: droppedPet,
+        logs 
+      });
+    } else {
+      logs.push("Defeat!");
+      res.json({ victory: false, logs });
+    }
+  });
+
+  app.post(api.battle.specialBoss.path, isAuthenticated, async (req: any, res) => {
+    const userId = req.user.claims.sub;
+    const user = await storage.getUser(userId);
+    if (!user) return res.status(401).json({ message: "Unauthorized" });
+    const locationId = Number(req.body.locationId) || 1;
+    const teamStats = await getPlayerTeamStats(userId);
+    const enemyData = generateEnemyStats('special', user.level, locationId);
+    if (req.body.enemyName) {
+      enemyData.name = req.body.enemyName;
+    }
+    
+    if (!teamStats) return res.status(400).json({ message: "Team not found" });
+
+    const battleResult = runTurnBasedCombat(teamStats, [enemyData]);
+    const victory = battleResult.victory;
+    const logs = battleResult.logs;
+
+    if (victory) {
+      const expGained = 250 + (locationId * 100);
+      const goldGained = 150 + (locationId * 75);
+      const endowmentStones = 5 + Math.floor(Math.random() * 6); // 5-10 stones
+
+      let currentExp = user.experience + expGained;
+      let currentLevel = user.level;
+      let currentMaxHp = user.maxHp;
+      let currentAtk = user.attack;
+      let currentDef = user.defense;
+      let currentSpd = user.speed;
+      let currentStatPoints = user.statPoints || 0;
+
+      while (currentExp >= Math.floor(100 * Math.pow(1.25, currentLevel - 1))) {
+        currentExp -= Math.floor(100 * Math.pow(1.25, currentLevel - 1));
+        currentStatPoints += Math.floor(currentLevel / 5) + 3;
+        currentLevel++;
+        currentMaxHp += 20;
+        currentAtk += 5;
+        currentDef += 3;
+        currentSpd += 2;
+      }
+      
+      // Explicitly awaiting the database update
+      await storage.updateUser(userId, { 
+        level: currentLevel,
+        experience: currentExp, 
         gold: user.gold + goldGained,
         endowmentStones: (user.endowmentStones || 0) + endowmentStones,
         transformationStones: (user.transformationStones || 0) + 10,
