@@ -321,11 +321,12 @@ function generateEnemyStats(type: 'field' | 'boss' | 'special', playerLevel: num
     // Bosses scale more significantly with location
     const difficultyMultiplier = locationId >= 100 ? (locationId - 100 + 5) * 3 : locationId * 1.5;
     const lvl = locationId >= 100 ? Math.floor(playerLevel + 20 + ((locationId - 100) * 15)) : Math.floor(playerLevel + 5 + (locationId * 8));
+    const hp = Math.floor((lvl * 150 + 500 + Math.floor(difficultyMultiplier * 1000)) * locationMultiplier);
     return {
       name,
       level: lvl,
-      hp: Math.floor((lvl * 150 + 500 + Math.floor(difficultyMultiplier * 1000)) * locationMultiplier),
-      maxHp: Math.floor((lvl * 150 + 500 + Math.floor(difficultyMultiplier * 1000)) * locationMultiplier),
+      hp: hp,
+      maxHp: hp,
       attack: Math.floor((lvl * 25 + 60 + Math.floor(difficultyMultiplier * 50)) * locationMultiplier),
       defense: Math.floor((lvl * 20 + 50 + Math.floor(difficultyMultiplier * 40)) * locationMultiplier),
       speed: Math.floor((lvl * 12 + 25 + Math.floor(difficultyMultiplier * 20)) * locationMultiplier),
@@ -337,11 +338,12 @@ function generateEnemyStats(type: 'field' | 'boss' | 'special', playerLevel: num
     // Special bosses are the ultimate challenge
     const difficultyMultiplier = locationId >= 100 ? (locationId - 100 + 10) * 5 : locationId;
     const lvl = locationId >= 100 ? Math.floor(playerLevel + 50 + ((locationId - 100) * 20)) : Math.floor(playerLevel + 15 + (locationId * 12));
+    const hp = Math.floor((lvl * 250 + 2000 + (difficultyMultiplier * 3000)) * locationMultiplier);
     return {
       name,
       level: lvl,
-      hp: Math.floor((lvl * 250 + 2000 + (difficultyMultiplier * 3000)) * locationMultiplier),
-      maxHp: Math.floor((lvl * 250 + 2000 + (difficultyMultiplier * 3000)) * locationMultiplier),
+      hp: hp,
+      maxHp: hp,
       attack: Math.floor((lvl * 50 + 250 + (difficultyMultiplier * 150)) * locationMultiplier),
       defense: Math.floor((lvl * 40 + 200 + (difficultyMultiplier * 120)) * locationMultiplier),
       speed: Math.floor((lvl * 20 + 80 + (difficultyMultiplier * 50)) * locationMultiplier),
