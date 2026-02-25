@@ -1,0 +1,386 @@
+Below is a drop‑in **rewrite spec** for your IT, using your existing `CombatUnit` structure but changing formulas to Classic‑RO style. You can hand this directly to your dev.
+
+I’ll show:
+
+1) Type/interface changes needed  
+2) New HIT/FLEE calculation  
+3) New ATK (StatusATK + WeaponRoll)  
+4) New damage/DEF pipeline  
+5) How to update `runTurnBasedCombat` to feed the new fields
+
+All code is TypeScript‑style pseudocode matching your current file.
+
+--------------------------------
+1. DATA MODEL CHANGES (CombatUnit)
+--------------------------------
+
+Add fields used by Classic‑RO formulas:
+
+```ts
+export interface CombatUnit {
+  id: string;
+  name: string;
+  hp: number;
+  maxHp: number;
+
+  // OLD
+  attack: number;      // keep for now but we will replace usage
+  defense: number;     // keep for now but we will split into hard/soft
+
+  // NEW – Classic RO style
+  str?: number;
+  agi?: number;
+  vit?: number;
+  int?: number;
+  dex?: number;
+  luk?: number;
+
+  hardDEF?: number;    // armor-based % reduction
+  softDEF?: number;    // VIT/AGI-based flat reduction
+
+  weaponATK?: number;  // BaseWeaponDamage
+  weaponLevel?: number; // 1–4
+  refinementBonus?: number; // optional, can be 0
+  bonusATK?: number;       // extra ATK from gear/buffs
+
+  speed: number;
+  hit?: number;
+  flee?: number;
+
+  critChance: number;   // %
+  critDamage: number;   // extra crit damage %, as you use now
+
+  isPlayer: boolean;
+  stamina?: number;
+  maxStamina?: number;
+  statusEffects: { type: string; duration: number }[];
+  isGuarding: boolean;
+  endowmentPoints?: number;
+}
+```
+
+Notes:
+- `attack` and `defense` remain for now for backward compatibility, but combat will use `weaponATK`, `hardDEF`, `softDEF` etc.
+- For enemies, we can default stats if not present.
+
+--------------------------------
+2. HIT / FLEE – UPDATE calculateHitChance
+--------------------------------
+
+Use Classic‑style formulas for HIT and FLEE instead of your current `100 + level*2 + dex*1.5`.
+
+### 2.1. Derive HIT/FLEE if not precomputed
+
+In `runTurnBasedCombat` we will set `hit` and `flee` using RO‑style formulas (see section 5). Here we just consume them.
+
+### 2.2. New calculateHitChance
+
+```ts
+export function calculateHitChance(attacker: CombatUnit, defender: CombatUnit): number {
+  // HIT and FLEE are treated as already computed Classic-RO style values:
+  // HIT = 175 + BaseLv + DEX + floor(LUK / 3)
+  // FLEE = (100 + BaseLv + AGI + floor(LUK / 5)) + PerfectDodge
+  // (PerfectDodge itself is handled separately if you later want that.)
+
+  const attackerHit = attacker.hit ?? 0;
+  const defenderFlee = defender.flee ?? 0;
+
+  // Classic-style: HitChance% = clamp(HIT - FLEE, 5, 95)
+  let hitChance = attackerHit - defenderFlee;
+  if (hitChance < 5) hitChance = 5;
+  if (hitChance > 95) hitChance = 95;
+
+  return hitChance;
+}
+```
+
+If you later want **Perfect Dodge**:
+
+- Add `perfectDodge` to `CombatUnit`.
+- Roll it before calling `calculateHitChance`.
+
+--------------------------------
+3. STATUS ATK + WEAPON VARIANCE
+--------------------------------
+
+Create helper functions to compute **StatusATK** and **TotalATK per hit**.
+
+```ts
+function getStatusATK(attacker: CombatUnit, isRanged: boolean): number {
+  const lv = (attacker as any).level ?? 1;
+  const STR = attacker.str ?? 1;
+  const AGI = attacker.agi ?? 1;
+  const VIT = attacker.vit ?? 1;
+  const INT = attacker.int ?? 1;
+  const DEX = attacker.dex ?? 1;
+  const LUK = attacker.luk ?? 1;
+
+  if (!isRanged) {
+    // Melee
+    return Math.floor(lv / 4)
+         + STR
+         + Math.floor(DEX / 5)
+         + Math.floor(LUK / 3);
+  } else {
+    // Ranged
+    return Math.floor(lv / 4)
+         + Math.floor(STR / 5)
+         + DEX
+         + Math.floor(LUK / 3);
+  }
+}
+
+function getWeaponRoll(attacker: CombatUnit): number {
+  const baseWeaponATK = attacker.weaponATK ?? attacker.attack ?? 0;
+  const weaponLevel = attacker.weaponLevel ?? 1;
+
+  const varianceRange = 0.05 * weaponLevel * baseWeaponATK;
+  const variance = (Math.random() * 2 * varianceRange) - varianceRange; // −range ~ +range
+
+  const refinementBonus = attacker.refinementBonus ?? 0;
+  const bonusATK = attacker.bonusATK ?? 0;
+
+  return Math.floor(baseWeaponATK + variance + refinementBonus + bonusATK);
+}
+
+function getTotalATK(attacker: CombatUnit, isRanged: boolean): number {
+  const statusATK = getStatusATK(attacker, isRanged);
+  const weaponRoll = getWeaponRoll(attacker);
+
+  return statusATK + weaponRoll;
+}
+```
+
+- For now you can choose `isRanged` by checking weapon type (you might need a `weaponType` field later). For testing, assume `isRanged = false` except for archers.
+
+--------------------------------
+4. NEW DAMAGE FUNCTION – REPLACE calculateDamage
+--------------------------------
+
+Replace the current `calculateDamage` with a Classic‑style pipeline that still honors your CritDamage, Endowment, and Guard.
+
+```ts
+export function calculateDamage(
+  attacker: CombatUnit,
+  defender: CombatUnit,
+  isCritical: boolean = false,
+  isRanged: boolean = false
+) {
+  // 1) Compute TotalATK (RawDamage)
+  const rawATK = getTotalATK(attacker, isRanged);
+  let damage = rawATK;
+
+  // 2) Apply Hard DEF (armor-based % reduction)
+  const hardDEF = defender.hardDEF ?? defender.defense ?? 0;
+  const hardFactor = 100 / (100 + Math.max(0, hardDEF)); // avoid negative/0
+  damage = Math.floor(damage * hardFactor);
+
+  // 3) Apply Soft DEF (flat)
+  const VIT = defender.vit ?? 1;
+  const AGI = defender.agi ?? 1;
+  const softFromStats = Math.floor(VIT / 2) + Math.floor(AGI / 5);
+  const extraSoft = defender.softDEF ?? 0;
+  const softDEF = softFromStats + extraSoft;
+
+  damage = damage - softDEF;
+  if (damage < 1) damage = 1;
+
+  // 4) Critical modifier (keep your existing behaviour)
+  if (isCritical) {
+    const critBonus = attacker.critDamage ?? 0; // % from equipment
+    const critMult = 1.5 + (critBonus / 100);
+    damage = Math.floor(damage * critMult);
+  }
+
+  // 5) Endowment (damage reduction)
+  const endowmentPoints = Number((defender as any).endowmentPoints) || 0;
+  const damageReduction = Math.min(0.35, (endowmentPoints * 0.5) / 100); // max 35%
+  damage = Math.floor(damage * (1 - damageReduction));
+
+  // 6) Guard modifier
+  if (defender.isGuarding) {
+    damage = Math.floor(damage * 0.7);
+  }
+
+  // 7) Minimum damage
+  if (damage < 1) damage = 1;
+
+  return damage;
+}
+```
+
+This completely replaces:
+
+```ts
+let baseDamage = Number(attacker.attack) || 0;
+// ...
+const defenderDefense = Math.max(1, Number(defender.defense) || 1);
+let damage = Math.floor(baseDamage * (baseDamage / defenderDefense) * critMod * (1 - damageReduction));
+```
+
+and instead uses TotalATK → HardDEF → SoftDEF.
+
+--------------------------------
+5. UPDATING runTurnBasedCombat TO FEED STATS
+--------------------------------
+
+We want `CombatUnit.hit`, `.flee`, `.str` etc. to be populated in a Classic‑style way.
+
+### 5.1. Player and companions
+
+Replace the current player setup with:
+
+```ts
+units.push({
+  id: 'player',
+  name: playerTeam.player.name,
+  hp: Number(playerTeam.player.hp) || 0,
+  maxHp: Number(playerTeam.player.maxHp) || 0,
+
+  // old raw attack/defense kept but not used directly
+  attack: Number(playerTeam.player.attack) || 0,
+  defense: Number(playerTeam.player.defense) || 0,
+
+  speed: Number(playerTeam.player.speed) || 0,
+
+  // RO stats
+  str: Number((playerTeam.player as any).str || 1),
+  agi: Number((playerTeam.player as any).agi || 1),
+  vit: Number((playerTeam.player as any).vit || 1),
+  int: Number((playerTeam.player as any).int || 1),
+  dex: Number((playerTeam.player as any).dex || 1),
+  luk: Number((playerTeam.player as any).luk || 1),
+
+  // DEF split
+  hardDEF: Number(playerTeam.player.defense) || 0, // temporary: all armor DEF goes here
+  softDEF: 0, // extra softDEF from gear if needed
+
+  // weapon fields (temporary mapping; later you can load real weapon data)
+  weaponATK: Number(playerTeam.player.attack) || 0,
+  weaponLevel: 1,
+  refinementBonus: 0,
+  bonusATK: 0,
+
+  // HIT / FLEE (Classic-style)
+  hit: ((): number => {
+    const lv = Number((playerTeam.player as any).level || 1);
+    const DEX = Number((playerTeam.player as any).dex || 1);
+    const LUK = Number((playerTeam.player as any).luk || 1);
+    return 175 + lv + DEX + Math.floor(LUK / 3);
+  })(),
+  flee: ((): number => {
+    const lv = Number((playerTeam.player as any).level || 1);
+    const AGI = Number((playerTeam.player as any).agi || 1);
+    const LUK = Number((playerTeam.player as any).luk || 1);
+    const fleeA = 100 + lv + AGI + Math.floor(LUK / 5);
+    const perfectDodge = Math.floor(LUK / 10);
+    return fleeA + perfectDodge;
+  })(),
+
+  critChance: Number((playerTeam.player as any).critChance) || 0,
+  critDamage: Number((playerTeam.player as any).critDamage) || 0,
+
+  isPlayer: true,
+  stamina: 100,
+  maxStamina: 100,
+  statusEffects: [],
+  isGuarding: false,
+  endowmentPoints: Number((playerTeam.player as any).endowmentPoints) || 0,
+} as any);
+```
+
+For companions, mirror the same logic:
+
+- Fill `str/agi/vit/int/dex/luk`, `weaponATK`, `hardDEF`, and compute HIT/FLEE in the same way using their own `level`, `dex`, `agi`, `luk`.
+
+### 5.2. Enemies
+
+Right now you use:
+
+```ts
+hit: Number(e.level) * 3,
+flee: Number(e.level) * 3,
+```
+
+Replace with Classic‑style approximations:
+
+```ts
+const eLevel = Number(e.level) || 1;
+const eDEX = Number((e as any).dex || eLevel); // fallback to level
+const eAGI = Number((e as any).agi || eLevel);
+const eLUK = Number((e as any).luk || 1);
+
+units.push({
+  id: `enemy-${i}`,
+  name: e.name,
+  hp: Number(e.hp) || 0,
+  maxHp: Number(e.maxHp) || 0,
+
+  attack: Number(e.attack) || 0,
+  defense: Number(e.defense) || 0,
+
+  speed: Number(e.speed) || 0,
+
+  str: Number((e as any).str || eLevel),
+  agi: eAGI,
+  vit: Number((e as any).vit || eLevel),
+  int: Number((e as any).int || eLevel),
+  dex: eDEX,
+  luk: eLUK,
+
+  hardDEF: Number(e.defense) || 0,
+  softDEF: 0,
+
+  weaponATK: Number(e.attack) || 0,
+  weaponLevel: 1,
+  refinementBonus: 0,
+  bonusATK: 0,
+
+  hit: 175 + eLevel + eDEX + Math.floor(eLUK / 3),
+  flee: ((): number => {
+    const fleeA = 100 + eLevel + eAGI + Math.floor(eLUK / 5);
+    const perfectDodge = Math.floor(eLUK / 10);
+    return fleeA + perfectDodge;
+  })(),
+
+  isPlayer: false,
+  statusEffects: [],
+  isGuarding: false,
+  critChance: 0,
+  critDamage: 0,
+});
+```
+
+--------------------------------
+6. USING THE NEW DAMAGE IN COMBAT LOOP
+--------------------------------
+
+In the attack part of `runTurnBasedCombat`, update only the damage call:
+
+Current:
+
+```ts
+const damage = calculateDamage(unit, target, isCrit);
+```
+
+New:
+
+```ts
+const isRanged = false; // TODO: infer from unit/weapon type later
+const damage = calculateDamage(unit, target, isCrit, isRanged);
+```
+
+Everything else (logs, stun, etc.) remains the same.
+
+--------------------------------
+7. WHAT IT MUST DO, STEP BY STEP
+--------------------------------
+
+1) Update `CombatUnit` interface: add stats (str/agi/vit/int/dex/luk, hardDEF, softDEF, weaponATK, weaponLevel, refinementBonus, bonusATK).  
+2) Replace `calculateHitChance` with the new Classic‑style version.  
+3) Add helper functions `getStatusATK`, `getWeaponRoll`, `getTotalATK`.  
+4) Replace `calculateDamage` with the new pipeline using TotalATK, HardDEF, SoftDEF, crit, endowment, guard.  
+5) In `runTurnBasedCombat`, change how `hit`, `flee`, `str/agi/vit/int/dex/luk`, `weaponATK`, `hardDEF`, `softDEF` are populated for players, companions, and enemies as shown.  
+6) Optionally log some debug values (TotalATK, HardDEF, SoftDEF, final damage) while tuning.
+
+Once this is done, your game’s combat will follow a Classic RO–style ATK/HIT/DEF model while preserving your crit/endowment/guard features.
