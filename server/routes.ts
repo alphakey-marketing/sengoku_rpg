@@ -8,7 +8,17 @@ import { runTurnBasedCombat } from "./combat";
 const EQUIP_TYPES = ['weapon', 'armor', 'accessory', 'horse_gear'];
 
 const YOKAI_NAMES = ["Oni Brute", "Kappa Scout", "Tengu Warrior", "Kitsune Trickster", "Jorogumo"];
-const BOSS_NAMES = ["Daimyo Takeda", "Shogun Ashikaga", "General Uesugi", "Lord Mori"];
+const JP_BOSS_NAMES = [
+  "Daimyo Takeda Shingen", "Shogun Ashikaga Yoshiaki", "General Uesugi Kenshin", 
+  "Lord Mori Motonari", "Toyotomi Hideyoshi", "Akechi Mitsuhide", 
+  "Sanada Yukimura", "Date Masamune", "Hojo Ujiyasu", "Shimazu Yoshihiro"
+];
+const CN_BOSS_NAMES = [
+  "General Lu Bu", "Imperial Sorcerer Zuo Ci", "Terracotta Commander", 
+  "Guan Yu the God of War", "Prime Minister Cao Cao", "Emperor Sun Quan", 
+  "Zhuge Liang the Strategist", "Empress Wu Zetian", "General Zhao Yun", "Zhang Fei the Fierce"
+];
+const BOSS_NAMES = JP_BOSS_NAMES;
 const SPECIAL_BOSSES = [
   { name: "Nine-Tailed Fox (九尾の狐)", transformName: "Fox Spirit", skill: "Foxfire Barrage (狐火乱射)", atkPct: 40, defPct: 25, spdPct: 50, hpPct: 35 },
   { name: "Vengeful Warlord (怨霊武将)", transformName: "Oni Lord", skill: "Demon Summon (鬼神召喚)", atkPct: 50, defPct: 40, spdPct: 20, hpPct: 45 },
@@ -307,7 +317,7 @@ function generateEnemyStats(type: 'field' | 'boss' | 'special', playerLevel: num
       skills: ["Scratch", "Bite"],
     };
   } else if (type === 'boss') {
-    const name = locationId >= 100 ? pick(["General Lu Bu", "Imperial Sorcerer", "Terracotta Commander"]) : pick(BOSS_NAMES);
+    const name = locationId >= 100 ? pick(CN_BOSS_NAMES) : pick(JP_BOSS_NAMES);
     // Bosses scale more significantly with location
     const difficultyMultiplier = locationId >= 100 ? (locationId - 100 + 5) * 3 : locationId * 1.5;
     const lvl = locationId >= 100 ? Math.floor(playerLevel + 20 + ((locationId - 100) * 15)) : Math.floor(playerLevel + 5 + (locationId * 8));
