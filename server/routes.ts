@@ -1313,6 +1313,7 @@ export async function registerRoutes(
         }
 
         // Horse Drop (5% chance)
+        /* Disabled by user request
         if (Math.random() < 0.05) {
           const horseData = generateHorse(userId, locationId);
           try {
@@ -1323,8 +1324,10 @@ export async function registerRoutes(
             console.error("Failed to create horse drop:", err);
           }
         }
+        */
 
         // Pet Drop (3% chance)
+        /* Disabled by user request
         if (Math.random() < 0.03) {
           const petData = generatePet(userId, locationId);
           try {
@@ -1335,6 +1338,7 @@ export async function registerRoutes(
             console.error("Failed to create pet drop:", err);
           }
         }
+        */
       }
     }
 
@@ -1465,6 +1469,7 @@ export async function registerRoutes(
       const eq = await storage.createEquipment(eqData);
 
       // Pet Drop (10% chance from Boss)
+      /* Disabled by user request
       let droppedPet = null;
       if (Math.random() < 0.10) {
         const petData = generatePet(userId, locationId);
@@ -1475,6 +1480,7 @@ export async function registerRoutes(
           console.error("Failed to create pet drop from boss:", err);
         }
       }
+      */
 
       res.json({ 
         victory: true, 
@@ -1482,7 +1488,7 @@ export async function registerRoutes(
         goldGained: goldGained, 
         riceGained: riceGained, 
         equipmentDropped: [eq],
-        petDropped: droppedPet,
+        petDropped: null, // droppedPet
         logs 
       });
     } else {
