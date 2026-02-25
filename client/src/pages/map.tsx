@@ -353,47 +353,129 @@ export default function MapPage() {
           </DialogHeader>
           
           <div className="flex-1 overflow-hidden flex flex-col p-4">
-            <div className="flex-1 overflow-y-auto space-y-6">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2 bg-blue-950/20 p-3 rounded border border-blue-900/30">
-                  <h4 className="text-xs font-bold text-blue-400 uppercase tracking-widest text-center">Your Team</h4>
-                  <div className="space-y-1 text-sm">
-                    <div className="flex justify-between items-center mb-1">
-                      <p className="font-bold text-white truncate">{(playerStatus?.player as any)?.firstName || (playerStatus?.player as any)?.lastName || 'Warrior'}</p>
-                      {playerStatus?.companions && playerStatus.companions.length > 0 && (
-                        <span className="text-[10px] bg-blue-900/50 px-1 rounded">+{playerStatus.companions.length} Allies</span>
-                      )}
+            <div className="flex-1 overflow-y-auto space-y-4">
+              <div className="space-y-4">
+                {/* Attacker Side */}
+                <div className="space-y-2">
+                  <h4 className="text-xs font-bold text-blue-400 uppercase tracking-widest px-1">Your Team</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {/* Main Player */}
+                    <div className="bg-blue-950/20 p-3 rounded border border-blue-900/30">
+                      <div className="flex justify-between items-center mb-2">
+                        <p className="font-bold text-white text-sm truncate">{(playerStatus?.player as any)?.firstName || 'Warrior'}</p>
+                        <span className="text-[10px] text-zinc-400">Lv {playerStatus?.player?.level}</span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-[11px]">
+                        <div className="flex justify-between"><span className="text-zinc-500">HP</span> <span className="text-red-400 font-mono">{playerStatus?.player?.hp}</span></div>
+                        <div className="flex justify-between"><span className="text-zinc-500">ATK</span> <span className="text-orange-400 font-mono">{playerStatus?.player?.attack}</span></div>
+                        <div className="flex justify-between"><span className="text-zinc-500">DEF</span> <span className="text-blue-400 font-mono">{playerStatus?.player?.defense}</span></div>
+                        <div className="flex justify-between"><span className="text-zinc-500">SPD</span> <span className="text-cyan-400 font-mono">{playerStatus?.player?.speed}</span></div>
+                        <div className="col-span-2 border-t border-blue-900/20 mt-1 pt-1 flex justify-between">
+                          <span className="text-zinc-400 font-bold">HIT RATE</span>
+                          <span className="text-primary font-bold">
+                            {(() => {
+                              const hit = (playerStatus?.player?.attack || 0) + (playerStatus?.player?.speed || 0);
+                              const flee = (preBattleInfo?.enemy?.defense || 0) + (preBattleInfo?.enemy?.speed || 0);
+                              const dodge = Math.max(0, Math.min(95, 100 - (hit + 80 - flee)));
+                              return `${100 - dodge}%`;
+                            })()}
+                          </span>
+                        </div>
+                      </div>
                     </div>
-                    <div className="grid grid-cols-2 gap-x-2 text-xs">
-                      <span className="text-zinc-500">HP:</span> 
-                      <span className="text-red-400">
-                        {Math.floor(((playerStatus?.player?.hp || 0) + (playerStatus?.companions?.reduce((sum, c) => sum + (c.hp || 0), 0) || 0)))}
-                      </span>
-                      <span className="text-zinc-500">ATK:</span> 
-                      <span className="text-orange-400">
-                        {Math.floor(((playerStatus?.player?.attack || 0) + (playerStatus?.companions?.reduce((sum, c) => sum + (c.attack || 0), 0) || 0)))}
-                      </span>
-                      <span className="text-zinc-500">DEF:</span> 
-                      <span className="text-blue-400">
-                        {Math.floor(((playerStatus?.player?.defense || 0) + (playerStatus?.companions?.reduce((sum, c) => sum + (c.defense || 0), 0) || 0)))}
-                      </span>
-                      <span className="text-zinc-500">SPD:</span> 
-                      <span className="text-cyan-400">
-                        {Math.floor(((playerStatus?.player?.speed || 0) + (playerStatus?.companions?.reduce((sum, c) => sum + (c.speed || 0), 0) || 0)))}
-                      </span>
-                    </div>
+
+                    {/* Companion (if exists) */}
+                    {playerStatus?.companions && playerStatus.companions.length > 0 && (
+                      <div className="bg-blue-950/20 p-3 rounded border border-blue-900/30">
+                        <div className="flex justify-between items-center mb-2">
+                          <p className="font-bold text-white text-sm truncate">{playerStatus.companions[0].name}</p>
+                          <span className="text-[10px] text-zinc-400">Lv {playerStatus.companions[0].level}</span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-[11px]">
+                          <div className="flex justify-between"><span className="text-zinc-500">HP</span> <span className="text-red-400 font-mono">{playerStatus.companions[0].hp}</span></div>
+                          <div className="flex justify-between"><span className="text-zinc-500">ATK</span> <span className="text-orange-400 font-mono">{playerStatus.companions[0].attack}</span></div>
+                          <div className="flex justify-between"><span className="text-zinc-500">DEF</span> <span className="text-blue-400 font-mono">{playerStatus.companions[0].defense}</span></div>
+                          <div className="flex justify-between"><span className="text-zinc-500">SPD</span> <span className="text-cyan-400 font-mono">{playerStatus.companions[0].speed}</span></div>
+                          <div className="col-span-2 border-t border-blue-900/20 mt-1 pt-1 flex justify-between">
+                            <span className="text-zinc-400 font-bold">HIT RATE</span>
+                            <span className="text-primary font-bold">
+                              {(() => {
+                                const hit = (playerStatus.companions[0].attack || 0) + (playerStatus.companions[0].speed || 0);
+                                const flee = (preBattleInfo?.enemy?.defense || 0) + (preBattleInfo?.enemy?.speed || 0);
+                                const dodge = Math.max(0, Math.min(95, 100 - (hit + 80 - flee)));
+                                return `${100 - dodge}%`;
+                              })()}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
 
-                <div className="space-y-2 bg-red-950/20 p-3 rounded border border-red-900/30">
-                  <h4 className="text-xs font-bold text-red-400 uppercase tracking-widest text-center">Enemy</h4>
-                  <div className="space-y-1 text-sm">
-                    <p className="font-bold text-white truncate">{preBattleInfo?.enemy.name}</p>
-                    <div className="grid grid-cols-2 gap-x-2 text-xs">
-                      <span className="text-zinc-500">HP:</span> <span className="text-red-400">{preBattleInfo?.enemy.hp}</span>
-                      <span className="text-zinc-500">ATK:</span> <span className="text-orange-400">{preBattleInfo?.enemy.attack}</span>
-                      <span className="text-zinc-500">DEF:</span> <span className="text-blue-400">{preBattleInfo?.enemy.defense}</span>
-                      <span className="text-zinc-500">SPD:</span> <span className="text-cyan-400">{preBattleInfo?.enemy.speed}</span>
+                {/* VS Divider */}
+                <div className="relative flex items-center justify-center py-2">
+                  <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-border/30"></div></div>
+                  <span className="relative px-2 bg-card text-[10px] font-bold text-zinc-500 uppercase tracking-tighter italic">Versus</span>
+                </div>
+
+                {/* Defender Side */}
+                <div className="space-y-2">
+                  <h4 className="text-xs font-bold text-red-400 uppercase tracking-widest px-1 text-right">Enemy Forces</h4>
+                  <div className="bg-red-950/20 p-3 rounded border border-red-900/30">
+                    <div className="flex justify-between items-center mb-2">
+                      <p className="font-bold text-white text-sm truncate">{preBattleInfo?.enemy.name}</p>
+                      <span className="text-[10px] text-zinc-400">Lv {preBattleInfo?.enemy.level}</span>
+                    </div>
+                    <div className="grid grid-cols-4 gap-2 text-[11px]">
+                      <div className="flex flex-col items-center p-1 bg-background/40 rounded">
+                        <span className="text-zinc-500 text-[9px] uppercase">HP</span>
+                        <span className="text-red-400 font-mono">{preBattleInfo?.enemy.hp}</span>
+                      </div>
+                      <div className="flex flex-col items-center p-1 bg-background/40 rounded">
+                        <span className="text-zinc-500 text-[9px] uppercase">ATK</span>
+                        <span className="text-orange-400 font-mono">{preBattleInfo?.enemy.attack}</span>
+                      </div>
+                      <div className="flex flex-col items-center p-1 bg-background/40 rounded">
+                        <span className="text-zinc-500 text-[9px] uppercase">DEF</span>
+                        <span className="text-blue-400 font-mono">{preBattleInfo?.enemy.defense}</span>
+                      </div>
+                      <div className="flex flex-col items-center p-1 bg-background/40 rounded">
+                        <span className="text-zinc-500 text-[9px] uppercase">SPD</span>
+                        <span className="text-cyan-400 font-mono">{preBattleInfo?.enemy.speed}</span>
+                      </div>
+                    </div>
+                    <div className="mt-3 grid grid-cols-2 gap-4">
+                      <div className="bg-background/60 p-2 rounded flex justify-between items-center border border-red-900/20">
+                        <span className="text-[10px] text-zinc-400 font-bold">DODGE RATE</span>
+                        <span className="text-amber-500 font-bold text-xs">
+                          {(() => {
+                            const pAtk = playerStatus?.player?.attack || 0;
+                            const pSpd = playerStatus?.player?.speed || 0;
+                            const pHit = pAtk + pSpd;
+                            const eDef = preBattleInfo?.enemy?.defense || 0;
+                            const eSpd = preBattleInfo?.enemy?.speed || 0;
+                            const eFlee = eDef + eSpd;
+                            const dodge = Math.max(0, Math.min(95, 100 - (pHit + 80 - eFlee)));
+                            return `${dodge}%`;
+                          })()}
+                        </span>
+                      </div>
+                      <div className="bg-background/60 p-2 rounded flex justify-between items-center border border-red-900/20">
+                        <span className="text-[10px] text-zinc-400 font-bold">HIT CHANCE</span>
+                        <span className="text-red-500 font-bold text-xs">
+                          {(() => {
+                            const eAtk = preBattleInfo?.enemy?.attack || 0;
+                            const eSpd = preBattleInfo?.enemy?.speed || 0;
+                            const eHit = eAtk + eSpd;
+                            const pDef = playerStatus?.player?.defense || 0;
+                            const pSpd = playerStatus?.player?.speed || 0;
+                            const pFlee = pDef + pSpd;
+                            const dodge = Math.max(0, Math.min(95, 100 - (eHit + 80 - pFlee)));
+                            return `${100 - dodge}%`;
+                          })()}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </div>
