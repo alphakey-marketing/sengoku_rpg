@@ -21,15 +21,18 @@ export interface CombatUnit {
 }
 
 export function calculateHitChance(attacker: CombatUnit, defender: CombatUnit): number {
-  // RO Classic-Inspired: Hit Chance % = 100 − (AttackerHIT + 80 − DefenderFLEE)
-  // Let's adapt it: Hit Chance = (AttackerHIT + 80 - DefenderFLEE)
-  // Actually the prompt says: 100 - (AttackerHIT + 80 - DefenderFLEE) which seems wrong for a hit chance (higher flee would increase hit chance there).
-  // Standard RO is: Hit % = 80 + AttackerHIT - DefenderFLEE
+  // Accuracy Calculation based on user's specific RO-inspired formula
+  // Dodge Rate (%) = 100 − (Attacker HIT + 80 − Defender FLEE)
+  // Hit Chance (%) = 100 − Dodge Rate
+  
   const attackerHit = attacker.hit ?? (attacker.attack + attacker.speed);
   const defenderFlee = defender.flee ?? (defender.defense + defender.speed);
   
-  let hitChance = 80 + attackerHit - defenderFlee;
-  return Math.max(5, Math.min(95, hitChance));
+  const dodgeRateRaw = 100 - (attackerHit + 80 - defenderFlee);
+  const dodgeRate = Math.max(0, Math.min(95, dodgeRateRaw));
+  
+  const hitChance = 100 - dodgeRate;
+  return hitChance;
 }
 
 export function calculateDamage(attacker: CombatUnit, defender: CombatUnit, isCritical: boolean = false) {
