@@ -496,19 +496,28 @@ export default function Home() {
             </h3>
             <div className="grid grid-cols-2 gap-4">
               {[
-                { label: "ATK", value: teamStatus?.player?.attack || 0 },
-                { label: "MATK", value: (teamStatus?.player as any)?.matk || 0 },
-                { label: "DEF", value: teamStatus?.player?.defense || 0 },
-                { label: "MDEF", value: (teamStatus?.player as any)?.mdef || 0 },
-                { label: "HIT", value: (teamStatus?.player as any)?.hit || 0 },
-                { label: "FLEE", value: (teamStatus?.player as any)?.flee || 0 },
-                { label: "CRIT", value: (teamStatus?.player as any)?.critChance || 0 },
-                { label: "ASPD", value: (teamStatus?.player as any)?.aspd || 0 }
+                { label: "ATK", value: teamStatus?.player?.attack || 0, formula: "STR + DEX/5 + LUK/3" },
+                { label: "MATK", value: (teamStatus?.player as any)?.statusMATK || 0, formula: "1.5 * INT + DEX/5 + LUK/3" },
+                { label: "DEF", value: teamStatus?.player?.defense || 0, formula: "VIT/2 + AGI/5" },
+                { label: "MDEF", value: (teamStatus?.player as any)?.softMDEF || 0, formula: "INT + VIT/5 + DEX/5" },
+                { label: "HIT", value: (teamStatus?.player as any)?.hit || 0, formula: "175 + LVL + DEX + LUK/3" },
+                { label: "FLEE", value: (teamStatus?.player as any)?.flee || 0, formula: "100 + LVL + AGI + LUK/5" },
+                { label: "CRIT", value: (teamStatus?.player as any)?.critChance || 0, formula: "0.3 * LUK" },
+                { label: "ASPD", value: (teamStatus?.player as any)?.aspd || 0, formula: "SPD + AGI/2" }
               ].map((stat) => (
-                <div key={stat.label} className="bg-background/40 border border-border/30 rounded-lg p-3 flex flex-col items-center justify-center text-center group relative cursor-help">
-                  <span className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">{stat.label}</span>
-                  <span className="text-xl font-display font-bold text-white">{stat.value}</span>
-                </div>
+                <TooltipProvider key={stat.label}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="bg-background/40 border border-border/30 rounded-lg p-3 flex flex-col items-center justify-center text-center group relative cursor-help">
+                        <span className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">{stat.label}</span>
+                        <span className="text-xl font-display font-bold text-white">{stat.value}</span>
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent className="bg-zinc-900 border-zinc-700 text-zinc-300">
+                      <p className="text-xs font-mono">{stat.formula}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
               ))}
             </div>
 
