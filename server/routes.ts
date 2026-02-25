@@ -1122,12 +1122,12 @@ export async function registerRoutes(
 
         while (currentExp >= Math.floor(100 * Math.pow(1.25, currentLevel - 1))) {
           currentExp -= Math.floor(100 * Math.pow(1.25, currentLevel - 1));
+          currentStatPoints += Math.floor(currentLevel / 5) + 3;
           currentLevel++;
           currentMaxHp += 20;
           currentAtk += 5;
           currentDef += 3;
           currentSpd += 2;
-          currentStatPoints += 5;
         }
         
         const endowmentStoneGained = Math.random() < 0.2 ? 1 : 0;
@@ -1392,12 +1392,12 @@ function generatePet(userId: string, locationId: number = 1) {
 
       while (currentExp >= Math.floor(100 * Math.pow(1.25, currentLevel - 1))) {
         currentExp -= Math.floor(100 * Math.pow(1.25, currentLevel - 1));
+        currentStatPoints += Math.floor(currentLevel / 5) + 3;
         currentLevel++;
         currentMaxHp += 20;
         currentAtk += 5;
         currentDef += 3;
         currentSpd += 2;
-        currentStatPoints += 5;
       }
 
       await storage.updateUser(userId, { 
@@ -1531,12 +1531,12 @@ function generatePet(userId: string, locationId: number = 1) {
 
       while (currentExp >= Math.floor(100 * Math.pow(1.25, currentLevel - 1))) {
         currentExp -= Math.floor(100 * Math.pow(1.25, currentLevel - 1));
+        currentStatPoints += Math.floor(currentLevel / 5) + 3;
         currentLevel++;
         currentMaxHp += 20;
         currentAtk += 5;
         currentDef += 3;
         currentSpd += 2;
-        currentStatPoints += 5;
       }
       
       // Explicitly awaiting the database update
