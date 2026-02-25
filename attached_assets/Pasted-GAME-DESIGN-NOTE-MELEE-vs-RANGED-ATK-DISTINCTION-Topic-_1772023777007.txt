@@ -1,0 +1,284 @@
+GAME DESIGN NOTE – MELEE vs RANGED ATK DISTINCTION
+Topic: Teaching the engine to correctly compute ATK based on weapon type
+Reference: Classic RO pre-Renewal stat behavior
+File target: server/combat.ts (and wherever StatusATK is calculated)
+
+--------------------------------
+0. PROBLEM STATEMENT
+--------------------------------
+
+Currently the game computes ATK using a single formula regardless of weapon type. This means:
+
+- A Bow user with high STR gets the same ATK bonus as a Swordsman with high STR.
+- A Swordsman with high DEX gets the same ATK bonus as an Archer with high DEX.
+
+This is incorrect. Classic RO distinguishes them clearly:
+
+- Melee weapons: STR is the primary ATK stat.
+- Ranged weapons: DEX is the primary ATK stat.
+
+We need to teach the engine this distinction at three points:
+
+1) StatusATK formula (what stats add to ATK).
+2) WeaponATK stat bonus (what % stat adds to base weapon damage).
+3) The CombatUnit needs a weaponType field.
+
+--------------------------------
+1. REQUIRED DATA MODEL CHANGES
+--------------------------------
+
+Add weaponType to CombatUnit:
+
+```ts
+weaponType?: WeaponType;
+```
+
+Define WeaponType:
+
+```ts
+type WeaponType =
+  | "dagger"
+  | "sword"
+  | "twoHandSword"
+  | "axe"
+  | "mace"
+  | "spear"
+  | "knuckle"
+  | "katar"
+  | "book"
+  | "staff"
+  | "bow"
+  | "gun"
+  | "instrument"
+  | "whip"
+  | "none"; // bare hands
+```
+
+Add two classifier helpers:
+
+```ts
+function isMeleeWeapon(type?: WeaponType): boolean {
+  return [
+    "dagger",
+    "sword",
+    "twoHandSword",
+    "axe",
+    "mace",
+    "spear",
+    "knuckle",
+    "katar",
+    "book",
+    "staff",
+    "none",
+  ].includes(type ?? "none");
+}
+
+function isRangedWeapon(type?: WeaponType): boolean {
+  return ["bow", "gun", "instrument", "whip"].includes(type ?? "none");
+}
+```
+
+Note:
+- If weaponType is missing or null, default to melee (bare hands).
+
+--------------------------------
+2. STATUSATK – DIFFERENT FORMULA PER WEAPON TYPE
+--------------------------------
+
+This is the most important change.
+
+Classic RO rule:
+- Melee: STR gives full +1 ATK per point. DEX gives only +1 per 5 points.
+- Ranged: DEX gives full +1 ATK per point. STR gives only +1 per 5 points.
+
+Formulas:
+
+MELEE StatusATK:
+```text
+StatusATK_melee =
+  floor(BaseLv / 4)
+  + STR
+  + floor(DEX / 5)
+  + floor(LUK / 3)
+```
+
+RANGED StatusATK:
+```text
+StatusATK_ranged =
+  floor(BaseLv / 4)
+  + floor(STR / 5)
+  + DEX
+  + floor(LUK / 3)
+```
+
+Implementation:
+
+```ts
+function getStatusATK(unit: CombatUnit): number {
+  const lv  = (unit as any).level ?? 1;
+  const STR = (unit as any).str   ?? 1;
+  const DEX = (unit as any).dex   ?? 1;
+  const LUK = (unit as any).luk   ?? 1;
+
+  if (isRangedWeapon(unit.weaponType)) {
+    // DEX is primary; STR contributes only 1 per 5 points
+    return Math.floor(lv / 4)
+         + Math.floor(STR / 5)
+         + DEX
+         + Math.floor(LUK / 3);
+  }
+
+  // Default melee: STR is primary; DEX contributes only 1 per 5 points
+  return Math.floor(lv / 4)
+       + STR
+       + Math.floor(DEX / 5)
+       + Math.floor(LUK / 3);
+}
+```
+
+--------------------------------
+3. WEAPON ATK STAT BONUS (% bonus on base weapon damage)
+--------------------------------
+
+In addition to StatusATK, Classic RO also gives a % bonus on base weapon ATK from the primary stat:
+
+- Melee: each 1 STR adds 0.5% of BaseWeaponATK.
+- Ranged: each 1 DEX adds 0.5% of BaseWeaponATK.
+
+Formulas:
+
+MELEE:
+```text
+WeaponATK_effective = BaseWeaponATK * (1 + 0.005 * STR)
+```
+
+RANGED:
+```text
+WeaponATK_effective = BaseWeaponATK * (1 + 0.005 * DEX)
+```
+
+Implementation:
+
+```ts
+function getWeaponATKEffective(unit: CombatUnit): number {
+  const baseWeaponATK = (unit as any).weaponATK ?? unit.attack ?? 0;
+  const STR = (unit as any).str ?? 1;
+  const DEX = (unit as any).dex ?? 1;
+
+  if (isRangedWeapon(unit.weaponType)) {
+    // DEX scales weapon damage for ranged
+    return Math.floor(baseWeaponATK * (1 + 0.005 * DEX));
+  }
+
+  // Melee: STR scales weapon damage
+  return Math.floor(baseWeaponATK * (1 + 0.005 * STR));
+}
+```
+
+--------------------------------
+4. WEAPON VARIANCE (unchanged, but uses effective weapon ATK)
+--------------------------------
+
+Variance is applied to WeaponATK_effective after the stat bonus:
+
+```ts
+function getWeaponRoll(unit: CombatUnit): number {
+  const weaponATKEffective = getWeaponATKEffective(unit);
+  const weaponLevel = (unit as any).weaponLevel ?? 1;
+
+  const varianceRange = Math.floor(0.05 * weaponLevel * weaponATKEffective);
+  const variance = Math.floor((Math.random() * 2 * varianceRange) - varianceRange);
+
+  const refineATK = (unit as any).refinementBonus ?? 0;
+  const bonusATK  = (unit as any).bonusATK ?? 0;
+
+  return weaponATKEffective + variance + refineATK + bonusATK;
+}
+```
+
+--------------------------------
+5. TOTALATK PER HIT (final assembly)
+--------------------------------
+
+```ts
+function getTotalATK(unit: CombatUnit): number {
+  const statusATK = getStatusATK(unit);
+  const weaponRoll = getWeaponRoll(unit);
+  return statusATK + weaponRoll;
+}
+```
+
+This `TotalATK` becomes `RawDamage` in the damage pipeline.
+
+--------------------------------
+6. CONCRETE EXAMPLES (for IT to verify)
+--------------------------------
+
+Example A – Swordsman (melee, STR 50, DEX 20, LUK 5, Lv 20)
+- Weapon: Blade (BaseWeaponATK = 53, WeaponLevel 2)
+- StatusATK = floor(20/4) + 50 + floor(20/5) + floor(5/3)
+            = 5 + 50 + 4 + 1 = 60
+- WeaponATK_effective = 53 * (1 + 0.005 * 50) = 53 * 1.25 = 66
+- VarianceRange = 0.05 * 2 * 66 = 6
+- WeaponRoll = 66 + random(-6, +6) ≈ 60–72
+- TotalATK ≈ 60 + 66 = 126 (before DEF)
+
+Example B – Archer (ranged, STR 10, DEX 50, LUK 5, Lv 20)
+- Weapon: Composite Bow (BaseWeaponATK = 29, WeaponLevel 2)
+- StatusATK = floor(20/4) + floor(10/5) + 50 + floor(5/3)
+            = 5 + 2 + 50 + 1 = 58
+- WeaponATK_effective = 29 * (1 + 0.005 * 50) = 29 * 1.25 = 36
+- VarianceRange = 0.05 * 2 * 36 = 3
+- WeaponRoll = 36 + random(-3, +3) ≈ 33–39
+- TotalATK ≈ 58 + 36 = 94 (before DEF)
+
+Notice:
+- Swordsman with STR 50 hits harder (~126 raw).
+- Archer with DEX 50 has slightly lower raw (~94) but gains HIT and cast benefits from DEX.
+- If the Archer invests more in DEX, their TotalATK also rises since DEX = their primary.
+
+--------------------------------
+7. HOW TO WIRE UP IN runTurnBasedCombat
+--------------------------------
+
+When creating CombatUnits from player and enemy data, set weaponType:
+
+```ts
+// Player
+weaponType: (playerTeam.player as any).weaponType ?? "sword",
+
+// Companions
+weaponType: (companion as any).weaponType ?? "sword",
+
+// Enemies
+weaponType: (e as any).weaponType ?? "none", // monsters are melee by default
+```
+
+Then in the attack section, replace any direct use of `attacker.attack` with:
+
+```ts
+const rawDamage = getTotalATK(attacker);
+```
+
+Everything else in your damage pipeline (HardDEF, SoftDEF, crit, endowment, guard) stays the same.
+
+--------------------------------
+8. SUMMARY OF RULES FOR IT
+--------------------------------
+
+1) Every CombatUnit must have a weaponType field.
+2) If weaponType is in [bow, gun, instrument, whip]: use RANGED formulas.
+3) If weaponType is anything else: use MELEE formulas.
+
+MELEE:
+- StatusATK uses STR fully, DEX at 1/5 rate.
+- WeaponATK bonus = 0.5% per STR.
+
+RANGED:
+- StatusATK uses DEX fully, STR at 1/5 rate.
+- WeaponATK bonus = 0.5% per DEX.
+
+Both:
+- WeaponRoll = WeaponATK_effective + random variance.
+- TotalATK = StatusATK + WeaponRoll.
+- TotalATK feeds into HardDEF → SoftDEF → multipliers pipeline.
