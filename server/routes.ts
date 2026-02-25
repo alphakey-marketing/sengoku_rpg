@@ -508,69 +508,68 @@ async function getPlayerTeamStats(userId: string) {
 }
 
 function generateEnemyStats(type: 'field' | 'boss' | 'special', playerLevel: number, locationId: number = 1) {
-  let locationMultiplier = 1 + (locationId - 1) * 0.75;
-  
-  // China Region (locationId >= 100) has significantly higher scaling
+  // Use a fixed level based on location instead of player level
+  // Japan (1-6): Levels 5, 15, 25, 35, 45, 55
+  // China (100+): Levels 70, 90, 110, etc.
+  let targetLevel = 1;
   if (locationId >= 100) {
-    const chinaIndex = locationId - 100;
-    locationMultiplier = 5 + (chinaIndex * 2.5); // Start at 5x multiplier, grow by 2.5x per stage
+    targetLevel = 70 + (locationId - 100) * 20;
+  } else {
+    targetLevel = 5 + (locationId - 1) * 10;
   }
+
+  // Linear scaling instead of exponential
+  const locationMultiplier = locationId >= 100 
+    ? 3 + (locationId - 100) * 1.5 
+    : 1 + (locationId - 1) * 0.5;
 
   if (type === 'field') {
     const name = locationId >= 100 ? pick(["Terracotta Guard", "Silk Road Bandit", "Mountain Cultivator"]) : pick(YOKAI_NAMES);
-    const lvl = Math.max(1, playerLevel + Math.floor(Math.random() * 3) - 1);
-    // Field enemies now scale much more aggressively in later maps
-    const baseHp = lvl * 30 + 50;
-    const baseAtk = lvl * 8 + 10;
-    const baseDef = lvl * 5 + 5;
-    const baseSpd = lvl * 4 + 8;
+    const lvl = targetLevel;
+    
+    // Linear scaling formulas
+    const baseHp = lvl * 40 + 100;
+    const baseAtk = lvl * 10 + 20;
+    const baseDef = lvl * 6 + 15;
+    const baseSpd = lvl * 5 + 10;
 
     return {
       name,
       level: lvl,
-      hp: Math.floor(baseHp * Math.pow(locationMultiplier, 1.2)),
-      maxHp: Math.floor(baseHp * Math.pow(locationMultiplier, 1.2)),
-      attack: Math.floor(baseAtk * Math.pow(locationMultiplier, 1.1)),
-      defense: Math.floor(baseDef * Math.pow(locationMultiplier, 1.1)),
+      hp: Math.floor(baseHp * locationMultiplier),
+      maxHp: Math.floor(baseHp * locationMultiplier),
+      attack: Math.floor(baseAtk * locationMultiplier),
+      defense: Math.floor(baseDef * locationMultiplier),
       speed: Math.floor(baseSpd * locationMultiplier),
       skills: ["Scratch", "Bite"],
     };
   } else if (type === 'boss') {
     const name = locationId >= 100 ? pick(CN_BOSS_NAMES) : pick(JP_BOSS_NAMES);
-    // Bosses scale more significantly with location
-    // Added a more aggressive scaling for Japan maps (1-6) as well
-    const difficultyMultiplier = locationId >= 100 
-      ? (locationId - 100 + 5) * 3 
-      : 1.5 + ((locationId - 1) * 0.8); // Starts at 1.5, grows by 0.8 per Japan map
-    
-    const lvl = locationId >= 100 
-      ? Math.floor(playerLevel + 20 + ((locationId - 100) * 15)) 
-      : Math.floor(playerLevel + 5 + (locationId * 6));
+    const lvl = targetLevel + 5;
     
     return {
       name,
       level: lvl,
-      hp: Math.floor((lvl * 150 + 500 + Math.floor(difficultyMultiplier * 1000)) * locationMultiplier),
-      maxHp: Math.floor((lvl * 150 + 500 + Math.floor(difficultyMultiplier * 1000)) * locationMultiplier),
-      attack: Math.floor((lvl * 25 + 60 + Math.floor(difficultyMultiplier * 50)) * locationMultiplier),
-      defense: Math.floor((lvl * 20 + 50 + Math.floor(difficultyMultiplier * 40)) * locationMultiplier),
-      speed: Math.floor((lvl * 12 + 25 + Math.floor(difficultyMultiplier * 20)) * locationMultiplier),
+      hp: Math.floor((lvl * 200 + 1000) * locationMultiplier),
+      maxHp: Math.floor((lvl * 200 + 1000) * locationMultiplier),
+      attack: Math.floor((lvl * 30 + 100) * locationMultiplier),
+      defense: Math.floor((lvl * 25 + 80) * locationMultiplier),
+      speed: Math.floor((lvl * 15 + 50) * locationMultiplier),
       skills: ["War Cry", "Shield Wall", "Charge", "Strategic Strike"],
     };
   } else {
     const sb = pick(SPECIAL_BOSSES);
     const name = locationId >= 100 ? "Celestial Dragon Emperor" : sb.name;
-    // Special bosses are the ultimate challenge
-    const difficultyMultiplier = locationId >= 100 ? (locationId - 100 + 10) * 5 : locationId;
-    const lvl = locationId >= 100 ? Math.floor(playerLevel + 50 + ((locationId - 100) * 20)) : Math.floor(playerLevel + 15 + (locationId * 12));
+    const lvl = targetLevel + 15;
+    
     return {
       name,
       level: lvl,
-      hp: Math.floor((lvl * 250 + 2000 + (difficultyMultiplier * 3000)) * locationMultiplier),
-      maxHp: Math.floor((lvl * 250 + 2000 + (difficultyMultiplier * 3000)) * locationMultiplier),
-      attack: Math.floor((lvl * 50 + 250 + (difficultyMultiplier * 150)) * locationMultiplier),
-      defense: Math.floor((lvl * 40 + 200 + (difficultyMultiplier * 120)) * locationMultiplier),
-      speed: Math.floor((lvl * 20 + 80 + (difficultyMultiplier * 50)) * locationMultiplier),
+      hp: Math.floor((lvl * 400 + 5000) * locationMultiplier),
+      maxHp: Math.floor((lvl * 400 + 5000) * locationMultiplier),
+      attack: Math.floor((lvl * 60 + 300) * locationMultiplier),
+      defense: Math.floor((lvl * 50 + 250) * locationMultiplier),
+      speed: Math.floor((lvl * 30 + 100) * locationMultiplier),
       skills: [sb.skill, "Roar", "Dark Aura", "Divine Intervention"],
     };
   }
