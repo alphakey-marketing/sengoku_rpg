@@ -98,6 +98,24 @@ export default function Home() {
     { label: "Rice", value: (player.rice || 0).toLocaleString(), icon: Wheat, color: "text-green-400" },
   ];
 
+  const coreStats = teamStatus?.player ? [
+    { label: "STR", value: teamStatus.player.str, color: "text-red-500", description: "Strength: Increases Physical ATK" },
+    { label: "AGI", value: teamStatus.player.agi, color: "text-orange-400", description: "Agility: Increases Flee and Speed" },
+    { label: "VIT", value: teamStatus.player.vit, color: "text-green-500", description: "Vitality: Increases Max HP and Soft DEF" },
+    { label: "INT", value: teamStatus.player.int, color: "text-blue-400", description: "Intelligence: Increases MATK and Soft MDEF" },
+    { label: "DEX", value: teamStatus.player.dex, color: "text-yellow-500", description: "Dexterity: Increases HIT and Status ATK" },
+    { label: "LUK", value: teamStatus.player.luk, color: "text-purple-400", description: "Luck: Increases Critical Rate and Perfect Dodge" },
+  ] : [];
+
+  const derivedStats = teamStatus?.player ? [
+    { label: "HIT", value: teamStatus.player.hit },
+    { label: "FLEE", value: teamStatus.player.flee },
+    { label: "MATK", value: teamStatus.player.statusMATK },
+    { label: "MDEF", value: teamStatus.player.softMDEF },
+    { label: "CRIT", value: `${teamStatus.player.critChance}%` },
+    { label: "C.DMG", value: `+${teamStatus.player.critDamage}%` },
+  ] : [];
+
   const equippedItems = equipment?.filter(e => e.isEquipped && e.equippedToType === 'player') || [];
 
   const getRarityColor = (rarity: string) => {
@@ -278,6 +296,55 @@ export default function Home() {
               )}
             </motion.div>
           ))}
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-12">
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="bg-card border border-border/50 rounded-xl p-6 bg-washi relative overflow-hidden"
+          >
+            <div className="absolute top-0 right-0 p-4 opacity-5">
+              <Sword size={80} />
+            </div>
+            <h3 className="text-xl font-display font-semibold mb-6 flex items-center gap-2">
+              <Trophy size={20} className="text-primary" />
+              Core Attributes
+            </h3>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+              {coreStats.map((stat) => (
+                <div key={stat.label} className="bg-background/40 border border-border/30 rounded-lg p-3 group hover:border-primary/50 transition-colors">
+                  <div className="flex justify-between items-center mb-1">
+                    <span className={`text-xs font-bold ${stat.color}`}>{stat.label}</span>
+                    <span className="text-lg font-display font-bold text-white">{stat.value}</span>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground leading-tight">{stat.description}</p>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="bg-card border border-border/50 rounded-xl p-6 bg-washi relative overflow-hidden"
+          >
+            <div className="absolute top-0 right-0 p-4 opacity-5">
+              <Shield size={80} />
+            </div>
+            <h3 className="text-xl font-display font-semibold mb-6 flex items-center gap-2">
+              <Sparkles size={20} className="text-accent" />
+              Derived Combat Stats
+            </h3>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+              {derivedStats.map((stat) => (
+                <div key={stat.label} className="bg-background/40 border border-border/30 rounded-lg p-3 flex flex-col items-center justify-center text-center">
+                  <span className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">{stat.label}</span>
+                  <span className="text-xl font-display font-bold text-white">{stat.value}</span>
+                </div>
+              ))}
+            </div>
+          </motion.div>
         </div>
 
         {teamStatus?.pet && (
