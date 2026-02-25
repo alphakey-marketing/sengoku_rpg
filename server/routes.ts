@@ -508,20 +508,21 @@ async function getPlayerTeamStats(userId: string) {
 }
 
 function generateEnemyStats(type: 'field' | 'boss' | 'special', playerLevel: number, locationId: number = 1) {
-  // Use a fixed level based on location instead of player level
+  // Use a fixed level based on location
   // Japan (1-6): Levels 1, 2, 3, 4, 5, 6
-  // China (100+): Levels 7, 8, 9, 10, 11, 12
+  // China (100-105): Levels 7, 8, 9, 10, 11, 12
   let targetLevel = 1;
   if (locationId >= 100) {
+    // 100 -> 7, 101 -> 8, etc.
     targetLevel = 7 + (locationId - 100);
   } else {
+    // 1 -> 1, 2 -> 2, etc.
     targetLevel = locationId;
   }
 
-  // Linear scaling instead of exponential
-  const locationMultiplier = locationId >= 100 
-    ? 1.5 + (locationId - 100) * 0.2 
-    : 1 + (locationId - 1) * 0.1;
+  // Linear scaling based on targetLevel
+  // Multiplier starts at 1.0 and increases by 0.1 per location level
+  const locationMultiplier = 1 + (targetLevel - 1) * 0.1;
 
   if (type === 'field') {
     const name = locationId >= 100 ? pick(["Terracotta Guard", "Silk Road Bandit", "Mountain Cultivator"]) : pick(YOKAI_NAMES);
@@ -545,7 +546,7 @@ function generateEnemyStats(type: 'field' | 'boss' | 'special', playerLevel: num
     };
   } else if (type === 'boss') {
     const name = locationId >= 100 ? pick(CN_BOSS_NAMES) : pick(JP_BOSS_NAMES);
-    const lvl = targetLevel + 5;
+    const lvl = targetLevel + 2; // Boss is slightly higher level than skirmish
     
     return {
       name,
@@ -560,7 +561,7 @@ function generateEnemyStats(type: 'field' | 'boss' | 'special', playerLevel: num
   } else {
     const sb = pick(SPECIAL_BOSSES);
     const name = locationId >= 100 ? "Celestial Dragon Emperor" : sb.name;
-    const lvl = targetLevel + 15;
+    const lvl = targetLevel + 5; // Special Boss is even higher
     
     return {
       name,
