@@ -8,6 +8,8 @@ export interface CombatUnit {
   attack: number;
   defense: number;
   speed: number;
+  hit?: number;
+  flee?: number;
   critChance: number;
   critDamage: number;
   isPlayer: boolean;
@@ -16,6 +18,18 @@ export interface CombatUnit {
   statusEffects: { type: string; duration: number }[];
   isGuarding: boolean;
   endowmentPoints?: number;
+}
+
+export function calculateHitChance(attacker: CombatUnit, defender: CombatUnit): number {
+  // RO Classic-Inspired: Hit Chance % = 100 − (AttackerHIT + 80 − DefenderFLEE)
+  // Let's adapt it: Hit Chance = (AttackerHIT + 80 - DefenderFLEE)
+  // Actually the prompt says: 100 - (AttackerHIT + 80 - DefenderFLEE) which seems wrong for a hit chance (higher flee would increase hit chance there).
+  // Standard RO is: Hit % = 80 + AttackerHIT - DefenderFLEE
+  const attackerHit = attacker.hit ?? (attacker.attack + attacker.speed);
+  const defenderFlee = defender.flee ?? (defender.defense + defender.speed);
+  
+  let hitChance = 80 + attackerHit - defenderFlee;
+  return Math.max(5, Math.min(95, hitChance));
 }
 
 export function calculateDamage(attacker: CombatUnit, defender: CombatUnit, isCritical: boolean = false) {
@@ -50,6 +64,8 @@ export function runTurnBasedCombat(playerTeam: TeamStats, enemies: EnemyStats[])
       attack: Number(playerTeam.player.attack) || 0,
       defense: Number(playerTeam.player.defense) || 0,
       speed: Number(playerTeam.player.speed) || 0,
+      hit: (Number(playerTeam.player.attack) || 0) + (Number(playerTeam.player.speed) || 0),
+      flee: (Number(playerTeam.player.defense) || 0) + (Number(playerTeam.player.speed) || 0),
       critChance: Number((playerTeam.player as any).critChance) || 0,
       critDamage: Number((playerTeam.player as any).critDamage) || 0,
       isPlayer: true,
@@ -69,6 +85,8 @@ export function runTurnBasedCombat(playerTeam: TeamStats, enemies: EnemyStats[])
         attack: Number(c.attack) || 0,
         defense: Number(c.defense) || 0,
         speed: Number(c.speed) || 0,
+        hit: (Number(c.attack) || 0) + (Number(c.speed) || 0),
+        flee: (Number(c.defense) || 0) + (Number(c.speed) || 0),
         critChance: Number((c as any).critChance) || 0,
         critDamage: Number((c as any).critDamage) || 0,
         isPlayer: true,
@@ -88,6 +106,8 @@ export function runTurnBasedCombat(playerTeam: TeamStats, enemies: EnemyStats[])
       attack: Number(e.attack) || 0,
       defense: Number(e.defense) || 0,
       speed: Number(e.speed) || 0,
+      hit: (Number(e.attack) || 0) + (Number(e.speed) || 0),
+      flee: (Number(e.defense) || 0) + (Number(e.speed) || 0),
       isPlayer: false,
       statusEffects: [],
       isGuarding: false,
@@ -140,13 +160,21 @@ export function runTurnBasedCombat(playerTeam: TeamStats, enemies: EnemyStats[])
       
       const target = targets[Math.floor(Math.random() * targets.length)];
       
-      // Critical chance: 5% base + critChance from equipment
-      const critChance = (unit.critChance || 0) + 5;
-      const isCrit = (Math.random() * 100) < critChance;
-      const damage = calculateDamage(unit, target, isCrit);
+      // Hit/Flee Check
+      const hitChance = calculateHitChance(unit, target);
+      const roll = Math.random() * 100;
       
-      target.hp -= damage;
-      logs.push(`${unit.name} attacks ${target.name} for ${damage}${isCrit ? ' (CRITICAL!)' : ''} damage.`);
+      if (roll > hitChance) {
+        logs.push(`${unit.name} attacks ${target.name} but MISSES!`);
+      } else {
+        // Critical chance: 5% base + critChance from equipment
+        const critChance = (unit.critChance || 0) + 5;
+        const isCrit = (Math.random() * 100) < critChance;
+        const damage = calculateDamage(unit, target, isCrit);
+        
+        target.hp -= damage;
+        logs.push(`${unit.name} attacks ${target.name} for ${damage}${isCrit ? ' (CRITICAL!)' : ''} damage.`);
+      }
       
       // Status Proc simulation
       if (unit.name.includes("Ninja") && Math.random() < 0.3) {
