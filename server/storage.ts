@@ -108,7 +108,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createEquipment(equip: InsertEquipment): Promise<Equipment> {
-    const [eqp] = await db.insert(equipment).values(equip as any).returning();
+    const [eqp] = await db.insert(equipment).values(equip).returning();
     return eqp;
   }
 

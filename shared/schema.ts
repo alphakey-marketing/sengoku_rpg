@@ -80,6 +80,7 @@ export const equipment = pgTable("equipment", {
   userId: varchar("user_id").notNull(),
   name: text("name").notNull(),
   type: text("type").notNull(), // Weapon, Shield, Armor, Garment, Footgear, Accessory, HeadgearUpper, HeadgearMiddle, HeadgearLower
+  rarity: text("rarity").notNull().default("white"),
   weaponType: text("weapon_type"), // dagger, sword, twoHandSword, axe, mace, spear, knuckle, katar, book, staff, bow, gun, instrument, whip, none
   level: integer("level").notNull().default(1),
   experience: integer("experience").notNull().default(0),

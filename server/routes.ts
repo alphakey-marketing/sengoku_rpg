@@ -2126,7 +2126,7 @@ export async function registerRoutes(
       equippedToId: null,
       equippedToType: "player",
       cardSlots: 1
-    });
+    } as any);
 
     res.json({ success: true });
   });
