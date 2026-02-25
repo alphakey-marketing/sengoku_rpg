@@ -964,8 +964,8 @@ export async function registerRoutes(
         break; // Stop auto-battle for the encounter
       }
 
-      const enemy = generateEnemyStats('field', user.level, locationId);
-      const battleResult = runTurnBasedCombat(teamStats, [enemy]);
+    const enemy = generateEnemyStats('field', user.level, locationId);
+    const battleResult = runTurnBasedCombat(teamStats, Array(count).fill(null).map(() => ({...enemy})));
       const victory = battleResult.victory;
       allLogs.push(...battleResult.logs);
 
@@ -1212,11 +1212,11 @@ function generatePet(userId: string, locationId: number = 1) {
     if (!user) return res.status(401).json({ message: "Unauthorized" });
     const locationId = Number(req.body.locationId) || 1;
     const teamStats = await getPlayerTeamStats(userId);
-    const enemy = generateEnemyStats('boss', user.level, locationId);
+    const enemyData = generateEnemyStats('boss', user.level, locationId);
     
     if (!teamStats) return res.status(400).json({ message: "Team not found" });
 
-    const battleResult = runTurnBasedCombat(teamStats, [enemy]);
+    const battleResult = runTurnBasedCombat(teamStats, [enemyData]);
     const victory = battleResult.victory;
     const logs = battleResult.logs;
 
@@ -1334,11 +1334,11 @@ function generatePet(userId: string, locationId: number = 1) {
     if (!user) return res.status(401).json({ message: "Unauthorized" });
     const locationId = Number(req.body.locationId) || 1;
     const teamStats = await getPlayerTeamStats(userId);
-    const enemy = generateEnemyStats('special', user.level, locationId);
+    const enemyData = generateEnemyStats('special', user.level, locationId);
     
     if (!teamStats) return res.status(400).json({ message: "Team not found" });
 
-    const battleResult = runTurnBasedCombat(teamStats, [enemy]);
+    const battleResult = runTurnBasedCombat(teamStats, [enemyData]);
     const victory = battleResult.victory;
     const logs = battleResult.logs;
 

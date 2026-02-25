@@ -124,6 +124,8 @@ export default function MapPage() {
       locationMultiplier = 5 + (chinaIndex * 2.5);
     }
     
+    const commonFieldEnemies = locationId >= 100 ? ["Terracotta Guard", "Silk Road Bandit", "Mountain Cultivator"] : ["Oni Brute", "Kappa Scout", "Tengu Warrior", "Kitsune Trickster", "Jorogumo"];
+    
     let enemyPreview: any;
     if (type === 'field') {
       const lvl = Math.max(1, pLevel + 1);
@@ -133,7 +135,7 @@ export default function MapPage() {
       const baseSpd = lvl * 4 + 8;
 
       enemyPreview = {
-        name: locationId >= 100 ? "Terracotta Guard" : "Oni Brute",
+        name: commonFieldEnemies[0],
         level: lvl,
         hp: Math.floor(baseHp * Math.pow(locationMultiplier, 1.2)),
         attack: Math.floor(baseAtk * Math.pow(locationMultiplier, 1.1)),
@@ -144,9 +146,7 @@ export default function MapPage() {
       const difficultyMultiplier = locationId >= 100 ? (locationId - 100 + 5) * 3 : locationId * 1.5;
       const lvl = locationId >= 100 ? Math.floor(pLevel + 20 + ((locationId - 100) * 15)) : Math.floor(pLevel + 5 + (locationId * 8));
       
-      const jpBosses = ["Daimyo Takeda Shingen", "Shogun Ashikaga Yoshiaki", "General Uesugi Kenshin", "Lord Mori Motonari"];
-      const cnBosses = ["General Lu Bu", "Imperial Sorcerer Zuo Ci", "Guan Yu the God of War", "Prime Minister Cao Cao"];
-      const name = locationId >= 100 ? cnBosses[Math.floor(Math.random() * cnBosses.length)] : jpBosses[Math.floor(Math.random() * jpBosses.length)];
+      const name = locationId >= 100 ? "General Lu Bu" : "Daimyo Takeda Shingen";
 
       enemyPreview = {
         name: name,
