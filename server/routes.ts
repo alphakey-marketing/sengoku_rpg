@@ -542,6 +542,8 @@ function generateEnemyStats(type: 'field' | 'boss' | 'special', playerLevel: num
     const baseAtk = lvl * 10 + 20;
     const baseDef = lvl * 6 + 15;
     const baseSpd = lvl * 5 + 10;
+    const baseDex = lvl * 5 + 10;
+    const baseAgi = lvl * 5 + 10;
 
     return {
       name,
@@ -551,6 +553,8 @@ function generateEnemyStats(type: 'field' | 'boss' | 'special', playerLevel: num
       attack: Math.floor(baseAtk * locationMultiplier),
       defense: Math.floor(baseDef * locationMultiplier),
       speed: Math.floor(baseSpd * locationMultiplier),
+      dex: Math.floor(baseDex * locationMultiplier),
+      agi: Math.floor(baseAgi * locationMultiplier),
       skills: ["Scratch", "Bite"],
     };
   } else if (type === 'boss') {
@@ -565,6 +569,8 @@ function generateEnemyStats(type: 'field' | 'boss' | 'special', playerLevel: num
       attack: Math.floor((lvl * 30 + 100) * locationMultiplier),
       defense: Math.floor((lvl * 25 + 80) * locationMultiplier),
       speed: Math.floor((lvl * 15 + 50) * locationMultiplier),
+      dex: Math.floor((lvl * 15 + 40) * locationMultiplier),
+      agi: Math.floor((lvl * 15 + 40) * locationMultiplier),
       skills: ["War Cry", "Shield Wall", "Charge", "Strategic Strike"],
     };
   } else {
@@ -580,6 +586,8 @@ function generateEnemyStats(type: 'field' | 'boss' | 'special', playerLevel: num
       attack: Math.floor((lvl * 60 + 300) * locationMultiplier),
       defense: Math.floor((lvl * 50 + 250) * locationMultiplier),
       speed: Math.floor((lvl * 30 + 100) * locationMultiplier),
+      dex: Math.floor((lvl * 30 + 100) * locationMultiplier),
+      agi: Math.floor((lvl * 30 + 100) * locationMultiplier),
       skills: [sb.skill, "Roar", "Dark Aura", "Divine Intervention"],
     };
   }
