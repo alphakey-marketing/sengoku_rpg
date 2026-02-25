@@ -426,25 +426,27 @@ export default function Home() {
                     
                     {!isMax && teamStatus?.player && (
                       <div className="flex flex-col items-center gap-1">
-                        <div className="flex gap-1">
-                          {staged > 0 && (
+                          <div className="w-16 flex justify-end gap-1">
+                            {staged > 0 ? (
+                              <button 
+                                className="h-7 w-7 flex items-center justify-center rounded border border-muted-foreground/20 hover:bg-muted/20 transition-colors"
+                                onClick={() => handleUnstageUpgrade(stat.key)}
+                                data-testid={`button-unstage-${stat.key}`}
+                              >
+                                <ChevronDown size={14} className="text-muted-foreground" />
+                              </button>
+                            ) : (
+                              <div className="h-7 w-7" />
+                            )}
                             <button 
-                              className="h-7 w-7 flex items-center justify-center rounded border border-muted-foreground/20 hover:bg-muted/20 transition-colors"
-                              onClick={() => handleUnstageUpgrade(stat.key)}
-                              data-testid={`button-unstage-${stat.key}`}
+                              className={`h-7 w-7 flex items-center justify-center rounded border border-primary/20 hover:bg-primary/20 transition-colors ${!canAfford ? 'opacity-30 cursor-not-allowed' : ''}`}
+                              disabled={!canAfford}
+                              onClick={() => handleStageUpgrade(stat.key)}
+                              data-testid={`button-stage-${stat.key}`}
                             >
-                              <ChevronDown size={14} className="text-muted-foreground" />
+                              <ChevronUp size={14} className="text-primary" />
                             </button>
-                          )}
-                          <button 
-                            className={`h-7 w-7 flex items-center justify-center rounded border border-primary/20 hover:bg-primary/20 transition-colors ${!canAfford ? 'opacity-30 cursor-not-allowed' : ''}`}
-                            disabled={!canAfford}
-                            onClick={() => handleStageUpgrade(stat.key)}
-                            data-testid={`button-stage-${stat.key}`}
-                          >
-                            <ChevronUp size={14} className="text-primary" />
-                          </button>
-                        </div>
+                          </div>
                         <div className="text-[9px] font-bold text-primary/70">{cost}P</div>
                       </div>
                     )}
