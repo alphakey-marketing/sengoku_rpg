@@ -29,62 +29,11 @@ export default function EquipmentPage() {
   const [endowDialogOpen, setEndowDialogOpen] = useState(false);
   const [useProtection, setUseProtection] = useState(false);
   const [filterType, setFilterType] = useState<string>('all');
-  const [filterRarity, setFilterRarity] = useState<string>('all');
 
   const { mutate: recycleRarity, isPending: recycleRarityPending } = useMutation({
-    mutationFn: async (rarity: string) => {
-      const res = await apiRequest("POST", "/api/equipment/recycle-rarity", { rarity });
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/equipment/recycle-rarity", {});
       return res.json();
-    },
-    onMutate: async (rarity) => {
-      // Cancel any outgoing refetches
-      await queryClient.cancelQueries({ queryKey: ["/api/equipment"] });
-      await queryClient.cancelQueries({ queryKey: ["/api/player"] });
-
-      // Snapshot the previous value
-      const previousEquipment = queryClient.getQueryData(["/api/equipment"]);
-      const previousPlayer = queryClient.getQueryData(["/api/player"]);
-
-      const rarityStones: Record<string, number> = { 
-        white: 1, green: 2, blue: 5, purple: 10, gold: 25,
-        mythic: 50, exotic: 100, transcendent: 250, celestial: 500, primal: 1000
-      };
-
-      // Optimistically update to the new value
-      if (previousEquipment) {
-        const toRecycle = (previousEquipment as any[]).filter(e => e.rarity === rarity && !e.isEquipped);
-        const stonesGained = toRecycle.length * (rarityStones[rarity] || 1);
-
-        queryClient.setQueryData(["/api/equipment"], (old: any) => 
-          old.filter((e: any) => !(e.rarity === rarity && !e.isEquipped))
-        );
-
-        if (previousPlayer) {
-          queryClient.setQueryData(["/api/player"], (old: any) => ({
-            ...old,
-            upgradeStones: (old.upgradeStones || 0) + stonesGained
-          }));
-        }
-      }
-
-      return { previousEquipment, previousPlayer };
-    },
-    onError: (err, rarity, context) => {
-      if (context) {
-        queryClient.setQueryData(["/api/equipment"], context.previousEquipment);
-        queryClient.setQueryData(["/api/player"], context.previousPlayer);
-      }
-      toast({
-        title: "Recycle Failed",
-        description: "Something went wrong while recycling items.",
-        variant: "destructive",
-      });
-    },
-    onSuccess: (data) => {
-      toast({
-        title: "Recycle Complete",
-        description: `Recycled ${data.count} items for ${data.stonesGained} Upgrade Stones.`,
-      });
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/equipment"] });
@@ -140,8 +89,7 @@ export default function EquipmentPage() {
   const typeLabel = (type: string) => type === 'horse_gear' ? 'Horse Gear' : type.charAt(0).toUpperCase() + type.slice(1);
 
   const typeFiltered = filterType === 'all' ? equipment : equipment?.filter(e => e.type === filterType);
-  const rarityFiltered = filterRarity === 'all' ? typeFiltered : typeFiltered?.filter(e => e.rarity === filterRarity);
-  const sortedEquipment = rarityFiltered ? [...rarityFiltered].sort((a, b) => {
+  const sortedEquipment = typeFiltered ? [...typeFiltered].sort((a, b) => {
     if (a.isEquipped !== b.isEquipped) return a.isEquipped ? -1 : 1;
     return a.id - b.id;
   }) : [];
@@ -205,34 +153,20 @@ export default function EquipmentPage() {
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            {['all', 'white', 'green', 'blue', 'purple', 'gold', 'mythic', 'exotic', 'transcendent', 'celestial', 'primal'].map(r => (
-              <Button
-                key={r}
-                size="sm"
-                variant={filterRarity === r ? "secondary" : "outline"}
-                onClick={() => setFilterRarity(r)}
-                className={`text-[10px] h-7 px-2 capitalize ${filterRarity === r ? 'border-accent' : ''}`}
-                data-testid={`filter-rarity-${r}`}
-              >
-                {r}
-              </Button>
-            ))}
-            
             <Button
               size="sm"
               variant="destructive"
               className="h-7 text-[10px] ml-auto gap-2"
               onClick={() => {
-                const target = filterRarity === 'all' ? 'ALL un-equipped' : `all UN-EQUIPPED ${filterRarity}`;
-                if (confirm(`Recycle ${target} items?`)) {
-                  recycleRarity(filterRarity);
+                if (confirm(`Recycle all un-equipped items?`)) {
+                  recycleRarity();
                 }
               }}
               disabled={recycleRarityPending}
               data-testid="button-recycle-all"
             >
               <Trash2 size={12} />
-              {filterRarity === 'all' ? 'Recycle All' : `Recycle All ${filterRarity}`}
+              Recycle All Un-equipped
             </Button>
           </div>
         </div>
@@ -251,13 +185,13 @@ export default function EquipmentPage() {
               return (
                 <div
                   key={item.id}
-                  className={`relative p-5 rounded-lg border flex flex-col ${getRarityColor(item.rarity)} transition-transform hover:-translate-y-1`}
+                  className={`relative p-5 rounded-lg border flex flex-col text-zinc-400 border-zinc-700 bg-zinc-900/50 transition-transform hover:-translate-y-1`}
                   data-testid={`equipment-card-${item.id}`}
                 >
                   <div className="flex justify-between items-start mb-3 gap-2">
                     <div className="flex items-center gap-2 min-w-0">
                       <TypeIcon size={16} className="shrink-0" />
-                      <h3 className={`font-bold text-lg font-display truncate leading-tight ${item.rarity === 'transcendent' ? 'text-transparent bg-clip-text bg-gradient-to-r from-red-400 via-green-400 to-blue-400 pb-1' : ''}`}>
+                      <h3 className="font-bold text-lg font-display truncate leading-tight">
                         {item.name}{item.endowmentPoints > 0 ? ` +${item.endowmentPoints}` : ''}
                       </h3>
                     </div>
@@ -339,16 +273,7 @@ export default function EquipmentPage() {
                     </div>
                     <Progress value={(item.experience / item.expToNext) * 100} className="h-1.5" />
                     <p className="text-[10px] text-zinc-500 mt-1">
-                      {item.rarity === 'primal' ? '+75% ATK / +125% DEF / +200% SPD' :
-                       item.rarity === 'celestial' ? '+45% ATK / +75% DEF / +110% SPD' :
-                       item.rarity === 'transcendent' ? '+30% ATK / +50% DEF / +75% SPD' :
-                       item.rarity === 'exotic' ? '+22% ATK / +35% DEF / +50% SPD' :
-                       item.rarity === 'mythic' ? '+16% ATK / +25% DEF / +35% SPD' :
-                       item.rarity === 'gold' ? '+12% ATK / +18% DEF / +25% SPD' :
-                       item.rarity === 'purple' ? '+8% ATK / +12% DEF / +15% SPD' :
-                       item.rarity === 'blue' ? '+6% ATK / +9% DEF / +12% SPD' :
-                       item.rarity === 'green' ? '+4% ATK / +6% DEF / +8% SPD' :
-                       '+2% ATK / +3% DEF / +5% SPD'} per level
+                      +2% ATK / +3% DEF / +5% SPD per level
                     </p>
                   </div>
 

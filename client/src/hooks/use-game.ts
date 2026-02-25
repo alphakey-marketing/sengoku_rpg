@@ -54,7 +54,6 @@ export interface Equipment {
   userId: string;
   name: string;
   type: string;
-  rarity: string;
   level: number;
   experience: number;
   expToNext: number;
@@ -140,7 +139,7 @@ export interface TeamMemberStats {
   critDamage: number;
   endowmentPoints: number;
   skill?: string | null;
-  equipped?: { name: string; type: string; level: number; rarity: string }[];
+  equipped?: { name: string; type: string; level: number }[];
   canTransform?: boolean;
 }
 

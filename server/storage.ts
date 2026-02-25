@@ -45,6 +45,7 @@ export interface IStorage {
   getQuests(userId: string): Promise<UserQuest[]>;
   updateQuestProgress(userId: string, questKey: string, increment: number): Promise<void>;
   claimQuest(userId: string, questKey: string): Promise<{ success: boolean; reward?: string }>;
+  recycleEquipment(userId: string): Promise<{ count: number; stonesGained: number }>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -137,27 +138,19 @@ export class DatabaseStorage implements IStorage {
     await db.update(cards).set({ equipmentId }).where(eq(cards.id, cardId));
   }
 
-  async recycleEquipmentByRarity(userId: string, rarity: string): Promise<{ count: number; stonesGained: number }> {
-    const rarityStones: Record<string, number> = { 
-      white: 1, green: 2, blue: 3, purple: 5, gold: 10,
-      mythic: 20, exotic: 40, transcendent: 80, celestial: 150, primal: 300
-    };
-    
+  async recycleEquipment(userId: string): Promise<{ count: number; stonesGained: number }> {
     return await db.transaction(async (tx) => {
       const conditions = [
         eq(equipment.userId, userId),
         eq(equipment.isEquipped, false)
       ];
       
-      if (rarity !== 'all') {
-        conditions.push(eq(equipment.rarity, rarity));
-      }
-      
       const targets = await tx.select().from(equipment).where(and(...conditions));
       
       if (targets.length === 0) return { count: 0, stonesGained: 0 };
       
-      const totalStones = targets.reduce((sum, item) => sum + (rarityStones[item.rarity] || 1), 0);
+      const stonesPerItem = 5;
+      const totalStones = targets.length * stonesPerItem;
       
       await tx.delete(equipment).where(and(...conditions));
       

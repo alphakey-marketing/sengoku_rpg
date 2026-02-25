@@ -100,7 +100,7 @@ export default function GearPage() {
           return (
             <div
               key={type}
-              className={`rounded-lg border p-4 bg-card bg-washi flex items-center gap-3 relative group ${item ? getRarityColor(item.rarity) : 'border-border/30 opacity-50'}`}
+              className={`rounded-lg border p-4 bg-card bg-washi flex items-center gap-3 relative group ${item ? 'text-zinc-400 border-zinc-700 bg-zinc-900/20' : 'border-border/30 opacity-50'}`}
             >
               <div className="p-2 bg-background/50 rounded border border-border/50 shrink-0">
                 <TypeIcon size={20} />
@@ -109,7 +109,7 @@ export default function GearPage() {
                 <p className="text-[10px] text-muted-foreground uppercase tracking-widest">{typeLabel}</p>
                 {item ? (
                   <>
-                    <p className={`font-bold text-sm truncate ${item.rarity === 'transcendent' ? 'text-transparent bg-clip-text bg-gradient-to-r from-red-400 via-green-400 to-blue-400 pb-1' : ''}`}>
+                    <p className="font-bold text-sm truncate">
                       {item.name}{item.endowmentPoints > 0 ? ` +${item.endowmentPoints}` : ''}
                     </p>
                     <div className="flex gap-2 text-[10px] mt-1 flex-wrap">
@@ -217,10 +217,10 @@ export default function GearPage() {
                 </div>
               ) : (
                 inventoryItems?.map(item => (
-                  <div key={item.id} className={`p-3 rounded-lg border flex justify-between items-center ${getRarityColor(item.rarity)}`}>
+                  <div key={item.id} className="p-3 rounded-lg border flex justify-between items-center text-zinc-400 border-zinc-700 bg-zinc-900/20">
                     <div className="flex-1 min-w-0">
                       <p className="font-bold text-sm truncate">{item.name}</p>
-                      <p className="text-[10px] opacity-70">Lv{item.level} • {item.rarity} {item.type.replace('_', ' ')}</p>
+                      <p className="text-[10px] opacity-70">Lv{item.level} • {item.type.replace('_', ' ')}</p>
                     </div>
                     <Button 
                       size="sm" 

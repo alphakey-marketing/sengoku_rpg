@@ -302,9 +302,6 @@ export default function GachaPage() {
                       className="bg-card border-2 border-accent/50 rounded-xl p-4 text-center shadow-lg bg-washi relative"
                     >
                       <h2 className="text-sm font-display font-bold text-white mb-1 line-clamp-1">{equipment.name}</h2>
-                      <Badge className={`mb-2 uppercase text-[8px] tracking-tighter ${getRarityColor(equipment.rarity)}`}>
-                        {equipment.rarity}
-                      </Badge>
                       <div className="grid grid-cols-2 gap-1 text-[10px] text-left bg-background/50 p-2 rounded border border-border/50">
                         <div><span className="text-muted-foreground uppercase">ATK</span><p className="font-bold text-red-400">+{equipment.attackBonus}</p></div>
                         <div><span className="text-muted-foreground uppercase">DEF</span><p className="font-bold text-blue-400">+{equipment.defenseBonus}</p></div>

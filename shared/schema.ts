@@ -80,7 +80,6 @@ export const equipment = pgTable("equipment", {
   userId: varchar("user_id").notNull(),
   name: text("name").notNull(),
   type: text("type").notNull(), // Weapon, Shield, Armor, Garment, Footgear, Accessory, HeadgearUpper, HeadgearMiddle, HeadgearLower
-  rarity: text("rarity").notNull(),
   level: integer("level").notNull().default(1),
   experience: integer("experience").notNull().default(0),
   expToNext: integer("exp_to_next").notNull().default(100),

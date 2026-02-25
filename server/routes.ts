@@ -142,7 +142,6 @@ function generateEquipment(userId: string, locationId: number = 1, forceGood: bo
   const category = pick(categories) as keyof typeof CLASSIC_DROPS;
   const itemDef = pick(CLASSIC_DROPS[category]);
   
-  const rarity = equipRarityFromRandom(locationId);
   // Slotted version chance: 1% for normal, 10% for boss/good
   const isSlotted = Math.random() < (forceGood ? 0.1 : 0.01);
   const slots = isSlotted ? (itemDef.slots || 0) : 0;
@@ -150,27 +149,20 @@ function generateEquipment(userId: string, locationId: number = 1, forceGood: bo
   const baseAtk = (itemDef as any).atk || 0;
   const baseDef = (itemDef as any).def || 0;
   
-  // Scale stats based on rarity and location
-  const rarityMult = {
-    white: 1, green: 1.2, blue: 1.5, purple: 2, gold: 3,
-    mythic: 5, exotic: 8, transcendent: 15, celestial: 30, primal: 60
-  }[rarity] || 1;
-
   const locMult = 1 + (locationId - 1) * 0.1;
 
   return {
     userId,
     name: itemDef.name + (slots > 0 ? ` [${slots}]` : ""),
     type: (itemDef as any).type || category,
-    rarity,
     level: 1,
     experience: 0,
     expToNext: calcEquipExpToNext(1),
-    attackBonus: Math.floor(baseAtk * rarityMult * locMult),
-    defenseBonus: Math.floor(baseDef * rarityMult * locMult),
+    attackBonus: Math.floor(baseAtk * locMult),
+    defenseBonus: Math.floor(baseDef * locMult),
     speedBonus: 0,
-    hpBonus: Math.floor(((itemDef as any).hp || 0) * rarityMult * locMult),
-    mdefBonus: Math.floor(((itemDef as any).mdef || 0) * rarityMult * locMult),
+    hpBonus: Math.floor(((itemDef as any).hp || 0) * locMult),
+    mdefBonus: Math.floor(((itemDef as any).mdef || 0) * locMult),
     matkBonus: (itemDef as any).matk || 0,
     cardSlots: slots,
     isEquipped: false
@@ -411,7 +403,7 @@ async function getPlayerTeamStats(userId: string) {
         critChance: playerEquipped.reduce((s, e) => s + (e.critChance || 0), 0) + Math.floor(critRate),
         critDamage: playerEquipped.reduce((s, e) => s + (e.critDamage || 0), 0),
         endowmentPoints: playerEquipped.reduce((s, e) => s + (e.endowmentPoints || 0), 0),
-        equipped: playerEquipped.map(e => ({ name: e.name, type: e.type, level: e.level, rarity: e.rarity })),
+        equipped: playerEquipped.map(e => ({ name: e.name, type: e.type, level: e.level })),
         canTransform: allTransforms.length > 0,
         activeTransform: activeTransform ? {
           name: activeTransform.name,
@@ -462,7 +454,7 @@ async function getPlayerTeamStats(userId: string) {
         critDamage: compEquipped.reduce((s, e) => s + (e.critDamage || 0), 0),
         endowmentPoints: compEquipped.reduce((s, e) => s + (e.endowmentPoints || 0), 0),
         skill: c.skill,
-        equipped: compEquipped.map(e => ({ name: e.name, type: e.type, level: e.level, rarity: e.rarity })),
+        equipped: compEquipped.map(e => ({ name: e.name, type: e.type, level: e.level })),
       } as any;
     }),
     pet: activePet ? {
@@ -973,11 +965,7 @@ export async function registerRoutes(
     if (!targetEquip) return res.status(404).json({ message: "Equipment not found" });
     if (targetEquip.isEquipped) return res.status(400).json({ message: "Cannot recycle equipped item" });
 
-    const rarityStones: Record<string, number> = { 
-      white: 1, green: 2, blue: 3, purple: 5, gold: 10,
-      mythic: 20, exotic: 40, transcendent: 80, celestial: 150, primal: 300
-    };
-    const stonesGained = rarityStones[targetEquip.rarity] || 1;
+    const stonesGained = 5;
 
     const user = await storage.getUser(userId);
     if (!user) return res.status(401).json({ message: "Unauthorized" });
@@ -990,13 +978,12 @@ export async function registerRoutes(
 
   app.post("/api/equipment/recycle-rarity", isAuthenticated, async (req: any, res) => {
     const userId = req.user.claims.sub;
-    const { rarity } = req.body;
     
     try {
-      const result = await (storage as any).recycleEquipmentByRarity(userId, rarity);
+      const result = await storage.recycleEquipment(userId);
       res.json(result);
     } catch (error) {
-      console.error("Recycle rarity error:", error);
+      console.error("Recycle error:", error);
       res.status(500).json({ message: "Failed to recycle items" });
     }
   });
