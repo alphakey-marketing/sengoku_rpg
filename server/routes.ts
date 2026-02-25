@@ -367,17 +367,17 @@ async function getPlayerTeamStats(userId: string) {
       ? Math.floor(baseWeaponAtk * (1 + 0.005 * DEX))
       : Math.floor(baseWeaponAtk * (1 + 0.005 * STR));
 
-    let attack = statusAtk + finalWeaponAtk;
-    let defense = user.defense + totalDefBonus + (user.permDefenseBonus || 0);
-    let speed = user.speed + totalSpdBonus + (user.permSpeedBonus || 0) + Math.floor(AGI / 2); 
+  let attack = statusAtk + finalWeaponAtk;
+    let defense = (user.defense || 0) + totalDefBonus + (user.permDefenseBonus || 0);
+    let speed = (user.speed || 0) + totalSpdBonus + (user.permSpeedBonus || 0) + Math.floor(AGI / 2); 
     
     // StatusATK and softDEF are handled in combat.ts using the raw stats (STR, AGI, etc.)
     // We pass the raw base attack/defense which will be used as weaponATK/hardDEF
     
     // MaxHP = ClassBaseHP(BaseLv) * (1 + 0.01 * VIT) + gearHP
     // Using user.maxHp as ClassBaseHP
-    let maxHp = Math.floor((user.maxHp + (user.permHpBonus || 0)) * (1 + 0.01 * VIT)) + totalHpBonus;
-    let hp = Math.min(user.hp + (user.permHpBonus || 0) + totalHpBonus, maxHp);
+    let maxHp = Math.floor(((user.maxHp || 100) + (user.permHpBonus || 0)) * (1 + 0.01 * VIT)) + totalHpBonus;
+    let hp = Math.min((user.hp || 100) + (user.permHpBonus || 0) + totalHpBonus, maxHp);
     
     // MaxSP = ClassBaseSP(BaseLv) * (1 + 0.01 * INT) + gearSP
     // Assuming base SP logic or adding to schema if needed, for now we use a derived value or just pass it

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useEquipment, useEquip, useUnequip, useCompanions, usePlayer, useRecycleEquipment, useUpgradeEquipment, useEndowEquipment } from "@/hooks/use-game";
 import { MainLayout } from "@/components/layout/main-layout";
 import { Button } from "@/components/ui/button";
-import { Sword, Shield, Crosshair, Zap, Sparkles, ArrowUp, Trash2, Hammer, Gem } from "lucide-react";
+import { Sword, Shield, Crosshair, Zap, Sparkles, ArrowUp, Trash2, Hammer, Gem, Heart } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation } from "@tanstack/react-query";
