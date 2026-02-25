@@ -54,31 +54,31 @@ export default function Party() {
   return (
     <MainLayout>
       <div className="space-y-6">
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-border/50 pb-4">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border/50 pb-6">
           <div className="flex-1">
             <h1 className="text-3xl font-display font-bold text-white mb-2" data-testid="text-page-title">War Council</h1>
             <p className="text-muted-foreground">Select up to 5 unique warriors for your active party.</p>
           </div>
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2 bg-card border border-border/50 px-3 py-2 rounded-lg relative z-20">
-              <Star size={16} className="text-yellow-500" />
+          <div className="flex flex-wrap items-center gap-4 bg-background/80 p-4 rounded-xl border border-border/50 backdrop-blur-md shadow-2xl">
+            <div className="flex items-center gap-2 bg-zinc-900 border-2 border-primary/50 px-4 py-2.5 rounded-xl relative z-30 hover:border-primary transition-all shadow-[0_0_15px_rgba(220,38,38,0.1)]">
+              <Star size={18} className="text-yellow-500 animate-pulse" />
               <select 
                 value={starFilter} 
                 onChange={(e) => setStarFilter(e.target.value)}
-                className="bg-transparent text-sm font-bold text-white outline-none cursor-pointer appearance-none pr-6"
+                className="bg-transparent text-sm font-black text-white outline-none cursor-pointer appearance-none pr-10 min-w-[120px] uppercase tracking-tighter"
                 style={{ WebkitAppearance: 'none', MozAppearance: 'none' }}
                 data-testid="select-star-filter"
               >
-                <option value="all" className="bg-zinc-900 text-white">All Stars</option>
-                <option value="5" className="bg-zinc-900 text-orange-500">5 Stars</option>
-                <option value="4" className="bg-zinc-900 text-purple-400">4 Stars</option>
-                <option value="3" className="bg-zinc-900 text-blue-400">3 Stars</option>
-                <option value="2" className="bg-zinc-900 text-green-500">2 Stars</option>
-                <option value="1" className="bg-zinc-900 text-zinc-400">1 Star</option>
+                <option value="all" className="bg-zinc-900 text-white font-bold">Show All</option>
+                <option value="5" className="bg-zinc-900 text-orange-500 font-bold">5 Stars</option>
+                <option value="4" className="bg-zinc-900 text-purple-400 font-bold">4 Stars</option>
+                <option value="3" className="bg-zinc-900 text-blue-400 font-bold">3 Stars</option>
+                <option value="2" className="bg-zinc-900 text-green-500 font-bold">2 Stars</option>
+                <option value="1" className="bg-zinc-900 text-zinc-400 font-bold">1 Star</option>
               </select>
-              <div className="absolute right-3 pointer-events-none">
-                <svg width="10" height="6" viewBox="0 0 10 6" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M1 1L5 5L9 1" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              <div className="absolute right-4 pointer-events-none text-primary">
+                <svg width="12" height="8" viewBox="0 0 10 6" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M1 1L5 5L9 1" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
               </div>
             </div>
@@ -89,17 +89,19 @@ export default function Party() {
                 <span className="text-lg font-bold text-white leading-none">{player?.warriorSouls || 0}</span>
               </div>
             </div>
-            <span className="text-sm font-medium bg-secondary/30 px-3 py-1 rounded border border-secondary text-secondary-foreground">
-              {selectedIds.length} / 5 Selected
-            </span>
-            <Button
-              onClick={handleSave}
-              disabled={isPending || selectedIds.length === 0}
-              className="bg-accent hover:bg-accent/90 text-accent-foreground font-bold"
-              data-testid="button-deploy-party"
-            >
-              {isPending ? "Updating..." : "Deploy Party"}
-            </Button>
+            <div className="flex items-center gap-3">
+              <span className="text-xs font-bold bg-secondary/20 px-3 py-2 rounded border border-secondary/30 text-secondary-foreground whitespace-nowrap">
+                {selectedIds.length} / 5 Selected
+              </span>
+              <Button
+                onClick={handleSave}
+                disabled={isPending || selectedIds.length === 0}
+                className="bg-accent hover:bg-accent/90 text-accent-foreground font-bold shadow-lg shadow-accent/20"
+                data-testid="button-deploy-party"
+              >
+                {isPending ? "Updating..." : "Deploy Party"}
+              </Button>
+            </div>
           </div>
         </div>
 
