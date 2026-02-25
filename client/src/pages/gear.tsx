@@ -165,7 +165,21 @@ export default function GearPage() {
     </div>
   );
 
-  const inventoryItems = selectedSlot ? equipment?.filter(e => e.type === selectedSlot.type && !e.isEquipped) : [];
+  const inventoryItems = selectedSlot 
+    ? equipment?.filter(e => {
+        // Normalize type matching
+        const itemType = e.type.toLowerCase();
+        const slotType = selectedSlot.type.toLowerCase();
+        
+        // Match specific slot types or allow general type matching
+        const isTypeMatch = itemType === slotType || 
+          (slotType === 'headgearupper' && itemType === 'headgear') ||
+          (slotType === 'headgearmiddle' && itemType === 'headgear') ||
+          (slotType === 'headgearlower' && itemType === 'headgear');
+
+        return isTypeMatch && !e.isEquipped;
+      }) 
+    : [];
 
   return (
     <MainLayout>

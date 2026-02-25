@@ -308,14 +308,19 @@ async function getPlayerTeamStats(userId: string) {
   const allHorses = await storage.getHorses(userId);
   const allTransforms = await storage.getTransformations(userId);
 
-  const partyCompanions = comps.filter(c => c.isInParty);
+  const partyCompanions = partyCompanionsList.filter(c => c.isInParty);
   const activePet = allPets.find(p => p.isActive);
   const activeHorse = allHorses.find(h => h.isActive);
 
+  // Auto-sync base equipment if user has none
+  if (equips.length === 0) {
+    await storage.syncBaseEquipment(userId);
+  }
+
     const playerEquipped = equips.filter(e => e.isEquipped && e.equippedToType === 'player');
-    const weapon = playerEquipped.find(e => e.type === 'Weapon');
+    const weapon = playerEquipped.find(e => e.type.toLowerCase() === 'weapon');
     const weaponType = (weapon as any)?.weaponType;
-    
+
     // Check for active transformation
     let activeTransform = null;
     if (user.activeTransformId && user.transformActiveUntil && new Date(user.transformActiveUntil) > new Date()) {
@@ -450,7 +455,7 @@ async function getPlayerTeamStats(userId: string) {
       } as any,
     companions: partyCompanions.map(c => {
       const compEquipped = equips.filter(e => e.isEquipped && e.equippedToType === 'companion' && Number(e.equippedToId) === Number(c.id));
-      const cWeapon = compEquipped.find(e => e.type === 'Weapon');
+      const cWeapon = compEquipped.find(e => e.type.toLowerCase() === 'weapon');
       const cWeaponType = (cWeapon as any)?.weaponType;
       
       const cAtkBonus = compEquipped.reduce((s, e) => s + Math.floor(e.attackBonus * (1 + (e.level - 1) * 0.05)), 0);
