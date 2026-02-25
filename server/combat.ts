@@ -108,6 +108,11 @@ export function runTurnBasedCombat(playerTeam: TeamStats, enemies: EnemyStats[])
     
     for (const unit of units) {
       if (unit.hp <= 0) continue;
+
+      // Check if any enemies are still alive before this unit takes its turn
+      const enemyAlive = units.filter(u => !u.isPlayer && u.hp > 0).length > 0;
+      const playerAlive = units.filter(u => u.isPlayer && u.hp > 0).length > 0;
+      if (!enemyAlive || !playerAlive) break;
       
       // Check for Stun
       const stun = unit.statusEffects.find(s => s.type === 'Stun');
