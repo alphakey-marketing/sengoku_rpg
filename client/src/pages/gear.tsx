@@ -45,9 +45,14 @@ export default function GearPage() {
   const getTypeIcon = (type: string) => {
     switch (type) {
       case 'weapon': return Sword;
+      case 'shield': return Shield;
       case 'armor': return Shield;
+      case 'garment': return Zap;
+      case 'footgear': return Zap;
       case 'accessory': return Sparkles;
-      case 'horse_gear': return Zap;
+      case 'headgearUpper': return Sparkles;
+      case 'headgearMiddle': return Sparkles;
+      case 'headgearLower': return Sparkles;
       default: return Sword;
     }
   };
@@ -87,10 +92,10 @@ export default function GearPage() {
         )}
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {['weapon', 'armor', 'accessory', 'horse_gear'].map(type => {
+        {['weapon', 'shield', 'armor', 'garment', 'footgear', 'accessory', 'headgearUpper', 'headgearMiddle', 'headgearLower'].map(type => {
           const item = entityGear?.find(e => e.type === type);
           const TypeIcon = getTypeIcon(type);
-          const typeLabel = type === 'horse_gear' ? 'Horse Gear' : type.charAt(0).toUpperCase() + type.slice(1);
+          const typeLabel = type.charAt(0).toUpperCase() + type.slice(1).replace(/[A-Z]/g, ' $&');
           
           return (
             <div
@@ -110,8 +115,12 @@ export default function GearPage() {
                     <div className="flex gap-2 text-[10px] mt-1 flex-wrap">
                       <span className="font-bold">Lv{item.level}</span>
                       {item.attackBonus > 0 && <span className="text-red-400">+{item.attackBonus} ATK</span>}
+                      {item.matkBonus > 0 && <span className="text-purple-400">+{item.matkBonus} MATK</span>}
                       {item.defenseBonus > 0 && <span className="text-blue-400">+{item.defenseBonus} DEF</span>}
+                      {item.mdefBonus > 0 && <span className="text-cyan-400">+{item.mdefBonus} MDEF</span>}
+                      {item.hpBonus > 0 && <span className="text-red-500">+{item.hpBonus} HP</span>}
                       {item.speedBonus > 0 && <span className="text-cyan-400">+{item.speedBonus} SPD</span>}
+                      {item.fleeBonus > 0 && <span className="text-green-400">+{item.fleeBonus} FLEE</span>}
                     </div>
                     <div className="mt-1.5 mb-2">
                       <Progress value={(item.experience / item.expToNext) * 100} className="h-1" />

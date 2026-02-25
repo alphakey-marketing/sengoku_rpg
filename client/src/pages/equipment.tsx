@@ -118,9 +118,14 @@ export default function EquipmentPage() {
   const getTypeIcon = (type: string) => {
     switch (type) {
       case 'weapon': return Sword;
+      case 'shield': return Shield;
       case 'armor': return Shield;
+      case 'garment': return Zap;
+      case 'footgear': return Zap;
       case 'accessory': return Sparkles;
-      case 'horse_gear': return Zap;
+      case 'headgearUpper': return Sparkles;
+      case 'headgearMiddle': return Sparkles;
+      case 'headgearLower': return Sparkles;
       default: return Sword;
     }
   };
@@ -186,7 +191,7 @@ export default function EquipmentPage() {
 
         <div className="flex flex-col gap-4">
           <div className="flex flex-wrap gap-2">
-            {['all', 'weapon', 'armor', 'accessory', 'horse_gear'].map(t => (
+            {['all', 'weapon', 'shield', 'armor', 'garment', 'footgear', 'accessory', 'headgearUpper', 'headgearMiddle', 'headgearLower'].map(t => (
               <Button
                 key={t}
                 size="sm"
@@ -265,19 +270,43 @@ export default function EquipmentPage() {
                     {item.attackBonus > 0 && (
                       <div className="flex items-center gap-1">
                         <Sword size={14} className="text-red-400" />
-                        <span>+{item.attackBonus}</span>
+                        <span>+{item.attackBonus} ATK</span>
+                      </div>
+                    )}
+                    {item.matkBonus > 0 && (
+                      <div className="flex items-center gap-1">
+                        <Sparkles size={14} className="text-purple-400" />
+                        <span>+{item.matkBonus} MATK</span>
                       </div>
                     )}
                     {item.defenseBonus > 0 && (
                       <div className="flex items-center gap-1">
                         <Shield size={14} className="text-blue-400" />
-                        <span>+{item.defenseBonus}</span>
+                        <span>+{item.defenseBonus} DEF</span>
+                      </div>
+                    )}
+                    {item.mdefBonus > 0 && (
+                      <div className="flex items-center gap-1">
+                        <Shield size={14} className="text-cyan-400" />
+                        <span>+{item.mdefBonus} MDEF</span>
                       </div>
                     )}
                     {item.speedBonus > 0 && (
                       <div className="flex items-center gap-1">
                         <Zap size={14} className="text-cyan-400" />
-                        <span>+{item.speedBonus}</span>
+                        <span>+{item.speedBonus} SPD</span>
+                      </div>
+                    )}
+                    {item.hpBonus > 0 && (
+                      <div className="flex items-center gap-1">
+                        <Heart size={14} className="text-red-500" />
+                        <span>+{item.hpBonus} HP</span>
+                      </div>
+                    )}
+                    {item.fleeBonus > 0 && (
+                      <div className="flex items-center gap-1">
+                        <Zap size={14} className="text-green-400" />
+                        <span>+{item.fleeBonus} FLEE</span>
                       </div>
                     )}
                     {item.critChance > 0 && (
