@@ -17,6 +17,7 @@ export default function Party() {
   const { toast } = useToast();
 
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [starFilter, setStarFilter] = useState<string>("all");
 
   if (companions && selectedIds.length === 0 && companions.some(c => c.isInParty)) {
     setSelectedIds(companions.filter(c => c.isInParty).map(c => c.id));
@@ -46,7 +47,9 @@ export default function Party() {
 
   if (isLoading) return <MainLayout><div className="p-8">Loading companions...</div></MainLayout>;
 
-  const sortedComps = companions ? [...companions].sort((a, b) => a.id - b.id) : [];
+  const sortedComps = companions ? [...companions]
+    .filter(c => starFilter === "all" || c.rarity === starFilter)
+    .sort((a, b) => a.id - b.id) : [];
 
   return (
     <MainLayout>
@@ -57,6 +60,22 @@ export default function Party() {
             <p className="text-muted-foreground">Select up to 5 unique warriors for your active party.</p>
           </div>
           <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 bg-card border border-border/50 px-3 py-2 rounded-lg">
+              <Star size={16} className="text-yellow-500" />
+              <select 
+                value={starFilter} 
+                onChange={(e) => setStarFilter(e.target.value)}
+                className="bg-transparent text-sm font-bold text-white outline-none cursor-pointer"
+                data-testid="select-star-filter"
+              >
+                <option value="all" className="bg-zinc-900">All Stars</option>
+                <option value="5" className="bg-zinc-900 text-orange-500">5 Stars</option>
+                <option value="4" className="bg-zinc-900 text-purple-400">4 Stars</option>
+                <option value="3" className="bg-zinc-900 text-blue-400">3 Stars</option>
+                <option value="2" className="bg-zinc-900 text-green-500">2 Stars</option>
+                <option value="1" className="bg-zinc-900 text-zinc-400">1 Star</option>
+              </select>
+            </div>
             <div className="flex items-center gap-2 bg-orange-900/20 border border-orange-700/30 px-4 py-2 rounded-lg">
               <Flame size={18} className="text-orange-400" />
               <div className="flex flex-col">
