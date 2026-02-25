@@ -171,6 +171,7 @@ async function getPlayerTeamStats(userId: string) {
     const totalAtkBonus = playerEquipped.reduce((s, e) => s + Math.floor(e.attackBonus * (1 + (e.level - 1) * 0.05)), 0);
     const totalDefBonus = playerEquipped.reduce((s, e) => s + Math.floor(e.defenseBonus * (1 + (e.level - 1) * 0.08)), 0);
     const totalSpdBonus = playerEquipped.reduce((s, e) => s + Math.floor(e.speedBonus * (1 + (e.level - 1) * 0.1)), 0);
+    const totalHpBonus = playerEquipped.reduce((s, e) => s + Math.floor((e.hpBonus || 0) * (1 + (e.level - 1) * 0.1)), 0);
 
     // Core stats (STR, AGI, VIT, INT, DEX, LUK)
     const STR = (user as any).str || 1;
@@ -209,8 +210,8 @@ async function getPlayerTeamStats(userId: string) {
     
     // MaxHP = ClassBaseHP(BaseLv) * (1 + 0.01 * VIT) + gearHP
     // Using user.maxHp as ClassBaseHP
-    let maxHp = Math.floor((user.maxHp + (user.permHpBonus || 0)) * (1 + 0.01 * VIT));
-    let hp = Math.min(user.hp + (user.permHpBonus || 0), maxHp);
+    let maxHp = Math.floor((user.maxHp + (user.permHpBonus || 0)) * (1 + 0.01 * VIT)) + totalHpBonus;
+    let hp = Math.min(user.hp + (user.permHpBonus || 0) + totalHpBonus, maxHp);
     
     // MaxSP = ClassBaseSP(BaseLv) * (1 + 0.01 * INT) + gearSP
     // Assuming base SP logic or adding to schema if needed, for now we use a derived value or just pass it
