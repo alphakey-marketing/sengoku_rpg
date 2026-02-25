@@ -27,6 +27,97 @@ const SPECIAL_BOSSES = [
 
 const WEAPON_NAMES = ["Katana", "Yari Spear", "Naginata", "Nodachi", "Tanto"];
 const ARMOR_NAMES = ["Do (胴)", "Kabuto (兜)", "Kusazuri (草摺)", "Suneate (臑当)"];
+
+const CLASSIC_DROPS = {
+  weapon: [
+    { name: "Knife", atk: 17, reqLv: 1, slots: 4 },
+    { name: "Cutter", atk: 28, reqLv: 1, slots: 4 },
+    { name: "Main Gauche", atk: 43, reqLv: 1, slots: 4 },
+    { name: "Sword", atk: 25, reqLv: 2, slots: 4 },
+    { name: "Falchion", atk: 39, reqLv: 2, slots: 4 },
+    { name: "Blade", atk: 53, reqLv: 2, slots: 4 },
+    { name: "Bow", atk: 15, reqLv: 1, slots: 4 },
+    { name: "Composite Bow", atk: 29, reqLv: 1, slots: 4 },
+    { name: "Great Bow", atk: 43, reqLv: 10, slots: 4 },
+    { name: "Rod", atk: 15, reqLv: 1, matk: 15, slots: 4 },
+    { name: "Wand", atk: 34, reqLv: 1, matk: 15, int: 1, slots: 4 }
+  ],
+  armor: [
+    { name: "Cotton Shirt", def: 1, reqLv: 1, slots: 1 },
+    { name: "Jacket", def: 2, reqLv: 1, slots: 1 },
+    { name: "Adventurer's Suit", def: 3, reqLv: 1, slots: 1 },
+    { name: "Mantle", def: 4, reqLv: 1, slots: 1 },
+    { name: "Coat", def: 5, reqLv: 14, slots: 1 },
+    { name: "Padded Armor", def: 6, reqLv: 14, slots: 1 }
+  ],
+  shield: [
+    { name: "Guard", def: 3, reqLv: 1, slots: 1 },
+    { name: "Buckler", def: 4, reqLv: 14, slots: 1 }
+  ],
+  garment: [
+    { name: "Hood", def: 1, reqLv: 1, slots: 1 },
+    { name: "Muffler", def: 2, reqLv: 14, slots: 1 }
+  ],
+  footgear: [
+    { name: "Sandals", def: 1, reqLv: 1, slots: 1 },
+    { name: "Shoes", def: 2, reqLv: 14, slots: 1 }
+  ],
+  headgear: [
+    { name: "Bandana", def: 1, reqLv: 1, slots: 0 },
+    { name: "Cap", def: 3, reqLv: 14, slots: 0 },
+    { name: "Ribbon", def: 1, reqLv: 1, int: 1, mdef: 3, slots: 0 },
+    { name: "Sunglasses", def: 0, reqLv: 1, slots: 0 },
+    { name: "Flu Mask", def: 0, reqLv: 1, slots: 0 }
+  ],
+  accessory: [
+    { name: "Novice Armlet", hp: 10, reqLv: 1, slots: 0 },
+    { name: "Clip", reqLv: 1, slots: 1 },
+    { name: "Rosary", luk: 2, mdef: 5, reqLv: 20, slots: 1 },
+    { name: "Ring", str: 2, reqLv: 20, slots: 1 },
+    { name: "Brooch", agi: 2, reqLv: 20, slots: 1 }
+  ]
+};
+
+function generateEquipment(userId: string, locationId: number = 1, forceGood: boolean = false) {
+  const categories = Object.keys(CLASSIC_DROPS);
+  const category = pick(categories) as keyof typeof CLASSIC_DROPS;
+  const itemDef = pick(CLASSIC_DROPS[category]);
+  
+  const rarity = equipRarityFromRandom(locationId);
+  // Slotted version chance: 1% for normal, 10% for boss/good
+  const isSlotted = Math.random() < (forceGood ? 0.1 : 0.01);
+  const slots = isSlotted ? (itemDef.slots || 0) : 0;
+  
+  const baseAtk = (itemDef as any).atk || 0;
+  const baseDef = (itemDef as any).def || 0;
+  
+  // Scale stats based on rarity and location
+  const rarityMult = {
+    white: 1, green: 1.2, blue: 1.5, purple: 2, gold: 3,
+    mythic: 5, exotic: 8, transcendent: 15, celestial: 30, primal: 60
+  }[rarity] || 1;
+
+  const locMult = 1 + (locationId - 1) * 0.1;
+
+  return {
+    userId,
+    name: itemDef.name + (slots > 0 ? ` [${slots}]` : ""),
+    type: (itemDef as any).type || category,
+    rarity,
+    level: 1,
+    experience: 0,
+    expToNext: calcEquipExpToNext(1),
+    attackBonus: Math.floor(baseAtk * rarityMult * locMult),
+    defenseBonus: Math.floor(baseDef * rarityMult * locMult),
+    speedBonus: 0,
+    hpBonus: Math.floor(((itemDef as any).hp || 0) * rarityMult * locMult),
+    mdefBonus: Math.floor(((itemDef as any).mdef || 0) * rarityMult * locMult),
+    matkBonus: (itemDef as any).matk || 0,
+    cardSlots: slots,
+    isEquipped: false
+  };
+}
+
 const ACCESSORY_NAMES = ["Ninja Kunai", "Omamori Charm", "Smoke Bomb", "Shuriken Set"];
 const HORSE_GEAR_NAMES = ["War Saddle", "Iron Stirrups", "Battle Reins", "Armored Barding"];
 const PET_NAMES = [
@@ -142,9 +233,9 @@ function equipRarityFromRandom(locationId: number = 1): string {
   return 'white';                       
 }
 
-function calcEquipExpToNext(level: number): number {
-  return Math.floor(100 * Math.pow(1.3, level - 1));
-}
+// Replace the old combat reward logic that was likely using generic names
+// Searching for where generateEquipment would be called or where items are given.
+// I'll look for `storage.createEquipment` in routes.ts to find the drop logic.
 
 async function getPlayerTeamStats(userId: string) {
   const user = await storage.getUser(userId);
@@ -1149,57 +1240,17 @@ export async function registerRoutes(
         };
 
         await storage.updateUser(userId, userUpdate);
-        if (Math.random() < (locationId >= 100 ? 0.5 : 0.3)) {
-          const rDrop = Math.random();
-          let type: string;
-          if (rDrop < 0.1) {
-            type = 'accessory';
-          } else {
-            const others = ['weapon', 'armor', 'horse_gear'];
-            type = others[Math.floor(Math.random() * others.length)];
+
+        // Revised Equipment Drop logic using CLASSIC_DROPS
+        if (Math.random() < (locationId >= 100 ? 0.10 : 0.05)) {
+          const eqData = generateEquipment(userId, locationId);
+          try {
+            const eq = await storage.createEquipment(eqData);
+            allEquipmentDropped.push(eq);
+            allLogs.push(`Found ${eq.rarity.toUpperCase()} ${eq.name}!`);
+          } catch (err) {
+            console.error("Failed to create equipment drop:", err);
           }
-          
-          const rarity = equipRarityFromRandom(locationId);
-          const name = pick(type === 'weapon' ? WEAPON_NAMES : type === 'armor' ? ARMOR_NAMES : type === 'accessory' ? ACCESSORY_NAMES : HORSE_GEAR_NAMES);
-          
-          const statsByRarity: Record<string, { atk: number, def: number, spd: number }> = {
-            white: { atk: 5, def: 5, spd: 2 },
-            green: { atk: 8, def: 8, spd: 4 },
-            blue: { atk: 12, def: 10, spd: 6 },
-            purple: { atk: 20, def: 15, spd: 10 },
-            gold: { atk: 35, def: 25, spd: 15 },
-            mythic: { atk: 60, def: 45, spd: 25 },
-            exotic: { atk: 100, def: 75, spd: 45 },
-            transcendent: { atk: 200, def: 150, spd: 80 },
-            celestial: { atk: 450, def: 350, spd: 150 }
-          };
-          const baseStats = statsByRarity[rarity] || statsByRarity.white;
-
-          let atkBonus = type === 'weapon' || type === 'accessory' ? baseStats.atk : 0;
-          let defBonus = type === 'armor' || type === 'accessory' ? baseStats.def : 0;
-          let spdBonus = type === 'horse_gear' || type === 'accessory' ? baseStats.spd : 0;
-
-          if (locationId >= 100) {
-            const chinaMult = 2 + ((locationId - 100) * 0.5);
-            atkBonus = Math.floor(atkBonus * chinaMult);
-            defBonus = Math.floor(defBonus * chinaMult);
-            spdBonus = Math.floor(spdBonus * chinaMult);
-          }
-
-          const eq = await storage.createEquipment({
-            userId,
-            name,
-            type,
-            rarity,
-            level: 1,
-            experience: 0,
-            expToNext: 100,
-            attackBonus: atkBonus,
-            defenseBonus: defBonus,
-            speedBonus: spdBonus,
-          });
-          allEquipmentDropped.push(eq);
-          allLogs.push(`Found ${rarity.toUpperCase()} ${name}!`);
         }
 
 function generatePet(userId: string, locationId: number = 1) {
@@ -1415,63 +1466,9 @@ function generatePet(userId: string, locationId: number = 1) {
         statPoints: currentStatPoints
       });
       
-      const type = pick(EQUIP_TYPES);
-      const isChina = locationId >= 100;
-      
-      // Significantly improved drop rates for field battles
-      const fieldRarity = equipRarityFromRandom(locationId);
-      const name = pick(type === 'weapon' ? WEAPON_NAMES : type === 'armor' ? ARMOR_NAMES : type === 'accessory' ? ACCESSORY_NAMES : HORSE_GEAR_NAMES);
-      
-      const statsByRarity: Record<string, { atk: number, def: number, spd: number, critC: number, critD: number }> = {
-        white: { atk: 5, def: 3, spd: 2, critC: 0, critD: 0 },
-        green: { atk: 10, def: 6, spd: 4, critC: 0, critD: 0 },
-        blue: { atk: 15, def: 10, spd: 6, critC: 0, critD: 0 },
-        purple: { atk: 25, def: 18, spd: 10, critC: 2, critD: 5 },
-        gold: { atk: 40, def: 30, spd: 20, critC: 5, critD: 15 },
-        mythic: { atk: 60, def: 45, spd: 25, critC: 8, critD: 20 },
-        exotic: { atk: 100, def: 75, spd: 45, critC: 12, critD: 35 },
-        transcendent: { atk: 200, def: 150, spd: 80, critC: 20, critD: 60 },
-        celestial: { atk: 450, def: 350, spd: 150, critC: 35, critD: 120 },
-        primal: { atk: 1000, def: 800, spd: 300, critC: 60, critD: 300 }
-      };
-      const baseStats = statsByRarity[fieldRarity] || statsByRarity.white;
-
-      let atkBonus = baseStats.atk + (locationId * 5);
-      let defBonus = baseStats.def + (locationId * 3);
-      let spdBonus = baseStats.spd + (locationId * 2);
-
-      if (isChina) {
-        const chinaMult = 2 + ((locationId - 100) * 0.5);
-        atkBonus = Math.floor(atkBonus * chinaMult);
-        defBonus = Math.floor(defBonus * chinaMult);
-        spdBonus = Math.floor(spdBonus * chinaMult);
-      }
-
-      const itemData: any = {
-        userId,
-        name,
-        type,
-        rarity: fieldRarity,
-        level: 1,
-        experience: 0,
-        expToNext: 100,
-        attackBonus: atkBonus,
-        defenseBonus: defBonus,
-        speedBonus: spdBonus,
-        critChance: 0,
-        critDamage: 0,
-      };
-
-      // Apply critical stats based on type and rarity
-      if (['gold', 'mythic', 'exotic', 'transcendent', 'celestial', 'primal'].includes(fieldRarity)) {
-        if (type === 'weapon') {
-          itemData.critDamage = isChina ? Math.floor(baseStats.critD * 1.5) : baseStats.critD;
-        } else if (type === 'accessory') {
-          itemData.critChance = isChina ? Math.floor(baseStats.critC * 1.5) : baseStats.critC;
-        }
-      }
-
-      const eq = await storage.createEquipment(itemData);
+      // Significantly improved drop for boss using generateEquipment
+      const eqData = generateEquipment(userId, locationId, true);
+      const eq = await storage.createEquipment(eqData);
 
       // Pet Drop (10% chance from Boss)
       let droppedPet = null;

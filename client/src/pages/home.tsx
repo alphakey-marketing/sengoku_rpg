@@ -479,7 +479,9 @@ export default function Home() {
               </motion.div>
             )}
           </motion.div>
+        </div>
 
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -493,13 +495,19 @@ export default function Home() {
               Combat Stats
             </h3>
             <div className="grid grid-cols-2 gap-4">
-              {derivedStats.slice(0, 4).map((stat) => (
+              {[
+                { label: "ATK", value: teamStatus?.player?.attack || 0 },
+                { label: "MATK", value: (teamStatus?.player as any)?.matk || 0 },
+                { label: "DEF", value: teamStatus?.player?.defense || 0 },
+                { label: "MDEF", value: (teamStatus?.player as any)?.mdef || 0 },
+                { label: "HIT", value: (teamStatus?.player as any)?.hit || 0 },
+                { label: "FLEE", value: (teamStatus?.player as any)?.flee || 0 },
+                { label: "CRIT", value: (teamStatus?.player as any)?.critChance || 0 },
+                { label: "ASPD", value: (teamStatus?.player as any)?.aspd || 0 }
+              ].map((stat) => (
                 <div key={stat.label} className="bg-background/40 border border-border/30 rounded-lg p-3 flex flex-col items-center justify-center text-center group relative cursor-help">
                   <span className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">{stat.label}</span>
                   <span className="text-xl font-display font-bold text-white">{stat.value}</span>
-                  <div className="absolute -bottom-1 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 px-2 py-1 rounded text-[8px] text-accent font-mono z-20 pointer-events-none whitespace-nowrap border border-accent/20">
-                    {stat.formula}
-                  </div>
                 </div>
               ))}
             </div>

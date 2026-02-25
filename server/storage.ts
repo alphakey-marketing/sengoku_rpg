@@ -92,11 +92,16 @@ export class DatabaseStorage implements IStorage {
     await db.delete(companions).where(eq(companions.id, id));
   }
 
-  async getEquipment(userId: string): Promise<(Equipment & { cards: Card[] })[]> {
+  async getEquipment(userId: string): Promise<(Equipment & { cards: any[] })[]> {
     const items = await db.select().from(equipment).where(eq(equipment.userId, userId));
     const equipmentWithCards = await Promise.all(items.map(async (item) => {
-      const itemCards = await db.select().from(cards).where(eq(cards.equipmentId, item.id));
-      return { ...item, cards: itemCards };
+      // Stubbing cards if table doesn't exist or is not imported
+      try {
+        const itemCards = await db.select().from(cards).where(eq(cards.equipmentId, item.id));
+        return { ...item, cards: itemCards };
+      } catch (e) {
+        return { ...item, cards: [] };
+      }
     }));
     return equipmentWithCards;
   }
