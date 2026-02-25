@@ -56,25 +56,11 @@ export interface CombatUnit {
 }
 
 export function isMeleeWeapon(type: WeaponType | undefined): boolean {
-  if (!type) return true; // bare hands
-  return [
-    "dagger",
-    "sword",
-    "twoHandSword",
-    "axe",
-    "mace",
-    "spear",
-    "knuckle",
-    "katar",
-    "book",
-    "staff",
-    "none",
-  ].includes(type);
+  return !["bow", "gun", "instrument", "whip"].includes(type ?? "none");
 }
 
 export function isRangedWeapon(type: WeaponType | undefined): boolean {
-  if (!type) return false;
-  return ["bow", "gun", "instrument", "whip"].includes(type);
+  return ["bow", "gun", "instrument", "whip"].includes(type ?? "none");
 }
 
 export function calculateHitChance(attacker: CombatUnit, defender: CombatUnit): number {
@@ -93,11 +79,12 @@ function getStatusATK(attacker: CombatUnit): number {
   const LUK = attacker.luk ?? 1;
 
   if (isRangedWeapon(attacker.weaponType)) {
+    // RANGED: DEX is primary, STR contributes weakly
     return Math.floor(lv / 4) + Math.floor(STR / 5) + DEX + Math.floor(LUK / 3);
-  } else {
-    // Melee formula: STR + floor(DEX/5) + floor(LUK/3)
-    return Math.floor(lv / 4) + STR + Math.floor(DEX / 5) + Math.floor(LUK / 3);
   }
+
+  // MELEE (default): STR is primary, DEX contributes weakly
+  return Math.floor(lv / 4) + STR + Math.floor(DEX / 5) + Math.floor(LUK / 3);
 }
 
 function getWeaponATKWithStatBonus(unit: CombatUnit): number {

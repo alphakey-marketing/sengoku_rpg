@@ -367,6 +367,13 @@ async function getPlayerTeamStats(userId: string) {
       ? Math.floor(baseWeaponAtk * (1 + 0.005 * DEX))
       : Math.floor(baseWeaponAtk * (1 + 0.005 * STR));
 
+    const wLv = (weapon as any)?.level ?? 1;
+    const varianceRange = Math.floor(0.05 * wLv * finalWeaponAtk);
+    const minAtk = statusAtk + (finalWeaponAtk - varianceRange);
+    const maxAtk = statusAtk + (finalWeaponAtk + varianceRange);
+
+    const displayAtk = `${minAtk} ~ ${maxAtk}`;
+
   let attack = statusAtk + finalWeaponAtk;
     let defense = (user.defense || 0) + totalDefBonus + (user.permDefenseBonus || 0);
     let speed = (user.speed || 0) + totalSpdBonus + (user.permSpeedBonus || 0) + Math.floor(AGI / 2); 
@@ -400,8 +407,10 @@ async function getPlayerTeamStats(userId: string) {
         level: user.level,
         hp,
         maxHp,
-        attack, // This acts as base weapon attack
-        defense, // This acts as hard defense
+        attack: finalWeaponAtk, // This acts as base weapon attack
+        statusATK: statusAtk,
+        displayATK: displayAtk,
+        defense: defense, // This acts as hard defense
         speed,
         weaponType,
         str: STR,
@@ -455,7 +464,6 @@ async function getPlayerTeamStats(userId: string) {
       const cLUK = (c as any).luk || 1;
       const cLv = c.level || 1;
 
-      // Companion Status ATK
       const cStatusAtk = (cWeaponType === 'bow' || cWeaponType === 'gun' || cWeaponType === 'instrument' || cWeaponType === 'whip')
         ? Math.floor(cLv / 4) + Math.floor(cSTR / 5) + cDEX + Math.floor(cLUK / 3)
         : Math.floor(cLv / 4) + cSTR + Math.floor(cDEX / 5) + Math.floor(cLUK / 3);
@@ -465,9 +473,14 @@ async function getPlayerTeamStats(userId: string) {
         ? Math.floor(cBaseWeaponAtk * (1 + 0.005 * cDEX))
         : Math.floor(cBaseWeaponAtk * (1 + 0.005 * cSTR));
 
+      const cwLv = (cWeapon as any)?.level ?? 1;
+      const cVarianceRange = Math.floor(0.05 * cwLv * cFinalWeaponAtk);
+      const cMinAtk = cStatusAtk + (cFinalWeaponAtk - cVarianceRange);
+      const cMaxAtk = cStatusAtk + (cFinalWeaponAtk + cVarianceRange);
+      const cDisplayAtk = `${cMinAtk} ~ ${cMaxAtk}`;
+
       let cMaxHp = Math.floor(c.maxHp * (1 + 0.01 * cVIT));
       let cHp = Math.min(c.hp, cMaxHp);
-      let cAttack = cStatusAtk + cFinalWeaponAtk;
       let cDefense = c.defense + cDefBonus;
       let cSpeed = c.speed + cSpdBonus;
 
@@ -477,7 +490,9 @@ async function getPlayerTeamStats(userId: string) {
         level: c.level,
         hp: cHp,
         maxHp: cMaxHp,
-        attack: cAttack,
+        attack: cFinalWeaponAtk,
+        statusATK: cStatusAtk,
+        displayATK: cDisplayAtk,
         defense: cDefense,
         speed: cSpeed,
         weaponType: cWeaponType,
