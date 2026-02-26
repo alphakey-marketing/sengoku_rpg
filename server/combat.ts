@@ -24,7 +24,7 @@ export interface CombatUnit {
   maxHp: number;
   attack: number;
   defense: number;
-  speed: number;
+  aspd?: number;
   weaponType?: WeaponType;
 
   // New RO Stats
@@ -185,7 +185,13 @@ export function runTurnBasedCombat(playerTeam: TeamStats, enemies: EnemyStats[])
     maxHp: Number(playerTeam.player.maxHp) || 0,
     attack: Number(playerTeam.player.attack) || 0,
     defense: Number(playerTeam.player.defense) || 0,
-    speed: Number(playerTeam.player.speed) || 0,
+    aspd: ((): number => {
+      const agi = Number((playerTeam.player as any).agi || 1);
+      const dex = Number((playerTeam.player as any).dex || 1);
+      // ASPD formula: 100 + AGI + DEX/4
+      // We'll cap the number of attacks to 5 max for balance
+      return 100 + agi + Math.floor(dex / 4);
+    })(),
     str: Number((playerTeam.player as any).str || 1),
     agi: Number((playerTeam.player as any).agi || 1),
     vit: Number((playerTeam.player as any).vit || 1),
@@ -236,7 +242,7 @@ export function runTurnBasedCombat(playerTeam: TeamStats, enemies: EnemyStats[])
       maxHp: Number(c.maxHp) || 0,
       attack: Number(c.attack) || 0,
       defense: Number(c.defense) || 0,
-      speed: Number(c.speed) || 0,
+      aspd: 100 + cAGI + Math.floor(cDEX / 4),
       weaponType: (c as any).weaponType,
       str: Number((c as any).str || 10),
       agi: cAGI,
@@ -274,7 +280,7 @@ export function runTurnBasedCombat(playerTeam: TeamStats, enemies: EnemyStats[])
       maxHp: Number(e.maxHp) || 0,
       attack: (e as any).weaponATK ?? e.attack ?? 0,
       defense: (e as any).hardDEF ?? e.defense ?? 0,
-      speed: Number(e.speed) || 0,
+      aspd: 100 + (Number((e as any).agi) || 10) + Math.floor((Number((e as any).dex) || 10) / 4),
       weaponType: (e as any).weaponType,
       str: (e as any).str,
       agi: (e as any).agi,
@@ -303,21 +309,56 @@ export function runTurnBasedCombat(playerTeam: TeamStats, enemies: EnemyStats[])
   while (turn < maxTurns) {
     turn++;
     logs.push(`--- TURN ${turn} ---`);
-    units.sort((a, b) => b.speed - a.speed);
+    // ASPD decides who attacks first and how often
+    units.sort((a, b) => (b.aspd ?? 0) - (a.aspd ?? 0));
 
     for (const unit of units) {
       if (unit.hp <= 0) continue;
-      const enemyAlive = units.filter(u => !u.isPlayer && u.hp > 0).length > 0;
-      const playerAlive = units.filter(u => u.isPlayer && u.hp > 0).length > 0;
-      if (!enemyAlive || !playerAlive) break;
+      
+      // Calculate number of attacks based on ASPD
+      // Base 100 ASPD = 1 attack, 200 = 2 attacks, etc.
+      // Cap at 5 attacks per turn for balance
+      const numAttacks = Math.min(5, Math.max(1, Math.floor((unit.aspd ?? 100) / 100)));
+      
+      for (let i = 0; i < numAttacks; i++) {
+        const enemyAlive = units.filter(u => !u.isPlayer && u.hp > 0).length > 0;
+        const playerAlive = units.filter(u => u.isPlayer && u.hp > 0).length > 0;
+        if (!enemyAlive || !playerAlive) break;
 
-      const stun = unit.statusEffects.find(s => s.type === 'Stun');
-      if (stun) {
-        logs.push(`${unit.name} is stunned and skips turn!`);
-        unit.statusEffects = unit.statusEffects.filter(s => s.type !== 'Stun');
-        continue;
+        const stun = unit.statusEffects.find(s => s.type === 'Stun');
+        if (stun) {
+          logs.push(`${unit.name} is stunned and skips attack!`);
+          unit.statusEffects = unit.statusEffects.filter(s => s.type !== 'Stun');
+          break; // Skip all attacks if stunned
+        }
+
+        const targets = units.filter(u => u.isPlayer !== unit.isPlayer && u.hp > 0);
+        if (targets.length === 0) break;
+        const target = targets[Math.floor(Math.random() * targets.length)];
+
+        const hitChance = calculateHitChance(unit, target);
+        const roll = Math.random() * 100;
+
+        if (roll > hitChance) {
+          logs.push(`${unit.name} attacks ${target.name} but MISSES!`);
+        } else {
+          const critChance = (unit.critChance || 0) + 5;
+          const isCrit = (Math.random() * 100) < critChance;
+          const damage = calculateDamage(unit, target, isCrit);
+          target.hp -= damage;
+          logs.push(`${unit.name} attacks ${target.name} for ${damage}${isCrit ? ' (CRITICAL!)' : ''} damage.`);
+        }
+
+        if (unit.name.includes("Ninja") && Math.random() < 0.3) {
+          target.statusEffects.push({ type: 'Stun', duration: 1 });
+          logs.push(`${target.name} was stunned by the strike!`);
+        }
+
+        if (target.hp <= 0) {
+          logs.push(`${target.name} has been KO'd!`);
+        }
       }
-
+      
       const poison = unit.statusEffects.find(s => s.type === 'Poison');
       if (poison) {
         const dot = Math.floor(unit.maxHp * 0.05);
@@ -325,35 +366,9 @@ export function runTurnBasedCombat(playerTeam: TeamStats, enemies: EnemyStats[])
         logs.push(`${unit.name} took ${dot} poison damage.`);
         if (unit.hp <= 0) {
           logs.push(`${unit.name} has been defeated by poison!`);
-          continue;
         }
       }
-
-      const targets = units.filter(u => u.isPlayer !== unit.isPlayer && u.hp > 0);
-      if (targets.length === 0) break;
-      const target = targets[Math.floor(Math.random() * targets.length)];
-
-      const hitChance = calculateHitChance(unit, target);
-      const roll = Math.random() * 100;
-
-      if (roll > hitChance) {
-        logs.push(`${unit.name} attacks ${target.name} but MISSES!`);
-      } else {
-        const critChance = (unit.critChance || 0) + 5;
-        const isCrit = (Math.random() * 100) < critChance;
-        const damage = calculateDamage(unit, target, isCrit);
-        target.hp -= damage;
-        logs.push(`${unit.name} attacks ${target.name} for ${damage}${isCrit ? ' (CRITICAL!)' : ''} damage.`);
-      }
-
-      if (unit.name.includes("Ninja") && Math.random() < 0.3) {
-        target.statusEffects.push({ type: 'Stun', duration: 1 });
-        logs.push(`${target.name} was stunned by the strike!`);
-      }
-
-      if (target.hp <= 0) {
-        logs.push(`${target.name} has been KO'd!`);
-      }
+      
       unit.isGuarding = false;
     }
 
