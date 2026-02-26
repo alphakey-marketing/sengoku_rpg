@@ -308,12 +308,12 @@ async function getPlayerTeamStats(userId: string) {
   const allHorses = await storage.getHorses(userId);
   const allTransforms = await storage.getTransformations(userId);
 
-  const partyCompanions = comps.filter(c => c.isInParty);
+  const partyCompanions = partyCompanionsList.filter(c => c.isInParty);
   const activePet = allPets.find(p => p.isActive);
   const activeHorse = allHorses.find(h => h.isActive);
 
   // Auto-sync base equipment if user has none
-  if (equips.length === 0 && user.level > 1) {
+  if (equips.length === 0) {
     await storage.syncBaseEquipment(userId);
   }
 
@@ -1469,97 +1469,107 @@ export async function registerRoutes(
       allLogs.push(...battleResult.logs);
 
       if (victory) {
-        // Increment Quest Progress
         await storage.updateQuestProgress(userId, 'daily_skirmish', 1);
         await storage.updateQuestProgress(userId, 'daily_skirmish_elite', 1);
-
         // Update user stats with level up logic
         const expGained = Math.floor(Math.random() * 50) + 30 + enemy.level * 5;
         const goldGained = Math.floor(Math.random() * 20) + 10 + enemy.level * 2;
         totalExpGained += expGained;
         totalGoldGained += goldGained;
         
-        // Items dropped during this sub-battle
-        const drops = [];
-        // Normal rarity equipment drop only (5% chance)
+        let currentExp = user.experience + totalExpGained;
+        let currentLevel = user.level;
+        let currentMaxHp = user.maxHp;
+        let currentAtk = user.attack;
+        let currentDef = user.defense;
+        let currentSpd = user.speed;
+        let currentStatPoints = user.statPoints || 0;
+
+        while (currentExp >= Math.floor(100 * Math.pow(1.25, currentLevel - 1))) {
+          currentExp -= Math.floor(100 * Math.pow(1.25, currentLevel - 1));
+          currentStatPoints += Math.floor(currentLevel / 5) + 3;
+          currentLevel++;
+          currentMaxHp += 20;
+          currentAtk += 5;
+          currentDef += 3;
+          currentSpd += 2;
+        }
+        
+        const endowmentStoneGained = Math.random() < 0.2 ? 1 : 0;
+        const talismanGained = Math.random() < 0.05 ? 1 : 0;
+
+        const userUpdate: any = {
+          level: currentLevel,
+          experience: currentExp,
+          gold: user.gold + totalGoldGained,
+          maxHp: currentMaxHp,
+          hp: currentMaxHp,
+          attack: currentAtk,
+          defense: currentDef,
+          speed: currentSpd,
+          statPoints: currentStatPoints,
+          endowmentStones: (user.endowmentStones || 0) + endowmentStoneGained,
+          fireGodTalisman: (user.fireGodTalisman || 0) + talismanGained
+        };
+
+        await storage.updateUser(userId, userUpdate);
+
+        // Revised Equipment Drop logic using CLASSIC_DROPS
         if (Math.random() < 0.05) {
-          const item = generateEquipment(userId, locationId);
-          item.rarity = 'white'; // Force normal rarity
-          const created = await storage.createEquipment(item);
-          drops.push(created);
-          allEquipmentDropped.push(created);
+          const eqData = generateEquipment(userId, locationId);
+          try {
+            const eq = await storage.createEquipment(eqData);
+            allEquipmentDropped.push(eq);
+            allLogs.push(`Found ${eq.rarity.toUpperCase()} ${eq.name}!`);
+          } catch (err) {
+            console.error("Failed to create equipment drop:", err);
+          }
         }
 
+        // Horse Drop (5% chance)
+        /* Disabled by user request
         if (Math.random() < 0.05) {
-          const pet = generatePet(userId, locationId);
-          const created = await storage.createPet(pet);
-          allPetsDropped.push(created);
+          const horseData = generateHorse(userId, locationId);
+          try {
+            const horse = await storage.createHorse(horseData as any);
+            allHorsesDropped.push(horse);
+            allLogs.push(`HORSES: You managed to tame a wild ${horse.name}!`);
+          } catch (err) {
+            console.error("Failed to create horse drop:", err);
+          }
         }
+        */
 
-        if (Math.random() < 0.02) {
-          const horse = generateHorse(userId, locationId);
-          const created = await storage.createHorse(horse);
-          allHorsesDropped.push(created);
+        // Pet Drop (3% chance)
+        /* Disabled by user request
+        if (Math.random() < 0.03) {
+          const petData = generatePet(userId, locationId);
+          try {
+            const pet = await storage.createPet(petData as any);
+            allPetsDropped.push(pet);
+            allLogs.push(`PETS: A wild ${pet.name} decided to follow you!`);
+          } catch (err) {
+            console.error("Failed to create pet drop:", err);
+          }
         }
-
-        // Add to logs for UI to show what was dropped in this specific sub-battle
-        if (drops.length > 0) {
-          allLogs.push(`Dropped: ${drops.map(d => d.name).join(", ")}`);
-        }
-      } else {
-        // If player loses any battle in the sequence, stop the auto-battle
-        allLogs.push("Battle lost! Stopping auto-battle.");
-        break;
+        */
       }
     }
 
-    // Update user with accumulated gains
-    let currentExp = user.experience + totalExpGained;
-    let currentLevel = user.level;
-    let currentMaxHp = user.maxHp;
-    let currentAtk = user.attack;
-    let currentDef = user.defense;
-    let currentSpd = user.speed;
-    let currentStatPoints = user.statPoints || 0;
-
-    while (currentExp >= Math.floor(100 * Math.pow(1.25, currentLevel - 1))) {
-      currentExp -= Math.floor(100 * Math.pow(1.25, currentLevel - 1));
-      currentStatPoints += Math.floor(currentLevel / 5) + 3;
-      currentLevel++;
-      currentMaxHp += 20;
-      currentAtk += 5;
-      currentDef += 3;
-      currentSpd += 2;
-    }
-
-    const endowmentStoneGained = Math.random() < 0.2 ? 1 : 0;
-    const talismanGained = Math.random() < 0.05 ? 1 : 0;
-
-    await storage.updateUser(userId, {
-      experience: currentExp,
-      level: currentLevel,
-      maxHp: currentMaxHp,
-      attack: currentAtk,
-      defense: currentDef,
-      speed: currentSpd,
-      statPoints: currentStatPoints,
-      gold: user.gold + totalGoldGained,
-      endowmentStones: (user.endowmentStones || 0) + endowmentStoneGained,
-      fireGodTalisman: (user.fireGodTalisman || 0) + talismanGained,
-    });
-
-    // Give equipment exp for the whole session
-    await giveEquipmentExp(userId, count * 20);
+    // Total battle rewards...
+    await giveEquipmentExp(userId, totalExpGained);
 
     res.json({
-      victory: true, // The overall "request" was a success
+      victory: totalExpGained > 0,
       experienceGained: totalExpGained,
       goldGained: totalGoldGained,
       equipmentDropped: allEquipmentDropped,
-      petsDropped: allPetsDropped,
-      horsesDropped: allHorsesDropped,
-      ninjaEncounter,
-      logs: allLogs
+      petDropped: allPetsDropped[0] || null,
+      allPetsDropped,
+      horseDropped: allHorsesDropped[0] || null,
+      allHorsesDropped,
+      logs: allLogs,
+      ninjaEncounter
     });
   });
 
@@ -1679,7 +1689,6 @@ export async function registerRoutes(
       // Significantly improved drop for boss using generateEquipment
       if (Math.random() < 0.05) {
         const eqData = generateEquipment(userId, locationId, true);
-        eqData.rarity = 'white'; // Force normal rarity
         const eq = await storage.createEquipment(eqData);
         res.json({ 
           victory: true, 
@@ -2111,6 +2120,9 @@ export async function registerRoutes(
       const userId = req.user.claims.sub;
       await storage.restartGame(userId);
       
+      // Create initial equipment via storage logic
+      await storage.syncBaseEquipment(userId);
+
       res.json({ success: true });
     } catch (err: any) {
       console.error("Restart error:", err);
