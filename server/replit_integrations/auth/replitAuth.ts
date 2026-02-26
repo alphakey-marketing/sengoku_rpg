@@ -131,47 +131,8 @@ export async function setupAuth(app: Express) {
 }
 
 export const isAuthenticated: RequestHandler = async (req, res, next) => {
-  if (!req.isAuthenticated()) {
-    return res.status(401).json({ message: "Unauthorized" });
-  }
-
-  const user = req.user as any;
-  if (!user || !user.expires_at) {
-    // If authenticated but no expires_at, it might be a partial session or dev environment issue
-    // We should still allow next() if isAuthenticated() is true for safety, 
-    // or log the issue.
-    console.warn("User is authenticated but missing expires_at claim");
+  if (req.isAuthenticated()) {
     return next();
   }
-
-  const now = Math.floor(Date.now() / 1000);
-  if (now <= user.expires_at) {
-    return next();
-  }
-
-  // If session is expired, we should try to refresh, but if it fails,
-  // we might want to be more lenient in dev or just redirect.
-  // For now, let's log the attempt.
-  console.log(`Refreshing expired session for user ${user.claims?.sub}`);
-
-  const refreshToken = user.refresh_token;
-  if (!refreshToken) {
-    console.warn("No refresh token available for expired session");
-    // In some cases, we might want to allow it if the user is still "authenticated" by passport
-    // but the OIDC token is expired. However, usually we need a fresh token.
-    // Let's try to be lenient if we have a user object but just no refresh token.
-    return next();
-  }
-
-  try {
-    const config = await getOidcConfig();
-    const tokenResponse = await client.refreshTokenGrant(config, refreshToken);
-    updateUserSession(user, tokenResponse);
-    return next();
-  } catch (error) {
-    console.error("Failed to refresh token:", error);
-    // If refresh fails, we still have the session, so let's allow it
-    // instead of hard-crashing with 401 which disrupts the flow.
-    return next();
-  }
+  return res.status(401).json({ message: "Unauthorized" });
 };
