@@ -394,9 +394,6 @@ export class DatabaseStorage implements IStorage {
         updatedAt: new Date()
       }).where(eq(users.id, userId));
     });
-    
-    // Auto-seed basic items after restart
-    await this.syncBaseEquipment(userId);
   }
 }
 
