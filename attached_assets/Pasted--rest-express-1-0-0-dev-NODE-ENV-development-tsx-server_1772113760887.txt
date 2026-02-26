@@ -1,0 +1,19 @@
+> rest-express@1.0.0 dev
+> NODE_ENV=development tsx server/index.ts
+
+1:47:37 PM [express] serving on port 5000
+1:47:42 PM [express] GET /api/auth/user 401 in 3ms :: {"message":"Unauthorized"}
+1:47:42 PM [express] GET /api/player 401 in 0ms :: {"message":"Unauthorized"}
+1:47:42 PM [express] GET /api/player/status 401 in 1ms :: {"message":"Unauthorized"}
+1:47:42 PM [express] GET /api/equipment 401 in 1ms :: {"message":"Unauthorized"}
+1:47:42 PM [express] GET /api/transformations 401 in 0ms :: {"message":"Unauthorized"}
+1:47:45 PM [express] GET /api/auth/user 401 in 1ms :: {"message":"Unauthorized"}
+1:47:45 PM [express] GET /api/player 401 in 0ms :: {"message":"Unauthorized"}
+1:47:45 PM [express] GET /api/player/status 401 in 1ms :: {"message":"Unauthorized"}
+1:47:45 PM [express] GET /api/equipment 401 in 1ms :: {"message":"Unauthorized"}
+1:47:45 PM [express] GET /api/transformations 401 in 1ms :: {"message":"Unauthorized"}
+1:47:45 PM [express] GET /api/auth/user 200 in 32ms :: {"id":"48105702","email":"curryfishcake@gmail.com","firstName":"yolo","lastName":"112","profileImageUrl":null,"createdAt":"2026-02-22T11:42:50.810Z","updatedAt":"2026-02-26T13:47:06.879Z"}
+1:47:45 PM [express] GET /api/player 304 in 33ms :: {"id":"48105702","email":"curryfishcake@gmail.com","firstName":"yolo","lastName":"112","profileImageUrl":null,"level":1,"experience":0,"gold":0,"rice":100,"hp":100,"maxHp":100,"attack":10,"defense":10,"speed":10,"str":1,"agi":1,"vit":1,"int":20,"dex":1,"luk":1,"stamina":100,"maxStamina":100,"currentLocationId":1,"activeTransformId":null,"transformActiveUntil":null,"transformationStones":45,"upgradeStones":0,"endowmentStones":249,"fireGodTalisman":9,"flameEmperorTalisman":0,"petEssence":0,"warriorSouls":10,"seppukuCount":81,"statPoints":1,"permAttackBonus":0,"permDefenseBonus":0,"permSpeedBonus":0,"permHpBonus":0,"createdAt":"2026-02-22T11:42:50.810Z","updatedAt":"2026-02-26T13:47:06.879Z"}
+1:47:45 PM [express] GET /api/equipment 304 in 37ms :: [{"id":886,"userId":"48105702","name":"Training Sword","type":"Weapon","rarity":"white","weaponType":"sword","level":1,"experience":0,"expToNext":100,"attackBonus":10,"defenseBonus":0,"speedBonus":0,"hpBonus":0,"mdefBonus":0,"fleeBonus":0,"matkBonus":0,"critChance":0,"critDamage":0,"endowmentPoints":0,"isEquipped":false,"equippedToId":null,"equippedToType":"player","cardSlots":0,"createdAt":"2026-02-26T13:46:28.220Z","cards":[]},{"id":887,"userId":"48105702","name":"Training Bow","type":"Weapon","rarity":"white","weaponType":"bow","level":1,"experience":0,"expToNext":100,"attackBonus":5,"defenseBonus":0,"speedBonus":0,"hpBonus":0,"mdefBonus":0,"fleeBonus":0,"matkBonus":0,"critChance":5,"critDamage":0,"endowmentPoints":0,"isEquipped":false,"equippedToId":null,"equippedToType":"player","cardSlots":0,"createdAt":"2026-02-26T13:46:28.223Z","cards":[]}]
+1:47:45 PM [express] GET /api/player/status 304 in 46ms :: {"player":{"name":"yolo","level":1,"hp":100,"maxHp":101,"attack":0,"statusATK":1,"displayATK":"1 ~ 1","defense":10,"speed":10,"str":1,"agi":1,"vit":1,"int":20,"dex":1,"luk":1,"strBonus":0,"agiBonus":0,"vitBonus":0,"intBonus":0,"dexBonus":0,"lukBonus":0,"statPoints":1,"hit":177,"flee":102,"statusMATK":30,"softMDEF":20,"maxSp":120,"critChance":0,"critDamage":0,"endowmentPoints":0,"equipped":[],"canTransform":false,"activeTransform":null,"seppukuCount":81,"permStats":{"attack":0,"defense":0,"speed":0,"hp":0}},"companions":[],"pet":null,"horse":null}
+1:47:45 PM [express] GET /api/transformations 304 in 6ms :: []
