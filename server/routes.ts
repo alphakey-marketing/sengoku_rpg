@@ -388,8 +388,9 @@ async function getPlayerTeamStats(userId: string) {
     
     // MaxHP = ClassBaseHP(BaseLv) * (1 + 0.01 * VIT) + gearHP
     // Using user.maxHp as ClassBaseHP
-    let maxHp = Math.floor(((user.maxHp || 100) + (user.permHpBonus || 0)) * (1 + 0.01 * VIT)) + totalHpBonus;
-      let hp = Math.min((user.hp || 100), maxHp);
+    const baseMaxHp = (user.maxHp || 100) + (user.permHpBonus || 0);
+    const maxHp = Math.floor(baseMaxHp * (1 + 0.01 * VIT)) + totalHpBonus;
+    const hp = Math.min((user.hp || 100), maxHp);
     
     // MaxSP = ClassBaseSP(BaseLv) * (1 + 0.01 * INT) + gearSP
     // Assuming base SP logic or adding to schema if needed, for now we use a derived value or just pass it
@@ -860,6 +861,19 @@ export async function registerRoutes(
       [stat]: currentVal + 1
     };
 
+    // Special handling for VIT to increase current HP
+    if (stat === 'vit') {
+      const oldVit = user.vit;
+      const newVit = currentVal + 1;
+      const baseMaxHp = (user.maxHp || 100) + (user.permHpBonus || 0);
+      const oldMaxHpCalc = Math.floor(baseMaxHp * (1 + 0.01 * oldVit));
+      const newMaxHpCalc = Math.floor(baseMaxHp * (1 + 0.01 * newVit));
+      const hpGain = newMaxHpCalc - oldMaxHpCalc;
+      if (hpGain > 0) {
+        updates.hp = (user.hp || 0) + hpGain;
+      }
+    }
+
     const updatedUser = await storage.updateUser(userId, updates);
     res.json(updatedUser);
   });
@@ -877,6 +891,7 @@ export async function registerRoutes(
     for (const [stat, amount] of Object.entries(upgrades)) {
       if (!stats.includes(stat)) continue;
       let val = (user as any)[stat] || 1;
+      const oldVal = val;
       for (let i = 0; i < (amount as number); i++) {
         if (val >= 99) break;
         const cost = Math.floor((val - 1) / 10) + 2;
@@ -887,11 +902,39 @@ export async function registerRoutes(
         val++;
       }
       updates[stat] = val;
+
+      // Special handling for VIT to increase current HP
+      if (stat === 'vit' && val > oldVal) {
+        const baseMaxHp = (user.maxHp || 100) + (user.permHpBonus || 0);
+        const oldMaxHpCalc = Math.floor(baseMaxHp * (1 + 0.01 * oldVal));
+        const newMaxHpCalc = Math.floor(baseMaxHp * (1 + 0.01 * val));
+        const hpGain = newMaxHpCalc - oldMaxHpCalc;
+        if (hpGain > 0) {
+          updates.hp = (user.hp || 0) + hpGain;
+        }
+      }
     }
 
     updates.statPoints = currentStatPoints;
     const updatedUser = await storage.updateUser(userId, updates);
     res.json(updatedUser);
+  });
+
+  app.post("/api/player/rest", isAuthenticated, async (req: any, res) => {
+    const userId = req.user.claims.sub;
+    const stats = await getPlayerTeamStats(userId);
+    if (!stats) return res.status(404).json({ message: "Player not found" });
+
+    await storage.updateUser(userId, { hp: stats.player.maxHp });
+    
+    // Also heal companions
+    const companions = await storage.getCompanions(userId);
+    for (const comp of companions) {
+      const maxHp = Math.floor(comp.maxHp * (1 + 0.01 * (comp as any).vit));
+      await storage.updateCompanion(comp.id, { hp: maxHp });
+    }
+
+    res.json({ success: true, hp: stats.player.maxHp });
   });
 
   app.post("/api/companions/:id/recycle", isAuthenticated, async (req: any, res) => {
