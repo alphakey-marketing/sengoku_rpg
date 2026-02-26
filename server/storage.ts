@@ -379,7 +379,7 @@ export class DatabaseStorage implements IStorage {
         int: 1,
         dex: 1,
         luk: 1,
-        statPoints: 48,
+        statPoints: 0,
         stamina: 100,
         maxStamina: 100,
         currentLocationId: 1,

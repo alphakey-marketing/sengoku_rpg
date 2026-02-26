@@ -313,7 +313,7 @@ async function getPlayerTeamStats(userId: string) {
   const activeHorse = allHorses.find(h => h.isActive);
 
   // Auto-sync base equipment if user has none
-  if (equips.length === 0) {
+  if (equips.length === 0 && user.level > 1) {
     await storage.syncBaseEquipment(userId);
   }
 
