@@ -389,7 +389,7 @@ async function getPlayerTeamStats(userId: string) {
     // MaxHP = ClassBaseHP(BaseLv) * (1 + 0.01 * VIT) + gearHP
     // Using user.maxHp as ClassBaseHP
     let maxHp = Math.floor(((user.maxHp || 100) + (user.permHpBonus || 0)) * (1 + 0.01 * VIT)) + totalHpBonus;
-    let hp = Math.min((user.hp || 100) + (user.permHpBonus || 0) + totalHpBonus, maxHp);
+      let hp = Math.min((user.hp || 100), maxHp);
     
     // MaxSP = ClassBaseSP(BaseLv) * (1 + 0.01 * INT) + gearSP
     // Assuming base SP logic or adding to schema if needed, for now we use a derived value or just pass it
@@ -507,7 +507,8 @@ async function getPlayerTeamStats(userId: string) {
         int: (c as any).int || 10,
         dex: cDEX,
         luk: cLUK,
-        critChance: compEquipped.reduce((s, e) => s + (e.critChance || 0), 0) + Math.floor(cLUK * 0.3),
+          softDEF: Math.floor(cVIT / 2) + Math.floor(cAGI / 5),
+          critChance: compEquipped.reduce((s, e) => s + (e.critChance || 0), 0) + Math.floor(cLUK * 0.3),
         critDamage: compEquipped.reduce((s, e) => s + (e.critDamage || 0), 0),
         endowmentPoints: compEquipped.reduce((s, e) => s + (e.endowmentPoints || 0), 0),
         skill: c.skill,
