@@ -279,9 +279,6 @@ export default function EquipmentPage() {
                       <span>{item.experience}/{item.expToNext} EXP</span>
                     </div>
                     <Progress value={(item.experience / item.expToNext) * 100} className="h-1.5" />
-                    <p className="text-[10px] text-zinc-500 mt-1">
-                      +2% ATK / +3% DEF / +5% SPD per level
-                    </p>
                   </div>
 
                   <div className="mt-auto pt-3 border-t border-white/10 flex items-center justify-between gap-2">

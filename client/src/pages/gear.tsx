@@ -127,9 +127,6 @@ export default function GearPage() {
                       {item.speedBonus > 0 && <span className="text-cyan-400">+{item.speedBonus} SPD</span>}
                       {item.fleeBonus > 0 && <span className="text-green-400">+{item.fleeBonus} FLEE</span>}
                     </div>
-                    <div className="mt-1.5 mb-2">
-                      <Progress value={(item.experience / item.expToNext) * 100} className="h-1" />
-                    </div>
                     <div className="flex gap-2">
                       <button 
                         onClick={() => setSelectedSlot({ type, targetId, targetType })}

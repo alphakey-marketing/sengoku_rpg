@@ -327,10 +327,10 @@ async function getPlayerTeamStats(userId: string) {
       activeTransform = allTransforms.find(t => t.id === user.activeTransformId);
     }
 
-    const totalAtkBonus = playerEquipped.reduce((s, e) => s + Math.floor(e.attackBonus * (1 + (e.level - 1) * 0.05)), 0);
-    const totalDefBonus = playerEquipped.reduce((s, e) => s + Math.floor(e.defenseBonus * (1 + (e.level - 1) * 0.08)), 0);
-    const totalSpdBonus = playerEquipped.reduce((s, e) => s + Math.floor(e.speedBonus * (1 + (e.level - 1) * 0.1)), 0);
-    const totalHpBonus = playerEquipped.reduce((s, e) => s + Math.floor((e.hpBonus || 0) * (1 + (e.level - 1) * 0.1)), 0);
+    const totalAtkBonus = playerEquipped.reduce((s, e) => s + e.attackBonus, 0);
+    const totalDefBonus = playerEquipped.reduce((s, e) => s + e.defenseBonus, 0);
+    const totalSpdBonus = playerEquipped.reduce((s, e) => s + e.speedBonus, 0);
+    const totalHpBonus = playerEquipped.reduce((s, e) => s + (e.hpBonus || 0), 0);
 
     // Core stats (STR, AGI, VIT, INT, DEX, LUK)
     const STR = (user as any).str || 1;
@@ -459,9 +459,9 @@ async function getPlayerTeamStats(userId: string) {
       const cWeapon = compEquipped.find(e => e.type.toLowerCase() === 'weapon');
       const cWeaponType = (cWeapon as any)?.weaponType;
       
-      const cAtkBonus = compEquipped.reduce((s, e) => s + Math.floor(e.attackBonus * (1 + (e.level - 1) * 0.05)), 0);
-      const cDefBonus = compEquipped.reduce((s, e) => s + Math.floor(e.defenseBonus * (1 + (e.level - 1) * 0.08)), 0);
-      const cSpdBonus = compEquipped.reduce((s, e) => s + Math.floor(e.speedBonus * (1 + (e.level - 1) * 0.1)), 0);
+      const cAtkBonus = compEquipped.reduce((s, e) => s + e.attackBonus, 0);
+      const cDefBonus = compEquipped.reduce((s, e) => s + e.defenseBonus, 0);
+      const cSpdBonus = compEquipped.reduce((s, e) => s + e.speedBonus, 0);
       
       const cSTR = (c as any).str || 10;
       const cVIT = (c as any).vit || 10;
@@ -1140,18 +1140,12 @@ export async function registerRoutes(
       newExp -= newExpToNext;
       newLevel++;
       newExpToNext = calcEquipExpToNext(newLevel);
-      atkBonus = Math.floor(atkBonus * growth.atk) + 1;
-      defBonus = Math.floor(defBonus * growth.def) + 1;
-      spdBonus = Math.floor(spdBonus * growth.spd) + 1;
     }
 
     const updated = await storage.updateEquipment(eq.id, {
       experience: newExp,
       level: newLevel,
       expToNext: newExpToNext,
-      attackBonus: atkBonus,
-      defenseBonus: defBonus,
-      speedBonus: spdBonus,
     });
 
     res.json(updated);
@@ -1424,9 +1418,6 @@ export async function registerRoutes(
         newExp -= newExpToNext;
         newLevel++;
         newExpToNext = calcEquipExpToNext(newLevel);
-        atkBonus = Math.floor(atkBonus * growth.atk) + 1;
-        defBonus = Math.floor(defBonus * growth.def) + 1;
-        spdBonus = Math.floor(spdBonus * growth.spd) + 1;
       }
 
       if (newLevel !== eq.level) {
@@ -1434,9 +1425,6 @@ export async function registerRoutes(
           experience: newExp,
           level: newLevel,
           expToNext: newExpToNext,
-          attackBonus: atkBonus,
-          defenseBonus: defBonus,
-          speedBonus: spdBonus,
         });
       } else if (newExp !== eq.experience) {
         await storage.updateEquipment(eq.id, { experience: newExp });
