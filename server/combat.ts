@@ -56,11 +56,25 @@ export interface CombatUnit {
 }
 
 export function isMeleeWeapon(type: WeaponType | undefined): boolean {
-  return !["bow", "gun", "instrument", "whip"].includes(type ?? "none");
+  if (!type) return true; // bare hands
+  return [
+    "dagger",
+    "sword",
+    "twoHandSword",
+    "axe",
+    "mace",
+    "spear",
+    "knuckle",
+    "katar",
+    "book",
+    "staff",
+    "none",
+  ].includes(type);
 }
 
 export function isRangedWeapon(type: WeaponType | undefined): boolean {
-  return ["bow", "gun", "instrument", "whip"].includes(type ?? "none");
+  if (!type) return false;
+  return ["bow", "gun", "instrument", "whip"].includes(type);
 }
 
 export function calculateHitChance(attacker: CombatUnit, defender: CombatUnit): number {
@@ -79,12 +93,11 @@ function getStatusATK(attacker: CombatUnit): number {
   const LUK = attacker.luk ?? 1;
 
   if (isRangedWeapon(attacker.weaponType)) {
-    // RANGED: DEX is primary, STR contributes weakly
     return Math.floor(lv / 4) + Math.floor(STR / 5) + DEX + Math.floor(LUK / 3);
+  } else {
+    // Melee formula: STR + floor(DEX/5) + floor(LUK/3)
+    return Math.floor(lv / 4) + STR + Math.floor(DEX / 5) + Math.floor(LUK / 3);
   }
-
-  // MELEE (default): STR is primary, DEX contributes weakly
-  return Math.floor(lv / 4) + STR + Math.floor(DEX / 5) + Math.floor(LUK / 3);
 }
 
 function getWeaponATKWithStatBonus(unit: CombatUnit): number {
@@ -92,26 +105,28 @@ function getWeaponATKWithStatBonus(unit: CombatUnit): number {
   const STR = unit.str ?? 1;
   const DEX = unit.dex ?? 1;
 
+  let weaponATK = baseWeaponATK;
+
   if (isRangedWeapon(unit.weaponType)) {
-    // DEX scales weapon damage for ranged
-    return Math.floor(baseWeaponATK * (1 + 0.005 * DEX));
+    const bonusPercent = 0.005 * DEX; // 0.5% per DEX
+    weaponATK = baseWeaponATK * (1 + bonusPercent);
+  } else {
+    // default to melee
+    const bonusPercent = 0.005 * STR; // 0.5% per STR
+    weaponATK = baseWeaponATK * (1 + bonusPercent);
   }
 
-  // Melee: STR scales weapon damage
-  return Math.floor(baseWeaponATK * (1 + 0.005 * STR));
+  return Math.floor(weaponATK);
 }
 
 function getWeaponRoll(attacker: CombatUnit): number {
-  const weaponATKEffective = getWeaponATKWithStatBonus(attacker);
+  const weaponATK = getWeaponATKWithStatBonus(attacker);
   const weaponLevel = attacker.weaponLevel ?? 1;
-
-  const varianceRange = Math.floor(0.05 * weaponLevel * weaponATKEffective);
-  const variance = Math.floor((Math.random() * 2 * varianceRange) - varianceRange);
-
-  const refineATK = attacker.refinementBonus ?? 0;
+  const varianceRange = 0.05 * weaponLevel * weaponATK;
+  const variance = (Math.random() * 2 * varianceRange) - varianceRange;
+  const refinementBonus = attacker.refinementBonus ?? 0;
   const bonusATK = attacker.bonusATK ?? 0;
-
-  return weaponATKEffective + variance + refineATK + bonusATK;
+  return Math.floor(weaponATK + variance + refinementBonus + bonusATK);
 }
 
 function getTotalATK(attacker: CombatUnit): number {

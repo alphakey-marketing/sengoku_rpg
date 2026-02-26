@@ -312,25 +312,20 @@ async function getPlayerTeamStats(userId: string) {
   const activePet = allPets.find(p => p.isActive);
   const activeHorse = allHorses.find(h => h.isActive);
 
-  // Auto-sync base equipment if user has none
-  if (equips.length === 0) {
-    await storage.syncBaseEquipment(userId);
-  }
-
     const playerEquipped = equips.filter(e => e.isEquipped && e.equippedToType === 'player');
-    const weapon = playerEquipped.find(e => e.type.toLowerCase() === 'weapon');
+    const weapon = playerEquipped.find(e => e.type === 'Weapon');
     const weaponType = (weapon as any)?.weaponType;
-
+    
     // Check for active transformation
     let activeTransform = null;
     if (user.activeTransformId && user.transformActiveUntil && new Date(user.transformActiveUntil) > new Date()) {
       activeTransform = allTransforms.find(t => t.id === user.activeTransformId);
     }
 
-    const totalAtkBonus = playerEquipped.reduce((s, e) => s + e.attackBonus, 0);
-    const totalDefBonus = playerEquipped.reduce((s, e) => s + e.defenseBonus, 0);
-    const totalSpdBonus = playerEquipped.reduce((s, e) => s + e.speedBonus, 0);
-    const totalHpBonus = playerEquipped.reduce((s, e) => s + (e.hpBonus || 0), 0);
+    const totalAtkBonus = playerEquipped.reduce((s, e) => s + Math.floor(e.attackBonus * (1 + (e.level - 1) * 0.05)), 0);
+    const totalDefBonus = playerEquipped.reduce((s, e) => s + Math.floor(e.defenseBonus * (1 + (e.level - 1) * 0.08)), 0);
+    const totalSpdBonus = playerEquipped.reduce((s, e) => s + Math.floor(e.speedBonus * (1 + (e.level - 1) * 0.1)), 0);
+    const totalHpBonus = playerEquipped.reduce((s, e) => s + Math.floor((e.hpBonus || 0) * (1 + (e.level - 1) * 0.1)), 0);
 
     // Core stats (STR, AGI, VIT, INT, DEX, LUK)
     const STR = (user as any).str || 1;
@@ -372,13 +367,6 @@ async function getPlayerTeamStats(userId: string) {
       ? Math.floor(baseWeaponAtk * (1 + 0.005 * DEX))
       : Math.floor(baseWeaponAtk * (1 + 0.005 * STR));
 
-    const wLv = (weapon as any)?.level ?? 1;
-    const varianceRange = Math.floor(0.05 * wLv * finalWeaponAtk);
-    const minAtk = statusAtk + (finalWeaponAtk - varianceRange);
-    const maxAtk = statusAtk + (finalWeaponAtk + varianceRange);
-
-    const displayAtk = `${minAtk} ~ ${maxAtk}`;
-
   let attack = statusAtk + finalWeaponAtk;
     let defense = (user.defense || 0) + totalDefBonus + (user.permDefenseBonus || 0);
     let speed = (user.speed || 0) + totalSpdBonus + (user.permSpeedBonus || 0) + Math.floor(AGI / 2); 
@@ -388,9 +376,8 @@ async function getPlayerTeamStats(userId: string) {
     
     // MaxHP = ClassBaseHP(BaseLv) * (1 + 0.01 * VIT) + gearHP
     // Using user.maxHp as ClassBaseHP
-    const baseMaxHp = (user.maxHp || 100) + (user.permHpBonus || 0);
-    const maxHp = Math.floor(baseMaxHp * (1 + 0.01 * VIT)) + totalHpBonus;
-    const hp = Math.min((user.hp || 100), maxHp);
+    let maxHp = Math.floor(((user.maxHp || 100) + (user.permHpBonus || 0)) * (1 + 0.01 * VIT)) + totalHpBonus;
+    let hp = Math.min((user.hp || 100) + (user.permHpBonus || 0) + totalHpBonus, maxHp);
     
     // MaxSP = ClassBaseSP(BaseLv) * (1 + 0.01 * INT) + gearSP
     // Assuming base SP logic or adding to schema if needed, for now we use a derived value or just pass it
@@ -413,10 +400,8 @@ async function getPlayerTeamStats(userId: string) {
         level: user.level,
         hp,
         maxHp,
-        attack: finalWeaponAtk, // This acts as base weapon attack
-        statusATK: statusAtk,
-        displayATK: displayAtk,
-        defense: defense, // This acts as hard defense
+        attack, // This acts as base weapon attack
+        defense, // This acts as hard defense
         speed,
         weaponType,
         str: STR,
@@ -456,12 +441,12 @@ async function getPlayerTeamStats(userId: string) {
       } as any,
     companions: partyCompanions.map(c => {
       const compEquipped = equips.filter(e => e.isEquipped && e.equippedToType === 'companion' && Number(e.equippedToId) === Number(c.id));
-      const cWeapon = compEquipped.find(e => e.type.toLowerCase() === 'weapon');
+      const cWeapon = compEquipped.find(e => e.type === 'Weapon');
       const cWeaponType = (cWeapon as any)?.weaponType;
       
-      const cAtkBonus = compEquipped.reduce((s, e) => s + e.attackBonus, 0);
-      const cDefBonus = compEquipped.reduce((s, e) => s + e.defenseBonus, 0);
-      const cSpdBonus = compEquipped.reduce((s, e) => s + e.speedBonus, 0);
+      const cAtkBonus = compEquipped.reduce((s, e) => s + Math.floor(e.attackBonus * (1 + (e.level - 1) * 0.05)), 0);
+      const cDefBonus = compEquipped.reduce((s, e) => s + Math.floor(e.defenseBonus * (1 + (e.level - 1) * 0.08)), 0);
+      const cSpdBonus = compEquipped.reduce((s, e) => s + Math.floor(e.speedBonus * (1 + (e.level - 1) * 0.1)), 0);
       
       const cSTR = (c as any).str || 10;
       const cVIT = (c as any).vit || 10;
@@ -470,6 +455,7 @@ async function getPlayerTeamStats(userId: string) {
       const cLUK = (c as any).luk || 1;
       const cLv = c.level || 1;
 
+      // Companion Status ATK
       const cStatusAtk = (cWeaponType === 'bow' || cWeaponType === 'gun' || cWeaponType === 'instrument' || cWeaponType === 'whip')
         ? Math.floor(cLv / 4) + Math.floor(cSTR / 5) + cDEX + Math.floor(cLUK / 3)
         : Math.floor(cLv / 4) + cSTR + Math.floor(cDEX / 5) + Math.floor(cLUK / 3);
@@ -479,14 +465,9 @@ async function getPlayerTeamStats(userId: string) {
         ? Math.floor(cBaseWeaponAtk * (1 + 0.005 * cDEX))
         : Math.floor(cBaseWeaponAtk * (1 + 0.005 * cSTR));
 
-      const cwLv = (cWeapon as any)?.level ?? 1;
-      const cVarianceRange = Math.floor(0.05 * cwLv * cFinalWeaponAtk);
-      const cMinAtk = cStatusAtk + (cFinalWeaponAtk - cVarianceRange);
-      const cMaxAtk = cStatusAtk + (cFinalWeaponAtk + cVarianceRange);
-      const cDisplayAtk = `${cMinAtk} ~ ${cMaxAtk}`;
-
       let cMaxHp = Math.floor(c.maxHp * (1 + 0.01 * cVIT));
       let cHp = Math.min(c.hp, cMaxHp);
+      let cAttack = cStatusAtk + cFinalWeaponAtk;
       let cDefense = c.defense + cDefBonus;
       let cSpeed = c.speed + cSpdBonus;
 
@@ -496,9 +477,7 @@ async function getPlayerTeamStats(userId: string) {
         level: c.level,
         hp: cHp,
         maxHp: cMaxHp,
-        attack: cFinalWeaponAtk,
-        statusATK: cStatusAtk,
-        displayATK: cDisplayAtk,
+        attack: cAttack,
         defense: cDefense,
         speed: cSpeed,
         weaponType: cWeaponType,
@@ -508,8 +487,7 @@ async function getPlayerTeamStats(userId: string) {
         int: (c as any).int || 10,
         dex: cDEX,
         luk: cLUK,
-          softDEF: Math.floor(cVIT / 2) + Math.floor(cAGI / 5),
-          critChance: compEquipped.reduce((s, e) => s + (e.critChance || 0), 0) + Math.floor(cLUK * 0.3),
+        critChance: compEquipped.reduce((s, e) => s + (e.critChance || 0), 0) + Math.floor(cLUK * 0.3),
         critDamage: compEquipped.reduce((s, e) => s + (e.critDamage || 0), 0),
         endowmentPoints: compEquipped.reduce((s, e) => s + (e.endowmentPoints || 0), 0),
         skill: c.skill,
@@ -861,19 +839,6 @@ export async function registerRoutes(
       [stat]: currentVal + 1
     };
 
-    // Special handling for VIT to increase current HP
-    if (stat === 'vit') {
-      const oldVit = user.vit;
-      const newVit = currentVal + 1;
-      const baseMaxHp = (user.maxHp || 100) + (user.permHpBonus || 0);
-      const oldMaxHpCalc = Math.floor(baseMaxHp * (1 + 0.01 * oldVit));
-      const newMaxHpCalc = Math.floor(baseMaxHp * (1 + 0.01 * newVit));
-      const hpGain = newMaxHpCalc - oldMaxHpCalc;
-      if (hpGain > 0) {
-        updates.hp = (user.hp || 0) + hpGain;
-      }
-    }
-
     const updatedUser = await storage.updateUser(userId, updates);
     res.json(updatedUser);
   });
@@ -891,7 +856,6 @@ export async function registerRoutes(
     for (const [stat, amount] of Object.entries(upgrades)) {
       if (!stats.includes(stat)) continue;
       let val = (user as any)[stat] || 1;
-      const oldVal = val;
       for (let i = 0; i < (amount as number); i++) {
         if (val >= 99) break;
         const cost = Math.floor((val - 1) / 10) + 2;
@@ -902,39 +866,11 @@ export async function registerRoutes(
         val++;
       }
       updates[stat] = val;
-
-      // Special handling for VIT to increase current HP
-      if (stat === 'vit' && val > oldVal) {
-        const baseMaxHp = (user.maxHp || 100) + (user.permHpBonus || 0);
-        const oldMaxHpCalc = Math.floor(baseMaxHp * (1 + 0.01 * oldVal));
-        const newMaxHpCalc = Math.floor(baseMaxHp * (1 + 0.01 * val));
-        const hpGain = newMaxHpCalc - oldMaxHpCalc;
-        if (hpGain > 0) {
-          updates.hp = (user.hp || 0) + hpGain;
-        }
-      }
     }
 
     updates.statPoints = currentStatPoints;
     const updatedUser = await storage.updateUser(userId, updates);
     res.json(updatedUser);
-  });
-
-  app.post("/api/player/rest", isAuthenticated, async (req: any, res) => {
-    const userId = req.user.claims.sub;
-    const stats = await getPlayerTeamStats(userId);
-    if (!stats) return res.status(404).json({ message: "Player not found" });
-
-    await storage.updateUser(userId, { hp: stats.player.maxHp });
-    
-    // Also heal companions
-    const companions = await storage.getCompanions(userId);
-    for (const comp of companions) {
-      const maxHp = Math.floor(comp.maxHp * (1 + 0.01 * (comp as any).vit));
-      await storage.updateCompanion(comp.id, { hp: maxHp });
-    }
-
-    res.json({ success: true, hp: stats.player.maxHp });
   });
 
   app.post("/api/companions/:id/recycle", isAuthenticated, async (req: any, res) => {
@@ -1140,12 +1076,18 @@ export async function registerRoutes(
       newExp -= newExpToNext;
       newLevel++;
       newExpToNext = calcEquipExpToNext(newLevel);
+      atkBonus = Math.floor(atkBonus * growth.atk) + 1;
+      defBonus = Math.floor(defBonus * growth.def) + 1;
+      spdBonus = Math.floor(spdBonus * growth.spd) + 1;
     }
 
     const updated = await storage.updateEquipment(eq.id, {
       experience: newExp,
       level: newLevel,
       expToNext: newExpToNext,
+      attackBonus: atkBonus,
+      defenseBonus: defBonus,
+      speedBonus: spdBonus,
     });
 
     res.json(updated);
@@ -1418,6 +1360,9 @@ export async function registerRoutes(
         newExp -= newExpToNext;
         newLevel++;
         newExpToNext = calcEquipExpToNext(newLevel);
+        atkBonus = Math.floor(atkBonus * growth.atk) + 1;
+        defBonus = Math.floor(defBonus * growth.def) + 1;
+        spdBonus = Math.floor(spdBonus * growth.spd) + 1;
       }
 
       if (newLevel !== eq.level) {
@@ -1425,6 +1370,9 @@ export async function registerRoutes(
           experience: newExp,
           level: newLevel,
           expToNext: newExpToNext,
+          attackBonus: atkBonus,
+          defenseBonus: defBonus,
+          speedBonus: spdBonus,
         });
       } else if (newExp !== eq.experience) {
         await storage.updateEquipment(eq.id, { experience: newExp });
@@ -1547,7 +1495,7 @@ export async function registerRoutes(
         await storage.updateUser(userId, userUpdate);
 
         // Revised Equipment Drop logic using CLASSIC_DROPS
-        if (Math.random() < 0.05) {
+        if (Math.random() < 0.01) {
           const eqData = generateEquipment(userId, locationId);
           try {
             const eq = await storage.createEquipment(eqData);
@@ -2148,18 +2096,36 @@ export async function registerRoutes(
   });
 
   app.post("/api/restart", isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.claims.sub;
-      await storage.restartGame(userId);
-      
-      // Create initial equipment via storage logic
-      await storage.syncBaseEquipment(userId);
+    const userId = req.user.claims.sub;
+    await (storage as any).restartGame(userId);
+    
+    // Create initial equipment
+    await storage.createEquipment({
+      userId,
+      name: "Training Sword",
+      type: "weapon",
+      weaponType: "sword",
+      rarity: "white",
+      level: 1,
+      experience: 0,
+      expToNext: 100,
+      attackBonus: 5,
+      defenseBonus: 0,
+      speedBonus: 0,
+      hpBonus: 0,
+      mdefBonus: 0,
+      fleeBonus: 0,
+      matkBonus: 0,
+      critChance: 5,
+      critDamage: 0,
+      endowmentPoints: 0,
+      isEquipped: true,
+      equippedToId: null,
+      equippedToType: "player",
+      cardSlots: 1
+    } as any);
 
-      res.json({ success: true });
-    } catch (err: any) {
-      console.error("Restart error:", err);
-      res.status(500).json({ message: err.message });
-    }
+    res.json({ success: true });
   });
 
   app.get('/api/quests', isAuthenticated, async (req: any, res) => {

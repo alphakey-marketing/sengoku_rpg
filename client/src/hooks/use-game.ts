@@ -708,33 +708,23 @@ export function useUpgradeStat() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ stat }),
       });
-      if (!res.ok) throw new Error("Failed to upgrade stat");
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || "Failed to upgrade stat");
+      }
       return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [api.player.get.path] });
       queryClient.invalidateQueries({ queryKey: [api.player.fullStatus.path] });
     },
-  });
-}
-
-export function useRest() {
-  const queryClient = useQueryClient();
-  const { toast } = useToast();
-  return useMutation({
-    mutationFn: async () => {
-      const res = await fetchWithAuth("/api/player/rest", { method: "POST" });
-      if (!res.ok) throw new Error("Rest failed");
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [api.player.get.path] });
-      queryClient.invalidateQueries({ queryKey: [api.player.fullStatus.path] });
+    onError: (error: Error) => {
       toast({
-        title: "Fully Rested",
-        description: "Your health has been fully restored.",
+        title: "Stat Point Allocation Failed",
+        description: error.message,
+        variant: "destructive",
       });
-    },
+    }
   });
 }
 

@@ -1,6 +1,6 @@
-import { usePlayer, usePlayerFullStatus, useEquipment, useTransformations, useUpgradeStat, useBulkUpgradeStats, useRest } from "@/hooks/use-game";
+import { usePlayer, usePlayerFullStatus, useEquipment, useTransformations, useUpgradeStat, useBulkUpgradeStats } from "@/hooks/use-game";
 import { MainLayout } from "@/components/layout/main-layout";
-import { Shield, Sword, Coins, Wheat, Trophy, Zap, Heart, Sparkles, RefreshCcw, BookOpen, Users, Info, Plus, ChevronUp, ChevronDown, Check, X, Coffee } from "lucide-react";
+import { Shield, Sword, Coins, Wheat, Trophy, Zap, Heart, Sparkles, RefreshCcw, BookOpen, Users, Info, Plus, ChevronUp, ChevronDown, Check, X } from "lucide-react";
 import { motion } from "framer-motion";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
@@ -40,7 +40,6 @@ export default function Home() {
   const { data: transforms } = useTransformations();
   const upgradeStat = useUpgradeStat();
   const bulkUpgrade = useBulkUpgradeStats();
-  const restMutation = useRest();
   const { toast } = useToast();
 
   const [pendingUpgrades, setPendingUpgrades] = useState<Record<string, number>>({});
@@ -149,10 +148,6 @@ export default function Home() {
     }
   };
 
-  const handleRest = () => {
-    restMutation.mutate();
-  };
-
   if (isLoading) {
     return (
       <MainLayout>
@@ -171,8 +166,8 @@ export default function Home() {
   const statCards = [
     { label: "Level", value: player.level, icon: Trophy, color: "text-purple-400" },
     { label: "HP", value: teamStatus?.player ? `${teamStatus.player.hp}/${teamStatus.player.maxHp}` : `${player.hp}/${player.maxHp}`, icon: Heart, color: "text-red-400", bonus: (teamStatus?.player as any)?.permStats?.hp || 0 },
-    { label: "ATK", value: teamStatus?.player?.displayATK || player.attack, icon: Sword, color: "text-orange-400", bonus: (teamStatus?.player as any)?.permStats?.attack || 0 },
-    { label: "DEF", value: teamStatus?.player ? `${teamStatus.player.defense} (${teamStatus.player.softMDEF})` : player.defense, icon: Shield, color: "text-blue-400", bonus: (teamStatus?.player as any)?.permStats?.defense || 0 },
+    { label: "ATK", value: teamStatus?.player?.attack || player.attack, icon: Sword, color: "text-orange-400", bonus: (teamStatus?.player as any)?.permStats?.attack || 0 },
+    { label: "DEF", value: teamStatus?.player?.defense || player.defense, icon: Shield, color: "text-blue-400", bonus: (teamStatus?.player as any)?.permStats?.defense || 0 },
     { label: "SPD", value: teamStatus?.player?.speed || player.speed, icon: Zap, color: "text-cyan-400", bonus: (teamStatus?.player as any)?.permStats?.speed || 0 },
     { label: "Gold", value: (player.gold || 0).toLocaleString(), icon: Coins, color: "text-yellow-400" },
     { label: "Rice", value: (player.rice || 0).toLocaleString(), icon: Wheat, color: "text-green-400" },
@@ -187,11 +182,22 @@ export default function Home() {
     { key: 'luk', label: "LUK", value: teamStatus.player.luk, color: "text-purple-400", description: "Luck: Increases Critical Rate and Perfect Dodge", bonus: (teamStatus.player as any).lukBonus || 0 },
   ] : [];
 
+  const derivedStats = teamStatus?.player ? [
+    { label: "ATK", value: teamStatus.player.attack, formula: "STR + DEX/5 + LUK/3" },
+    { label: "MATK", value: teamStatus.player.statusMATK, formula: "1.5 * INT + DEX/5 + LUK/3" },
+    { label: "DEF", value: teamStatus.player.defense, formula: "VIT/2 + AGI/5" },
+    { label: "MDEF", value: (teamStatus.player as any).softMDEF, formula: "INT + VIT/5 + DEX/5" },
+    { label: "HIT", value: (teamStatus.player as any).hit, formula: "175 + LVL + DEX + LUK/3" },
+    { label: "FLEE", value: (teamStatus.player as any).flee, formula: "100 + LVL + AGI + LUK/5" },
+    { label: "CRIT", value: `${(teamStatus.player as any).critChance}%`, formula: "0.3 * LUK" },
+    { label: "ASPD", value: (teamStatus.player as any).speed, formula: "SPD + AGI/2" },
+  ] : [];
+
   const combatStats = teamStatus?.player ? [
-    { label: "HIT", value: teamStatus.player.hit, icon: Sparkles, color: "text-blue-400" },
-    { label: "FLEE", value: teamStatus.player.flee, icon: Zap, color: "text-green-400" },
-    { label: "CRIT", value: `${teamStatus.player.critChance}%`, icon: Trophy, color: "text-red-400" },
-    { label: "MDEF", value: teamStatus.player.softMDEF, icon: Shield, color: "text-purple-400" },
+    { label: "HIT", value: (teamStatus.player as any).hit, icon: Sparkles, color: "text-blue-400" },
+    { label: "FLEE", value: (teamStatus.player as any).flee, icon: Zap, color: "text-green-400" },
+    { label: "CRIT", value: `${(teamStatus.player as any).critChance}%`, icon: Trophy, color: "text-red-400" },
+    { label: "MDEF", value: (teamStatus.player as any).softMDEF, icon: Shield, color: "text-purple-400" },
   ] : [];
 
   const equippedItems = equipment?.filter(e => e.isEquipped && e.equippedToType === 'player') || [];
@@ -228,20 +234,7 @@ export default function Home() {
             <p className="text-muted-foreground">Review your current standing and resources.</p>
           </div>
 
-          <div className="flex gap-2">
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="gap-2 border-green-500/50 text-green-500 hover:bg-green-500/10"
-              onClick={handleRest}
-              disabled={restMutation.isPending}
-              data-testid="button-rest"
-            >
-              <Coffee size={16} />
-              Rest at Dojo
-            </Button>
-
-            <Dialog>
+          <Dialog>
             <DialogTrigger asChild>
               <Button variant="outline" size="sm" className="gap-2 border-accent/50 text-accent hover:bg-accent/10">
                 <BookOpen size={16} />
@@ -299,7 +292,6 @@ export default function Home() {
               </div>
             </DialogContent>
           </Dialog>
-          </div>
         </div>
 
         <motion.div
@@ -346,13 +338,13 @@ export default function Home() {
               <AlertDialogContent className="bg-card border-destructive/50">
                 <AlertDialogHeader>
                   <AlertDialogTitle className="text-destructive font-display">Confirm Final Sacrifice</AlertDialogTitle>
-                  <AlertDialogDescription className="text-zinc-400">
-                    This will permanently delete all your companions, equipment, pets, and current progress.
+                  <AlertDialogDescription className="text-zinc-400 space-y-2">
+                    <p>This will permanently delete all your companions, equipment, pets, and current progress.</p>
+                    <div className="bg-destructive/10 border border-destructive/20 rounded p-3 text-destructive-foreground">
+                      <p className="font-bold text-xs uppercase tracking-wider mb-1">Total Reset</p>
+                      <p className="text-sm">There are <span className="font-bold">no permanent bonuses</span> passed down. Your next incarnation will start from absolute zero.</p>
+                    </div>
                   </AlertDialogDescription>
-                  <div className="bg-destructive/10 border border-destructive/20 rounded p-3 text-destructive-foreground space-y-1">
-                    <p className="font-bold text-xs uppercase tracking-wider">Total Reset</p>
-                    <p className="text-sm">There are <span className="font-bold">no permanent bonuses</span> passed down. Your next incarnation will start from absolute zero.</p>
-                  </div>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                   <AlertDialogCancel className="bg-zinc-800 text-white border-zinc-700">Withdraw</AlertDialogCancel>
@@ -488,7 +480,7 @@ export default function Home() {
                   data-testid="button-apply-upgrades"
                 >
                   <Check size={16} className="mr-2" />
-                  Apply Increased Attributes
+                  Apply ({stagedInfo.totalCost} pts)
                 </Button>
               </motion.div>
             )}
@@ -498,73 +490,43 @@ export default function Home() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="bg-card border border-border/50 rounded-xl p-6 bg-washi h-full flex flex-col"
+            className="bg-card border border-border/50 rounded-xl p-6 bg-washi relative overflow-hidden h-full flex flex-col"
           >
+            <div className="absolute top-0 right-0 p-4 opacity-5">
+              <Shield size={80} />
+            </div>
             <h3 className="text-xl font-display font-semibold mb-6 flex items-center gap-2">
-              <Zap size={20} className="text-accent" />
-              Combat Potential
+              <Sparkles size={20} className="text-primary" />
+              Combat Statistics
             </h3>
             <div className="grid grid-cols-2 gap-4 flex-1">
-              {combatStats.map((stat) => (
-                <div key={stat.label} className="bg-background/40 border border-border/30 rounded-lg p-3 flex flex-col items-center justify-center text-center">
-                  <div className={`p-1.5 rounded-full bg-background/50 border border-border mb-2 ${stat.color}`}>
-                    <stat.icon size={14} />
-                  </div>
-                  <p className="text-[10px] text-muted-foreground mb-0.5">{stat.label}</p>
-                  <p className="text-lg font-bold font-display text-white">{stat.value}</p>
-                </div>
+              {derivedStats.map((stat) => (
+                <TooltipProvider key={stat.label}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div 
+                        className="bg-background/40 border border-border/30 rounded-lg p-3 group hover:border-primary/50 transition-colors cursor-help"
+                        data-testid={`combat-stat-${stat.label.toLowerCase()}`}
+                      >
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{stat.label}</span>
+                          <Info size={12} className="text-muted-foreground/30 group-hover:text-primary/50 transition-colors" />
+                        </div>
+                        <p className="text-2xl font-display font-bold text-white">{stat.value}</p>
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent className="bg-card border-border p-3 shadow-xl">
+                      <div className="space-y-1">
+                        <p className="text-xs font-bold text-white uppercase tracking-widest">{stat.label} Formula</p>
+                        <code className="text-[10px] text-primary bg-primary/10 px-1.5 py-0.5 rounded">{stat.formula}</code>
+                      </div>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
               ))}
-            </div>
-            
-            <div className="mt-8 pt-6 border-t border-border/30">
-              <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-4">Current Equipment</h4>
-              <div className="flex flex-wrap gap-2">
-                {equippedItems.length > 0 ? equippedItems.map(item => {
-                  const Icon = getTypeIcon(item.type);
-                  return (
-                    <Badge key={item.id} variant="outline" className={`bg-background/40 border-border/50 py-1.5 px-3 flex items-center gap-2 ${getRarityColor(item.rarity)}`}>
-                      <Icon size={12} />
-                      <span className="text-xs font-medium tracking-tight">{item.name} +{item.level}</span>
-                    </Badge>
-                  );
-                }) : (
-                  <p className="text-xs text-muted-foreground italic">No equipment currently prepared.</p>
-                )}
-              </div>
             </div>
           </motion.div>
         </div>
-
-        {teamStatus?.companions && teamStatus.companions.length > 0 && (
-          <div className="mt-12">
-            <h3 className="text-xl font-display font-semibold border-b border-border/50 pb-2 mb-6 flex items-center gap-2">
-              <Users size={20} className="text-primary" />
-              Active Party (戦士)
-            </h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {teamStatus.companions.map((comp) => (
-                <div key={comp.id} className="bg-card border border-border/50 rounded-lg p-4 bg-washi flex items-center gap-4 hover-elevate">
-                  <div className="w-12 h-12 rounded-full bg-accent/10 border border-accent/20 flex items-center justify-center shrink-0">
-                    <Users size={24} className="text-accent" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="font-bold text-white truncate">{comp.name}</p>
-                    <p className="text-xs text-muted-foreground">Level {comp.level}</p>
-                    <div className="mt-2 flex items-center gap-3">
-                      <div className="flex-1">
-                        <div className="flex justify-between text-[9px] text-zinc-500 mb-0.5">
-                          <span>HP</span>
-                          <span>{comp.hp}/{comp.maxHp}</span>
-                        </div>
-                        <Progress value={(comp.hp / comp.maxHp) * 100} className="h-1 bg-zinc-800" />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
 
         {teamStatus?.pet && (
           <div className="mt-4">

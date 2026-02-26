@@ -71,12 +71,12 @@ export default function GearPage() {
             <div className="flex items-center gap-1.5 bg-red-900/10 px-2 py-1 rounded border border-red-900/20">
               <Sword size={14} className="text-red-400" />
               <span className="text-zinc-400 font-medium">ATK:</span>
-              <span className="text-white font-bold">{stats.displayATK || stats.attack}</span>
+              <span className="text-white font-bold">{stats.attack}</span>
             </div>
             <div className="flex items-center gap-1.5 bg-blue-900/10 px-2 py-1 rounded border border-blue-900/20">
               <Shield size={14} className="text-blue-400" />
               <span className="text-zinc-400 font-medium">DEF:</span>
-              <span className="text-white font-bold">{stats.defense} ({stats.softMDEF})</span>
+              <span className="text-white font-bold">{stats.defense}</span>
             </div>
             <div className="flex items-center gap-1.5 bg-cyan-900/10 px-2 py-1 rounded border border-cyan-900/20">
               <Zap size={14} className="text-cyan-400" />
@@ -127,6 +127,9 @@ export default function GearPage() {
                       {item.speedBonus > 0 && <span className="text-cyan-400">+{item.speedBonus} SPD</span>}
                       {item.fleeBonus > 0 && <span className="text-green-400">+{item.fleeBonus} FLEE</span>}
                     </div>
+                    <div className="mt-1.5 mb-2">
+                      <Progress value={(item.experience / item.expToNext) * 100} className="h-1" />
+                    </div>
                     <div className="flex gap-2">
                       <button 
                         onClick={() => setSelectedSlot({ type, targetId, targetType })}
@@ -162,21 +165,7 @@ export default function GearPage() {
     </div>
   );
 
-  const inventoryItems = selectedSlot 
-    ? equipment?.filter(e => {
-        // Normalize type matching
-        const itemType = e.type.toLowerCase();
-        const slotType = selectedSlot.type.toLowerCase();
-        
-        // Match specific slot types or allow general type matching
-        const isTypeMatch = itemType === slotType || 
-          (slotType === 'headgearupper' && itemType === 'headgear') ||
-          (slotType === 'headgearmiddle' && itemType === 'headgear') ||
-          (slotType === 'headgearlower' && itemType === 'headgear');
-
-        return isTypeMatch && !e.isEquipped;
-      }) 
-    : [];
+  const inventoryItems = selectedSlot ? equipment?.filter(e => e.type === selectedSlot.type && !e.isEquipped) : [];
 
   return (
     <MainLayout>
