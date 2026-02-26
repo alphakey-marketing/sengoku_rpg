@@ -385,7 +385,7 @@ export default function MapPage() {
                           </div>
                           <div className="bg-background/40 p-1 rounded text-center">
                             <span className="text-zinc-500 text-[8px] block uppercase">DEF</span>
-                            <span className="text-blue-400 font-mono text-xs leading-none">{(playerStatus?.player as any)?.defense || 0}</span>
+                            <span className="text-blue-400 font-mono text-xs leading-none">{(playerStatus?.player as any)?.defense || 0} ({(playerStatus?.player as any)?.softMDEF || 0})</span>
                           </div>
                           <div className="bg-background/40 p-1 rounded text-center">
                             <span className="text-zinc-500 text-[8px] block uppercase">MDEF</span>

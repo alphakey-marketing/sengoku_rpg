@@ -166,8 +166,8 @@ export default function Home() {
   const statCards = [
     { label: "Level", value: player.level, icon: Trophy, color: "text-purple-400" },
     { label: "HP", value: teamStatus?.player ? `${teamStatus.player.hp}/${teamStatus.player.maxHp}` : `${player.hp}/${player.maxHp}`, icon: Heart, color: "text-red-400", bonus: (teamStatus?.player as any)?.permStats?.hp || 0 },
-    { label: "ATK", value: teamStatus?.player?.attack || player.attack, icon: Sword, color: "text-orange-400", bonus: (teamStatus?.player as any)?.permStats?.attack || 0 },
-    { label: "DEF", value: teamStatus?.player?.defense || player.defense, icon: Shield, color: "text-blue-400", bonus: (teamStatus?.player as any)?.permStats?.defense || 0 },
+    { label: "ATK", value: teamStatus?.player?.displayATK || player.attack, icon: Sword, color: "text-orange-400", bonus: (teamStatus?.player as any)?.permStats?.attack || 0 },
+    { label: "DEF", value: teamStatus?.player ? `${teamStatus.player.defense} (${teamStatus.player.softMDEF})` : player.defense, icon: Shield, color: "text-blue-400", bonus: (teamStatus?.player as any)?.permStats?.defense || 0 },
     { label: "SPD", value: teamStatus?.player?.speed || player.speed, icon: Zap, color: "text-cyan-400", bonus: (teamStatus?.player as any)?.permStats?.speed || 0 },
     { label: "Gold", value: (player.gold || 0).toLocaleString(), icon: Coins, color: "text-yellow-400" },
     { label: "Rice", value: (player.rice || 0).toLocaleString(), icon: Wheat, color: "text-green-400" },
@@ -183,13 +183,13 @@ export default function Home() {
   ] : [];
 
   const derivedStats = teamStatus?.player ? [
-    { label: "ATK", value: teamStatus.player.displayATK, formula: "STR + DEX/5 + LUK/3" },
+    { label: "ATK", value: teamStatus.player.displayATK, formula: "StatusATK + WeaponATK" },
     { label: "MATK", value: teamStatus.player.statusMATK, formula: "1.5 * INT + DEX/5 + LUK/3" },
-    { label: "DEF", value: teamStatus.player.defense, formula: "VIT/2 + AGI/5" },
-    { label: "MDEF", value: teamStatus.player.softMDEF, formula: "INT + VIT/5 + DEX/5" },
+    { label: "DEF", value: `${teamStatus.player.defense} + ${Math.floor(teamStatus.player.vit / 2) + Math.floor(teamStatus.player.agi / 5)}`, formula: "HardDEF + SoftDEF" },
+    { label: "MDEF", value: `${teamStatus.player.softMDEF}`, formula: "INT + VIT/5 + DEX/5" },
     { label: "HIT", value: teamStatus.player.hit, formula: "175 + LVL + DEX + LUK/3" },
     { label: "FLEE", value: teamStatus.player.flee, formula: "100 + LVL + AGI + LUK/5" },
-    { label: "CRIT", value: `${teamStatus.player.critChance}%`, formula: "0.3 * LUK" },
+    { label: "CRIT", value: `${teamStatus.player.critChance}%`, formula: "0.3 * LUK + Equipment" },
     { label: "ASPD", value: teamStatus.player.speed, formula: "SPD + AGI/2" },
   ] : [];
 
