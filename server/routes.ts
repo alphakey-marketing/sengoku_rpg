@@ -2111,9 +2111,6 @@ export async function registerRoutes(
       const userId = req.user.claims.sub;
       await storage.restartGame(userId);
       
-      // Create initial equipment via storage logic
-      await storage.syncBaseEquipment(userId);
-
       res.json({ success: true });
     } catch (err: any) {
       console.error("Restart error:", err);
