@@ -308,7 +308,7 @@ async function getPlayerTeamStats(userId: string) {
   const allHorses = await storage.getHorses(userId);
   const allTransforms = await storage.getTransformations(userId);
 
-  const partyCompanions = partyCompanionsList.filter(c => c.isInParty);
+  const partyCompanions = comps.filter(c => c.isInParty);
   const activePet = allPets.find(p => p.isActive);
   const activeHorse = allHorses.find(h => h.isActive);
 

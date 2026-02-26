@@ -183,21 +183,21 @@ export default function Home() {
   ] : [];
 
   const derivedStats = teamStatus?.player ? [
-    { label: "ATK", value: teamStatus.player.attack, formula: "STR + DEX/5 + LUK/3" },
+    { label: "ATK", value: teamStatus.player.displayATK, formula: "STR + DEX/5 + LUK/3" },
     { label: "MATK", value: teamStatus.player.statusMATK, formula: "1.5 * INT + DEX/5 + LUK/3" },
     { label: "DEF", value: teamStatus.player.defense, formula: "VIT/2 + AGI/5" },
-    { label: "MDEF", value: (teamStatus.player as any).softMDEF, formula: "INT + VIT/5 + DEX/5" },
-    { label: "HIT", value: (teamStatus.player as any).hit, formula: "175 + LVL + DEX + LUK/3" },
-    { label: "FLEE", value: (teamStatus.player as any).flee, formula: "100 + LVL + AGI + LUK/5" },
-    { label: "CRIT", value: `${(teamStatus.player as any).critChance}%`, formula: "0.3 * LUK" },
-    { label: "ASPD", value: (teamStatus.player as any).speed, formula: "SPD + AGI/2" },
+    { label: "MDEF", value: teamStatus.player.softMDEF, formula: "INT + VIT/5 + DEX/5" },
+    { label: "HIT", value: teamStatus.player.hit, formula: "175 + LVL + DEX + LUK/3" },
+    { label: "FLEE", value: teamStatus.player.flee, formula: "100 + LVL + AGI + LUK/5" },
+    { label: "CRIT", value: `${teamStatus.player.critChance}%`, formula: "0.3 * LUK" },
+    { label: "ASPD", value: teamStatus.player.speed, formula: "SPD + AGI/2" },
   ] : [];
 
   const combatStats = teamStatus?.player ? [
-    { label: "HIT", value: (teamStatus.player as any).hit, icon: Sparkles, color: "text-blue-400" },
-    { label: "FLEE", value: (teamStatus.player as any).flee, icon: Zap, color: "text-green-400" },
-    { label: "CRIT", value: `${(teamStatus.player as any).critChance}%`, icon: Trophy, color: "text-red-400" },
-    { label: "MDEF", value: (teamStatus.player as any).softMDEF, icon: Shield, color: "text-purple-400" },
+    { label: "HIT", value: teamStatus.player.hit, icon: Sparkles, color: "text-blue-400" },
+    { label: "FLEE", value: teamStatus.player.flee, icon: Zap, color: "text-green-400" },
+    { label: "CRIT", value: `${teamStatus.player.critChance}%`, icon: Trophy, color: "text-red-400" },
+    { label: "MDEF", value: teamStatus.player.softMDEF, icon: Shield, color: "text-purple-400" },
   ] : [];
 
   const equippedItems = equipment?.filter(e => e.isEquipped && e.equippedToType === 'player') || [];
@@ -338,13 +338,13 @@ export default function Home() {
               <AlertDialogContent className="bg-card border-destructive/50">
                 <AlertDialogHeader>
                   <AlertDialogTitle className="text-destructive font-display">Confirm Final Sacrifice</AlertDialogTitle>
-                  <AlertDialogDescription className="text-zinc-400 space-y-2">
-                    <p>This will permanently delete all your companions, equipment, pets, and current progress.</p>
-                    <div className="bg-destructive/10 border border-destructive/20 rounded p-3 text-destructive-foreground">
-                      <p className="font-bold text-xs uppercase tracking-wider mb-1">Total Reset</p>
-                      <p className="text-sm">There are <span className="font-bold">no permanent bonuses</span> passed down. Your next incarnation will start from absolute zero.</p>
-                    </div>
+                  <AlertDialogDescription className="text-zinc-400">
+                    This will permanently delete all your companions, equipment, pets, and current progress.
                   </AlertDialogDescription>
+                  <div className="bg-destructive/10 border border-destructive/20 rounded p-3 text-destructive-foreground space-y-1">
+                    <p className="font-bold text-xs uppercase tracking-wider">Total Reset</p>
+                    <p className="text-sm">There are <span className="font-bold">no permanent bonuses</span> passed down. Your next incarnation will start from absolute zero.</p>
+                  </div>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                   <AlertDialogCancel className="bg-zinc-800 text-white border-zinc-700">Withdraw</AlertDialogCancel>
