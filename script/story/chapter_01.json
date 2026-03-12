@@ -1,0 +1,527 @@
+{
+  "chapter": {
+    "title": "The Fool of Owari",
+    "subtitle": "1551 \u2014 The land mocks you. Let it.",
+    "chapterOrder": 1,
+    "isLocked": false
+  },
+  "scenes": [
+    {
+      "sceneRef": "S01",
+      "backgroundKey": "owari_province_dawn",
+      "bgmKey": "bgm_owari_morning",
+      "sceneOrder": 1,
+      "nextSceneRef": "S02",
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "Your father died this morning. The clan elders already whisper \u2014 the fool inherits nothing worth keeping.",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_cold",
+          "text": "Let them whisper.",
+          "lineOrder": 2
+        }
+      ],
+      "choices": []
+    },
+    {
+      "sceneRef": "S02",
+      "backgroundKey": "owari_castle_interior",
+      "bgmKey": "bgm_tense_court",
+      "sceneOrder": 2,
+      "nextSceneRef": null,
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Elder Hayashi",
+          "speakerSide": "left",
+          "portraitKey": "hayashi_stern",
+          "text": "You eat with commoners. You dress like a vagrant. You are an embarrassment to the Oda name.",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_cold",
+          "text": "And yet here I am. And there you sit, asking my permission.",
+          "lineOrder": 2
+        },
+        {
+          "speakerName": "Elder Hayashi",
+          "speakerSide": "left",
+          "portraitKey": "hayashi_stern",
+          "text": "The council demands you submit to our oversight. You are young, untested, and reckless.",
+          "lineOrder": 3
+        },
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "The elders watch you. Your first answer as lord of Owari will define what kind of warlord you become.",
+          "lineOrder": 4
+        }
+      ],
+      "choices": [
+        {
+          "choiceText": "\"I submit. For now. A wise lord listens before he acts.\"",
+          "nextSceneRef": "S03A",
+          "flagKey": "political_power",
+          "flagValue": 1,
+          "flagKey2": null,
+          "flagValue2": null,
+          "choiceOrder": 1
+        },
+        {
+          "choiceText": "\"Kneel to no council. I am Oda Nobunaga.\"",
+          "nextSceneRef": "S03B",
+          "flagKey": "ruthlessness",
+          "flagValue": 1,
+          "flagKey2": null,
+          "flagValue2": null,
+          "choiceOrder": 2
+        }
+      ]
+    },
+    {
+      "sceneRef": "S03A",
+      "backgroundKey": "owari_castle_interior",
+      "bgmKey": "bgm_tense_court",
+      "sceneOrder": 3,
+      "nextSceneRef": "S04",
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "They smile. They think you are tamed. They are wrong.",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_smirk",
+          "text": "A fox does not announce the hunt.",
+          "lineOrder": 2
+        }
+      ],
+      "choices": []
+    },
+    {
+      "sceneRef": "S03B",
+      "backgroundKey": "owari_castle_exterior",
+      "bgmKey": "bgm_defiance",
+      "sceneOrder": 4,
+      "nextSceneRef": "S04",
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Elder Hayashi",
+          "speakerSide": "left",
+          "portraitKey": "hayashi_shocked",
+          "text": "You\u2019ll be dead within a year.",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_fierce",
+          "text": "Then enjoy this year. It\u2019s the last you\u2019ll have power over anything.",
+          "lineOrder": 2
+        }
+      ],
+      "choices": []
+    },
+    {
+      "sceneRef": "S04",
+      "backgroundKey": "owari_road_afternoon",
+      "bgmKey": "bgm_journey",
+      "sceneOrder": 5,
+      "nextSceneRef": null,
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "A samurai from Mino arrives at your gate. Educated. Sharp-eyed. Looking for a lord worth serving.",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Mitsuhide",
+          "speakerSide": "left",
+          "portraitKey": "mitsuhide_calm",
+          "text": "I have heard of the Fool of Owari. I came to see if the rumors were true.",
+          "lineOrder": 2
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_cold",
+          "text": "And?",
+          "lineOrder": 3
+        },
+        {
+          "speakerName": "Mitsuhide",
+          "speakerSide": "left",
+          "portraitKey": "mitsuhide_resolve",
+          "text": "They undersell you. I would serve you, if you\u2019ll have me.",
+          "lineOrder": 4
+        },
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "How you receive him sets the tone of your most important relationship.",
+          "lineOrder": 5
+        }
+      ],
+      "choices": [
+        {
+          "choiceText": "\"Welcome. A brilliant mind is rare \u2014 I\u2019d be a fool to turn one away.\"",
+          "nextSceneRef": "S05",
+          "flagKey": "mitsuhide_loyalty",
+          "flagValue": 2,
+          "flagKey2": null,
+          "flagValue2": null,
+          "choiceOrder": 1
+        },
+        {
+          "choiceText": "\"Prove yourself first. Fetch water from the well.\"",
+          "nextSceneRef": "S05",
+          "flagKey": "mitsuhide_loyalty",
+          "flagValue": 0,
+          "flagKey2": null,
+          "flagValue2": null,
+          "choiceOrder": 2
+        },
+        {
+          "choiceText": "\"I trust no outsiders. Be gone.\"",
+          "nextSceneRef": "S05",
+          "flagKey": "mitsuhide_loyalty",
+          "flagValue": -1,
+          "flagKey2": "ruthlessness",
+          "flagValue2": 1,
+          "choiceOrder": 3
+        }
+      ]
+    },
+    {
+      "sceneRef": "S05",
+      "backgroundKey": "nagashino_ruins_dusk",
+      "bgmKey": "bgm_ominous",
+      "sceneOrder": 6,
+      "nextSceneRef": null,
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Monk Messenger",
+          "speakerSide": "left",
+          "portraitKey": "monk_fearful",
+          "text": "My lord \u2014 near Nagashino. Workers unearthed a blade. Three men dead. No wounds. The blade sings at night.",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_cold",
+          "text": "...",
+          "lineOrder": 2
+        },
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "A cursed blade. Power wrapped in danger. What you do next will shape your relationship with the spirit world.",
+          "lineOrder": 3
+        }
+      ],
+      "choices": [
+        {
+          "choiceText": "\"Send men to retrieve it. Power is power.\"",
+          "nextSceneRef": "S06A",
+          "flagKey": "supernatural_affinity",
+          "flagValue": 2,
+          "flagKey2": null,
+          "flagValue2": null,
+          "choiceOrder": 1
+        },
+        {
+          "choiceText": "\"Destroy it. Superstition breeds weakness in my men.\"",
+          "nextSceneRef": "S06B",
+          "flagKey": "supernatural_affinity",
+          "flagValue": -1,
+          "flagKey2": "mitsuhide_loyalty",
+          "flagValue2": 1,
+          "choiceOrder": 2
+        }
+      ]
+    },
+    {
+      "sceneRef": "S06A",
+      "backgroundKey": "owari_castle_armory_night",
+      "bgmKey": "bgm_ominous",
+      "sceneOrder": 7,
+      "nextSceneRef": "S07",
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "The sword arrives wrapped in black silk. Your men refuse to touch it. You pick it up yourself.",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_intrigued",
+          "text": "It hums. Like recognition.",
+          "lineOrder": 2
+        },
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "Something stirs at the edge of your mind. Ancient. Patient. Hungry.",
+          "lineOrder": 3
+        }
+      ],
+      "choices": []
+    },
+    {
+      "sceneRef": "S06B",
+      "backgroundKey": "nagashino_ruins_ash",
+      "bgmKey": "bgm_resolve",
+      "sceneOrder": 8,
+      "nextSceneRef": "S07",
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "The blade is destroyed. The monk bows deeply. Mitsuhide stands at your shoulder, watching.",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Mitsuhide",
+          "speakerSide": "left",
+          "portraitKey": "mitsuhide_approving",
+          "text": "A wise decision, my lord. A blade that kills its bearers serves no one.",
+          "lineOrder": 2
+        }
+      ],
+      "choices": []
+    },
+    {
+      "sceneRef": "S07",
+      "backgroundKey": "owari_border_storm",
+      "bgmKey": "bgm_war_drums",
+      "sceneOrder": 9,
+      "nextSceneRef": null,
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Scout",
+          "speakerSide": "left",
+          "portraitKey": "scout_panicked",
+          "text": "25,000 men, my lord. Imagawa Yoshimoto marches for Kyoto. He passes through Owari like we don\u2019t exist.",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Mitsuhide",
+          "speakerSide": "left",
+          "portraitKey": "mitsuhide_grave",
+          "text": "We have 2,000. This is not a battle. This is an execution.",
+          "lineOrder": 2
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_fierce",
+          "text": "Or an opportunity. Storms are loud. Scouts go blind. 25,000 men cannot all watch at once.",
+          "lineOrder": 3
+        }
+      ],
+      "choices": [
+        {
+          "choiceText": "\"Strike now \u2014 full ambush in the storm. No hesitation.\"",
+          "nextSceneRef": "S08_BATTLE",
+          "flagKey": "ruthlessness",
+          "flagValue": 2,
+          "flagKey2": null,
+          "flagValue2": null,
+          "choiceOrder": 1
+        },
+        {
+          "choiceText": "\"Send a decoy force to draw attention. We flank quietly.\"",
+          "nextSceneRef": "S08_BATTLE",
+          "flagKey": "political_power",
+          "flagValue": 1,
+          "flagKey2": null,
+          "flagValue2": null,
+          "choiceOrder": 2
+        }
+      ]
+    },
+    {
+      "sceneRef": "S08_BATTLE",
+      "backgroundKey": "okehazama_gorge_storm",
+      "bgmKey": "bgm_war_drums",
+      "sceneOrder": 10,
+      "nextSceneRef": null,
+      "isBattleGate": true,
+      "battleEnemyKey": "imagawa_vanguard",
+      "battleWinSceneRef": "S09_WIN",
+      "battleLoseSceneRef": "S09_LOSE",
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "The storm breaks. Lightning splits the sky over Okehazama gorge. Yoshimoto rests in his palanquin, certain no fool would attack in this weather.",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_fierce",
+          "text": "Move.",
+          "lineOrder": 2
+        }
+      ],
+      "choices": []
+    },
+    {
+      "sceneRef": "S09_WIN",
+      "backgroundKey": "okehazama_aftermath_dawn",
+      "bgmKey": "bgm_victory_somber",
+      "sceneOrder": 11,
+      "nextSceneRef": "S10",
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "Yoshimoto is dead. His head is in your hands. 25,000 men scatter like smoke in the morning wind.",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Mitsuhide",
+          "speakerSide": "left",
+          "portraitKey": "mitsuhide_disbelief",
+          "text": "...How.",
+          "lineOrder": 2
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_smirk",
+          "text": "They were waiting for a battle. I gave them a storm.",
+          "lineOrder": 3
+        }
+      ],
+      "choices": []
+    },
+    {
+      "sceneRef": "S09_LOSE",
+      "backgroundKey": "owari_castle_night_rain",
+      "bgmKey": "bgm_defeat",
+      "sceneOrder": 12,
+      "nextSceneRef": "S10",
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "The ambush fails. You retreat through the storm, wounded. Yoshimoto marches on, laughing at the Fool of Owari.",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Mitsuhide",
+          "speakerSide": "left",
+          "portraitKey": "mitsuhide_grim",
+          "text": "We live. That is enough for today, my lord.",
+          "lineOrder": 2
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_cold",
+          "text": "No. It is not enough. It will never be enough.",
+          "lineOrder": 3
+        }
+      ],
+      "choices": []
+    },
+    {
+      "sceneRef": "S10",
+      "backgroundKey": "owari_castle_night",
+      "bgmKey": "bgm_tension_resolve",
+      "sceneOrder": 13,
+      "nextSceneRef": null,
+      "isBattleGate": false,
+      "isChapterEnd": true,
+      "dialogueLines": [
+        {
+          "speakerName": "Messenger",
+          "speakerSide": "left",
+          "portraitKey": "messenger_formal",
+          "text": "My lord. A letter. Seal of the Uesugi clan.",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "You break the seal. The handwriting is precise. Controlled. The hand of a man who has never doubted himself.",
+          "lineOrder": 2
+        },
+        {
+          "speakerName": "Kenshin (letter)",
+          "speakerSide": "left",
+          "portraitKey": "kenshin_portrait",
+          "text": "The Fool of Owari has teeth. Interesting. We will meet, and I will judge whether you are a sword worth fearing \u2014 or a plague to be ended.",
+          "lineOrder": 3
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_smirk",
+          "text": "Tell him I look forward to his judgment.",
+          "lineOrder": 4
+        },
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "The first step is taken. Japan watches. The age of the Fool of Owari has begun.",
+          "lineOrder": 5
+        }
+      ],
+      "choices": []
+    }
+  ]
+}
