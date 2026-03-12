@@ -33,7 +33,7 @@ export const storyRouter = Router();
 // ─── Auth helper ──────────────────────────────────────────────────────────────
 
 function requireAuth(req: Request, res: Response): string | null {
-  const userId = (req as any).user?.id ?? (req as any).userId;
+  const userId = (req as any).user?.claims?.sub;
   if (!userId) {
     res.status(401).json({ error: "Unauthorised" });
     return null;
