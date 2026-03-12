@@ -22,6 +22,63 @@ const BattleResultSchema = z.object({
   enemyTeam: z.any().optional(),
 });
 
+// VN Story Engine response schemas
+const DialogueLineSchema = z.object({
+  id: z.number(),
+  speakerName: z.string(),
+  speakerSide: z.string(),
+  text: z.string(),
+  portraitKey: z.string().nullable(),
+  lineOrder: z.number(),
+});
+
+const StoryChoiceSchema = z.object({
+  id: z.number(),
+  choiceText: z.string(),
+  nextSceneId: z.number(),
+  choiceOrder: z.number(),
+});
+
+const StorySceneSchema = z.object({
+  id: z.number(),
+  chapterId: z.number(),
+  backgroundKey: z.string(),
+  bgmKey: z.string(),
+  nextSceneId: z.number().nullable(),
+  isBattleGate: z.boolean(),
+  battleEnemyKey: z.string().nullable(),
+  battleWinSceneId: z.number().nullable(),
+  battleLoseSceneId: z.number().nullable(),
+  isChapterEnd: z.boolean(),
+  dialogueLines: z.array(DialogueLineSchema),
+  choices: z.array(StoryChoiceSchema),
+});
+
+const StoryChapterSchema = z.object({
+  id: z.number(),
+  title: z.string(),
+  subtitle: z.string().nullable(),
+  chapterOrder: z.number(),
+  firstSceneId: z.number().nullable(),
+  isLocked: z.boolean(),
+  // Player-specific fields (populated per authenticated user)
+  isUnlocked: z.boolean(),
+  isCompleted: z.boolean(),
+  currentSceneId: z.number().nullable(),
+});
+
+const PlayerFlagSchema = z.object({
+  flagKey: z.string(),
+  flagValue: z.number(),
+});
+
+const UnlockedEndingSchema = z.object({
+  endingKey: z.string(),
+  endingTitle: z.string(),
+  endingDescription: z.string(),
+  unlockedAt: z.string(),
+});
+
 export const api = {
   player: {
     get: {
@@ -203,7 +260,98 @@ export const api = {
       input: z.object({ upgrades: z.record(z.string(), z.number()) }),
       responses: { 200: z.any(), 400: errorSchemas.validation, 401: errorSchemas.unauthorized },
     }
-  }
+  },
+
+  // =============================================================
+  // VN STORY ENGINE ROUTES
+  // =============================================================
+  story: {
+    // List all chapters with player-specific unlock/progress status
+    chapters: {
+      method: 'GET' as const,
+      path: '/api/story/chapters' as const,
+      responses: {
+        200: z.array(StoryChapterSchema),
+        401: errorSchemas.unauthorized,
+      },
+    },
+    // Get a single scene with all dialogue lines and choices
+    scene: {
+      method: 'GET' as const,
+      path: '/api/story/scene/:sceneId' as const,
+      responses: {
+        200: StorySceneSchema,
+        401: errorSchemas.unauthorized,
+        404: errorSchemas.notFound,
+      },
+    },
+    // Submit a player choice: saves flag(s), returns next scene ID
+    submitChoice: {
+      method: 'POST' as const,
+      path: '/api/story/choice' as const,
+      input: z.object({
+        choiceId: z.number(),
+        // For battle-gate scenes, pass battle result here
+        battleResult: z.enum(['win', 'lose']).optional(),
+      }),
+      responses: {
+        200: z.object({
+          nextSceneId: z.number(),
+          flagsUpdated: z.array(PlayerFlagSchema),
+        }),
+        400: errorSchemas.validation,
+        401: errorSchemas.unauthorized,
+        404: errorSchemas.notFound,
+      },
+    },
+    // Get all flags for the current player (useful for debug + ending preview)
+    flags: {
+      method: 'GET' as const,
+      path: '/api/story/flags' as const,
+      responses: {
+        200: z.array(PlayerFlagSchema),
+        401: errorSchemas.unauthorized,
+      },
+    },
+    // Get all endings unlocked by the current player
+    endings: {
+      method: 'GET' as const,
+      path: '/api/story/endings' as const,
+      responses: {
+        200: z.array(UnlockedEndingSchema),
+        401: errorSchemas.unauthorized,
+      },
+    },
+    // Mark a chapter as complete; server evaluates flags and unlocks ending if conditions met
+    completeChapter: {
+      method: 'POST' as const,
+      path: '/api/story/complete-chapter' as const,
+      input: z.object({
+        chapterId: z.number(),
+      }),
+      responses: {
+        200: z.object({
+          nextChapterId: z.number().nullable(),
+          endingUnlocked: UnlockedEndingSchema.nullable(),
+        }),
+        400: errorSchemas.validation,
+        401: errorSchemas.unauthorized,
+      },
+    },
+    // Update the player's current scene within a chapter (auto-save progress)
+    saveProgress: {
+      method: 'POST' as const,
+      path: '/api/story/progress' as const,
+      input: z.object({
+        chapterId: z.number(),
+        currentSceneId: z.number(),
+      }),
+      responses: {
+        200: z.object({ success: z.boolean() }),
+        401: errorSchemas.unauthorized,
+      },
+    },
+  },
 };
 
 export function buildUrl(path: string, params?: Record<string, string | number>): string {

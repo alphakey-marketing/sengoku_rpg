@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, integer, boolean, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, boolean, timestamp, jsonb } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -79,9 +79,9 @@ export const equipment = pgTable("equipment", {
   id: serial("id").primaryKey(),
   userId: varchar("user_id").notNull(),
   name: text("name").notNull(),
-  type: text("type").notNull(), // Weapon, Shield, Armor, Garment, Footgear, Accessory, HeadgearUpper, HeadgearMiddle, HeadgearLower
+  type: text("type").notNull(),
   rarity: text("rarity").notNull().default("white"),
-  weaponType: text("weapon_type"), // dagger, sword, twoHandSword, axe, mace, spear, knuckle, katar, book, staff, bow, gun, instrument, whip, none
+  weaponType: text("weapon_type"),
   level: integer("level").notNull().default(1),
   experience: integer("experience").notNull().default(0),
   expToNext: integer("exp_to_next").notNull().default(100),
@@ -106,11 +106,11 @@ export const cards = pgTable("cards", {
   id: serial("id").primaryKey(),
   userId: varchar("user_id").notNull(),
   name: text("name").notNull(),
-  type: text("type").notNull(), // Weapon, Armor, Shield, Garment, Footgear, Accessory, Headgear
+  type: text("type").notNull(),
   effectDescription: text("effect_description").notNull(),
-  stats: text("stats"), // JSON string or comma-separated: "atk:10,str:1"
+  stats: text("stats"),
   rarity: text("rarity").notNull(),
-  equipmentId: integer("equipment_id"), // Linked when inserted
+  equipmentId: integer("equipment_id"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -182,6 +182,120 @@ export const userQuests = pgTable("user_quests", {
   lastUpdated: timestamp("last_updated").defaultNow(),
 });
 
+// =============================================================
+// VN STORY ENGINE — STATIC CONTENT TABLES
+// =============================================================
+
+// Chapters: top-level story units (e.g. "Chapter 1 — The Fool of Owari")
+export const storyChapters = pgTable("story_chapters", {
+  id: serial("id").primaryKey(),
+  title: text("title").notNull(),
+  subtitle: text("subtitle"),
+  chapterOrder: integer("chapter_order").notNull(),
+  // firstSceneId is set after scenes are inserted; nullable to avoid circular deps
+  firstSceneId: integer("first_scene_id"),
+  isLocked: boolean("is_locked").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Scenes: a single screen/moment within a chapter
+// backgroundKey maps to a CSS class or image asset key on the client
+// bgmKey maps to an audio file key on the client
+// nextSceneId is set for auto-advance scenes (no choices); null if scene has choices
+export const storyScenes = pgTable("story_scenes", {
+  id: serial("id").primaryKey(),
+  chapterId: integer("chapter_id").notNull(),
+  backgroundKey: text("background_key").notNull().default("default"),
+  bgmKey: text("bgm_key").notNull().default("default"),
+  sceneOrder: integer("scene_order").notNull(),
+  // For auto-advance (no choices): points to next scene
+  nextSceneId: integer("next_scene_id"),
+  // For battle-gate scenes
+  isBattleGate: boolean("is_battle_gate").notNull().default(false),
+  battleEnemyKey: text("battle_enemy_key"),
+  // Scene on battle win vs loss (only used when isBattleGate = true)
+  battleWinSceneId: integer("battle_win_scene_id"),
+  battleLoseSceneId: integer("battle_lose_scene_id"),
+  // Marks the final scene of a chapter
+  isChapterEnd: boolean("is_chapter_end").notNull().default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// DialogueLines: individual lines of text within a scene, displayed in order
+// speakerSide: 'left' | 'right' | 'none' (narrator)
+// portraitKey: maps to a character portrait asset key on the client
+export const dialogueLines = pgTable("dialogue_lines", {
+  id: serial("id").primaryKey(),
+  sceneId: integer("scene_id").notNull(),
+  speakerName: text("speaker_name").notNull(),
+  speakerSide: text("speaker_side").notNull().default("none"), // 'left' | 'right' | 'none'
+  text: text("text").notNull(),
+  portraitKey: text("portrait_key"),
+  lineOrder: integer("line_order").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// StoryChoices: player decision options shown after all dialogue lines in a scene
+// flagKey / flagValue: the flag this choice sets on the player (optional)
+// flagKey2 / flagValue2: a second flag this choice sets (optional, for dual-flag choices)
+export const storyChoices = pgTable("story_choices", {
+  id: serial("id").primaryKey(),
+  sceneId: integer("scene_id").notNull(),
+  choiceText: text("choice_text").notNull(),
+  nextSceneId: integer("next_scene_id").notNull(),
+  flagKey: text("flag_key"),
+  flagValue: integer("flag_value"),
+  flagKey2: text("flag_key2"),
+  flagValue2: integer("flag_value2"),
+  choiceOrder: integer("choice_order").notNull().default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// =============================================================
+// VN STORY ENGINE — PLAYER STATE TABLES
+// =============================================================
+
+// PlayerFlags: key-value store for each player's accumulated story flags
+// flagKey examples: 'ruthlessness', 'political_power', 'supernatural_affinity',
+//   'mitsuhide_loyalty', 'hideyoshi_loyalty', 'ieyasu_loyalty'
+// flagValue is cumulative (additive per choice)
+export const playerFlags = pgTable("player_flags", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull(),
+  flagKey: text("flag_key").notNull(),
+  flagValue: integer("flag_value").notNull().default(0),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// PlayerProgress: tracks which chapter/scene the player is currently on
+// and which chapters are completed
+export const playerProgress = pgTable("player_progress", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull(),
+  chapterId: integer("chapter_id").notNull(),
+  currentSceneId: integer("current_scene_id"),
+  isCompleted: boolean("is_completed").notNull().default(false),
+  // Stores array of seen scene IDs for skip functionality (Phase 8)
+  seenSceneIds: jsonb("seen_scene_ids").notNull().default(sql`'[]'::jsonb`),
+  startedAt: timestamp("started_at").defaultNow(),
+  completedAt: timestamp("completed_at"),
+});
+
+// UnlockedEndings: records which endings a player has reached
+// endingKey examples: 'unifier', 'demon_king', 'flame_harvest', 'puppetmaster', 'honnoji'
+export const unlockedEndings = pgTable("unlocked_endings", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull(),
+  endingKey: text("ending_key").notNull(),
+  endingTitle: text("ending_title").notNull(),
+  endingDescription: text("ending_description").notNull(),
+  unlockedAt: timestamp("unlocked_at").defaultNow(),
+});
+
+// =============================================================
+// RELATIONS — EXISTING
+// =============================================================
+
 export const usersRelations = relations(users, ({ many }) => ({
   companions: many(companions),
   equipment: many(equipment),
@@ -190,15 +304,14 @@ export const usersRelations = relations(users, ({ many }) => ({
   transformations: many(transformations),
   campaignEvents: many(campaignEvents),
   quests: many(userQuests),
+  playerFlags: many(playerFlags),
+  playerProgress: many(playerProgress),
+  unlockedEndings: many(unlockedEndings),
 }));
 
 export const userQuestsRelations = relations(userQuests, ({ one }) => ({
   user: one(users, { fields: [userQuests.userId], references: [users.id] }),
 }));
-
-export const insertCardSchema = createInsertSchema(cards).omit({ id: true, createdAt: true });
-export type Card = typeof cards.$inferSelect;
-export type InsertCard = z.infer<typeof insertCardSchema>;
 
 export const companionsRelations = relations(companions, ({ one }) => ({
   user: one(users, { fields: [companions.userId], references: [users.id] }),
@@ -229,6 +342,50 @@ export const transformationsRelations = relations(transformations, ({ one }) => 
 export const campaignEventsRelations = relations(campaignEvents, ({ one }) => ({
   user: one(users, { fields: [campaignEvents.userId], references: [users.id] }),
 }));
+
+// =============================================================
+// RELATIONS — VN STORY ENGINE
+// =============================================================
+
+export const storyChaptersRelations = relations(storyChapters, ({ many }) => ({
+  scenes: many(storyScenes),
+  playerProgress: many(playerProgress),
+}));
+
+export const storyScenesRelations = relations(storyScenes, ({ one, many }) => ({
+  chapter: one(storyChapters, { fields: [storyScenes.chapterId], references: [storyChapters.id] }),
+  dialogueLines: many(dialogueLines),
+  choices: many(storyChoices),
+}));
+
+export const dialogueLinesRelations = relations(dialogueLines, ({ one }) => ({
+  scene: one(storyScenes, { fields: [dialogueLines.sceneId], references: [storyScenes.id] }),
+}));
+
+export const storyChoicesRelations = relations(storyChoices, ({ one }) => ({
+  scene: one(storyScenes, { fields: [storyChoices.sceneId], references: [storyScenes.id] }),
+}));
+
+export const playerFlagsRelations = relations(playerFlags, ({ one }) => ({
+  user: one(users, { fields: [playerFlags.userId], references: [users.id] }),
+}));
+
+export const playerProgressRelations = relations(playerProgress, ({ one }) => ({
+  user: one(users, { fields: [playerProgress.userId], references: [users.id] }),
+  chapter: one(storyChapters, { fields: [playerProgress.chapterId], references: [storyChapters.id] }),
+}));
+
+export const unlockedEndingsRelations = relations(unlockedEndings, ({ one }) => ({
+  user: one(users, { fields: [unlockedEndings.userId], references: [users.id] }),
+}));
+
+// =============================================================
+// INSERT SCHEMAS & TYPES — EXISTING
+// =============================================================
+
+export const insertCardSchema = createInsertSchema(cards).omit({ id: true, createdAt: true });
+export type Card = typeof cards.$inferSelect;
+export type InsertCard = z.infer<typeof insertCardSchema>;
 
 export const insertCompanionSchema = createInsertSchema(companions, {
   isInParty: z.boolean(),
@@ -261,3 +418,43 @@ export type InsertEquipment = z.infer<typeof insertEquipmentSchema>;
 export type InsertPet = z.infer<typeof insertPetSchema>;
 export type InsertHorse = z.infer<typeof insertHorseSchema>;
 export type InsertTransformation = z.infer<typeof insertTransformationSchema>;
+
+// =============================================================
+// INSERT SCHEMAS & TYPES — VN STORY ENGINE
+// =============================================================
+
+export const insertStoryChapterSchema = createInsertSchema(storyChapters, {
+  isLocked: z.boolean(),
+}).omit({ id: true, createdAt: true });
+
+export const insertStorySceneSchema = createInsertSchema(storyScenes, {
+  isBattleGate: z.boolean(),
+  isChapterEnd: z.boolean(),
+}).omit({ id: true, createdAt: true });
+
+export const insertDialogueLineSchema = createInsertSchema(dialogueLines).omit({ id: true, createdAt: true });
+
+export const insertStoryChoiceSchema = createInsertSchema(storyChoices).omit({ id: true, createdAt: true });
+
+export const insertPlayerFlagSchema = createInsertSchema(playerFlags).omit({ id: true, updatedAt: true });
+
+export const insertPlayerProgressSchema = createInsertSchema(playerProgress, {
+  isCompleted: z.boolean(),
+}).omit({ id: true, startedAt: true, completedAt: true });
+
+export const insertUnlockedEndingSchema = createInsertSchema(unlockedEndings).omit({ id: true, unlockedAt: true });
+
+export type StoryChapter = typeof storyChapters.$inferSelect;
+export type StoryScene = typeof storyScenes.$inferSelect;
+export type DialogueLine = typeof dialogueLines.$inferSelect;
+export type StoryChoice = typeof storyChoices.$inferSelect;
+export type PlayerFlag = typeof playerFlags.$inferSelect;
+export type PlayerProgress = typeof playerProgress.$inferSelect;
+export type UnlockedEnding = typeof unlockedEndings.$inferSelect;
+export type InsertStoryChapter = z.infer<typeof insertStoryChapterSchema>;
+export type InsertStoryScene = z.infer<typeof insertStorySceneSchema>;
+export type InsertDialogueLine = z.infer<typeof insertDialogueLineSchema>;
+export type InsertStoryChoice = z.infer<typeof insertStoryChoiceSchema>;
+export type InsertPlayerFlag = z.infer<typeof insertPlayerFlagSchema>;
+export type InsertPlayerProgress = z.infer<typeof insertPlayerProgressSchema>;
+export type InsertUnlockedEnding = z.infer<typeof insertUnlockedEndingSchema>;
