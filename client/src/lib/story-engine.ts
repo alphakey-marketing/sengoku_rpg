@@ -4,8 +4,6 @@
  * Hybrid state manager: server is source of truth, localStorage is a fast
  * read-cache and offline fallback.
  *
- * All functions remain async so call-sites (story.tsx) are unchanged.
- *
  * localStorage keys (prefix: "sengoku_story_")
  *   sengoku_story_progress  → ProgressState
  *   sengoku_story_flags     → StoryFlags
@@ -13,7 +11,7 @@
  *   sengoku_story_endings   → UnlockedEnding[]
  */
 
-// ─── Types ───────────────────────────────────────────────────────────────────────────
+// ─── Types ────────────────────────────────────────────────────────────────────────────────
 
 export interface ProgressState {
   chapterId: number;
@@ -41,10 +39,25 @@ export interface StoryEngineSnapshot {
   endings: UnlockedEnding[];
 }
 
-/** Return type of completeChapter() — used by story.tsx to show unlock banner */
+/**
+ * A special companion unlocked by story-flag threshold at chapter completion.
+ * Mirrors the UnlockedCompanion interface returned by the server.
+ */
+export interface UnlockedCompanion {
+  name:          string;
+  rarity:        string;
+  unlockMessage: string;
+}
+
+/**
+ * Return type of completeChapter().
+ * companionsUnlocked is populated by Phase A2 server logic;
+ * it is an empty array when no thresholds were crossed.
+ */
 export interface ChapterCompleteResult {
-  nextChapterId: number | null;
+  nextChapterId:       number | null;
   nextChapterUnlocked: boolean;
+  companionsUnlocked:  UnlockedCompanion[];
 }
 
 /** Minimal chapter summary returned by listChapters() */
@@ -58,7 +71,7 @@ export interface ChapterSummary {
   currentSceneId: number | null;
 }
 
-// ─── localStorage keys ────────────────────────────────────────────────────────────
+// ─── localStorage keys ────────────────────────────────────────────────────────────────────
 
 const KEYS = {
   progress: "sengoku_story_progress",
@@ -80,7 +93,7 @@ function write<T>(key: string, value: T): void {
   localStorage.setItem(key, JSON.stringify(value));
 }
 
-// ─── Shared types (re-exported so story.tsx needs only one import) ────────────
+// ─── Shared types (re-exported so story.tsx needs only one import) ──────────────────
 
 export interface DialogueLine {
   id: number;
@@ -126,7 +139,7 @@ export interface ChapterData {
   scenes: Scene[];
 }
 
-// ─── Static Chapter 1 fallback (used when API is unreachable) ────────────────
+// ─── Static Chapter 1 fallback (used when API is unreachable) ────────────────────────
 
 const CHAPTER_1_STATIC: ChapterData = {
   id: 1,
@@ -282,7 +295,7 @@ const CHAPTER_1_STATIC: ChapterData = {
   ],
 };
 
-// ─── API helpers ───────────────────────────────────────────────────────────────────────────
+// ─── API helpers ────────────────────────────────────────────────────────────────────────────────────
 
 async function apiPost<T>(path: string, body: unknown): Promise<T> {
   const res = await fetch(path, {
@@ -300,12 +313,8 @@ async function apiGet<T>(path: string): Promise<T> {
   return res.json() as Promise<T>;
 }
 
-// ─── Chapter data ──────────────────────────────────────────────────────────────────────────
+// ─── Chapter data ────────────────────────────────────────────────────────────────────────────────
 
-/**
- * Fetch all chapter summaries (id, title, isLocked, progress).
- * Used by the chapter-select screen.
- */
 export async function listChapters(): Promise<ChapterSummary[]> {
   try {
     return await apiGet<ChapterSummary[]>("/api/story/chapters");
@@ -314,10 +323,6 @@ export async function listChapters(): Promise<ChapterSummary[]> {
   }
 }
 
-/**
- * Fetch full chapter data (scenes + dialogue + choices).
- * Falls back to static CHAPTER_1 if the API is unreachable.
- */
 export async function fetchChapter(chapterId: number): Promise<ChapterData> {
   try {
     return await apiGet<ChapterData>(`/api/story/chapters/${chapterId}`);
@@ -327,7 +332,7 @@ export async function fetchChapter(chapterId: number): Promise<ChapterData> {
   }
 }
 
-// ─── Progress ───────────────────────────────────────────────────────────────────────────
+// ─── Progress ───────────────────────────────────────────────────────────────────────────────────────
 
 export async function startChapter(
   chapterId: number,
@@ -344,7 +349,6 @@ export async function startChapter(
     completedAt: null,
   };
   write(KEYS.progress, fresh);
-  // Persist to server (fire-and-forget — client state is already set)
   apiPost("/api/story/progress", { chapterId, currentSceneId: firstSceneId, forceRestart }).catch(() => {});
   return fresh;
 }
@@ -360,24 +364,35 @@ export async function advanceScene(nextSceneId: number): Promise<ProgressState> 
 
 /**
  * Mark the current chapter complete.
- * Returns nextChapterId + nextChapterUnlocked from the server so story.tsx
- * can show the unlock banner (item 3 of the earlier commit).
+ *
+ * Returns { nextChapterId, nextChapterUnlocked, companionsUnlocked } so
+ * story.tsx can render the chapter-complete screen with companion banners
+ * (Phase B1) alongside the existing next-chapter unlock notification.
+ *
+ * On any network failure the safe fallback returns empty companionsUnlocked
+ * so the UI never breaks.
  */
 export async function completeChapter(
   payload: { chapterId: number; endingKey: string; endingTitle: string; endingDescription: string },
 ): Promise<ChapterCompleteResult> {
-  // Update localStorage immediately
   const progress = read<ProgressState | null>(KEYS.progress, null);
   if (progress) write(KEYS.progress, { ...progress, isCompleted: true, completedAt: new Date().toISOString() });
 
   try {
-    const result = await apiPost<{ success: boolean; nextChapterUnlocked: boolean; nextChapterId: number | null }>(
-      "/api/story/progress/complete",
-      payload,
-    );
-    return { nextChapterId: result.nextChapterId, nextChapterUnlocked: result.nextChapterUnlocked };
+    const result = await apiPost<{
+      success:             boolean;
+      nextChapterUnlocked: boolean;
+      nextChapterId:       number | null;
+      companionsUnlocked:  UnlockedCompanion[];
+    }>("/api/story/progress/complete", payload);
+
+    return {
+      nextChapterId:      result.nextChapterId,
+      nextChapterUnlocked: result.nextChapterUnlocked,
+      companionsUnlocked: result.companionsUnlocked ?? [],
+    };
   } catch {
-    return { nextChapterId: null, nextChapterUnlocked: false };
+    return { nextChapterId: null, nextChapterUnlocked: false, companionsUnlocked: [] };
   }
 }
 
@@ -385,7 +400,7 @@ export async function getProgress(): Promise<ProgressState | null> {
   return read<ProgressState | null>(KEYS.progress, null);
 }
 
-// ─── Flags ─────────────────────────────────────────────────────────────────────────────
+// ─── Flags ──────────────────────────────────────────────────────────────────────────────────────────
 
 export async function applyFlags(mutations: Partial<StoryFlags>): Promise<StoryFlags> {
   const flags = read<StoryFlags>(KEYS.flags, {});
@@ -412,7 +427,7 @@ export async function getFlag(key: string): Promise<number> {
   return flags[key] ?? 0;
 }
 
-// ─── Seen scenes ─────────────────────────────────────────────────────────────────────────
+// ─── Seen scenes ─────────────────────────────────────────────────────────────────────────────────
 
 export async function markSceneSeen(sceneId: number): Promise<void> {
   const seen = read<number[]>(KEYS.seen, []);
@@ -427,7 +442,7 @@ export async function getSeenSceneIds(): Promise<number[]> {
   return read<number[]>(KEYS.seen, []);
 }
 
-// ─── Endings ────────────────────────────────────────────────────────────────────────────
+// ─── Endings ──────────────────────────────────────────────────────────────────────────────────────
 
 export async function unlockEnding(
   ending: Omit<UnlockedEnding, "unlockedAt"> & { chapterId?: number },
@@ -450,7 +465,7 @@ export async function getUnlockedEndings(): Promise<UnlockedEnding[]> {
   return read<UnlockedEnding[]>(KEYS.endings, []);
 }
 
-// ─── Snapshot ───────────────────────────────────────────────────────────────────────────
+// ─── Snapshot ─────────────────────────────────────────────────────────────────────────────────────
 
 export async function getSnapshot(): Promise<StoryEngineSnapshot> {
   return {
@@ -461,7 +476,7 @@ export async function getSnapshot(): Promise<StoryEngineSnapshot> {
   };
 }
 
-// ─── Reset ─────────────────────────────────────────────────────────────────────────────
+// ─── Reset ────────────────────────────────────────────────────────────────────────────────────────
 
 export async function resetStory(): Promise<void> {
   Object.values(KEYS).forEach((k) => localStorage.removeItem(k));
