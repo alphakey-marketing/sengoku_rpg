@@ -216,6 +216,55 @@ export function generateEnemyStats(
   };
 }
 
+/**
+ * Generate a ninja encounter scaled to locationId.
+ *
+ * Normal ninja  → scales like a field boss  (between field and boss tier)
+ * Super-strong  → scales like a special boss (rare, much harder)
+ *
+ * Previously all ninjas used hardcoded hp:1000/5000, atk:100/500, def:50/300
+ * regardless of location — a location-1 player faced the same enemy as a
+ * China-110 player. Now stats track the same locationMultiplier used everywhere.
+ */
+export function generateNinjaStats(
+  name: string,
+  locationId: number,
+  isSuperStrong: boolean,
+  goldDemanded: number,
+) {
+  const targetLevel = locationId >= 100 ? 7 + (locationId - 101) : locationId;
+  const locationMultiplier = 1 + (targetLevel - 1) * 0.1;
+
+  const lvl = isSuperStrong ? targetLevel + 20 : targetLevel + 2;
+
+  // Super-strong: special-boss scaling. Normal: field-boss scaling.
+  const hp     = isSuperStrong
+    ? Math.floor((lvl * 400 + 5000) * locationMultiplier)
+    : Math.floor((lvl * 200 + 1000) * locationMultiplier);
+  const attack = isSuperStrong
+    ? Math.floor((lvl * 60  + 300)  * locationMultiplier)
+    : Math.floor((lvl * 30  + 100)  * locationMultiplier);
+  const defense = isSuperStrong
+    ? Math.floor((lvl * 50  + 250)  * locationMultiplier)
+    : Math.floor((lvl * 25  + 80)   * locationMultiplier);
+  const speed  = isSuperStrong
+    ? Math.floor((lvl * 30  + 100)  * locationMultiplier)
+    : Math.floor((lvl * 15  + 50)   * locationMultiplier);
+
+  return {
+    name,
+    level:        lvl,
+    hp,
+    maxHp:        hp,
+    attack,
+    defense,
+    speed,
+    skills:       ["Shadow Strike", "Smoke Bomb", "Assassinate"],
+    isNinja:      true,
+    goldDemanded,
+  };
+}
+
 export function equipRarityFromRandom(locationId: number = 1): string {
   const r       = Math.random();
   const isChina = locationId >= 100;

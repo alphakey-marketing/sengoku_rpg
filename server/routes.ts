@@ -18,6 +18,7 @@ import {
   generatePet,
   generateHorse,
   generateEnemyStats,
+  generateNinjaStats,
 } from "./generators/entities";
 import { HORSE_RARITY_STATS, HORSE_NAMES } from "./constants/items";
 import { SPECIAL_BOSSES } from "./constants/enemies";
@@ -518,26 +519,19 @@ export async function registerRoutes(
     for (let i = 0; i < count; i++) {
       if (count > 1) allLogs.push(`--- BATTLE ${i + 1} ---`);
 
-      // Ninja encounter
+      // Ninja encounter — stats now scale with locationId (Phase 4)
       if (!ninjaEncounter && Math.random() < (locationId >= 100 ? 0.05 : 0.03)) {
         const ninjaNames = locationId >= 100
           ? ["Zhuge Liang (Ghost)", "Lu Bu's Spirit", "Empress Wu Zetian"]
           : ["Hattori Hanzo", "Fuma Kotaro", "Ishikawa Goemon", "Mochizuki Chiyome"];
         const ninjaName     = pick(ninjaNames);
         const isSuperStrong = Math.random() < (locationId >= 100 ? 0.5 : 0.3);
-        const targetLevel   = locationId >= 100 ? 7 + (locationId - 100) : locationId;
-        ninjaEncounter = {
-          name:          ninjaName,
-          level:         isSuperStrong ? targetLevel + 20 : targetLevel + 2,
-          hp:            isSuperStrong ? 5000 : 1000,
-          maxHp:         isSuperStrong ? 5000 : 1000,
-          attack:        isSuperStrong ? 500  : 100,
-          defense:       isSuperStrong ? 300  : 50,
-          speed:         isSuperStrong ? 200  : 40,
-          skills:        ["Shadow Strike", "Smoke Bomb", "Assassinate"],
-          isNinja:       true,
-          goldDemanded:  Math.floor(user.gold * 0.1),
-        };
+        ninjaEncounter = generateNinjaStats(
+          ninjaName,
+          locationId,
+          isSuperStrong,
+          Math.floor(user.gold * 0.1),
+        );
         allLogs.push(`A famous ninja, ${ninjaName}, blocks your path!`);
         break;
       }
@@ -583,7 +577,7 @@ export async function registerRoutes(
       }
     }
 
-    // giveEquipmentExp now fires all updates in parallel (Phase 3)
+    // giveEquipmentExp fires all updates in parallel (Phase 3)
     await giveEquipmentExp(userId, totalExpGained);
 
     res.json({
@@ -615,19 +609,11 @@ export async function registerRoutes(
       return res.json({ success: true, message: `You paid ${goldToPay} gold to ${ninjaName}. He vanished into the shadows.` });
     }
 
-    // Fight the ninja
+    // Fight the ninja — stats now scale with locationId (Phase 4)
     const teamStats = await getPlayerTeamStats(userId);
     if (!teamStats) return res.status(400).json({ message: "Team not found" });
-    const targetLevel   = locationId >= 100 ? 7 + (locationId - 100) : locationId;
     const isSuperStrong = Math.random() < 0.3;
-    const enemy = {
-      name: ninjaName,
-      level: isSuperStrong ? targetLevel + 20 : targetLevel + 2,
-      hp: isSuperStrong ? 5000 : 1000, maxHp: isSuperStrong ? 5000 : 1000,
-      attack: isSuperStrong ? 500 : 100, defense: isSuperStrong ? 300 : 50,
-      speed: isSuperStrong ? 200 : 40,
-      skills: ["Shadow Strike", "Smoke Bomb", "Assassinate"],
-    };
+    const enemy = generateNinjaStats(ninjaName, Number(locationId), isSuperStrong, goldDemanded);
     const battleResult = runTurnBasedCombat(teamStats, [enemy]);
     if (battleResult.victory) {
       const goldGained  = goldDemanded * 2;
