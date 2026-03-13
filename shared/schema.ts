@@ -79,7 +79,8 @@ export const equipment = pgTable("equipment", {
   id: serial("id").primaryKey(),
   userId: varchar("user_id").notNull(),
   name: text("name").notNull(),
-  type: text("text").notNull(),
+  // Fixed: was text("text") — copy-paste typo from early agent commit
+  type: text("type").notNull(),
   rarity: text("rarity").notNull().default("white"),
   weaponType: text("weapon_type"),
   level: integer("level").notNull().default(1),
@@ -162,19 +163,6 @@ export const transformations = pgTable("transformations", {
   cooldownSeconds: integer("cooldown_seconds").notNull().default(60),
   durationSeconds: integer("duration_seconds").notNull().default(30),
   createdAt: timestamp("created_at").defaultNow(),
-});
-
-// campaignEvents table is retained to avoid an unplanned Drizzle migration
-// against the live DB. The route, page, TS types, and Drizzle relation that
-// referenced it have all been removed (Phase C1). Physical table drop is
-// deferred to Phase C2 schema audit.
-export const campaignEvents = pgTable("campaign_events", {
-  id: serial("id").primaryKey(),
-  userId: varchar("user_id").notNull(),
-  eventKey: text("event_key").notNull(),
-  choice: text("choice"),
-  isTriggered: boolean("is_triggered").notNull().default(false),
-  completedAt: timestamp("completed_at"),
 });
 
 export const userQuests = pgTable("user_quests", {
