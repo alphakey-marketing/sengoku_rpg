@@ -2,32 +2,75 @@ import { useState } from "react";
 import { usePlayer, useGachaPull, useEquipmentGachaPull, Companion, Equipment } from "@/hooks/use-game";
 import { MainLayout } from "@/components/layout/main-layout";
 import { Button } from "@/components/ui/button";
-import { Sparkles, Star, Wheat, Sword, Shield, Gem, RefreshCw } from "lucide-react";
+import { Sparkles, Star, Wheat, Sword, Shield, Gem, RefreshCw, BookOpen } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
+// ─── Types ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * A companion result as returned by the gacha API.
+ * storyDrop and storyFlavour are optional fields added by Phase A2
+ * server logic when the pull is seeded from a story-flag threshold.
+ * All existing Companion fields remain unchanged.
+ */
+type PullResult = Companion & {
+  storyDrop?:    boolean;
+  storyFlavour?: string;
+};
+
+// ─── Helpers ────────────────────────────────────────────────────────────────────────────
+
+const getRarityColor = (rarity: string) => {
+  switch (rarity) {
+    case 'gold':         return 'text-yellow-400 border-yellow-400/50 bg-yellow-400/10';
+    case 'purple':       return 'text-purple-400 border-purple-400/50 bg-purple-400/10';
+    case 'blue':         return 'text-blue-400 border-blue-400/50 bg-blue-400/10';
+    case 'green':        return 'text-green-400 border-green-400/50 bg-green-400/10';
+    case 'mythic':       return 'text-pink-400 border-pink-400/50 bg-pink-400/10';
+    case 'exotic':       return 'text-teal-400 border-teal-400/50 bg-teal-400/10';
+    case 'transcendent': return 'text-white border-white/50 bg-white/10 animate-pulse';
+    case 'celestial':    return 'text-blue-200 border-blue-200/50 bg-blue-200/10 shadow-[0_0_15px_rgba(191,219,254,0.5)]';
+    default:             return 'text-zinc-400 border-zinc-400/50 bg-zinc-400/10';
+  }
+};
+
+/** Small badge shown on story-drop cards. */
+function StoryDropBadge() {
+  return (
+    <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest
+      px-2 py-0.5 rounded-full border
+      bg-amber-500/15 text-amber-300 border-amber-500/50">
+      <BookOpen size={10} />
+      Story Drop
+    </span>
+  );
+}
+
+// ─── Page ────────────────────────────────────────────────────────────────────────────────
+
 export default function GachaPage() {
   const { data: player } = usePlayer();
   const { mutate: pullCompanion, isPending: isPullingCompanion } = useGachaPull();
   const { mutate: pullEquipment, isPending: isPullingEquipment } = useEquipmentGachaPull();
-  
-  const [companionResults, setCompanionResults] = useState<Companion[]>([]);
+
+  const [companionResults, setCompanionResults] = useState<PullResult[]>([]);
   const [equipmentResults, setEquipmentResults] = useState<Equipment[]>([]);
-  const [isAnimating, setIsAnimating] = useState(false);
-  const [activeTab, setActiveTab] = useState<'companion' | 'special' | 'exchange'>('companion');
+  const [isAnimating, setIsAnimating]           = useState(false);
+  const [activeTab, setActiveTab]               = useState<'companion' | 'special' | 'exchange'>('companion');
   const { toast } = useToast();
 
   const handleCompanionPull = (isSpecial: boolean = false, count: number = 1) => {
     setCompanionResults([]);
     setEquipmentResults([]);
     setIsAnimating(true);
-    
+
     setTimeout(() => {
       pullCompanion({ isSpecial, count }, {
         onSuccess: (data: any) => {
-          setCompanionResults(data.companions);
+          setCompanionResults(data.companions as PullResult[]);
           setIsAnimating(false);
         },
         onError: (error: any) => {
@@ -35,9 +78,9 @@ export default function GachaPage() {
           toast({
             title: "Summon Failed",
             description: error.message || "An unexpected error occurred",
-            variant: "destructive"
+            variant: "destructive",
           });
-        }
+        },
       });
     }, 1500);
   };
@@ -46,82 +89,68 @@ export default function GachaPage() {
     setCompanionResults([]);
     setEquipmentResults([]);
     setIsAnimating(true);
-    
+
     setTimeout(() => {
       pullEquipment({ count }, {
         onSuccess: (data: any) => {
           setEquipmentResults(data.equipment);
           setIsAnimating(false);
         },
-        onError: () => setIsAnimating(false)
+        onError: () => setIsAnimating(false),
       });
     }, 1500);
   };
 
-  const companionCost = 10;
-  const specialCost = 50;
-  const equipmentCost = 15;
-  const canAffordCompanion = (player?.rice || 0) >= companionCost;
-  const canAffordCompanion10 = (player?.rice || 0) >= companionCost * 10;
-  const canAffordSpecial = (player?.rice || 0) >= specialCost;
-  const canAffordSpecial10 = (player?.rice || 0) >= specialCost * 10;
-  const canAffordEquipment = (player?.rice || 0) >= equipmentCost;
-  const canAffordEquipment10 = (player?.rice || 0) >= equipmentCost * 10;
-
-  const getRarityColor = (rarity: string) => {
-    switch (rarity) {
-      case 'gold': return 'text-yellow-400 border-yellow-400/50 bg-yellow-400/10';
-      case 'purple': return 'text-purple-400 border-purple-400/50 bg-purple-400/10';
-      case 'blue': return 'text-blue-400 border-blue-400/50 bg-blue-400/10';
-      case 'green': return 'text-green-400 border-green-400/50 bg-green-400/10';
-      case 'mythic': return 'text-pink-400 border-pink-400/50 bg-pink-400/10';
-    case 'exotic': return 'text-teal-400 border-teal-400/50 bg-teal-400/10';
-    case 'transcendent': return 'text-white border-white/50 bg-white/10 animate-pulse';
-    case 'celestial': return 'text-blue-200 border-blue-200/50 bg-blue-200/10 shadow-[0_0_15px_rgba(191,219,254,0.5)]';
-    default: return 'text-zinc-400 border-zinc-400/50 bg-zinc-400/10';
-    }
-  };
+  const companionCost  = 10;
+  const specialCost    = 50;
+  const equipmentCost  = 15;
+  const rice           = player?.rice || 0;
+  const canAffordCompanion   = rice >= companionCost;
+  const canAffordCompanion10 = rice >= companionCost  * 10;
+  const canAffordSpecial     = rice >= specialCost;
+  const canAffordSpecial10   = rice >= specialCost    * 10;
+  const canAffordEquipment   = rice >= equipmentCost;
+  const canAffordEquipment10 = rice >= equipmentCost  * 10;
 
   return (
     <MainLayout>
       <div className="flex flex-col items-center justify-center min-h-[calc(100vh-120px)] max-w-4xl mx-auto py-8">
-        
+
+        {/* ── Header ── */}
         <div className="text-center mb-8 w-full">
           <h1 className="text-4xl md:text-5xl font-display font-bold text-accent mb-4 text-shadow-glow">
-            {activeTab === 'companion' ? 'Shrine of Summons' : activeTab === 'special' ? 'Imperial Rite' : 'Sacred Exchange'}
+            {activeTab === 'companion' ? 'Shrine of Summons'
+              : activeTab === 'special' ? 'Imperial Rite'
+              : 'Sacred Exchange'}
           </h1>
           <p className="text-lg text-zinc-300">
-            {activeTab === 'companion' 
-              ? 'Offer rice to attract legendary warriors to your banner.' 
+            {activeTab === 'companion'
+              ? 'Offer rice to attract legendary warriors to your banner.'
               : activeTab === 'special'
               ? 'Perform a sacred ritual to summon elite warriors with superior growth.'
               : 'Sacrifice your harvest for divine materials.'}
           </p>
-          
+
+          {/* Tab bar */}
           <div className="flex justify-center flex-wrap gap-4 mt-8">
-            <Button 
+            <Button
               variant={activeTab === 'companion' ? 'default' : 'outline'}
               onClick={() => { setActiveTab('companion'); setCompanionResults([]); setEquipmentResults([]); }}
               className={activeTab === 'companion' ? 'bg-primary border-accent text-white' : 'border-border'}
             >
               Summon Companion
             </Button>
-            <Button 
+            <Button
               variant={activeTab === 'special' ? 'default' : 'outline'}
               onClick={() => { setActiveTab('special'); setCompanionResults([]); setEquipmentResults([]); }}
-              className={activeTab === 'special' ? 'bg-gradient-to-r from-amber-500 to-yellow-600 border-yellow-400 text-white shadow-[0_0_15px_rgba(234,179,8,0.4)]' : 'border-border'}
+              className={activeTab === 'special'
+                ? 'bg-gradient-to-r from-amber-500 to-yellow-600 border-yellow-400 text-white shadow-[0_0_15px_rgba(234,179,8,0.4)]'
+                : 'border-border'}
             >
               <Sparkles size={16} className="mr-2" />
               Special Summon
             </Button>
-            {/* <Button 
-              variant={activeTab === 'equipment' ? 'default' : 'outline'}
-              onClick={() => { setActiveTab('equipment'); setCompanionResults([]); setEquipmentResults([]); }}
-              className={activeTab === 'equipment' ? 'bg-primary border-accent text-white' : 'border-border'}
-            >
-              Forge Equipment
-            </Button> */}
-            <Button 
+            <Button
               variant={activeTab === 'exchange' ? 'default' : 'outline'}
               onClick={() => { setActiveTab('exchange'); setCompanionResults([]); setEquipmentResults([]); }}
               className={activeTab === 'exchange' ? 'bg-primary border-accent text-white' : 'border-border'}
@@ -130,22 +159,25 @@ export default function GachaPage() {
             </Button>
           </div>
 
+          {/* Treasury */}
           <div className="inline-flex items-center gap-3 mt-6 bg-card border border-border/50 px-6 py-3 rounded-full">
             <span className="text-muted-foreground uppercase text-xs font-bold tracking-widest">Treasury</span>
             <div className="flex items-center gap-2 text-xl font-bold text-green-400">
               <Wheat size={20} />
-              {player?.rice?.toLocaleString() || 0}
+              {rice.toLocaleString()}
             </div>
           </div>
         </div>
 
-        {/* Summon Area */}
+        {/* ── Summon area ── */}
         <div className="relative w-full max-w-4xl flex flex-col items-center justify-center">
-          <div className="absolute inset-0 bg-primary/5 rounded-full blur-3xl"></div>
-          
+          <div className="absolute inset-0 bg-primary/5 rounded-full blur-3xl" />
+
           <AnimatePresence mode="wait">
+
+            {/* Idle state */}
             {companionResults.length === 0 && equipmentResults.length === 0 && !isAnimating && (
-              <motion.div 
+              <motion.div
                 key="idle"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -163,39 +195,43 @@ export default function GachaPage() {
                     )}
                   </div>
                 </div>
-                
+
                 {activeTab !== 'exchange' ? (
                   <div className="flex flex-col sm:flex-row gap-4">
-                    <Button 
+                    <Button
                       onClick={activeTab === 'companion' ? () => handleCompanionPull(false, 1) : () => handleCompanionPull(true, 1)}
-                      disabled={
-                        activeTab === 'companion' ? (!canAffordCompanion || isPullingCompanion) : 
-                        (!canAffordSpecial || isPullingCompanion)
-                      }
-                      className={`bg-gradient-to-r ${activeTab === 'special' ? 'from-amber-600 to-yellow-700 shadow-[0_0_25px_rgba(234,179,8,0.5)]' : 'from-primary to-secondary shadow-[0_0_20px_rgba(220,38,38,0.4)]'} hover:from-primary/90 hover:to-secondary/90 text-white px-8 py-6 rounded-full text-lg font-bold border border-accent/50 hover:shadow-[0_0_30px_rgba(212,175,55,0.4)] transition-all group`}
+                      disabled={activeTab === 'companion' ? (!canAffordCompanion || isPullingCompanion) : (!canAffordSpecial || isPullingCompanion)}
+                      className={`bg-gradient-to-r ${
+                        activeTab === 'special'
+                          ? 'from-amber-600 to-yellow-700 shadow-[0_0_25px_rgba(234,179,8,0.5)]'
+                          : 'from-primary to-secondary shadow-[0_0_20px_rgba(220,38,38,0.4)]'
+                      } hover:from-primary/90 hover:to-secondary/90 text-white px-8 py-6 rounded-full text-lg font-bold border border-accent/50 hover:shadow-[0_0_30px_rgba(212,175,55,0.4)] transition-all group`}
                     >
                       <span className="mr-3">Draw 1</span>
                       <div className="flex items-center text-accent group-hover:text-white transition-colors text-sm bg-black/30 px-2 py-0.5 rounded-full">
-                        <Wheat size={14} className="mr-1" /> {activeTab === 'companion' ? companionCost : specialCost}
+                        <Wheat size={14} className="mr-1" />
+                        {activeTab === 'companion' ? companionCost : specialCost}
                       </div>
                     </Button>
 
-                    <Button 
+                    <Button
                       onClick={activeTab === 'companion' ? () => handleCompanionPull(false, 10) : () => handleCompanionPull(true, 10)}
-                      disabled={
-                        activeTab === 'companion' ? (!canAffordCompanion10 || isPullingCompanion) : 
-                        (!canAffordSpecial10 || isPullingCompanion)
-                      }
-                      className={`bg-gradient-to-r ${activeTab === 'special' ? 'from-amber-500 to-yellow-500 shadow-[0_0_25px_rgba(234,179,8,0.5)]' : 'from-red-600 to-orange-600 shadow-[0_0_20px_rgba(220,38,38,0.4)]'} hover:from-primary/90 hover:to-secondary/90 text-white px-8 py-6 rounded-full text-lg font-bold border border-accent/50 hover:shadow-[0_0_30px_rgba(212,175,55,0.4)] transition-all group`}
+                      disabled={activeTab === 'companion' ? (!canAffordCompanion10 || isPullingCompanion) : (!canAffordSpecial10 || isPullingCompanion)}
+                      className={`bg-gradient-to-r ${
+                        activeTab === 'special'
+                          ? 'from-amber-500 to-yellow-500 shadow-[0_0_25px_rgba(234,179,8,0.5)]'
+                          : 'from-red-600 to-orange-600 shadow-[0_0_20px_rgba(220,38,38,0.4)]'
+                      } hover:from-primary/90 hover:to-secondary/90 text-white px-8 py-6 rounded-full text-lg font-bold border border-accent/50 hover:shadow-[0_0_30px_rgba(212,175,55,0.4)] transition-all group`}
                     >
                       <span className="mr-3">Draw 10</span>
                       <div className="flex items-center text-accent group-hover:text-white transition-colors text-sm bg-black/30 px-2 py-0.5 rounded-full">
-                        <Wheat size={14} className="mr-1" /> {activeTab === 'companion' ? companionCost * 10 : specialCost * 10}
+                        <Wheat size={14} className="mr-1" />
+                        {activeTab === 'companion' ? companionCost * 10 : specialCost * 10}
                       </div>
                     </Button>
                   </div>
                 ) : (
-                  <Button 
+                  <Button
                     onClick={() => {
                       if (player && player.rice >= 2000) {
                         apiRequest("POST", "/api/player/exchange-stones", {}).then(() => {
@@ -204,7 +240,7 @@ export default function GachaPage() {
                         });
                       }
                     }}
-                    disabled={(player?.rice || 0) < 2000}
+                    disabled={rice < 2000}
                     className="bg-gradient-to-r from-amber-700 to-amber-900 hover:from-amber-600 hover:to-amber-800 text-white px-12 py-8 rounded-full text-xl font-bold border border-amber-500/50 shadow-[0_0_20px_rgba(180,83,9,0.4)] transition-all group"
                   >
                     <span className="mr-3">Exchange for Stone</span>
@@ -213,31 +249,31 @@ export default function GachaPage() {
                     </div>
                   </Button>
                 )}
-                
-                {activeTab === 'companion' ? (
-                  !canAffordCompanion && <p className="text-destructive mt-4 text-sm font-medium">Need more rice.</p>
-                ) : activeTab === 'special' ? (
-                  !canAffordSpecial && <p className="text-destructive mt-4 text-sm font-medium">Need more rice for the Imperial Rite.</p>
-                ) : (
-                  (player?.rice || 0) < 2000 && <p className="text-destructive mt-4 text-sm font-medium">Need more rice for exchange.</p>
-                )}
+
+                {activeTab === 'companion'
+                  ? (!canAffordCompanion && <p className="text-destructive mt-4 text-sm font-medium">Need more rice.</p>)
+                  : activeTab === 'special'
+                  ? (!canAffordSpecial && <p className="text-destructive mt-4 text-sm font-medium">Need more rice for the Imperial Rite.</p>)
+                  : (rice < 2000 && <p className="text-destructive mt-4 text-sm font-medium">Need more rice for exchange.</p>)
+                }
               </motion.div>
             )}
 
+            {/* Animating */}
             {isAnimating && (
-              <motion.div 
+              <motion.div
                 key="animating"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 className="relative z-10 text-center"
               >
-                <div className={`w-40 h-40 mx-auto rounded-full ${activeTab === 'companion' ? 'bg-accent/20' : 'bg-purple-900/20'} flex items-center justify-center mb-6 shadow-[0_0_50px_rgba(212,175,55,0.6)]`}>
-                  {activeTab === 'companion' ? (
-                    <Sparkles className="text-accent animate-ping" size={48} />
-                  ) : (
-                    <Sword className="text-purple-400 animate-bounce" size={48} />
-                  )}
+                <div className={`w-40 h-40 mx-auto rounded-full ${
+                  activeTab === 'companion' ? 'bg-accent/20' : 'bg-purple-900/20'
+                } flex items-center justify-center mb-6 shadow-[0_0_50px_rgba(212,175,55,0.6)]`}>
+                  {activeTab === 'companion'
+                    ? <Sparkles className="text-accent animate-ping" size={48} />
+                    : <Sword className="text-purple-400 animate-bounce" size={48} />}
                 </div>
                 <h2 className="text-2xl font-display font-bold text-accent tracking-widest animate-pulse">
                   {activeTab === 'companion' ? 'INCANTING...' : 'FORGING...'}
@@ -245,42 +281,93 @@ export default function GachaPage() {
               </motion.div>
             )}
 
+            {/* ─── Companion results ─── */}
             {companionResults.length > 0 && !isAnimating && (
-              <motion.div 
+              <motion.div
                 key="companion-results"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 className="relative z-10 w-full mt-8"
               >
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4">
-                  {companionResults.map((companion, i) => (
-                    <motion.div 
-                      key={i}
-                      initial={{ scale: 0.5, opacity: 0, y: 50 }}
-                      animate={{ scale: 1, opacity: 1, y: 0 }}
-                      transition={{ type: "spring", bounce: 0.5, delay: i * 0.1 }}
-                      className="bg-card border-2 border-accent/50 rounded-xl p-4 text-center shadow-lg bg-washi relative"
-                    >
-                      <h2 className="text-xl font-display font-bold text-white mb-1">{companion.name}</h2>
-                      <p className="text-primary font-medium tracking-widest uppercase text-[10px] mb-2">{companion.type}</p>
-                      <div className="flex justify-center gap-0.5 text-accent mb-2">
-                        {Array.from({ length: Number(companion.rarity) }).map((_, j) => (
-                          <Star key={j} size={14} fill="currentColor" />
-                        ))}
-                      </div>
-                      <div className="grid grid-cols-2 gap-1 text-[10px] text-left bg-background/50 p-2 rounded border border-border/50">
-                        <div><span className="text-muted-foreground uppercase">HP</span><p className="font-bold text-green-400">{companion.hp}</p></div>
-                        <div><span className="text-muted-foreground uppercase">ATK</span><p className="font-bold text-red-400">{companion.attack}</p></div>
-                      </div>
-                    </motion.div>
-                  ))}
+                  {companionResults.map((companion, i) => {
+                    const isStoryDrop = !!companion.storyDrop;
+
+                    return (
+                      <motion.div
+                        key={i}
+                        initial={{ scale: 0.5, opacity: 0, y: 50 }}
+                        animate={{ scale: 1, opacity: 1, y: 0 }}
+                        transition={{
+                          type: "spring",
+                          bounce: isStoryDrop ? 0.6 : 0.5,
+                          delay: i * 0.1,
+                        }}
+                        className={`rounded-xl p-4 text-center shadow-lg bg-washi relative flex flex-col gap-2 ${
+                          isStoryDrop
+                            // Story-drop: gold outer ring + amber glow
+                            ? "bg-card border-2 border-amber-400/70 shadow-[0_0_22px_rgba(251,191,36,0.35)]"
+                            // Regular pull: existing accent border
+                            : "bg-card border-2 border-accent/50"
+                        }`}
+                      >
+                        {/* Story-drop badge — top-right corner */}
+                        {isStoryDrop && (
+                          <div className="absolute -top-2.5 right-2">
+                            <StoryDropBadge />
+                          </div>
+                        )}
+
+                        {/* Name + type */}
+                        <h2 className="text-xl font-display font-bold text-white mb-1 mt-1">{companion.name}</h2>
+                        <p className="text-primary font-medium tracking-widest uppercase text-[10px] mb-1">{companion.type}</p>
+
+                        {/* Rarity stars */}
+                        <div className="flex justify-center gap-0.5 text-accent mb-2">
+                          {Array.from({ length: Number(companion.rarity) }).map((_, j) => (
+                            <Star key={j} size={14} fill="currentColor" />
+                          ))}
+                        </div>
+
+                        {/* Stat grid */}
+                        <div className="grid grid-cols-2 gap-1 text-[10px] text-left bg-background/50 p-2 rounded border border-border/50">
+                          <div>
+                            <span className="text-muted-foreground uppercase">HP</span>
+                            <p className="font-bold text-green-400">{companion.hp}</p>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground uppercase">ATK</span>
+                            <p className="font-bold text-red-400">{companion.attack}</p>
+                          </div>
+                        </div>
+
+                        {/* Phase B1: story-drop flavour text */}
+                        {isStoryDrop && companion.storyFlavour && (
+                          <>
+                            <div className="border-t border-amber-500/20 mt-1" />
+                            <p className="text-amber-200/70 text-[10px] italic leading-relaxed text-left">
+                              &ldquo;{companion.storyFlavour}&rdquo;
+                            </p>
+                          </>
+                        )}
+                      </motion.div>
+                    );
+                  })}
                 </div>
-                <Button onClick={() => setCompanionResults([])} variant="outline" className="mt-8 mx-auto block border-accent text-accent hover:bg-accent/10">Draw Again</Button>
+
+                <Button
+                  onClick={() => setCompanionResults([])}
+                  variant="outline"
+                  className="mt-8 mx-auto block border-accent text-accent hover:bg-accent/10"
+                >
+                  Draw Again
+                </Button>
               </motion.div>
             )}
 
+            {/* Equipment results — unchanged */}
             {equipmentResults.length > 0 && !isAnimating && (
-              <motion.div 
+              <motion.div
                 key="equipment-results"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -288,7 +375,7 @@ export default function GachaPage() {
               >
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4">
                   {equipmentResults.map((equipment, i) => (
-                    <motion.div 
+                    <motion.div
                       key={i}
                       initial={{ scale: 0.5, opacity: 0, y: 50 }}
                       animate={{ scale: 1, opacity: 1, y: 0 }}
@@ -297,15 +384,28 @@ export default function GachaPage() {
                     >
                       <h2 className="text-sm font-display font-bold text-white mb-1 line-clamp-1">{equipment.name}</h2>
                       <div className="grid grid-cols-2 gap-1 text-[10px] text-left bg-background/50 p-2 rounded border border-border/50">
-                        <div><span className="text-muted-foreground uppercase">ATK</span><p className="font-bold text-red-400">+{equipment.attackBonus}</p></div>
-                        <div><span className="text-muted-foreground uppercase">DEF</span><p className="font-bold text-blue-400">+{equipment.defenseBonus}</p></div>
+                        <div>
+                          <span className="text-muted-foreground uppercase">ATK</span>
+                          <p className="font-bold text-red-400">+{equipment.attackBonus}</p>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground uppercase">DEF</span>
+                          <p className="font-bold text-blue-400">+{equipment.defenseBonus}</p>
+                        </div>
                       </div>
                     </motion.div>
                   ))}
                 </div>
-                <Button onClick={() => setEquipmentResults([])} variant="outline" className="mt-8 mx-auto block border-accent text-accent hover:bg-accent/10">Draw Again</Button>
+                <Button
+                  onClick={() => setEquipmentResults([])}
+                  variant="outline"
+                  className="mt-8 mx-auto block border-accent text-accent hover:bg-accent/10"
+                >
+                  Draw Again
+                </Button>
               </motion.div>
             )}
+
           </AnimatePresence>
         </div>
       </div>
