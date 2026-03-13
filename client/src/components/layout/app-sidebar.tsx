@@ -9,6 +9,7 @@ import {
   Tent,
   Zap,
   ShieldAlert,
+  BookOpen,
 } from "lucide-react";
 import {
   Sidebar,
@@ -24,14 +25,19 @@ import {
 } from "@/components/ui/sidebar";
 import { useAuth } from "@/hooks/use-auth";
 
+// Item 6: "Campaign (Map)" entry removed — legacy campaignEvents system is
+// superseded by the VN story engine. The /map route and all its code remain
+// intact; only the nav link is hidden so existing player data is not lost.
+// Item 4: "Story" entry added so players can reach the chapter-select screen.
 const navItems = [
-  { title: "Dojo (Home)", url: "/", icon: Home },
-  { title: "War Council", url: "/stable", icon: Users },
-  { title: "Battle Prep (Gear)", url: "/gear", icon: ShieldAlert },
-  { title: "Armory (Upgrade)", url: "/equipment", icon: Sword },
-  { title: "Shrine (Gacha)", url: "/gacha", icon: Zap },
-  { title: "Daily Quests", url: "/quests", icon: Sparkles },
-  { title: "Campaign (Map)", url: "/map", icon: Map },
+  { title: "Dojo (Home)",        url: "/",       icon: Home       },
+  { title: "War Council",        url: "/stable", icon: Users      },
+  { title: "Battle Prep (Gear)", url: "/gear",   icon: ShieldAlert },
+  { title: "Armory (Upgrade)",   url: "/equipment", icon: Sword   },
+  { title: "Shrine (Gacha)",     url: "/gacha",  icon: Zap        },
+  { title: "Daily Quests",       url: "/quests", icon: Sparkles   },
+  { title: "Story",              url: "/story",  icon: BookOpen   },
+  { title: "Campaign Map",       url: "/map",    icon: Map        },
 ];
 
 export function AppSidebar() {
@@ -68,9 +74,10 @@ export function AppSidebar() {
                       isActive={isActive}
                       className={`
                         my-1 mx-2 rounded-md transition-all duration-300
-                        ${isActive
-                          ? 'bg-primary/20 text-accent border border-primary/30 shadow-[inset_4px_0_0_rgba(220,38,38,0.8)]'
-                          : 'text-muted-foreground hover:bg-white/5 hover:text-foreground'
+                        ${
+                          isActive
+                            ? "bg-primary/20 text-accent border border-primary/30 shadow-[inset_4px_0_0_rgba(220,38,38,0.8)]"
+                            : "text-muted-foreground hover:bg-white/5 hover:text-foreground"
                         }
                       `}
                     >
@@ -91,8 +98,8 @@ export function AppSidebar() {
         {user && (
           <div className="flex items-center justify-between">
             <div className="flex flex-col">
-              <span className="text-sm font-bold text-foreground">{user.firstName || 'Daimyo'}</span>
-              <span className="text-xs text-muted-foreground">{user.email || 'guest@sengoku.jp'}</span>
+              <span className="text-sm font-bold text-foreground">{user.firstName || "Daimyo"}</span>
+              <span className="text-xs text-muted-foreground">{user.email || "guest@sengoku.jp"}</span>
             </div>
             <button
               onClick={() => logout()}
