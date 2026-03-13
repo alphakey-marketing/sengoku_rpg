@@ -1,6 +1,11 @@
 import { usePlayer, usePlayerFullStatus, useEquipment, useTransformations, useUpgradeStat, useBulkUpgradeStats } from "@/hooks/use-game";
+import { usePlayerFlags } from "@/hooks/use-story";
 import { MainLayout } from "@/components/layout/main-layout";
-import { Shield, Sword, Coins, Wheat, Trophy, Zap, Heart, Sparkles, RefreshCcw, BookOpen, Users, Info, Plus, ChevronUp, ChevronDown, Check, X } from "lucide-react";
+import {
+  Shield, Sword, Coins, Wheat, Trophy, Zap, Heart, Sparkles,
+  RefreshCcw, BookOpen, Users, Info, Plus, ChevronUp, ChevronDown,
+  Check, X, ScrollText, Flag,
+} from "lucide-react";
 import { motion } from "framer-motion";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
@@ -33,11 +38,155 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 
+// ─── Flag metadata ────────────────────────────────────────────────────────────
+// Mirrors server/helpers/storyFlagModifiers.ts thresholds & server/constants/specialCompanions.ts
+
+const FLAG_META: Record<string, {
+  label:       string;
+  description: string;
+  maxScore:    number;
+  color:       string;         // Tailwind text colour for the fill bar
+  borderColor: string;         // Tailwind border-left colour for the card
+  companions:  string[];       // Companion names unlocked by this flag
+}> = {
+  ruthlessness: {
+    label:       "Ruthlessness",
+    description: "Born of iron decisions and sacrifices made for victory. High scores boost your attack in battle.",
+    maxScore:    10,
+    color:       "bg-red-500",
+    borderColor: "border-red-500/60",
+    companions:  ["Ranmaru Mori"],
+  },
+  political_power: {
+    label:       "Political Acumen",
+    description: "Influence woven through alliance and diplomacy. Increases defence and thins enemy ranks before battle.",
+    maxScore:    10,
+    color:       "bg-blue-500",
+    borderColor: "border-blue-500/60",
+    companions:  ["Tokugawa Ieyasu"],
+  },
+  supernatural_affinity: {
+    label:       "Supernatural Affinity",
+    description: "A resonance with forces beyond mortal ken. Improves speed and imbues attacks with a spirit debuff.",
+    maxScore:    10,
+    color:       "bg-purple-500",
+    borderColor: "border-purple-500/60",
+    companions:  ["Nohime"],
+  },
+  mitsuhide_loyalty: {
+    label:       "Mitsuhide's Loyalty",
+    description: "The bond forged with the conflicted general. A score above zero grants HP; betrayal exacts a penalty.",
+    maxScore:    10,
+    color:       "bg-amber-400",
+    borderColor: "border-amber-400/60",
+    companions:  ["Akechi Mitsuhide", "Toyotomi Hideyoshi"],
+  },
+};
+
+function getTierLabel(score: number, max: number): string {
+  const pct = score / max;
+  if (pct >= 0.8) return "Devoted";
+  if (pct >= 0.5) return "Aligned";
+  if (pct >= 0.2) return "Emerging";
+  return "Dormant";
+}
+
+// ─── Story Flag Dashboard sub-component ──────────────────────────────────────
+
+function StoryFlagDashboard({ flags }: { flags: Record<string, number> }) {
+  const activeFlags = Object.entries(flags).filter(([, v]) => v > 0);
+
+  return (
+    <div className="mt-8">
+      <h3 className="text-xl font-display font-semibold border-b border-border/50 pb-2 mb-6 flex items-center gap-2">
+        <ScrollText size={20} className="text-accent" />
+        Chronicle of Choices
+      </h3>
+
+      {activeFlags.length === 0 ? (
+        <p className="text-muted-foreground text-sm italic text-center py-6">
+          Your choices have not yet left their mark.
+        </p>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {activeFlags.map(([key, score], i) => {
+            const meta = FLAG_META[key];
+            // Unknown flag from a future chapter — still render it gracefully
+            const label       = meta?.label       ?? key;
+            const description = meta?.description ?? "A path shaped by your choices.";
+            const maxScore    = meta?.maxScore     ?? 10;
+            const color       = meta?.color        ?? "bg-zinc-400";
+            const borderColor = meta?.borderColor  ?? "border-zinc-400/50";
+            const companions  = meta?.companions   ?? [];
+            const pct         = Math.min(100, (score / maxScore) * 100);
+            const tier        = getTierLabel(score, maxScore);
+
+            return (
+              <motion.div
+                key={key}
+                initial={{ opacity: 0, x: -12 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: i * 0.07 }}
+                className={`bg-card border border-border/50 border-l-4 ${borderColor} rounded-xl p-5 bg-washi flex flex-col gap-3`}
+              >
+                {/* Header row */}
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <p className="font-display font-bold text-white text-sm">{label}</p>
+                    <p className="text-[11px] text-muted-foreground italic leading-relaxed mt-0.5">{description}</p>
+                  </div>
+                  <span className="text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full border border-border/50 bg-background/50 text-zinc-300 whitespace-nowrap">
+                    {tier}
+                  </span>
+                </div>
+
+                {/* Fill bar */}
+                <div>
+                  <div className="flex justify-between text-[10px] text-muted-foreground mb-1">
+                    <span className="uppercase font-bold tracking-widest">Influence</span>
+                    <span className="font-bold text-white">{score} / {maxScore}</span>
+                  </div>
+                  <div className="w-full bg-background/60 rounded-full h-2 overflow-hidden border border-border/30">
+                    <motion.div
+                      className={`h-full rounded-full ${color}`}
+                      initial={{ width: 0 }}
+                      animate={{ width: `${pct}%` }}
+                      transition={{ duration: 0.8, ease: "easeOut", delay: i * 0.07 + 0.2 }}
+                    />
+                  </div>
+                </div>
+
+                {/* Companion pills */}
+                {companions.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5">
+                    <span className="text-[9px] uppercase font-bold tracking-widest text-muted-foreground self-center">Unlocks:</span>
+                    {companions.map(name => (
+                      <span
+                        key={name}
+                        className="text-[10px] px-2 py-0.5 rounded-full border border-accent/40 bg-accent/10 text-accent font-semibold"
+                      >
+                        {name}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </motion.div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
+
 export default function Home() {
   const { data: player, isLoading } = usePlayer();
   const { data: teamStatus } = usePlayerFullStatus();
   const { data: equipment } = useEquipment();
   const { data: transforms } = useTransformations();
+  const { data: playerFlags, isLoading: flagsLoading } = usePlayerFlags();
   const upgradeStat = useUpgradeStat();
   const bulkUpgrade = useBulkUpgradeStats();
   const { toast } = useToast();
@@ -54,7 +203,6 @@ export default function Home() {
     let tempPoints = teamStatus.player.statPoints;
     const stats = { ...pendingUpgrades };
     
-    // We need to calculate cost sequentially because it increases
     const entries = Object.entries(pendingUpgrades);
     entries.forEach(([stat, amount]) => {
       let val = (teamStatus.player as any)[stat];
@@ -193,37 +341,30 @@ export default function Home() {
     { label: "ASPD", value: (teamStatus.player as any).speed, formula: "SPD + AGI/2" },
   ] : [];
 
-  const combatStats = teamStatus?.player ? [
-    { label: "HIT", value: (teamStatus.player as any).hit, icon: Sparkles, color: "text-blue-400" },
-    { label: "FLEE", value: (teamStatus.player as any).flee, icon: Zap, color: "text-green-400" },
-    { label: "CRIT", value: `${(teamStatus.player as any).critChance}%`, icon: Trophy, color: "text-red-400" },
-    { label: "MDEF", value: (teamStatus.player as any).softMDEF, icon: Shield, color: "text-purple-400" },
-  ] : [];
-
   const equippedItems = equipment?.filter(e => e.isEquipped && e.equippedToType === 'player') || [];
 
   const getRarityColor = (rarity: string) => {
     switch (rarity) {
-      case 'gold': return 'text-yellow-400 border-yellow-700';
+      case 'gold':   return 'text-yellow-400 border-yellow-700';
       case 'purple': return 'text-purple-400 border-purple-700';
-      case 'blue': return 'text-blue-400 border-blue-700';
-      case 'green': return 'text-green-400 border-green-700';
-      default: return 'text-zinc-400 border-zinc-700';
+      case 'blue':   return 'text-blue-400 border-blue-700';
+      case 'green':  return 'text-green-400 border-green-700';
+      default:       return 'text-zinc-400 border-zinc-700';
     }
   };
 
   const getTypeIcon = (type: string) => {
     switch (type) {
-      case 'weapon': return Sword;
-      case 'armor': return Shield;
+      case 'weapon':    return Sword;
+      case 'armor':     return Shield;
       case 'accessory': return Sparkles;
-      case 'horse_gear': return Zap;
-      default: return Sword;
+      case 'horse_gear':return Zap;
+      default:          return Sword;
     }
   };
 
-  const expToNext = Math.floor(100 * Math.pow(1.25, (player.level || 1) - 1));
-  const expPercent = player.level > 0 ? Math.min(100, (player.experience / expToNext) * 100) : 0;
+  const expToNext   = Math.floor(100 * Math.pow(1.25, (player.level || 1) - 1));
+  const expPercent  = player.level > 0 ? Math.min(100, (player.experience / expToNext) * 100) : 0;
 
   return (
     <MainLayout>
@@ -294,6 +435,7 @@ export default function Home() {
           </Dialog>
         </div>
 
+        {/* Hero banner */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -357,6 +499,7 @@ export default function Home() {
           </div>
         </motion.div>
 
+        {/* War Resources */}
         <h3 className="text-xl font-display font-semibold border-b border-border/50 pb-2 mt-12 mb-6">War Resources</h3>
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
           {statCards.map((stat, i) => (
@@ -382,6 +525,7 @@ export default function Home() {
           ))}
         </div>
 
+        {/* Core Attributes + Combat Statistics */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-12">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -528,6 +672,7 @@ export default function Home() {
           </motion.div>
         </div>
 
+        {/* Active Pet */}
         {teamStatus?.pet && (
           <div className="mt-4">
             <h3 className="text-xl font-display font-semibold border-b border-border/50 pb-2 mb-4">Active Pet</h3>
@@ -544,6 +689,7 @@ export default function Home() {
           </div>
         )}
 
+        {/* Active Horse */}
         {teamStatus?.horse && (
           <div className="mt-4">
             <h3 className="text-xl font-display font-semibold border-b border-border/50 pb-2 mb-4">Active Horse</h3>
@@ -560,6 +706,7 @@ export default function Home() {
           </div>
         )}
 
+        {/* Transformations */}
         {transforms && transforms.length > 0 && (
           <div className="mt-4">
             <h3 className="text-xl font-display font-semibold border-b border-border/50 pb-2 mb-4">Transformations (変身)</h3>
@@ -580,6 +727,12 @@ export default function Home() {
             </div>
           </div>
         )}
+
+        {/* ── Phase B2: Chronicle of Choices (flag dashboard) ── */}
+        {!flagsLoading && playerFlags && (
+          <StoryFlagDashboard flags={playerFlags} />
+        )}
+
       </div>
     </MainLayout>
   );
