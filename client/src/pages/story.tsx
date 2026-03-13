@@ -15,10 +15,12 @@ import {
   type ProgressState,
   type StoryFlags,
   type ChapterSummary,
+  type UnlockedCompanion,
 } from "@/lib/story-engine";
 import { BookOpen, Lock, CheckCircle2, PlayCircle } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+// ─── Types ─────────────────────────────────────────────────────────────────────────────
 
 interface DialogueLine {
   id: number;
@@ -64,7 +66,25 @@ interface ChapterData {
   scenes: Scene[];
 }
 
-// ─── Battle gate helpers ──────────────────────────────────────────────────────
+// ─── Rarity colour map ──────────────────────────────────────────────────────────────
+
+const RARITY_COLOURS: Record<string, { pill: string; border: string; glow: string }> = {
+  legendary:    { pill: "bg-amber-500/20 text-amber-300 border-amber-500/50",   border: "border-amber-500/60",  glow: "shadow-[0_0_20px_rgba(245,158,11,0.35)]" },
+  epic:         { pill: "bg-purple-500/20 text-purple-300 border-purple-500/50", border: "border-purple-500/60", glow: "shadow-[0_0_20px_rgba(168,85,247,0.35)]" },
+  gold:         { pill: "bg-yellow-500/20 text-yellow-300 border-yellow-500/50", border: "border-yellow-500/60", glow: "shadow-[0_0_15px_rgba(234,179,8,0.25)]"  },
+  mythic:       { pill: "bg-pink-500/20 text-pink-300 border-pink-500/50",       border: "border-pink-500/60",   glow: "shadow-[0_0_15px_rgba(236,72,153,0.25)]" },
+  transcendent: { pill: "bg-white/10 text-white border-white/30",               border: "border-white/40",      glow: "shadow-[0_0_20px_rgba(255,255,255,0.2)]" },
+};
+
+function rarityStyles(rarity: string) {
+  return RARITY_COLOURS[rarity] ?? {
+    pill:   "bg-stone-500/20 text-stone-300 border-stone-500/50",
+    border: "border-stone-500/40",
+    glow:   "",
+  };
+}
+
+// ─── Battle gate helpers ─────────────────────────────────────────────────────────────
 
 function parseBattleEnemyKey(key: string | null | undefined): {
   endpoint: string;
@@ -96,7 +116,7 @@ async function runStoryBattle(scene: Scene): Promise<{ victory: boolean; logs: s
   }
 }
 
-// ─── Visual maps ──────────────────────────────────────────────────────────────
+// ─── Visual maps ───────────────────────────────────────────────────────────────────────────
 
 const BG_MAP: Record<string, string> = {
   owari_province_dawn:       "from-amber-950 via-orange-900 to-stone-900",
@@ -149,7 +169,7 @@ const FLAG_LABELS: Record<string, string> = {
   supernatural_affinity: "✦ Supernatural",
 };
 
-// ─── Sub-components ───────────────────────────────────────────────────────────
+// ─── Sub-components ───────────────────────────────────────────────────────────────────
 
 function Portrait({ portraitKey, side }: { portraitKey: string | null; side: "left" | "right" }) {
   if (!portraitKey) return <div className="w-28 h-36 md:w-32 md:h-44" />;
@@ -178,7 +198,45 @@ function FlagBar({ flags }: { flags: StoryFlags }) {
   );
 }
 
-// ─── Battle overlay ──────────────────────────────────────────────────────────────
+// ─── Companion unlock card ─────────────────────────────────────────────────────────────
+
+function CompanionUnlockCard({
+  companion,
+  index,
+}: {
+  companion: UnlockedCompanion;
+  index: number;
+}) {
+  const styles = rarityStyles(companion.rarity);
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 24, scale: 0.92 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{ type: "spring", bounce: 0.35, delay: index * 0.12 }}
+      className={`rounded-lg border-2 bg-black/50 backdrop-blur p-4 text-left ${
+        styles.border
+      } ${styles.glow}`}
+    >
+      {/* Rarity pill + name row */}
+      <div className="flex items-center gap-2 mb-2">
+        <span
+          className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full border ${
+            styles.pill
+          }`}
+        >
+          {companion.rarity}
+        </span>
+        <span className="text-white font-bold text-sm">{companion.name}</span>
+      </div>
+      {/* Unlock message */}
+      <p className="text-stone-400 text-xs italic leading-relaxed">
+        &ldquo;{companion.unlockMessage}&rdquo;
+      </p>
+    </motion.div>
+  );
+}
+
+// ─── Battle overlay ─────────────────────────────────────────────────────────────────────
 
 type BattlePhase = "idle" | "fighting" | "result";
 
@@ -232,7 +290,7 @@ function BattleGate({
   );
 }
 
-// ─── Chapter-select screen (Item 4) ──────────────────────────────────────────────
+// ─── Chapter-select screen ────────────────────────────────────────────────────────────────
 
 function ChapterSelect({ onSelect }: { onSelect: (id: number) => void }) {
   const [chapters, setChapters] = useState<ChapterSummary[]>([]);
@@ -252,7 +310,6 @@ function ChapterSelect({ onSelect }: { onSelect: (id: number) => void }) {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-zinc-950 to-black flex flex-col">
-      {/* Header */}
       <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
         <Link href="/map">
           <span className="text-stone-400 hover:text-white text-xs transition cursor-pointer">← Map</span>
@@ -264,12 +321,11 @@ function ChapterSelect({ onSelect }: { onSelect: (id: number) => void }) {
         <div className="w-12" />
       </div>
 
-      {/* Chapter cards */}
       <div className="flex-1 p-6 max-w-2xl mx-auto w-full space-y-4">
         <p className="text-stone-500 text-xs tracking-widest uppercase mb-6">Select a chapter to begin</p>
         {chapters.map((ch) => {
-          const locked    = ch.isLocked;
-          const completed = ch.isCompleted;
+          const locked     = ch.isLocked;
+          const completed  = ch.isCompleted;
           const inProgress = !completed && ch.currentSceneId !== null;
           return (
             <button
@@ -323,31 +379,34 @@ function ChapterSelect({ onSelect }: { onSelect: (id: number) => void }) {
   );
 }
 
-// ─── Main page ────────────────────────────────────────────────────────────────
+// ─── Main page ─────────────────────────────────────────────────────────────────────────
 
 export default function StoryPage() {
-  // null = show chapter-select; number = playing that chapter
   const [activeChapterId, setActiveChapterId] = useState<number | null>(null);
 
-  const [chapter, setChapter]           = useState<ChapterData | null>(null);
-  const [sceneId, setSceneId]           = useState<number | null>(null);
-  const [lineIndex, setLineIndex]       = useState(0);
-  const [showChoices, setShowChoices]   = useState(false);
-  const [isComplete, setIsComplete]     = useState(false);
-  const [isBattleGate, setIsBattleGate] = useState(false);
-  const [flags, setFlags]               = useState<StoryFlags>({});
+  const [chapter, setChapter]             = useState<ChapterData | null>(null);
+  const [sceneId, setSceneId]             = useState<number | null>(null);
+  const [lineIndex, setLineIndex]         = useState(0);
+  const [showChoices, setShowChoices]     = useState(false);
+  const [isComplete, setIsComplete]       = useState(false);
+  const [isBattleGate, setIsBattleGate]   = useState(false);
+  const [flags, setFlags]                 = useState<StoryFlags>({});
   const [displayedText, setDisplayedText] = useState("");
-  const [isTyping, setIsTyping]         = useState(false);
-  const [loading, setLoading]           = useState(false);
-  const [error, setError]               = useState<string | null>(null);
+  const [isTyping, setIsTyping]           = useState(false);
+  const [loading, setLoading]             = useState(false);
+  const [error, setError]                 = useState<string | null>(null);
   const [nextChapterId, setNextChapterId] = useState<number | null>(null);
+
+  // Phase B1: companion unlock results from completeChapter()
+  const [companionsUnlocked, setCompanionsUnlocked] = useState<UnlockedCompanion[]>([]);
+
   const typeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const sceneMap = chapter ? Object.fromEntries(chapter.scenes.map((s) => [s.id, s])) : {};
-  const scene    = sceneId ? sceneMap[sceneId] ?? null : null;
+  const sceneMap    = chapter ? Object.fromEntries(chapter.scenes.map((s) => [s.id, s])) : {};
+  const scene       = sceneId ? sceneMap[sceneId] ?? null : null;
   const currentLine = scene?.dialogueLines[lineIndex] ?? null;
 
-  // ── Load chapter when one is selected ───────────────────────────────────────────
+  // ── Load chapter ────────────────────────────────────────────────────────────────────
   useEffect(() => {
     if (activeChapterId === null) return;
     (async () => {
@@ -373,6 +432,7 @@ export default function StoryPage() {
         setIsComplete(false);
         setIsBattleGate(false);
         setNextChapterId(null);
+        setCompanionsUnlocked([]);
       } catch (e) {
         setError("Failed to load chapter. Please refresh.");
       } finally {
@@ -381,7 +441,7 @@ export default function StoryPage() {
     })();
   }, [activeChapterId]);
 
-  // ── Typewriter ─────────────────────────────────────────────────────────────
+  // ── Typewriter ───────────────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!currentLine) return;
     if (typeTimerRef.current) clearTimeout(typeTimerRef.current);
@@ -399,7 +459,6 @@ export default function StoryPage() {
     return () => { if (typeTimerRef.current) clearTimeout(typeTimerRef.current); };
   }, [sceneId, lineIndex]);
 
-  // ── Mark scene seen ────────────────────────────────────────────────────────
   useEffect(() => { if (scene) markSceneSeen(scene.sceneOrder); }, [sceneId]);
 
   const skipTypewriter = useCallback(() => {
@@ -410,6 +469,7 @@ export default function StoryPage() {
     }
   }, [isTyping, currentLine]);
 
+  // ── Advance ───────────────────────────────────────────────────────────────────────────────
   const advance = useCallback(async () => {
     if (!scene || !chapter) return;
     if (isTyping) { skipTypewriter(); return; }
@@ -419,12 +479,14 @@ export default function StoryPage() {
     if (scene.isBattleGate) { setIsBattleGate(true); return; }
     if (scene.isChapterEnd) {
       const result = await completeChapter({
-        chapterId:          chapter.id,
-        endingKey:          `ch${chapter.id}_complete`,
-        endingTitle:        chapter.title,
-        endingDescription:  `${chapter.subtitle ?? ""} — Chapter complete.`,
+        chapterId:         chapter.id,
+        endingKey:         `ch${chapter.id}_complete`,
+        endingTitle:       chapter.title,
+        endingDescription: `${chapter.subtitle ?? ""} — Chapter complete.`,
       });
       if (result.nextChapterId) setNextChapterId(result.nextChapterId);
+      // Phase B1: store any companions the server awarded
+      setCompanionsUnlocked(result.companionsUnlocked);
       setIsComplete(true);
       return;
     }
@@ -472,15 +534,16 @@ export default function StoryPage() {
     setIsComplete(false);
     setIsBattleGate(false);
     setNextChapterId(null);
+    setCompanionsUnlocked([]);
     setFlags({});
   }, [chapter, activeChapterId]);
 
-  // ── Chapter-select (default view) ─────────────────────────────────────────────
+  // ── Chapter-select ─────────────────────────────────────────────────────────────────────
   if (activeChapterId === null) {
     return <ChapterSelect onSelect={(id) => setActiveChapterId(id)} />;
   }
 
-  // ── Loading / error ────────────────────────────────────────────────────────
+  // ── Loading / error ───────────────────────────────────────────────────────────────────
   if (loading) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
@@ -503,45 +566,99 @@ export default function StoryPage() {
   const leftPortrait  = currentLine?.speakerSide === "left"  ? currentLine.portraitKey : null;
   const rightPortrait = currentLine?.speakerSide === "right" ? currentLine.portraitKey : null;
 
-  // ── Battle gate ────────────────────────────────────────────────────────────────
+  // ── Battle gate ──────────────────────────────────────────────────────────────────────
   if (isBattleGate) {
     return <BattleGate scene={scene} bgGradient={bgGradient} onResult={handleBattleResult} />;
   }
 
-  // ── Chapter complete ───────────────────────────────────────────────────────────
+  // ── Chapter complete ───────────────────────────────────────────────────────────────────
   if (isComplete) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-zinc-950 to-black flex flex-col items-center justify-center p-8 text-center">
-        <div className="max-w-lg">
-          <p className="text-amber-400 text-sm tracking-widest uppercase mb-4">Chapter Complete</p>
-          <h1 className="text-3xl font-bold text-white mb-2">{chapter.title}</h1>
-          <p className="text-stone-400 italic mb-8">{chapter.subtitle}</p>
-          <div className="mb-8 p-4 bg-white/5 rounded border border-white/10">
+      <div className="min-h-screen bg-gradient-to-b from-zinc-950 to-black flex flex-col items-center justify-center p-8">
+        <div className="max-w-lg w-full text-center">
+
+          {/* ── Header ── */}
+          <motion.div
+            initial={{ opacity: 0, y: -12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+          >
+            <p className="text-amber-400 text-sm tracking-widest uppercase mb-4">Chapter Complete</p>
+            <h1 className="text-3xl font-bold text-white mb-2">{chapter.title}</h1>
+            <p className="text-stone-400 italic mb-8">{chapter.subtitle}</p>
+          </motion.div>
+
+          {/* ── Flag summary ── */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.2 }}
+            className="mb-8 p-4 bg-white/5 rounded border border-white/10"
+          >
             <p className="text-stone-300 text-sm mb-3">Your story so far:</p>
             <FlagBar flags={flags} />
-          </div>
+          </motion.div>
+
+          {/* ── Phase B1: Companion unlock banners ── */}
+          <AnimatePresence>
+            {companionsUnlocked.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="mb-8 text-left"
+              >
+                <p className="text-amber-300 text-xs font-bold tracking-widest uppercase mb-3">
+                  ✦ Joined your clan!
+                </p>
+                <div className="flex flex-col gap-3">
+                  {companionsUnlocked.map((c, i) => (
+                    <CompanionUnlockCard key={c.name} companion={c} index={i} />
+                  ))}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* ── Next chapter notice ── */}
           {nextChapterId && (
-            <div className="mb-6 p-3 rounded border border-amber-700/50 bg-amber-900/20">
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.35 + companionsUnlocked.length * 0.12 }}
+              className="mb-6 p-3 rounded border border-amber-700/50 bg-amber-900/20"
+            >
               <p className="text-amber-300 text-sm font-semibold">✦ New chapter unlocked!</p>
               <p className="text-stone-400 text-xs mt-1">Continue the story when you're ready.</p>
-            </div>
+            </motion.div>
           )}
-          <div className="flex gap-3 justify-center flex-wrap">
-            <button onClick={handleReset}
-              className="px-5 py-2 bg-stone-800 hover:bg-stone-700 text-white rounded text-sm transition">
+
+          {/* ── Action buttons ── */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.45 + companionsUnlocked.length * 0.12 }}
+            className="flex gap-3 justify-center flex-wrap"
+          >
+            <button
+              onClick={handleReset}
+              className="px-5 py-2 bg-stone-800 hover:bg-stone-700 text-white rounded text-sm transition"
+            >
               ↺ Replay Chapter
             </button>
-            <button onClick={() => setActiveChapterId(null)}
-              className="px-5 py-2 bg-amber-700 hover:bg-amber-600 text-white rounded text-sm transition">
+            <button
+              onClick={() => setActiveChapterId(null)}
+              className="px-5 py-2 bg-amber-700 hover:bg-amber-600 text-white rounded text-sm transition"
+            >
               → Chronicles
             </button>
-          </div>
+          </motion.div>
+
         </div>
       </div>
     );
   }
 
-  // ── Main VN layout ─────────────────────────────────────────────────────────
+  // ── Main VN layout ───────────────────────────────────────────────────────────────────
   return (
     <div
       className={`min-h-screen bg-gradient-to-b ${bgGradient} flex flex-col select-none`}
@@ -572,10 +689,14 @@ export default function StoryPage() {
 
       {/* Portrait stage */}
       <div className="flex-1 flex items-end justify-between px-6 pb-2 pointer-events-none">
-        <div className={`transition-all duration-300 ${leftPortrait ? "opacity-100 translate-y-0" : "opacity-30 translate-y-2"}`}>
+        <div className={`transition-all duration-300 ${
+          leftPortrait ? "opacity-100 translate-y-0" : "opacity-30 translate-y-2"
+        }`}>
           <Portrait portraitKey={leftPortrait} side="left" />
         </div>
-        <div className={`transition-all duration-300 ${rightPortrait ? "opacity-100 translate-y-0" : "opacity-30 translate-y-2"}`}>
+        <div className={`transition-all duration-300 ${
+          rightPortrait ? "opacity-100 translate-y-0" : "opacity-30 translate-y-2"
+        }`}>
           <Portrait portraitKey={rightPortrait} side="right" />
         </div>
       </div>
