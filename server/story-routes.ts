@@ -12,7 +12,8 @@
  *  GET  /api/story/chapters/:id         → full chapter with scenes + dialogue + choices
  *  GET  /api/story/progress             → player's progress for all chapters
  *  POST /api/story/progress             → upsert progress (start / advance scene)
- *  POST /api/story/progress/complete    → mark chapter complete, unlock next chapter, write ending
+ *  POST /api/story/progress/complete    → mark chapter complete, unlock next chapter,
+ *                                         write ending, unlock flag-gated companions
  *  GET  /api/story/flags                → all player flags
  *  POST /api/story/flags                → apply flag mutations (additive)
  *  GET  /api/story/endings              → all unlocked endings
@@ -22,18 +23,16 @@ import { Router, type Request, type Response } from "express";
 import { db } from "./db";
 import {
   storyChapters, storyScenes, dialogueLines, storyChoices,
-  playerFlags, playerProgress, unlockedEndings,
+  playerFlags, playerProgress, unlockedEndings, companions,
   type StoryChapter, type StoryScene, type DialogueLine,
   type StoryChoice, type PlayerFlag, type PlayerProgress,
 } from "@shared/schema";
 import { eq, and, asc, gt } from "drizzle-orm";
+import { SPECIAL_COMPANIONS, type SpecialCompanionDef } from "./constants/specialCompanions";
 
 export const storyRouter = Router();
 
 // ─── Auth helper ──────────────────────────────────────────────────────────────
-// Note: isAuthenticated middleware is applied at mount-point in routes.ts,
-// so every handler here is already authenticated. This helper just extracts
-// the userId from the already-verified request.
 function getUserId(req: Request): string {
   return (req as any).user.claims.sub as string;
 }
@@ -99,15 +98,17 @@ storyRouter.get("/chapters/:id", async (req: Request, res: Response) => {
         ).then((r) => r.flat())
       : [];
 
-    const linesByScene = new Map<number, DialogueLine[]>();
+    const linesByScene  = new Map<number, DialogueLine[]>();
     const choicesByScene = new Map<number, StoryChoice[]>();
-    for (const line of allLines) linesByScene.set(line.sceneId, [...(linesByScene.get(line.sceneId) ?? []), line]);
-    for (const c of allChoices) choicesByScene.set(c.sceneId, [...(choicesByScene.get(c.sceneId) ?? []), c]);
+    for (const line of allLines)
+      linesByScene.set(line.sceneId, [...(linesByScene.get(line.sceneId) ?? []), line]);
+    for (const c of allChoices)
+      choicesByScene.set(c.sceneId, [...(choicesByScene.get(c.sceneId) ?? []), c]);
 
     const enrichedScenes = scenes.map((scene) => ({
       ...scene,
-      dialogueLines: linesByScene.get(scene.id) ?? [],
-      choices: choicesByScene.get(scene.id) ?? [],
+      dialogueLines: linesByScene.get(scene.id)  ?? [],
+      choices:       choicesByScene.get(scene.id) ?? [],
     }));
 
     res.json({ ...chapter, scenes: enrichedScenes });
@@ -140,9 +141,9 @@ storyRouter.post("/progress", async (req: Request, res: Response) => {
   const userId = getUserId(req);
   try {
     const { chapterId, currentSceneId, forceRestart } = req.body as {
-      chapterId: number;
+      chapterId:      number;
       currentSceneId?: number;
-      forceRestart?: boolean;
+      forceRestart?:  boolean;
     };
 
     if (!chapterId) return res.status(400).json({ error: "chapterId required" });
@@ -188,32 +189,106 @@ storyRouter.post("/progress", async (req: Request, res: Response) => {
   }
 });
 
+// ─── Companion unlock helper ──────────────────────────────────────────────────
+
+interface UnlockedCompanion {
+  name:          string;
+  rarity:        string;
+  unlockMessage: string;
+}
+
+/**
+ * Checks whether completing `chapterId` should award any special companions
+ * based on the player's accumulated story flags.
+ *
+ * Dedup logic: companions with isSpecial=true can only exist once per player.
+ * We check the existing companion list by name to prevent double-grants on
+ * chapter replay.
+ */
+async function checkAndUnlockSpecialCompanions(
+  userId:    string,
+  chapterId: number,
+): Promise<UnlockedCompanion[]> {
+  const candidates = SPECIAL_COMPANIONS.filter(c => c.chapterId === chapterId);
+  if (candidates.length === 0) return [];
+
+  // Fetch flags and existing special companions in parallel
+  const [flagRows, existingComps] = await Promise.all([
+    db.select().from(playerFlags).where(eq(playerFlags.userId, userId)),
+    db.select({ name: companions.name })
+      .from(companions)
+      .where(and(eq(companions.userId, userId), eq(companions.isSpecial, true))),
+  ]);
+
+  const flagMap      = new Map<string, number>(flagRows.map(f => [f.flagKey, f.flagValue]));
+  const existingNames = new Set(existingComps.map(c => c.name));
+
+  const unlocked: UnlockedCompanion[] = [];
+
+  for (const def of candidates) {
+    // Skip if player already has this companion (replay protection)
+    if (existingNames.has(def.name)) continue;
+
+    const score = flagMap.get(def.flagKey) ?? 0;
+    if (score < def.threshold) continue;
+
+    // Insert the companion
+    await db.insert(companions).values({
+      userId,
+      name:      def.name,
+      type:      def.type,
+      rarity:    def.rarity,
+      level:     def.level,
+      experience: 0,
+      expToNext:  100,
+      hp:        def.hp,
+      maxHp:     def.maxHp,
+      attack:    def.attack,
+      defense:   def.defense,
+      speed:     def.speed,
+      skill:     def.skill,
+      isInParty: false,
+      isSpecial: true,
+    });
+
+    unlocked.push({
+      name:          def.name,
+      rarity:        def.rarity,
+      unlockMessage: def.unlockMessage,
+    });
+  }
+
+  return unlocked;
+}
+
 /**
  * POST /api/story/progress/complete
  * Body: { chapterId, endingKey, endingTitle, endingDescription }
  *
- * Item 3: after marking the chapter complete, find the next chapter by
- * chapterOrder and set isLocked = false on it so it becomes playable.
- * Response includes { nextChapterUnlocked, nextChapterId } so the client
- * can show a "Next chapter unlocked!" message.
+ * 1. Marks the chapter complete.
+ * 2. Upserts the ending record.
+ * 3. Auto-unlocks the next locked chapter by chapterOrder.
+ * 4. (Phase A2) Checks flag thresholds and awards special companions.
+ *
+ * Response: { success, nextChapterUnlocked, nextChapterId, companionsUnlocked }
  */
 storyRouter.post("/progress/complete", async (req: Request, res: Response) => {
   const userId = getUserId(req);
   try {
     const { chapterId, endingKey, endingTitle, endingDescription } = req.body as {
-      chapterId: number;
-      endingKey: string;
-      endingTitle: string;
+      chapterId:         number;
+      endingKey:         string;
+      endingTitle:       string;
       endingDescription: string;
     };
 
-    // 1. Mark this chapter complete
+    // 1. Mark chapter complete
     await db
       .update(playerProgress)
       .set({ isCompleted: true, completedAt: new Date() })
       .where(and(eq(playerProgress.userId, userId), eq(playerProgress.chapterId, chapterId)));
 
-    // 2. Upsert the ending record (idempotent)
+    // 2. Upsert ending (idempotent)
     const [existingEnding] = await db
       .select()
       .from(unlockedEndings)
@@ -223,15 +298,14 @@ storyRouter.post("/progress/complete", async (req: Request, res: Response) => {
       await db.insert(unlockedEndings).values({ userId, endingKey, endingTitle, endingDescription });
     }
 
-    // 3. Auto-unlock the next chapter (Item 3)
-    //    Find the completed chapter's order, then unlock the immediately following one.
+    // 3. Auto-unlock next chapter
     const [completedChapter] = await db
       .select({ chapterOrder: storyChapters.chapterOrder })
       .from(storyChapters)
       .where(eq(storyChapters.id, chapterId));
 
-    let nextChapterId: number | null = null;
-    let nextChapterUnlocked = false;
+    let nextChapterId:      number | null = null;
+    let nextChapterUnlocked               = false;
 
     if (completedChapter) {
       const [nextChapter] = await db
@@ -251,12 +325,15 @@ storyRouter.post("/progress/complete", async (req: Request, res: Response) => {
           .update(storyChapters)
           .set({ isLocked: false })
           .where(eq(storyChapters.id, nextChapter.id));
-        nextChapterId      = nextChapter.id;
+        nextChapterId       = nextChapter.id;
         nextChapterUnlocked = true;
       }
     }
 
-    res.json({ success: true, nextChapterUnlocked, nextChapterId });
+    // 4. Phase A2: flag-gated companion unlock
+    const companionsUnlocked = await checkAndUnlockSpecialCompanions(userId, chapterId);
+
+    res.json({ success: true, nextChapterUnlocked, nextChapterId, companionsUnlocked });
   } catch (e) {
     console.error("[story] POST /progress/complete", e);
     res.status(500).json({ error: "Failed to complete chapter" });
@@ -268,10 +345,7 @@ storyRouter.post("/progress/complete", async (req: Request, res: Response) => {
 storyRouter.get("/flags", async (req: Request, res: Response) => {
   const userId = getUserId(req);
   try {
-    const flags = await db
-      .select()
-      .from(playerFlags)
-      .where(eq(playerFlags.userId, userId));
+    const flags  = await db.select().from(playerFlags).where(eq(playerFlags.userId, userId));
     const record: Record<string, number> = {};
     for (const f of flags) record[f.flagKey] = f.flagValue;
     res.json(record);
@@ -313,7 +387,7 @@ storyRouter.post("/flags", async (req: Request, res: Response) => {
     }
 
     const updated = await db.select().from(playerFlags).where(eq(playerFlags.userId, userId));
-    const record: Record<string, number> = {};
+    const record:  Record<string, number> = {};
     for (const f of updated) record[f.flagKey] = f.flagValue;
     res.json(record);
   } catch (e) {
