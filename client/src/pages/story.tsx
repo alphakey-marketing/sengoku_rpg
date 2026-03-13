@@ -124,6 +124,7 @@ async function runStoryBattle(scene: Scene): Promise<{ victory: boolean; logs: s
 
 // ─── Visual maps ───────────────────────────────────────────────────────────────────────────
 
+// Fix 2: added 11 missing Chapter 2 background keys
 const BG_MAP: Record<string, string> = {
   // Chapter 1
   owari_province_dawn:       "from-amber-950 via-orange-900 to-stone-900",
@@ -138,7 +139,7 @@ const BG_MAP: Record<string, string> = {
   okehazama_aftermath_dawn:  "from-orange-950 via-amber-900 to-stone-950",
   owari_castle_night_rain:   "from-slate-950 via-blue-950 to-black",
   owari_castle_night:        "from-zinc-950 via-slate-950 to-black",
-  // Chapter 2 — Fix 2: all 11 missing background keys
+  // Chapter 2
   owari_castle_gate_morning:     "from-amber-950 via-stone-900 to-zinc-900",
   owari_castle_audience_hall:    "from-stone-950 via-zinc-900 to-black",
   owari_war_room_night:          "from-zinc-950 via-slate-900 to-black",
@@ -153,7 +154,7 @@ const BG_MAP: Record<string, string> = {
   default:                       "from-stone-950 via-zinc-900 to-black",
 };
 
-// Fix 3: Chapter 2 portrait colours + initials
+// Fix 3: extended with all 12 missing Chapter 2 portrait keys
 const PORTRAIT_COLOURS: Record<string, string> = {
   // Chapter 1 — Nobunaga
   nobunaga_cold:        "bg-red-900 border-red-700",
