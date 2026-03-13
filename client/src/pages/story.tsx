@@ -86,6 +86,12 @@ function rarityStyles(rarity: string) {
 
 // ─── Battle gate helpers ─────────────────────────────────────────────────────────────
 
+// Fix 1: per-battle title/subtitle derived from battleEnemyKey
+const BATTLE_META: Record<string, { title: string; subtitle: string }> = {
+  field_1:          { title: "Battle of Okehazama",    subtitle: "Imagawa Vanguard stands before you." },
+  kenshin_vanguard: { title: "Battle of Kawanakajima", subtitle: "Uesugi Kenshin's vanguard blocks the plain." },
+};
+
 function parseBattleEnemyKey(key: string | null | undefined): {
   endpoint: string;
   locationId: number;
@@ -119,6 +125,7 @@ async function runStoryBattle(scene: Scene): Promise<{ victory: boolean; logs: s
 // ─── Visual maps ───────────────────────────────────────────────────────────────────────────
 
 const BG_MAP: Record<string, string> = {
+  // Chapter 1
   owari_province_dawn:       "from-amber-950 via-orange-900 to-stone-900",
   owari_castle_interior:     "from-stone-950 via-stone-900 to-zinc-900",
   owari_castle_exterior:     "from-slate-900 via-stone-900 to-zinc-950",
@@ -131,35 +138,75 @@ const BG_MAP: Record<string, string> = {
   okehazama_aftermath_dawn:  "from-orange-950 via-amber-900 to-stone-950",
   owari_castle_night_rain:   "from-slate-950 via-blue-950 to-black",
   owari_castle_night:        "from-zinc-950 via-slate-950 to-black",
-  default:                   "from-stone-950 via-zinc-900 to-black",
+  // Chapter 2 — Fix 2: all 11 missing background keys
+  owari_castle_gate_morning:     "from-amber-950 via-stone-900 to-zinc-900",
+  owari_castle_audience_hall:    "from-stone-950 via-zinc-900 to-black",
+  owari_war_room_night:          "from-zinc-950 via-slate-900 to-black",
+  kawanakajima_ford_dawn:        "from-sky-950 via-slate-900 to-stone-950",
+  kawanakajima_mist_predawn:     "from-slate-900 via-zinc-950 to-black",
+  kawanakajima_shrine_dusk:      "from-purple-950 via-stone-900 to-zinc-950",
+  kawanakajima_shrine_night:     "from-violet-950 via-zinc-950 to-black",
+  kawanakajima_plain_night:      "from-slate-950 via-zinc-900 to-black",
+  kawanakajima_battlefield_dawn: "from-red-950 via-stone-900 to-zinc-950",
+  kawanakajima_aftermath_smoke:  "from-orange-950 via-stone-800 to-zinc-900",
+  kawanakajima_retreat_dusk:     "from-purple-950 via-red-950 to-black",
+  default:                       "from-stone-950 via-zinc-900 to-black",
 };
 
+// Fix 3: Chapter 2 portrait colours + initials
 const PORTRAIT_COLOURS: Record<string, string> = {
+  // Chapter 1 — Nobunaga
   nobunaga_cold:        "bg-red-900 border-red-700",
   nobunaga_smirk:       "bg-red-800 border-red-600",
   nobunaga_fierce:      "bg-red-950 border-red-500",
   nobunaga_intrigued:   "bg-red-900 border-amber-600",
+  // Chapter 1 — Hayashi
   hayashi_stern:        "bg-stone-700 border-stone-500",
   hayashi_shocked:      "bg-stone-600 border-stone-400",
+  // Chapter 1 — Mitsuhide
   mitsuhide_calm:       "bg-blue-900 border-blue-600",
   mitsuhide_resolve:    "bg-blue-800 border-blue-500",
   mitsuhide_approving:  "bg-blue-700 border-blue-400",
   mitsuhide_disbelief:  "bg-blue-950 border-blue-400",
   mitsuhide_grave:      "bg-blue-950 border-blue-600",
   mitsuhide_grim:       "bg-slate-800 border-blue-600",
+  // Chapter 1 — Others
   monk_fearful:         "bg-amber-900 border-amber-600",
   scout_panicked:       "bg-green-950 border-green-700",
   kenshin_portrait:     "bg-indigo-900 border-indigo-500",
   messenger_formal:     "bg-stone-800 border-stone-500",
+  // Chapter 2 — Mitsuhide new moods
+  mitsuhide_concerned:  "bg-blue-900 border-blue-500",
+  mitsuhide_tense:      "bg-blue-950 border-blue-400",
+  // Chapter 2 — Hideyoshi
+  hideyoshi_grinning:   "bg-yellow-800 border-yellow-600",
+  hideyoshi_pouting:    "bg-yellow-900 border-yellow-700",
+  hideyoshi_excited:    "bg-amber-700 border-amber-500",
+  hideyoshi_nervous:    "bg-yellow-950 border-yellow-700",
+  hideyoshi_elated:     "bg-amber-800 border-amber-600",
+  hideyoshi_serious:    "bg-yellow-900 border-yellow-600",
+  // Chapter 2 — Uesugi Envoy
+  uesugi_envoy_formal:    "bg-indigo-900 border-indigo-600",
+  uesugi_envoy_surprised: "bg-indigo-800 border-indigo-500",
+  uesugi_envoy_offended:  "bg-indigo-950 border-red-600",
+  // Chapter 2 — Kenshin (armoured)
+  kenshin_war_helm:     "bg-indigo-950 border-indigo-300",
 };
 
 const PORTRAIT_INITIALS: Record<string, string> = {
+  // Chapter 1
   nobunaga_cold: "N", nobunaga_smirk: "N", nobunaga_fierce: "N", nobunaga_intrigued: "N",
   hayashi_stern: "H", hayashi_shocked: "H",
   mitsuhide_calm: "M", mitsuhide_resolve: "M", mitsuhide_approving: "M",
   mitsuhide_disbelief: "M", mitsuhide_grave: "M", mitsuhide_grim: "M",
   monk_fearful: "Mo", scout_panicked: "Sc",
   kenshin_portrait: "K", messenger_formal: "Me",
+  // Chapter 2
+  mitsuhide_concerned: "M", mitsuhide_tense: "M",
+  hideyoshi_grinning: "Hi", hideyoshi_pouting: "Hi", hideyoshi_excited: "Hi",
+  hideyoshi_nervous: "Hi",  hideyoshi_elated: "Hi",  hideyoshi_serious: "Hi",
+  uesugi_envoy_formal: "E", uesugi_envoy_surprised: "E", uesugi_envoy_offended: "E",
+  kenshin_war_helm: "K",
 };
 
 const FLAG_LABELS: Record<string, string> = {
@@ -217,7 +264,6 @@ function CompanionUnlockCard({
         styles.border
       } ${styles.glow}`}
     >
-      {/* Rarity pill + name row */}
       <div className="flex items-center gap-2 mb-2">
         <span
           className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full border ${
@@ -228,7 +274,6 @@ function CompanionUnlockCard({
         </span>
         <span className="text-white font-bold text-sm">{companion.name}</span>
       </div>
-      {/* Unlock message */}
       <p className="text-stone-400 text-xs italic leading-relaxed">
         &ldquo;{companion.unlockMessage}&rdquo;
       </p>
@@ -249,6 +294,12 @@ function BattleGate({
   const [logs, setLogs]       = useState<string[]>([]);
   const [victory, setVictory] = useState<boolean | null>(null);
 
+  // Fix 1: title/subtitle derived from battleEnemyKey, not hardcoded
+  const meta = BATTLE_META[scene.battleEnemyKey ?? ""] ?? {
+    title:    "Battle",
+    subtitle: "An enemy force blocks your path.",
+  };
+
   const fight = useCallback(async () => {
     setPhase("fighting");
     setLogs(["Crossing blades…"]);
@@ -262,8 +313,8 @@ function BattleGate({
     <div className={`min-h-screen bg-gradient-to-b ${bgGradient} flex flex-col items-center justify-center p-8 text-center`}>
       <div className="max-w-md w-full">
         <p className="text-red-400 text-xs tracking-widest uppercase mb-4 animate-pulse">⚔ Battle</p>
-        <h2 className="text-2xl font-bold text-white mb-2">Battle of Okehazama</h2>
-        <p className="text-stone-400 text-sm mb-6">Imagawa Vanguard stands before you.</p>
+        <h2 className="text-2xl font-bold text-white mb-2">{meta.title}</h2>
+        <p className="text-stone-400 text-sm mb-6">{meta.subtitle}</p>
         {logs.length > 0 && (
           <div className="mb-6 max-h-48 overflow-y-auto rounded bg-black/60 border border-white/10 p-3 text-left">
             {logs.map((l, i) => <p key={i} className="text-xs text-stone-300 leading-relaxed">{l}</p>)}
@@ -397,7 +448,6 @@ export default function StoryPage() {
   const [error, setError]                 = useState<string | null>(null);
   const [nextChapterId, setNextChapterId] = useState<number | null>(null);
 
-  // Phase B1: companion unlock results from completeChapter()
   const [companionsUnlocked, setCompanionsUnlocked] = useState<UnlockedCompanion[]>([]);
 
   const typeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -485,7 +535,6 @@ export default function StoryPage() {
         endingDescription: `${chapter.subtitle ?? ""} — Chapter complete.`,
       });
       if (result.nextChapterId) setNextChapterId(result.nextChapterId);
-      // Phase B1: store any companions the server awarded
       setCompanionsUnlocked(result.companionsUnlocked);
       setIsComplete(true);
       return;
@@ -577,7 +626,6 @@ export default function StoryPage() {
       <div className="min-h-screen bg-gradient-to-b from-zinc-950 to-black flex flex-col items-center justify-center p-8">
         <div className="max-w-lg w-full text-center">
 
-          {/* ── Header ── */}
           <motion.div
             initial={{ opacity: 0, y: -12 }}
             animate={{ opacity: 1, y: 0 }}
@@ -588,7 +636,6 @@ export default function StoryPage() {
             <p className="text-stone-400 italic mb-8">{chapter.subtitle}</p>
           </motion.div>
 
-          {/* ── Flag summary ── */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -599,7 +646,6 @@ export default function StoryPage() {
             <FlagBar flags={flags} />
           </motion.div>
 
-          {/* ── Phase B1: Companion unlock banners ── */}
           <AnimatePresence>
             {companionsUnlocked.length > 0 && (
               <motion.div
@@ -619,7 +665,6 @@ export default function StoryPage() {
             )}
           </AnimatePresence>
 
-          {/* ── Next chapter notice ── */}
           {nextChapterId && (
             <motion.div
               initial={{ opacity: 0, y: 8 }}
@@ -632,7 +677,6 @@ export default function StoryPage() {
             </motion.div>
           )}
 
-          {/* ── Action buttons ── */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
