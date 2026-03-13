@@ -3,6 +3,16 @@ import { storage } from "../storage";
 import { isAuthenticated } from "../replit_integrations/auth";
 import { api } from "@shared/routes";
 import { pick } from "../utils";
+import { getStoryUnlockedPool, buildStoryEquipmentDrop } from "../generators/entities";
+
+/**
+ * Probability that any given equipment pull is replaced by a story-unlocked
+ * item from the player's eligible pool (only applies when pool is non-empty).
+ *
+ * 25% feels meaningful without flooding the player's inventory with named
+ * historical pieces — they stay special because they're still not guaranteed.
+ */
+const STORY_DROP_CHANCE = 0.25;
 
 function rarityFromRandom(): string {
   const r = Math.random();
@@ -77,21 +87,46 @@ export function registerGachaRoutes(app: Express) {
   });
 
   app.post(api.gacha.pullEquipment.path, isAuthenticated, async (req: any, res) => {
-    const userId = req.user.claims.sub;
-    const count  = Math.min(Math.max(Number(req.body?.count) || 1, 1), 10);
-    const user   = await storage.getUser(userId);
+    const userId    = req.user.claims.sub;
+    const count     = Math.min(Math.max(Number(req.body?.count) || 1, 1), 10);
+    const locationId = Number(req.body?.locationId) || 1;
+
+    // Fetch user + flags in parallel
+    const [user, flagRows] = await Promise.all([
+      storage.getUser(userId),
+      storage.getPlayerFlags(userId),
+    ]);
     if (!user) return res.status(401).json({ message: "Unauthorized" });
+
     const totalCost = 15 * count;
     if (user.rice < totalCost) return res.status(400).json({ message: "Not enough rice" });
     await storage.updateUser(userId, { rice: user.rice - totalCost });
+
+    // Build flag map and derive story-unlocked pool (empty for flag-less players)
+    const flagMap: Record<string, number> = {};
+    for (const f of flagRows) flagMap[f.flagKey] = f.flagValue;
+    const storyPool = getStoryUnlockedPool(flagMap);
 
     const weaponNames    = ["Masamune Katana","Muramasa Blade","Dragon Naginata","Shadow Tanto","Imperial Yari","Honjo Masamune","Kusanagi-no-Tsurugi","Onimaru","Mikazuki Munechika","Tombstone Cutter","Nihongo Spear","Otegine","Heshikiri Hasebe","Azai Ichimonji","Dragon Slaying Odachi"];
     const armorNames     = ["Oda Clan Do","Red Thread Kabuto","Shinobi Shozoku","Iron Suneate","Golden Menpo","Nanban-do Armor","Yukimura's Crimson Kabuto","Date's Crescent Helm","Dragon Scale Do","Golden Lacquer Hara-ate","Iron Menpo of Terror","Shogun's Great Armor","Shadow Stalker Garb"];
     const accessoryNames = ["Magatama of Luck","War Fan of Strategy","Ninja Kunai Set","Omamori of Health","Smoke Bomb Belt","Scroll of Hidden Mist","Sacred Mirror","Talisman of Elements","Vengeful Spirit Mask","Heirloom Inro","Dragon Bone Rosary","Jade Amulet","Phoenix Feather"];
     const horseGearNames = ["War Saddle","Iron Stirrups","Silk Reins","Steel Barding","Speed Spurs","Imperial Gold Saddle","Jade-Inlaid Stirrups","Wind-Step Horseshoes","Ceremonial Crest","Takeda War Banner","Thunder-Hoof Spurs","Celestial Bridle","Ebony Stirrups"];
 
-    const results = [];
+    const results: any[] = [];
     for (let i = 0; i < count; i++) {
+
+      // ── Story-drop gate ────────────────────────────────────────────────────────────
+      // If the player has unlocked story items AND the random roll succeeds,
+      // substitute this pull with a named historical piece.
+      if (storyPool.length > 0 && Math.random() < STORY_DROP_CHANCE) {
+        const def  = pick(storyPool);
+        const payload = buildStoryEquipmentDrop(userId, def, locationId) as any;
+        const eq   = await storage.createEquipment(payload);
+        results.push({ ...eq, storyDrop: true, storyFlavour: def.storyFlavour });
+        continue;
+      }
+
+      // ── Normal drop path (unchanged) ────────────────────────────────────────────
       const rDrop = Math.random();
       const type  = rDrop < 0.1 ? 'accessory' : pick(['weapon','armor','horse_gear']);
       const r     = Math.random();

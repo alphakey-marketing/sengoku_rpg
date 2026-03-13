@@ -3,9 +3,56 @@ import {
   CLASSIC_DROPS, HORSE_RARITY_STATS, HORSE_NAMES, PET_NAMES,
 } from "../constants/items";
 import { YOKAI_NAMES, JP_BOSS_NAMES, CN_BOSS_NAMES, SPECIAL_BOSSES } from "../constants/enemies";
+import { STORY_EQUIPMENT, type SpecialEquipmentDef } from "../constants/storyEquipment";
+
+export { type SpecialEquipmentDef };
 
 export function calcEquipExpToNext(level: number): number {
   return Math.floor(100 * Math.pow(1.3, level - 1));
+}
+
+/**
+ * Returns the subset of STORY_EQUIPMENT the player has unlocked based on
+ * their current flag scores.
+ *
+ * @param flags  - Record<flagKey, flagValue> from playerFlags
+ */
+export function getStoryUnlockedPool(
+  flags: Record<string, number>,
+): SpecialEquipmentDef[] {
+  return STORY_EQUIPMENT.filter(
+    (item) => (flags[item.storyFlagKey] ?? 0) >= item.storyFlagThreshold,
+  );
+}
+
+/**
+ * Converts a SpecialEquipmentDef into a storage.createEquipment-ready
+ * payload, applying the same locationId ATK/DEF multiplier used everywhere.
+ */
+export function buildStoryEquipmentDrop(
+  userId:     string,
+  item:       SpecialEquipmentDef,
+  locationId: number = 1,
+): object {
+  const locMult = 1 + (locationId - 1) * 0.1;
+  return {
+    userId,
+    name:         item.name,
+    type:         item.type,
+    weaponType:   item.weaponType ?? null,
+    rarity:       item.rarity,
+    level:        1,
+    experience:   0,
+    expToNext:    calcEquipExpToNext(1),
+    attackBonus:  Math.floor(item.atk  * locMult),
+    defenseBonus: Math.floor(item.def  * locMult),
+    speedBonus:   Math.floor(item.spd  * locMult),
+    hpBonus:      Math.floor(item.hp   * locMult),
+    mdefBonus:    Math.floor(item.mdef * locMult),
+    matkBonus:    item.matk,
+    cardSlots:    0,
+    isEquipped:   false,
+  };
 }
 
 export function generatePet(userId: string, locationId: number = 1) {
@@ -38,7 +85,7 @@ export function generatePet(userId: string, locationId: number = 1) {
     primal:       { hp: 3500, atk: 800, def: 700, spd: 600 },
   };
 
-  const stats   = statsByRarity[rarity] ?? statsByRarity.white;
+  const stats    = statsByRarity[rarity] ?? statsByRarity.white;
   const variance = () => 0.9 + Math.random() * 0.2;
   const locMult  = isChina ? 2 + (locationId - 100) * 0.5 : 1 + (locationId - 1) * 0.2;
   const hpValue  = Math.floor(stats.hp * locMult * variance());
@@ -111,7 +158,7 @@ export function generateHorse(userId: string, locationId: number = 1) {
   else if (r > 0.80 - bonus) rarity = 'blue';
   else if (r > 0.55 - bonus) rarity = 'green';
 
-  // Use the shared HORSE_RARITY_STATS constant (no more inline duplication)
+  // Use the shared HORSE_RARITY_STATS constant
   const stats    = HORSE_RARITY_STATS[rarity] ?? HORSE_RARITY_STATS.white;
   const variance = () => 0.9 + Math.random() * 0.2;
 
@@ -218,13 +265,6 @@ export function generateEnemyStats(
 
 /**
  * Generate a ninja encounter scaled to locationId.
- *
- * Normal ninja  → scales like a field boss  (between field and boss tier)
- * Super-strong  → scales like a special boss (rare, much harder)
- *
- * Previously all ninjas used hardcoded hp:1000/5000, atk:100/500, def:50/300
- * regardless of location — a location-1 player faced the same enemy as a
- * China-110 player. Now stats track the same locationMultiplier used everywhere.
  */
 export function generateNinjaStats(
   name: string,
@@ -237,7 +277,6 @@ export function generateNinjaStats(
 
   const lvl = isSuperStrong ? targetLevel + 20 : targetLevel + 2;
 
-  // Super-strong: special-boss scaling. Normal: field-boss scaling.
   const hp     = isSuperStrong
     ? Math.floor((lvl * 400 + 5000) * locationMultiplier)
     : Math.floor((lvl * 200 + 1000) * locationMultiplier);
