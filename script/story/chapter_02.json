@@ -1,0 +1,602 @@
+{
+  "chapter": {
+    "title": "The God of War",
+    "subtitle": "1553 \u2014 The Tiger of Echigo does not bluff.",
+    "chapterOrder": 2,
+    "isLocked": true
+  },
+  "scenes": [
+    {
+      "sceneRef": "S01",
+      "backgroundKey": "owari_castle_gate_morning",
+      "bgmKey": "bgm_tense_court",
+      "sceneOrder": 1,
+      "nextSceneRef": "S02",
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "Three years since Okehazama. The Fool of Owari is a name spoken differently now \u2014 with fear where there was laughter.",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "Today, an Uesugi envoy stands at your gate. Behind him, no soldiers. Only the weight of Kenshin's name.",
+          "lineOrder": 2
+        },
+        {
+          "speakerName": "Uesugi Envoy",
+          "speakerSide": "left",
+          "portraitKey": "uesugi_envoy_formal",
+          "text": "Lord Kenshin invites you to Kawanakajima. Not as an enemy. As a judge. He wishes to see for himself what the Fool of Owari has become.",
+          "lineOrder": 3
+        },
+        {
+          "speakerName": "Mitsuhide",
+          "speakerSide": "left",
+          "portraitKey": "mitsuhide_grave",
+          "text": "Kawanakajima is Uesugi ground. He sets the board and invites you to sit.",
+          "lineOrder": 4
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_cold",
+          "text": "Then I will rearrange the pieces before I arrive.",
+          "lineOrder": 5
+        }
+      ],
+      "choices": []
+    },
+    {
+      "sceneRef": "S02",
+      "backgroundKey": "owari_castle_audience_hall",
+      "bgmKey": "bgm_tense_court",
+      "sceneOrder": 2,
+      "nextSceneRef": null,
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "The envoy waits in the audience hall. Your retainers watch. How you treat an enemy's messenger sets the tone of every negotiation to follow.",
+          "lineOrder": 1
+        }
+      ],
+      "choices": [
+        {
+          "choiceText": "\"Seat him at the high table. Offer wine. Let Kenshin hear his man was treated as a guest.\"",
+          "nextSceneRef": "S03A",
+          "flagKey": "political_power",
+          "flagValue": 1,
+          "flagKey2": null,
+          "flagValue2": null,
+          "choiceOrder": 1
+        },
+        {
+          "choiceText": "\"Make him stand. Answer nothing. Let Kenshin's man return with a sore back and no answer.\"",
+          "nextSceneRef": "S03B",
+          "flagKey": "ruthlessness",
+          "flagValue": 2,
+          "flagKey2": null,
+          "flagValue2": null,
+          "choiceOrder": 2
+        }
+      ]
+    },
+    {
+      "sceneRef": "S03A",
+      "backgroundKey": "owari_castle_audience_hall",
+      "bgmKey": "bgm_tense_court",
+      "sceneOrder": 3,
+      "nextSceneRef": "S04",
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Uesugi Envoy",
+          "speakerSide": "left",
+          "portraitKey": "uesugi_envoy_surprised",
+          "text": "I\u2026 thank you, my lord. I will carry your courtesy back to Lord Kenshin.",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "Mitsuhide gives the smallest nod. In the language of retainers, that is applause.",
+          "lineOrder": 2
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_smirk",
+          "text": "Tell your lord that a man who starves his guests makes poor alliance. I have fed his man. Now he owes me a conversation.",
+          "lineOrder": 3
+        }
+      ],
+      "choices": []
+    },
+    {
+      "sceneRef": "S03B",
+      "backgroundKey": "owari_castle_audience_hall",
+      "bgmKey": "bgm_defiance",
+      "sceneOrder": 4,
+      "nextSceneRef": "S04",
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Uesugi Envoy",
+          "speakerSide": "left",
+          "portraitKey": "uesugi_envoy_offended",
+          "text": "Lord Kenshin will hear of this insult.",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_fierce",
+          "text": "Good. Then he already knows where he stands with me.",
+          "lineOrder": 2
+        },
+        {
+          "speakerName": "Mitsuhide",
+          "speakerSide": "left",
+          "portraitKey": "mitsuhide_concerned",
+          "text": "My lord\u2026 Kenshin does not forget slights.",
+          "lineOrder": 3
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_cold",
+          "text": "Neither do I.",
+          "lineOrder": 4
+        }
+      ],
+      "choices": []
+    },
+    {
+      "sceneRef": "S04",
+      "backgroundKey": "owari_war_room_night",
+      "bgmKey": "bgm_strategy",
+      "sceneOrder": 5,
+      "nextSceneRef": null,
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "The war council. Mitsuhide unrolls a map of the Kawanakajima plain. To his left, Hideyoshi chews a rice cake and draws his own lines in the air.",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Mitsuhide",
+          "speakerSide": "left",
+          "portraitKey": "mitsuhide_calm",
+          "text": "We position our vanguard here, at the Chikuma ford. Kenshin cannot cross without committing. We have time to read him before we act.",
+          "lineOrder": 2
+        },
+        {
+          "speakerName": "Hideyoshi",
+          "speakerSide": "left",
+          "portraitKey": "hideyoshi_grinning",
+          "text": "Boring. We push through the mist before dawn. Kenshin expects a careful lord. Give him a reckless one. Surprise is worth ten thousand men.",
+          "lineOrder": 3
+        },
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "Two minds. Two roads to Kawanakajima. Yours is the only voice that ends the debate.",
+          "lineOrder": 4
+        }
+      ],
+      "choices": [
+        {
+          "choiceText": "\"Mitsuhide\u2019s plan. Control the ford. Force Kenshin to show his hand first.\"",
+          "nextSceneRef": "S05A",
+          "flagKey": "mitsuhide_loyalty",
+          "flagValue": 2,
+          "flagKey2": "political_power",
+          "flagValue2": 1,
+          "choiceOrder": 1
+        },
+        {
+          "choiceText": "\"Hideyoshi\u2019s plan. Strike at dawn. The God of War won\u2019t expect a god-sized gamble.\"",
+          "nextSceneRef": "S05B",
+          "flagKey": "ruthlessness",
+          "flagValue": 1,
+          "flagKey2": "mitsuhide_loyalty",
+          "flagValue2": -1,
+          "choiceOrder": 2
+        }
+      ]
+    },
+    {
+      "sceneRef": "S05A",
+      "backgroundKey": "kawanakajima_ford_dawn",
+      "bgmKey": "bgm_journey",
+      "sceneOrder": 6,
+      "nextSceneRef": "S06",
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Mitsuhide",
+          "speakerSide": "left",
+          "portraitKey": "mitsuhide_resolve",
+          "text": "Our men hold the ford. Kenshin's scouts have pulled back twice. He is measuring us, my lord.",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_cold",
+          "text": "Let him measure. Patience is a weapon the Tiger never learned to use.",
+          "lineOrder": 2
+        },
+        {
+          "speakerName": "Hideyoshi",
+          "speakerSide": "left",
+          "portraitKey": "hideyoshi_pouting",
+          "text": "\u2026I could have ended this at dawn. But fine. We do this the slow way.",
+          "lineOrder": 3
+        }
+      ],
+      "choices": []
+    },
+    {
+      "sceneRef": "S05B",
+      "backgroundKey": "kawanakajima_mist_predawn",
+      "bgmKey": "bgm_war_drums",
+      "sceneOrder": 7,
+      "nextSceneRef": "S06",
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Hideyoshi",
+          "speakerSide": "left",
+          "portraitKey": "hideyoshi_excited",
+          "text": "They\u2019re moving! Kenshin heard the drums and pushed forward \u2014 but we\u2019re already past his flank!",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Mitsuhide",
+          "speakerSide": "left",
+          "portraitKey": "mitsuhide_tense",
+          "text": "My lord \u2014 his centre is unmarked. If the mist lifts before we consolidate, we\u2019re exposed on three sides.",
+          "lineOrder": 2
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_fierce",
+          "text": "The mist won\u2019t lift. Move.",
+          "lineOrder": 3
+        }
+      ],
+      "choices": []
+    },
+    {
+      "sceneRef": "S06",
+      "backgroundKey": "kawanakajima_shrine_dusk",
+      "bgmKey": "bgm_ominous",
+      "sceneOrder": 8,
+      "nextSceneRef": null,
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "At the edge of the Kawanakajima plain stands a mountain shrine \u2014 ancient, moss-covered, smelling of old incense and older blood.",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "A white fox sits on the shrine steps. It does not flee. It watches you. The soldiers behind you murmur and press back.",
+          "lineOrder": 2
+        },
+        {
+          "speakerName": "Mitsuhide",
+          "speakerSide": "left",
+          "portraitKey": "mitsuhide_calm",
+          "text": "Inari's messenger, some say. Others say a kitsune wears a fox's face only when it wants to be seen.",
+          "lineOrder": 3
+        },
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "The fox tilts its head. One eye is black. One is gold.",
+          "lineOrder": 4
+        }
+      ],
+      "choices": [
+        {
+          "choiceText": "Kneel before the shrine. Offer your sword as tribute.",
+          "nextSceneRef": "S07A",
+          "flagKey": "supernatural_affinity",
+          "flagValue": 2,
+          "flagKey2": null,
+          "flagValue2": null,
+          "choiceOrder": 1
+        },
+        {
+          "choiceText": "Walk past it. Omens are stories men tell to explain what they were too afraid to prevent.",
+          "nextSceneRef": "S07B",
+          "flagKey": "supernatural_affinity",
+          "flagValue": -1,
+          "flagKey2": null,
+          "flagValue2": null,
+          "choiceOrder": 2
+        }
+      ]
+    },
+    {
+      "sceneRef": "S07A",
+      "backgroundKey": "kawanakajima_shrine_night",
+      "bgmKey": "bgm_ominous",
+      "sceneOrder": 9,
+      "nextSceneRef": "S08_BATTLE",
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "You kneel. The fox pads forward and sniffs the blade. Then it turns and vanishes into the treeline.",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "Where it stood, the shrine lantern flickers back to life \u2014 lit from nothing, burning gold.",
+          "lineOrder": 2
+        },
+        {
+          "speakerName": "Mitsuhide",
+          "speakerSide": "left",
+          "portraitKey": "mitsuhide_approving",
+          "text": "The men will fight harder for this, my lord. There are things a general cannot give his army that a god can.",
+          "lineOrder": 3
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_intrigued",
+          "text": "I did not kneel for the men. I knelt because the fox was right to watch me.",
+          "lineOrder": 4
+        }
+      ],
+      "choices": []
+    },
+    {
+      "sceneRef": "S07B",
+      "backgroundKey": "kawanakajima_plain_night",
+      "bgmKey": "bgm_resolve",
+      "sceneOrder": 10,
+      "nextSceneRef": "S08_BATTLE",
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "You walk past it without breaking stride. The fox watches until you disappear into the dark.",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Hideyoshi",
+          "speakerSide": "left",
+          "portraitKey": "hideyoshi_nervous",
+          "text": "\u2026My lord, the men are looking at each other.",
+          "lineOrder": 2
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_cold",
+          "text": "Let them look. Fear is acceptable. Hesitation is not. Move.",
+          "lineOrder": 3
+        }
+      ],
+      "choices": []
+    },
+    {
+      "sceneRef": "S08_BATTLE",
+      "backgroundKey": "kawanakajima_battlefield_dawn",
+      "bgmKey": "bgm_war_drums",
+      "sceneOrder": 11,
+      "nextSceneRef": null,
+      "isBattleGate": true,
+      "battleEnemyKey": "kenshin_vanguard",
+      "battleWinSceneRef": "S09_WIN",
+      "battleLoseSceneRef": "S09_LOSE",
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "The mist burns off the Kawanakajima plain as the sun crests the ridge. Through it, like a painting revealing itself stroke by stroke, the Uesugi vanguard.",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Kenshin",
+          "speakerSide": "left",
+          "portraitKey": "kenshin_war_helm",
+          "text": "Oda Nobunaga. I have given you every opportunity to withdraw.",
+          "lineOrder": 2
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_fierce",
+          "text": "And I have given you every opportunity to reconsider calling yourself a god.",
+          "lineOrder": 3
+        }
+      ],
+      "choices": []
+    },
+    {
+      "sceneRef": "S09_WIN",
+      "backgroundKey": "kawanakajima_aftermath_smoke",
+      "bgmKey": "bgm_victory_somber",
+      "sceneOrder": 12,
+      "nextSceneRef": "S10",
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "Kenshin's vanguard breaks. He withdraws across the Chikuma in good order \u2014 a general who knows a battle lost is not a war lost.",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Hideyoshi",
+          "speakerSide": "left",
+          "portraitKey": "hideyoshi_elated",
+          "text": "We held the field! Against the God of War! Do you understand what that means?",
+          "lineOrder": 2
+        },
+        {
+          "speakerName": "Mitsuhide",
+          "speakerSide": "left",
+          "portraitKey": "mitsuhide_calm",
+          "text": "It means he will return. Better prepared, and considerably less interested in conversation.",
+          "lineOrder": 3
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_smirk",
+          "text": "Good. I was beginning to worry he wasn\u2019t serious.",
+          "lineOrder": 4
+        }
+      ],
+      "choices": []
+    },
+    {
+      "sceneRef": "S09_LOSE",
+      "backgroundKey": "kawanakajima_retreat_dusk",
+      "bgmKey": "bgm_defeat",
+      "sceneOrder": 13,
+      "nextSceneRef": "S10",
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "The line breaks. Kenshin's cavalry sweeps through the left flank like water finding a crack in stone.",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Mitsuhide",
+          "speakerSide": "left",
+          "portraitKey": "mitsuhide_grim",
+          "text": "My lord \u2014 fall back to the river bend. I will hold the rear.",
+          "lineOrder": 2
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_cold",
+          "text": "Do not die for me, Mitsuhide. A dead general teaches nothing.",
+          "lineOrder": 3
+        },
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "Kenshin does not press the pursuit. A message arrives that evening: \u201cYou fought well. Next time, fight better.\u201d",
+          "lineOrder": 4
+        }
+      ],
+      "choices": []
+    },
+    {
+      "sceneRef": "S10",
+      "backgroundKey": "owari_castle_night",
+      "bgmKey": "bgm_tension_resolve",
+      "sceneOrder": 14,
+      "nextSceneRef": null,
+      "isBattleGate": false,
+      "isChapterEnd": true,
+      "dialogueLines": [
+        {
+          "speakerName": "Hideyoshi",
+          "speakerSide": "left",
+          "portraitKey": "hideyoshi_serious",
+          "text": "My lord. The spy we captured last week finally talked. Someone within the clan has been feeding our troop movements to a third party. Not Kenshin.",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_cold",
+          "text": "Not Kenshin.",
+          "lineOrder": 2
+        },
+        {
+          "speakerName": "Mitsuhide",
+          "speakerSide": "left",
+          "portraitKey": "mitsuhide_grave",
+          "text": "The seal on the intercepted letters\u2026 it is Shogunate. Someone in Kyoto wants you destabilised before you grow too large to manage.",
+          "lineOrder": 3
+        },
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "A package arrives. No sender. Inside: a gift from Uesugi Kenshin. A single salt brick, the traditional Uesugi gift to a worthy rival. And a note.",
+          "lineOrder": 4
+        },
+        {
+          "speakerName": "Kenshin (letter)",
+          "speakerSide": "left",
+          "portraitKey": "kenshin_portrait",
+          "text": "I fight with swords, not poison. Your enemy in Kyoto is mine as well. Do not die before we meet again, Fool of Owari.",
+          "lineOrder": 5
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_smirk",
+          "text": "Kyoto. Then Kyoto it is.",
+          "lineOrder": 6
+        },
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "The road to the capital stretches ahead, longer and more treacherous than any battlefield. But the Fool of Owari has stopped being afraid of long roads.",
+          "lineOrder": 7
+        }
+      ],
+      "choices": []
+    }
+  ]
+}
