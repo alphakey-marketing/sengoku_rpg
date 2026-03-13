@@ -9,6 +9,7 @@ import { giveEquipmentExp } from "../helpers/equipmentExp";
 import { generateEquipment, generateEnemyStats, generateNinjaStats } from "../generators/entities";
 import { SPECIAL_BOSSES } from "../constants/enemies";
 import { pick } from "../utils";
+import { getFlagModifiers, applyFlagModifiers } from "../helpers/storyFlagModifiers";
 
 export function registerBattleRoutes(app: Express) {
   app.post(api.battle.field.path, isAuthenticated, async (req: any, res) => {
@@ -16,16 +17,27 @@ export function registerBattleRoutes(app: Express) {
     const user      = await storage.getUser(userId);
     if (!user) return res.status(401).json({ message: "Unauthorized" });
     const locationId = Number(req.body.locationId)  || 1;
-    const count      = Math.min(Math.max(1, Number(req.body.repeatCount) || 1), 10);
-    const teamStats  = await getPlayerTeamStats(userId);
+    const rawCount   = Math.min(Math.max(1, Number(req.body.repeatCount) || 1), 10);
+
+    const [teamStats, flagMods] = await Promise.all([
+      getPlayerTeamStats(userId),
+      getFlagModifiers(userId),
+    ]);
     if (!teamStats) return res.status(400).json({ message: "Team not found" });
+
+    // Apply story flag modifiers to combat stats
+    applyFlagModifiers(teamStats, flagMods);
+
+    // Political power can thin the enemy ranks (min 1 battle)
+    const count = Math.max(1, rawCount - flagMods.enemyReduction);
 
     let totalExpGained   = 0;
     let totalGoldGained  = 0;
     const allEquipmentDropped: any[] = [];
     const allPetsDropped:      any[] = [];
     const allHorsesDropped:    any[] = [];
-    const allLogs:             string[] = [];
+    // Prepend flag modifier log lines so player sees them first
+    const allLogs: string[] = [...flagMods.logLines];
     let ninjaEncounter: any = null;
 
     for (let i = 0; i < count; i++) {
@@ -113,11 +125,18 @@ export function registerBattleRoutes(app: Express) {
       return res.json({ success: true, message: `You paid ${goldToPay} gold to ${ninjaName}. He vanished into the shadows.` });
     }
 
-    const teamStats = await getPlayerTeamStats(userId);
+    const [teamStats, flagMods] = await Promise.all([
+      getPlayerTeamStats(userId),
+      getFlagModifiers(userId),
+    ]);
     if (!teamStats) return res.status(400).json({ message: "Team not found" });
+    applyFlagModifiers(teamStats, flagMods);
+
     const isSuperStrong = Math.random() < 0.3;
     const enemy         = generateNinjaStats(ninjaName, Number(locationId), isSuperStrong, goldDemanded);
     const battleResult  = runTurnBasedCombat(teamStats, [enemy]);
+    // Prepend flag log lines
+    battleResult.logs.unshift(...flagMods.logLines);
     if (battleResult.victory) {
       const goldGained   = goldDemanded * 2;
       const stonesGained = 3 + Math.floor(Math.random() * 3);
@@ -135,11 +154,18 @@ export function registerBattleRoutes(app: Express) {
     const user      = await storage.getUser(userId);
     if (!user) return res.status(401).json({ message: "Unauthorized" });
     const locationId = Number(req.body.locationId) || 1;
-    const teamStats  = await getPlayerTeamStats(userId);
+
+    const [teamStats, flagMods] = await Promise.all([
+      getPlayerTeamStats(userId),
+      getFlagModifiers(userId),
+    ]);
     if (!teamStats) return res.status(400).json({ message: "Team not found" });
+    applyFlagModifiers(teamStats, flagMods);
+
     const enemyData  = generateEnemyStats('boss', user.level, locationId);
     if (req.body.enemyName) enemyData.name = req.body.enemyName;
     const { victory, logs } = runTurnBasedCombat(teamStats, [enemyData]);
+    logs.unshift(...flagMods.logLines);
 
     if (victory) {
       await storage.updateQuestProgress(userId, 'daily_boss', 1);
@@ -170,11 +196,18 @@ export function registerBattleRoutes(app: Express) {
     const user      = await storage.getUser(userId);
     if (!user) return res.status(401).json({ message: "Unauthorized" });
     const locationId = Number(req.body.locationId) || 1;
-    const teamStats  = await getPlayerTeamStats(userId);
+
+    const [teamStats, flagMods] = await Promise.all([
+      getPlayerTeamStats(userId),
+      getFlagModifiers(userId),
+    ]);
     if (!teamStats) return res.status(400).json({ message: "Team not found" });
+    applyFlagModifiers(teamStats, flagMods);
+
     const enemyData  = generateEnemyStats('special', user.level, locationId);
     if (req.body.enemyName) enemyData.name = req.body.enemyName;
     const { victory, logs } = runTurnBasedCombat(teamStats, [enemyData]);
+    logs.unshift(...flagMods.logLines);
 
     if (victory) {
       const expGained       = 250 + locationId * 100;
