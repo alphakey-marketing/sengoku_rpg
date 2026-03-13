@@ -11,9 +11,12 @@ import {
   getFlags,
   resetStory,
   fetchChapter,
+  listChapters,
   type ProgressState,
   type StoryFlags,
+  type ChapterSummary,
 } from "@/lib/story-engine";
+import { BookOpen, Lock, CheckCircle2, PlayCircle } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -63,41 +66,34 @@ interface ChapterData {
 
 // ─── Battle gate helpers ──────────────────────────────────────────────────────
 
-/**
- * Derive the correct API endpoint and locationId from a battleEnemyKey.
- * Convention:
- *   boss_<locationId>       → /api/battle/boss
- *   special_<locationId>    → /api/battle/special-boss
- *   field_<locationId>      → /api/battle/field  (default)
- */
 function parseBattleEnemyKey(key: string | null | undefined): {
   endpoint: string;
   locationId: number;
-  enemyName?: string;
 } {
   if (!key) return { endpoint: "/api/battle/field", locationId: 1 };
   const parts = key.split("_");
-  const lastPart = parts[parts.length - 1];
-  const locationId = isNaN(Number(lastPart)) ? 1 : Number(lastPart);
-  const prefix = isNaN(Number(lastPart)) ? key : parts.slice(0, -1).join("_");
-  if (prefix.startsWith("boss"))    return { endpoint: "/api/battle/boss",         locationId, enemyName: key };
-  if (prefix.startsWith("special")) return { endpoint: "/api/battle/special-boss", locationId, enemyName: key };
-  return { endpoint: "/api/battle/field", locationId, enemyName: key };
+  const last = parts[parts.length - 1];
+  const locationId = isNaN(Number(last)) ? 1 : Number(last);
+  const prefix = isNaN(Number(last)) ? key : parts.slice(0, -1).join("_");
+  if (prefix.startsWith("boss"))    return { endpoint: "/api/battle/boss",         locationId };
+  if (prefix.startsWith("special")) return { endpoint: "/api/battle/special-boss", locationId };
+  return { endpoint: "/api/battle/field", locationId };
 }
 
 async function runStoryBattle(scene: Scene): Promise<{ victory: boolean; logs: string[] }> {
-  const { endpoint, locationId, enemyName } = parseBattleEnemyKey(scene.battleEnemyKey);
-  const resp = await fetch(endpoint, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ locationId, enemyName }),
-  });
-  if (!resp.ok) {
-    // If the combat API fails treat it as a defeat so story stays playable
-    return { victory: false, logs: ["Battle system error — you retreat."] };
+  const { endpoint, locationId } = parseBattleEnemyKey(scene.battleEnemyKey);
+  try {
+    const resp = await fetch(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ locationId }),
+    });
+    if (!resp.ok) return { victory: false, logs: ["Battle system error — you retreat."] };
+    const data = await resp.json();
+    return { victory: !!data.victory, logs: Array.isArray(data.logs) ? data.logs : [] };
+  } catch {
+    return { victory: false, logs: ["Connection lost — you retreat."] };
   }
-  const data = await resp.json();
-  return { victory: !!data.victory, logs: Array.isArray(data.logs) ? data.logs : [] };
 }
 
 // ─── Visual maps ──────────────────────────────────────────────────────────────
@@ -119,14 +115,22 @@ const BG_MAP: Record<string, string> = {
 };
 
 const PORTRAIT_COLOURS: Record<string, string> = {
-  nobunaga_cold: "bg-red-900 border-red-700", nobunaga_smirk: "bg-red-800 border-red-600",
-  nobunaga_fierce: "bg-red-950 border-red-500", nobunaga_intrigued: "bg-red-900 border-amber-600",
-  hayashi_stern: "bg-stone-700 border-stone-500", hayashi_shocked: "bg-stone-600 border-stone-400",
-  mitsuhide_calm: "bg-blue-900 border-blue-600", mitsuhide_resolve: "bg-blue-800 border-blue-500",
-  mitsuhide_approving: "bg-blue-700 border-blue-400", mitsuhide_disbelief: "bg-blue-950 border-blue-400",
-  mitsuhide_grave: "bg-blue-950 border-blue-600", mitsuhide_grim: "bg-slate-800 border-blue-600",
-  monk_fearful: "bg-amber-900 border-amber-600", scout_panicked: "bg-green-950 border-green-700",
-  kenshin_portrait: "bg-indigo-900 border-indigo-500", messenger_formal: "bg-stone-800 border-stone-500",
+  nobunaga_cold:        "bg-red-900 border-red-700",
+  nobunaga_smirk:       "bg-red-800 border-red-600",
+  nobunaga_fierce:      "bg-red-950 border-red-500",
+  nobunaga_intrigued:   "bg-red-900 border-amber-600",
+  hayashi_stern:        "bg-stone-700 border-stone-500",
+  hayashi_shocked:      "bg-stone-600 border-stone-400",
+  mitsuhide_calm:       "bg-blue-900 border-blue-600",
+  mitsuhide_resolve:    "bg-blue-800 border-blue-500",
+  mitsuhide_approving:  "bg-blue-700 border-blue-400",
+  mitsuhide_disbelief:  "bg-blue-950 border-blue-400",
+  mitsuhide_grave:      "bg-blue-950 border-blue-600",
+  mitsuhide_grim:       "bg-slate-800 border-blue-600",
+  monk_fearful:         "bg-amber-900 border-amber-600",
+  scout_panicked:       "bg-green-950 border-green-700",
+  kenshin_portrait:     "bg-indigo-900 border-indigo-500",
+  messenger_formal:     "bg-stone-800 border-stone-500",
 };
 
 const PORTRAIT_INITIALS: Record<string, string> = {
@@ -139,11 +143,11 @@ const PORTRAIT_INITIALS: Record<string, string> = {
 };
 
 const FLAG_LABELS: Record<string, string> = {
-  ruthlessness: "⚔ Ruthless", political_power: "⚖ Political",
-  mitsuhide_loyalty: "⚔ Mitsuhide", supernatural_affinity: "✦ Supernatural",
+  ruthlessness:          "⚔ Ruthless",
+  political_power:       "⚖ Political",
+  mitsuhide_loyalty:     "⚔ Mitsuhide",
+  supernatural_affinity: "✦ Supernatural",
 };
-
-const CHAPTER_ID = 1;
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
@@ -174,21 +178,17 @@ function FlagBar({ flags }: { flags: StoryFlags }) {
   );
 }
 
-// ─── Battle overlay (Item 2) ─────────────────────────────────────────────────
+// ─── Battle overlay ──────────────────────────────────────────────────────────────
 
 type BattlePhase = "idle" | "fighting" | "result";
 
 function BattleGate({
-  scene,
-  bgGradient,
-  onResult,
+  scene, bgGradient, onResult,
 }: {
-  scene: Scene;
-  bgGradient: string;
-  onResult: (won: boolean) => void;
+  scene: Scene; bgGradient: string; onResult: (won: boolean) => void;
 }) {
-  const [phase, setPhase]   = useState<BattlePhase>("idle");
-  const [logs, setLogs]     = useState<string[]>([]);
+  const [phase, setPhase]     = useState<BattlePhase>("idle");
+  const [logs, setLogs]       = useState<string[]>([]);
   const [victory, setVictory] = useState<boolean | null>(null);
 
   const fight = useCallback(async () => {
@@ -206,36 +206,23 @@ function BattleGate({
         <p className="text-red-400 text-xs tracking-widest uppercase mb-4 animate-pulse">⚔ Battle</p>
         <h2 className="text-2xl font-bold text-white mb-2">Battle of Okehazama</h2>
         <p className="text-stone-400 text-sm mb-6">Imagawa Vanguard stands before you.</p>
-
-        {/* Battle log */}
         {logs.length > 0 && (
           <div className="mb-6 max-h-48 overflow-y-auto rounded bg-black/60 border border-white/10 p-3 text-left">
-            {logs.map((l, i) => (
-              <p key={i} className="text-xs text-stone-300 leading-relaxed">{l}</p>
-            ))}
+            {logs.map((l, i) => <p key={i} className="text-xs text-stone-300 leading-relaxed">{l}</p>)}
           </div>
         )}
-
         {phase === "idle" && (
-          <button
-            onClick={fight}
-            className="px-8 py-3 bg-amber-700 hover:bg-amber-600 text-white rounded font-semibold transition">
+          <button onClick={fight} className="px-8 py-3 bg-amber-700 hover:bg-amber-600 text-white rounded font-semibold transition">
             ⚡ Enter Battle
           </button>
         )}
-
-        {phase === "fighting" && (
-          <p className="text-stone-400 text-sm animate-pulse">Combat in progress…</p>
-        )}
-
+        {phase === "fighting" && <p className="text-stone-400 text-sm animate-pulse">Combat in progress…</p>}
         {phase === "result" && victory !== null && (
           <div className="flex flex-col items-center gap-4">
             <p className={`text-lg font-bold ${victory ? "text-amber-400" : "text-red-400"}`}>
               {victory ? "Victory!" : "Defeat…"}
             </p>
-            <button
-              onClick={() => onResult(victory)}
-              className="px-6 py-2 bg-stone-700 hover:bg-stone-600 text-white rounded text-sm transition">
+            <button onClick={() => onResult(victory)} className="px-6 py-2 bg-stone-700 hover:bg-stone-600 text-white rounded text-sm transition">
               Continue ▸
             </button>
           </div>
@@ -245,58 +232,154 @@ function BattleGate({
   );
 }
 
+// ─── Chapter-select screen (Item 4) ──────────────────────────────────────────────
+
+function ChapterSelect({ onSelect }: { onSelect: (id: number) => void }) {
+  const [chapters, setChapters] = useState<ChapterSummary[]>([]);
+  const [loading, setLoading]   = useState(true);
+
+  useEffect(() => {
+    listChapters().then((data) => { setChapters(data); setLoading(false); });
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <p className="text-stone-500 text-sm animate-pulse">Loading chronicles…</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-zinc-950 to-black flex flex-col">
+      {/* Header */}
+      <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
+        <Link href="/map">
+          <span className="text-stone-400 hover:text-white text-xs transition cursor-pointer">← Map</span>
+        </Link>
+        <div className="flex items-center gap-2">
+          <BookOpen size={16} className="text-amber-500" />
+          <span className="text-white text-sm font-semibold tracking-widest uppercase">Chronicles</span>
+        </div>
+        <div className="w-12" />
+      </div>
+
+      {/* Chapter cards */}
+      <div className="flex-1 p-6 max-w-2xl mx-auto w-full space-y-4">
+        <p className="text-stone-500 text-xs tracking-widest uppercase mb-6">Select a chapter to begin</p>
+        {chapters.map((ch) => {
+          const locked    = ch.isLocked;
+          const completed = ch.isCompleted;
+          const inProgress = !completed && ch.currentSceneId !== null;
+          return (
+            <button
+              key={ch.id}
+              disabled={locked}
+              onClick={() => !locked && onSelect(ch.id)}
+              className={`w-full text-left rounded-lg border p-5 transition-all duration-200 ${
+                locked
+                  ? "border-white/5 bg-white/2 opacity-40 cursor-not-allowed"
+                  : completed
+                  ? "border-amber-700/40 bg-amber-950/10 hover:bg-amber-950/20"
+                  : "border-white/10 bg-white/5 hover:bg-white/10 hover:border-amber-600/40"
+              }`}
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-stone-500 text-xs">Chapter {ch.chapterOrder}</span>
+                    {completed && (
+                      <span className="flex items-center gap-1 text-amber-400 text-xs">
+                        <CheckCircle2 size={11} /> Complete
+                      </span>
+                    )}
+                    {inProgress && (
+                      <span className="flex items-center gap-1 text-blue-400 text-xs">
+                        <PlayCircle size={11} /> In Progress
+                      </span>
+                    )}
+                  </div>
+                  <h2 className={`text-base font-bold mb-0.5 ${
+                    locked ? "text-stone-600" : "text-white"
+                  }`}>{ch.title}</h2>
+                  {ch.subtitle && (
+                    <p className="text-stone-500 text-xs italic">{ch.subtitle}</p>
+                  )}
+                </div>
+                <div className="flex-shrink-0 mt-1">
+                  {locked
+                    ? <Lock size={16} className="text-stone-700" />
+                    : completed
+                    ? <CheckCircle2 size={16} className="text-amber-500" />
+                    : <PlayCircle size={16} className="text-stone-400" />
+                  }
+                </div>
+              </div>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function StoryPage() {
-  const [chapter, setChapter]       = useState<ChapterData | null>(null);
-  const [sceneId, setSceneId]       = useState<number | null>(null);
-  const [lineIndex, setLineIndex]   = useState(0);
-  const [showChoices, setShowChoices] = useState(false);
-  const [isComplete, setIsComplete] = useState(false);
+  // null = show chapter-select; number = playing that chapter
+  const [activeChapterId, setActiveChapterId] = useState<number | null>(null);
+
+  const [chapter, setChapter]           = useState<ChapterData | null>(null);
+  const [sceneId, setSceneId]           = useState<number | null>(null);
+  const [lineIndex, setLineIndex]       = useState(0);
+  const [showChoices, setShowChoices]   = useState(false);
+  const [isComplete, setIsComplete]     = useState(false);
   const [isBattleGate, setIsBattleGate] = useState(false);
-  const [flags, setFlags]           = useState<StoryFlags>({});
+  const [flags, setFlags]               = useState<StoryFlags>({});
   const [displayedText, setDisplayedText] = useState("");
-  const [isTyping, setIsTyping]     = useState(false);
-  const [loading, setLoading]       = useState(true);
-  const [error, setError]           = useState<string | null>(null);
-  // Item 3: surface next-chapter unlock message after completion
+  const [isTyping, setIsTyping]         = useState(false);
+  const [loading, setLoading]           = useState(false);
+  const [error, setError]               = useState<string | null>(null);
   const [nextChapterId, setNextChapterId] = useState<number | null>(null);
   const typeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const sceneMap = chapter
-    ? Object.fromEntries(chapter.scenes.map((s) => [s.id, s]))
-    : {};
-  const scene = sceneId ? sceneMap[sceneId] ?? null : null;
+  const sceneMap = chapter ? Object.fromEntries(chapter.scenes.map((s) => [s.id, s])) : {};
+  const scene    = sceneId ? sceneMap[sceneId] ?? null : null;
   const currentLine = scene?.dialogueLines[lineIndex] ?? null;
 
-  // ── Boot ───────────────────────────────────────────────────────────────────
+  // ── Load chapter when one is selected ───────────────────────────────────────────
   useEffect(() => {
+    if (activeChapterId === null) return;
     (async () => {
       try {
         setLoading(true);
+        setError(null);
         const [chapterData, savedFlags, progress] = await Promise.all([
-          fetchChapter(CHAPTER_ID),
+          fetchChapter(activeChapterId),
           getFlags(),
           getProgress(),
         ]);
         setChapter(chapterData);
         setFlags(savedFlags);
-
         const firstId = chapterData.firstSceneId ?? chapterData.scenes[0]?.id;
-
-        if (progress && progress.chapterId === CHAPTER_ID && !progress.isCompleted && progress.currentSceneId) {
+        if (progress && progress.chapterId === activeChapterId && !progress.isCompleted && progress.currentSceneId) {
           setSceneId(progress.currentSceneId);
         } else {
-          await startChapter(CHAPTER_ID, firstId);
+          await startChapter(activeChapterId, firstId);
           setSceneId(firstId);
         }
+        setLineIndex(0);
+        setShowChoices(false);
+        setIsComplete(false);
+        setIsBattleGate(false);
+        setNextChapterId(null);
       } catch (e) {
         setError("Failed to load chapter. Please refresh.");
       } finally {
         setLoading(false);
       }
     })();
-  }, []);
+  }, [activeChapterId]);
 
   // ── Typewriter ─────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -317,9 +400,7 @@ export default function StoryPage() {
   }, [sceneId, lineIndex]);
 
   // ── Mark scene seen ────────────────────────────────────────────────────────
-  useEffect(() => {
-    if (scene) markSceneSeen(scene.sceneOrder);
-  }, [sceneId]);
+  useEffect(() => { if (scene) markSceneSeen(scene.sceneOrder); }, [sceneId]);
 
   const skipTypewriter = useCallback(() => {
     if (isTyping && currentLine) {
@@ -332,28 +413,21 @@ export default function StoryPage() {
   const advance = useCallback(async () => {
     if (!scene || !chapter) return;
     if (isTyping) { skipTypewriter(); return; }
-
     const nextLineIdx = lineIndex + 1;
     if (nextLineIdx < scene.dialogueLines.length) { setLineIndex(nextLineIdx); return; }
-
     if (scene.choices.length > 0) { setShowChoices(true); return; }
-
     if (scene.isBattleGate) { setIsBattleGate(true); return; }
-
     if (scene.isChapterEnd) {
-      // Item 3: server now unlocks next chapter; capture the id from response
-      const completionData = await completeChapter();
-      await unlockEnding({
-        chapterId: CHAPTER_ID,
-        endingKey: "ch1_complete",
-        endingTitle: "The Fool of Owari",
-        endingDescription: "Chapter 1 complete. Japan watches.",
+      const result = await completeChapter({
+        chapterId:          chapter.id,
+        endingKey:          `ch${chapter.id}_complete`,
+        endingTitle:        chapter.title,
+        endingDescription:  `${chapter.subtitle ?? ""} — Chapter complete.`,
       });
-      if (completionData?.nextChapterId) setNextChapterId(completionData.nextChapterId);
+      if (result.nextChapterId) setNextChapterId(result.nextChapterId);
       setIsComplete(true);
       return;
     }
-
     if (scene.nextSceneId) {
       await advanceScene(scene.nextSceneId);
       setSceneId(scene.nextSceneId);
@@ -377,7 +451,6 @@ export default function StoryPage() {
     setShowChoices(false);
   }, [scene]);
 
-  // Item 2: battle gate result handler — routes to win or lose scene
   const handleBattleResult = useCallback(async (won: boolean) => {
     if (!scene) return;
     const nextId = won ? scene.battleWinSceneId! : scene.battleLoseSceneId!;
@@ -389,10 +462,10 @@ export default function StoryPage() {
   }, [scene]);
 
   const handleReset = useCallback(async () => {
-    if (!chapter) return;
+    if (!chapter || activeChapterId === null) return;
     await resetStory();
     const firstId = chapter.firstSceneId ?? chapter.scenes[0]?.id;
-    await startChapter(CHAPTER_ID, firstId, true);
+    await startChapter(activeChapterId, firstId, true);
     setSceneId(firstId);
     setLineIndex(0);
     setShowChoices(false);
@@ -400,7 +473,12 @@ export default function StoryPage() {
     setIsBattleGate(false);
     setNextChapterId(null);
     setFlags({});
-  }, [chapter]);
+  }, [chapter, activeChapterId]);
+
+  // ── Chapter-select (default view) ─────────────────────────────────────────────
+  if (activeChapterId === null) {
+    return <ChapterSelect onSelect={(id) => setActiveChapterId(id)} />;
+  }
 
   // ── Loading / error ────────────────────────────────────────────────────────
   if (loading) {
@@ -412,8 +490,11 @@ export default function StoryPage() {
   }
   if (error || !chapter || !scene) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
+      <div className="min-h-screen bg-black flex flex-col items-center justify-center gap-4">
         <p className="text-red-400 text-sm">{error ?? "Scene not found."}</p>
+        <button onClick={() => setActiveChapterId(null)} className="text-stone-400 hover:text-white text-xs underline">
+          ← Back to Chronicles
+        </button>
       </div>
     );
   }
@@ -422,18 +503,12 @@ export default function StoryPage() {
   const leftPortrait  = currentLine?.speakerSide === "left"  ? currentLine.portraitKey : null;
   const rightPortrait = currentLine?.speakerSide === "right" ? currentLine.portraitKey : null;
 
-  // ── Battle gate (Item 2) ───────────────────────────────────────────────────
+  // ── Battle gate ────────────────────────────────────────────────────────────────
   if (isBattleGate) {
-    return (
-      <BattleGate
-        scene={scene}
-        bgGradient={bgGradient}
-        onResult={handleBattleResult}
-      />
-    );
+    return <BattleGate scene={scene} bgGradient={bgGradient} onResult={handleBattleResult} />;
   }
 
-  // ── Chapter complete (Item 3) ──────────────────────────────────────────────
+  // ── Chapter complete ───────────────────────────────────────────────────────────
   if (isComplete) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-zinc-950 to-black flex flex-col items-center justify-center p-8 text-center">
@@ -445,25 +520,21 @@ export default function StoryPage() {
             <p className="text-stone-300 text-sm mb-3">Your story so far:</p>
             <FlagBar flags={flags} />
           </div>
-
-          {/* Item 3: next chapter unlock banner */}
           {nextChapterId && (
             <div className="mb-6 p-3 rounded border border-amber-700/50 bg-amber-900/20">
               <p className="text-amber-300 text-sm font-semibold">✦ New chapter unlocked!</p>
               <p className="text-stone-400 text-xs mt-1">Continue the story when you're ready.</p>
             </div>
           )}
-
           <div className="flex gap-3 justify-center flex-wrap">
             <button onClick={handleReset}
               className="px-5 py-2 bg-stone-800 hover:bg-stone-700 text-white rounded text-sm transition">
               ↺ Replay Chapter
             </button>
-            <Link href="/map">
-              <button className="px-5 py-2 bg-amber-700 hover:bg-amber-600 text-white rounded text-sm transition">
-                → Campaign Map
-              </button>
-            </Link>
+            <button onClick={() => setActiveChapterId(null)}
+              className="px-5 py-2 bg-amber-700 hover:bg-amber-600 text-white rounded text-sm transition">
+              → Chronicles
+            </button>
           </div>
         </div>
       </div>
@@ -472,21 +543,28 @@ export default function StoryPage() {
 
   // ── Main VN layout ─────────────────────────────────────────────────────────
   return (
-    <div className={`min-h-screen bg-gradient-to-b ${bgGradient} flex flex-col select-none`}
-      onClick={!showChoices ? advance : undefined}>
-
+    <div
+      className={`min-h-screen bg-gradient-to-b ${bgGradient} flex flex-col select-none`}
+      onClick={!showChoices ? advance : undefined}
+    >
       {/* Top bar */}
       <div className="flex items-center justify-between px-4 py-2 bg-black/40 backdrop-blur-sm">
-        <Link href="/map">
-          <span className="text-stone-400 hover:text-white text-xs transition cursor-pointer">← Map</span>
-        </Link>
+        <button
+          onClick={(e) => { e.stopPropagation(); setActiveChapterId(null); }}
+          className="text-stone-400 hover:text-white text-xs transition"
+        >
+          ← Chronicles
+        </button>
         <span className="text-stone-500 text-xs tracking-widest uppercase">
-          Chapter {CHAPTER_ID} · {chapter.title}
+          Chapter {activeChapterId} · {chapter.title}
         </span>
         <div className="flex gap-2 items-center">
           <FlagBar flags={flags} />
-          <button onClick={(e) => { e.stopPropagation(); handleReset(); }}
-            className="text-stone-600 hover:text-stone-400 text-xs ml-2 transition" title="Restart chapter">
+          <button
+            onClick={(e) => { e.stopPropagation(); handleReset(); }}
+            className="text-stone-600 hover:text-stone-400 text-xs ml-2 transition"
+            title="Restart chapter"
+          >
             ↺
           </button>
         </div>
@@ -519,23 +597,23 @@ export default function StoryPage() {
             </>
           )}
         </div>
-
         {showChoices && scene.choices.length > 0 && (
           <div className="mt-3 flex flex-col gap-2">
             {[...scene.choices]
               .sort((a, b) => a.choiceOrder - b.choiceOrder)
               .map((c, i) => (
-                <button key={i}
+                <button
+                  key={i}
                   onClick={(e) => { e.stopPropagation(); handleChoice(c); }}
                   className="text-left text-sm text-white bg-white/5 hover:bg-white/15
                     border border-white/10 hover:border-amber-500/50 rounded px-3 py-2
-                    transition-all duration-150 cursor-pointer">
+                    transition-all duration-150 cursor-pointer"
+                >
                   {c.choiceText}
                 </button>
               ))}
           </div>
         )}
-
         {!showChoices && !isTyping && (
           <p className="text-right text-stone-600 text-xs mt-2 animate-pulse">tap to continue ▸</p>
         )}
