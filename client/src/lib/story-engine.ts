@@ -1,18 +1,19 @@
 /**
- * story-engine.ts  (Phase 3 — localStorage only)
- * ─────────────────────────────────────────────────────────────────────────────
- * Pure localStorage state manager. Zero network calls.
- * Every function is async so the Phase 5 API swap is a one-file change.
+ * story-engine.ts
+ * ───────────────────────────────────────────────────────────────────────────
+ * Hybrid state manager: server is source of truth, localStorage is a fast
+ * read-cache and offline fallback.
  *
- * Storage keys (prefix: "sengoku_story_")
+ * All functions remain async so call-sites (story.tsx) are unchanged.
+ *
+ * localStorage keys (prefix: "sengoku_story_")
  *   sengoku_story_progress  → ProgressState
  *   sengoku_story_flags     → StoryFlags
  *   sengoku_story_seen      → number[]
  *   sengoku_story_endings   → UnlockedEnding[]
- * ─────────────────────────────────────────────────────────────────────────────
  */
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+// ─── Types ───────────────────────────────────────────────────────────────────────────
 
 export interface ProgressState {
   chapterId: number;
@@ -40,7 +41,24 @@ export interface StoryEngineSnapshot {
   endings: UnlockedEnding[];
 }
 
-// ─── Storage keys ─────────────────────────────────────────────────────────────
+/** Return type of completeChapter() — used by story.tsx to show unlock banner */
+export interface ChapterCompleteResult {
+  nextChapterId: number | null;
+  nextChapterUnlocked: boolean;
+}
+
+/** Minimal chapter summary returned by listChapters() */
+export interface ChapterSummary {
+  id: number;
+  title: string;
+  subtitle: string | null;
+  chapterOrder: number;
+  isLocked: boolean;
+  isCompleted: boolean;
+  currentSceneId: number | null;
+}
+
+// ─── localStorage keys ────────────────────────────────────────────────────────────
 
 const KEYS = {
   progress: "sengoku_story_progress",
@@ -48,8 +66,6 @@ const KEYS = {
   seen:     "sengoku_story_seen",
   endings:  "sengoku_story_endings",
 } as const;
-
-// ─── Low-level helpers ────────────────────────────────────────────────────────
 
 function read<T>(key: string, fallback: T): T {
   try {
@@ -64,9 +80,7 @@ function write<T>(key: string, value: T): void {
   localStorage.setItem(key, JSON.stringify(value));
 }
 
-// ─── Static chapter data ──────────────────────────────────────────────────────
-// Phase 5 replaces fetchChapter() with a real fetch('/api/story/chapters/id').
-// The shape here matches what the API will return so story.tsx never changes.
+// ─── Shared types (re-exported so story.tsx needs only one import) ────────────
 
 export interface DialogueLine {
   id: number;
@@ -112,7 +126,9 @@ export interface ChapterData {
   scenes: Scene[];
 }
 
-const CHAPTER_1: ChapterData = {
+// ─── Static Chapter 1 fallback (used when API is unreachable) ────────────────
+
+const CHAPTER_1_STATIC: ChapterData = {
   id: 1,
   title: "The Fool of Owari",
   subtitle: "1551 — The land mocks you. Let it.",
@@ -171,8 +187,8 @@ const CHAPTER_1: ChapterData = {
         { id: 15, speakerName: "Narrator",  speakerSide: "none",  portraitKey: null,                text: "How you receive him sets the tone of your most important relationship.", lineOrder: 5 },
       ],
       choices: [
-        { id: 3, choiceText: "\"Welcome. A brilliant mind is rare — I'd be a fool to turn one away.\"", nextSceneId: 6, flagKey: "mitsuhide_loyalty", flagValue: 2,  flagKey2: null,               flagValue2: null, choiceOrder: 1 },
-        { id: 4, choiceText: "\"Prove yourself first. Fetch water from the well.\"",                    nextSceneId: 6, flagKey: "mitsuhide_loyalty", flagValue: 0,  flagKey2: null,               flagValue2: null, choiceOrder: 2 },
+        { id: 3, choiceText: "\"Welcome. A brilliant mind is rare — I'd be a fool to turn one away.\"", nextSceneId: 6, flagKey: "mitsuhide_loyalty", flagValue: 2,  flagKey2: null,           flagValue2: null, choiceOrder: 1 },
+        { id: 4, choiceText: "\"Prove yourself first. Fetch water from the well.\"",                    nextSceneId: 6, flagKey: "mitsuhide_loyalty", flagValue: 0,  flagKey2: null,           flagValue2: null, choiceOrder: 2 },
         { id: 5, choiceText: "\"I trust no outsiders. Be gone.\"",                                      nextSceneId: 6, flagKey: "mitsuhide_loyalty", flagValue: -1, flagKey2: "ruthlessness", flagValue2: 1,    choiceOrder: 3 },
       ],
     },
@@ -180,22 +196,22 @@ const CHAPTER_1: ChapterData = {
       id: 6, sceneOrder: 6, backgroundKey: "nagashino_ruins_dusk", bgmKey: "bgm_ominous",
       nextSceneId: null, isBattleGate: false, isChapterEnd: false,
       dialogueLines: [
-        { id: 16, speakerName: "Monk Messenger", speakerSide: "left",  portraitKey: "monk_fearful", text: "My lord — near Nagashino. Workers unearthed a blade. Three men dead. No wounds. The blade sings at night.", lineOrder: 1 },
-        { id: 17, speakerName: "Nobunaga",        speakerSide: "right", portraitKey: "nobunaga_cold", text: "...", lineOrder: 2 },
-        { id: 18, speakerName: "Narrator",        speakerSide: "none",  portraitKey: null,            text: "A cursed blade. Power wrapped in danger. What you do next will shape your relationship with the spirit world.", lineOrder: 3 },
+        { id: 16, speakerName: "Monk Messenger", speakerSide: "left",  portraitKey: "monk_fearful",  text: "My lord — near Nagashino. Workers unearthed a blade. Three men dead. No wounds. The blade sings at night.", lineOrder: 1 },
+        { id: 17, speakerName: "Nobunaga",       speakerSide: "right", portraitKey: "nobunaga_cold", text: "...", lineOrder: 2 },
+        { id: 18, speakerName: "Narrator",       speakerSide: "none",  portraitKey: null,            text: "A cursed blade. Power wrapped in danger. What you do next will shape your relationship with the spirit world.", lineOrder: 3 },
       ],
       choices: [
-        { id: 6, choiceText: "\"Send men to retrieve it. Power is power.\"",               nextSceneId: 7, flagKey: "supernatural_affinity", flagValue: 2,  flagKey2: null,                    flagValue2: null, choiceOrder: 1 },
-        { id: 7, choiceText: "\"Destroy it. Superstition breeds weakness in my men.\"",    nextSceneId: 8, flagKey: "supernatural_affinity", flagValue: -1, flagKey2: "mitsuhide_loyalty", flagValue2: 1,    choiceOrder: 2 },
+        { id: 6, choiceText: "\"Send men to retrieve it. Power is power.\"",             nextSceneId: 7, flagKey: "supernatural_affinity", flagValue: 2,  flagKey2: null,                    flagValue2: null, choiceOrder: 1 },
+        { id: 7, choiceText: "\"Destroy it. Superstition breeds weakness in my men.\"",  nextSceneId: 8, flagKey: "supernatural_affinity", flagValue: -1, flagKey2: "mitsuhide_loyalty", flagValue2: 1,    choiceOrder: 2 },
       ],
     },
     {
       id: 7, sceneOrder: 7, backgroundKey: "owari_castle_armory_night", bgmKey: "bgm_ominous",
       nextSceneId: 9, isBattleGate: false, isChapterEnd: false,
       dialogueLines: [
-        { id: 19, speakerName: "Narrator",  speakerSide: "none",  portraitKey: null,                   text: "The sword arrives wrapped in black silk. Your men refuse to touch it. You pick it up yourself.", lineOrder: 1 },
-        { id: 20, speakerName: "Nobunaga",  speakerSide: "right", portraitKey: "nobunaga_intrigued",   text: "It hums. Like recognition.", lineOrder: 2 },
-        { id: 21, speakerName: "Narrator",  speakerSide: "none",  portraitKey: null,                   text: "Something stirs at the edge of your mind. Ancient. Patient. Hungry.", lineOrder: 3 },
+        { id: 19, speakerName: "Narrator",  speakerSide: "none",  portraitKey: null,                 text: "The sword arrives wrapped in black silk. Your men refuse to touch it. You pick it up yourself.", lineOrder: 1 },
+        { id: 20, speakerName: "Nobunaga",  speakerSide: "right", portraitKey: "nobunaga_intrigued", text: "It hums. Like recognition.", lineOrder: 2 },
+        { id: 21, speakerName: "Narrator",  speakerSide: "none",  portraitKey: null,                 text: "Something stirs at the edge of your mind. Ancient. Patient. Hungry.", lineOrder: 3 },
       ],
       choices: [],
     },
@@ -203,8 +219,8 @@ const CHAPTER_1: ChapterData = {
       id: 8, sceneOrder: 8, backgroundKey: "nagashino_ruins_ash", bgmKey: "bgm_resolve",
       nextSceneId: 9, isBattleGate: false, isChapterEnd: false,
       dialogueLines: [
-        { id: 22, speakerName: "Narrator",  speakerSide: "none",  portraitKey: null,                    text: "The blade is destroyed. The monk bows deeply. Mitsuhide stands at your shoulder, watching.", lineOrder: 1 },
-        { id: 23, speakerName: "Mitsuhide", speakerSide: "left",  portraitKey: "mitsuhide_approving",   text: "A wise decision, my lord. A blade that kills its bearers serves no one.", lineOrder: 2 },
+        { id: 22, speakerName: "Narrator",  speakerSide: "none",  portraitKey: null,                  text: "The blade is destroyed. The monk bows deeply. Mitsuhide stands at your shoulder, watching.", lineOrder: 1 },
+        { id: 23, speakerName: "Mitsuhide", speakerSide: "left",  portraitKey: "mitsuhide_approving", text: "A wise decision, my lord. A blade that kills its bearers serves no one.", lineOrder: 2 },
       ],
       choices: [],
     },
@@ -212,18 +228,18 @@ const CHAPTER_1: ChapterData = {
       id: 9, sceneOrder: 9, backgroundKey: "owari_border_storm", bgmKey: "bgm_war_drums",
       nextSceneId: null, isBattleGate: false, isChapterEnd: false,
       dialogueLines: [
-        { id: 24, speakerName: "Scout",     speakerSide: "left",  portraitKey: "scout_panicked",   text: "25,000 men, my lord. Imagawa Yoshimoto marches for Kyoto. He passes through Owari like we don't exist.", lineOrder: 1 },
-        { id: 25, speakerName: "Mitsuhide", speakerSide: "left",  portraitKey: "mitsuhide_grave",  text: "We have 2,000. This is not a battle. This is an execution.", lineOrder: 2 },
-        { id: 26, speakerName: "Nobunaga",  speakerSide: "right", portraitKey: "nobunaga_fierce",  text: "Or an opportunity. Storms are loud. Scouts go blind. 25,000 men cannot all watch at once.", lineOrder: 3 },
+        { id: 24, speakerName: "Scout",     speakerSide: "left",  portraitKey: "scout_panicked",  text: "25,000 men, my lord. Imagawa Yoshimoto marches for Kyoto. He passes through Owari like we don't exist.", lineOrder: 1 },
+        { id: 25, speakerName: "Mitsuhide", speakerSide: "left",  portraitKey: "mitsuhide_grave", text: "We have 2,000. This is not a battle. This is an execution.", lineOrder: 2 },
+        { id: 26, speakerName: "Nobunaga",  speakerSide: "right", portraitKey: "nobunaga_fierce", text: "Or an opportunity. Storms are loud. Scouts go blind. 25,000 men cannot all watch at once.", lineOrder: 3 },
       ],
       choices: [
-        { id: 8, choiceText: "\"Strike now — full ambush in the storm. No hesitation.\"",    nextSceneId: 10, flagKey: "ruthlessness",    flagValue: 2, flagKey2: null, flagValue2: null, choiceOrder: 1 },
-        { id: 9, choiceText: "\"Send a decoy force to draw attention. We flank quietly.\"",   nextSceneId: 10, flagKey: "political_power", flagValue: 1, flagKey2: null, flagValue2: null, choiceOrder: 2 },
+        { id: 8, choiceText: "\"Strike now — full ambush in the storm. No hesitation.\"",  nextSceneId: 10, flagKey: "ruthlessness",    flagValue: 2, flagKey2: null, flagValue2: null, choiceOrder: 1 },
+        { id: 9, choiceText: "\"Send a decoy force to draw attention. We flank quietly.\"", nextSceneId: 10, flagKey: "political_power", flagValue: 1, flagKey2: null, flagValue2: null, choiceOrder: 2 },
       ],
     },
     {
       id: 10, sceneOrder: 10, backgroundKey: "okehazama_gorge_storm", bgmKey: "bgm_war_drums",
-      nextSceneId: null, isBattleGate: true, battleEnemyKey: "imagawa_vanguard",
+      nextSceneId: null, isBattleGate: true, battleEnemyKey: "field_1",
       battleWinSceneId: 11, battleLoseSceneId: 12, isChapterEnd: false,
       dialogueLines: [
         { id: 27, speakerName: "Narrator",  speakerSide: "none",  portraitKey: null,              text: "The storm breaks. Lightning splits the sky over Okehazama gorge. Yoshimoto rests in his palanquin, certain no fool would attack in this weather.", lineOrder: 1 },
@@ -235,9 +251,9 @@ const CHAPTER_1: ChapterData = {
       id: 11, sceneOrder: 11, backgroundKey: "okehazama_aftermath_dawn", bgmKey: "bgm_victory_somber",
       nextSceneId: 13, isBattleGate: false, isChapterEnd: false,
       dialogueLines: [
-        { id: 29, speakerName: "Narrator",  speakerSide: "none",  portraitKey: null,                   text: "Yoshimoto is dead. His head is in your hands. 25,000 men scatter like smoke in the morning wind.", lineOrder: 1 },
-        { id: 30, speakerName: "Mitsuhide", speakerSide: "left",  portraitKey: "mitsuhide_disbelief",  text: "...How.", lineOrder: 2 },
-        { id: 31, speakerName: "Nobunaga",  speakerSide: "right", portraitKey: "nobunaga_smirk",       text: "They were waiting for a battle. I gave them a storm.", lineOrder: 3 },
+        { id: 29, speakerName: "Narrator",  speakerSide: "none",  portraitKey: null,                  text: "Yoshimoto is dead. His head is in your hands. 25,000 men scatter like smoke in the morning wind.", lineOrder: 1 },
+        { id: 30, speakerName: "Mitsuhide", speakerSide: "left",  portraitKey: "mitsuhide_disbelief", text: "...How.", lineOrder: 2 },
+        { id: 31, speakerName: "Nobunaga",  speakerSide: "right", portraitKey: "nobunaga_smirk",      text: "They were waiting for a battle. I gave them a storm.", lineOrder: 3 },
       ],
       choices: [],
     },
@@ -245,9 +261,9 @@ const CHAPTER_1: ChapterData = {
       id: 12, sceneOrder: 12, backgroundKey: "owari_castle_night_rain", bgmKey: "bgm_defeat",
       nextSceneId: 13, isBattleGate: false, isChapterEnd: false,
       dialogueLines: [
-        { id: 32, speakerName: "Narrator",  speakerSide: "none",  portraitKey: null,              text: "The ambush fails. You retreat through the storm, wounded. Yoshimoto marches on, laughing at the Fool of Owari.", lineOrder: 1 },
-        { id: 33, speakerName: "Mitsuhide", speakerSide: "left",  portraitKey: "mitsuhide_grim",  text: "We live. That is enough for today, my lord.", lineOrder: 2 },
-        { id: 34, speakerName: "Nobunaga",  speakerSide: "right", portraitKey: "nobunaga_cold",   text: "No. It is not enough. It will never be enough.", lineOrder: 3 },
+        { id: 32, speakerName: "Narrator",  speakerSide: "none",  portraitKey: null,             text: "The ambush fails. You retreat through the storm, wounded. Yoshimoto marches on, laughing at the Fool of Owari.", lineOrder: 1 },
+        { id: 33, speakerName: "Mitsuhide", speakerSide: "left",  portraitKey: "mitsuhide_grim", text: "We live. That is enough for today, my lord.", lineOrder: 2 },
+        { id: 34, speakerName: "Nobunaga",  speakerSide: "right", portraitKey: "nobunaga_cold",  text: "No. It is not enough. It will never be enough.", lineOrder: 3 },
       ],
       choices: [],
     },
@@ -255,24 +271,63 @@ const CHAPTER_1: ChapterData = {
       id: 13, sceneOrder: 13, backgroundKey: "owari_castle_night", bgmKey: "bgm_tension_resolve",
       nextSceneId: null, isBattleGate: false, isChapterEnd: true,
       dialogueLines: [
-        { id: 35, speakerName: "Messenger",      speakerSide: "left",  portraitKey: "messenger_formal", text: "My lord. A letter. Seal of the Uesugi clan.", lineOrder: 1 },
-        { id: 36, speakerName: "Narrator",       speakerSide: "none",  portraitKey: null,               text: "You break the seal. The handwriting is precise. Controlled. The hand of a man who has never doubted himself.", lineOrder: 2 },
+        { id: 35, speakerName: "Messenger",       speakerSide: "left",  portraitKey: "messenger_formal", text: "My lord. A letter. Seal of the Uesugi clan.", lineOrder: 1 },
+        { id: 36, speakerName: "Narrator",        speakerSide: "none",  portraitKey: null,               text: "You break the seal. The handwriting is precise. Controlled. The hand of a man who has never doubted himself.", lineOrder: 2 },
         { id: 37, speakerName: "Kenshin (letter)", speakerSide: "left", portraitKey: "kenshin_portrait", text: "The Fool of Owari has teeth. Interesting. We will meet, and I will judge whether you are a sword worth fearing — or a plague to be ended.", lineOrder: 3 },
-        { id: 38, speakerName: "Nobunaga",       speakerSide: "right", portraitKey: "nobunaga_smirk",   text: "Tell him I look forward to his judgment.", lineOrder: 4 },
-        { id: 39, speakerName: "Narrator",       speakerSide: "none",  portraitKey: null,               text: "The first step is taken. Japan watches. The age of the Fool of Owari has begun.", lineOrder: 5 },
+        { id: 38, speakerName: "Nobunaga",        speakerSide: "right", portraitKey: "nobunaga_smirk",   text: "Tell him I look forward to his judgment.", lineOrder: 4 },
+        { id: 39, speakerName: "Narrator",        speakerSide: "none",  portraitKey: null,               text: "The first step is taken. Japan watches. The age of the Fool of Owari has begun.", lineOrder: 5 },
       ],
       choices: [],
     },
   ],
 };
 
-/** Returns chapter data. Phase 5: replace body with fetch('/api/story/chapters/id'). */
-export async function fetchChapter(chapterId: number): Promise<ChapterData> {
-  if (chapterId === 1) return CHAPTER_1;
-  throw new Error(`Chapter ${chapterId} not yet available.`);
+// ─── API helpers ───────────────────────────────────────────────────────────────────────────
+
+async function apiPost<T>(path: string, body: unknown): Promise<T> {
+  const res = await fetch(path, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(`POST ${path} failed: ${res.status}`);
+  return res.json() as Promise<T>;
 }
 
-// ─── Progress ─────────────────────────────────────────────────────────────────
+async function apiGet<T>(path: string): Promise<T> {
+  const res = await fetch(path);
+  if (!res.ok) throw new Error(`GET ${path} failed: ${res.status}`);
+  return res.json() as Promise<T>;
+}
+
+// ─── Chapter data ──────────────────────────────────────────────────────────────────────────
+
+/**
+ * Fetch all chapter summaries (id, title, isLocked, progress).
+ * Used by the chapter-select screen.
+ */
+export async function listChapters(): Promise<ChapterSummary[]> {
+  try {
+    return await apiGet<ChapterSummary[]>("/api/story/chapters");
+  } catch {
+    return [{ id: 1, title: "The Fool of Owari", subtitle: "1551 — The land mocks you. Let it.", chapterOrder: 1, isLocked: false, isCompleted: false, currentSceneId: null }];
+  }
+}
+
+/**
+ * Fetch full chapter data (scenes + dialogue + choices).
+ * Falls back to static CHAPTER_1 if the API is unreachable.
+ */
+export async function fetchChapter(chapterId: number): Promise<ChapterData> {
+  try {
+    return await apiGet<ChapterData>(`/api/story/chapters/${chapterId}`);
+  } catch {
+    if (chapterId === 1) return CHAPTER_1_STATIC;
+    throw new Error(`Chapter ${chapterId} not available.`);
+  }
+}
+
+// ─── Progress ───────────────────────────────────────────────────────────────────────────
 
 export async function startChapter(
   chapterId: number,
@@ -289,6 +344,8 @@ export async function startChapter(
     completedAt: null,
   };
   write(KEYS.progress, fresh);
+  // Persist to server (fire-and-forget — client state is already set)
+  apiPost("/api/story/progress", { chapterId, currentSceneId: firstSceneId, forceRestart }).catch(() => {});
   return fresh;
 }
 
@@ -297,22 +354,38 @@ export async function advanceScene(nextSceneId: number): Promise<ProgressState> 
   if (!progress) throw new Error("No active chapter. Call startChapter first.");
   const updated: ProgressState = { ...progress, currentSceneId: nextSceneId };
   write(KEYS.progress, updated);
+  apiPost("/api/story/progress", { chapterId: progress.chapterId, currentSceneId: nextSceneId }).catch(() => {});
   return updated;
 }
 
-export async function completeChapter(): Promise<ProgressState> {
+/**
+ * Mark the current chapter complete.
+ * Returns nextChapterId + nextChapterUnlocked from the server so story.tsx
+ * can show the unlock banner (item 3 of the earlier commit).
+ */
+export async function completeChapter(
+  payload: { chapterId: number; endingKey: string; endingTitle: string; endingDescription: string },
+): Promise<ChapterCompleteResult> {
+  // Update localStorage immediately
   const progress = read<ProgressState | null>(KEYS.progress, null);
-  if (!progress) throw new Error("No active chapter.");
-  const updated: ProgressState = { ...progress, isCompleted: true, completedAt: new Date().toISOString() };
-  write(KEYS.progress, updated);
-  return updated;
+  if (progress) write(KEYS.progress, { ...progress, isCompleted: true, completedAt: new Date().toISOString() });
+
+  try {
+    const result = await apiPost<{ success: boolean; nextChapterUnlocked: boolean; nextChapterId: number | null }>(
+      "/api/story/progress/complete",
+      payload,
+    );
+    return { nextChapterId: result.nextChapterId, nextChapterUnlocked: result.nextChapterUnlocked };
+  } catch {
+    return { nextChapterId: null, nextChapterUnlocked: false };
+  }
 }
 
 export async function getProgress(): Promise<ProgressState | null> {
   return read<ProgressState | null>(KEYS.progress, null);
 }
 
-// ─── Flags ────────────────────────────────────────────────────────────────────
+// ─── Flags ─────────────────────────────────────────────────────────────────────────────
 
 export async function applyFlags(mutations: Partial<StoryFlags>): Promise<StoryFlags> {
   const flags = read<StoryFlags>(KEYS.flags, {});
@@ -320,11 +393,18 @@ export async function applyFlags(mutations: Partial<StoryFlags>): Promise<StoryF
     flags[key] = (flags[key] ?? 0) + (delta ?? 0);
   }
   write(KEYS.flags, flags);
+  apiPost("/api/story/flags", { mutations }).catch(() => {});
   return flags;
 }
 
 export async function getFlags(): Promise<StoryFlags> {
-  return read<StoryFlags>(KEYS.flags, {});
+  try {
+    const serverFlags = await apiGet<Record<string, number>>("/api/story/flags");
+    write(KEYS.flags, serverFlags);
+    return serverFlags;
+  } catch {
+    return read<StoryFlags>(KEYS.flags, {});
+  }
 }
 
 export async function getFlag(key: string): Promise<number> {
@@ -332,7 +412,7 @@ export async function getFlag(key: string): Promise<number> {
   return flags[key] ?? 0;
 }
 
-// ─── Seen scenes ──────────────────────────────────────────────────────────────
+// ─── Seen scenes ─────────────────────────────────────────────────────────────────────────
 
 export async function markSceneSeen(sceneId: number): Promise<void> {
   const seen = read<number[]>(KEYS.seen, []);
@@ -347,7 +427,7 @@ export async function getSeenSceneIds(): Promise<number[]> {
   return read<number[]>(KEYS.seen, []);
 }
 
-// ─── Endings ──────────────────────────────────────────────────────────────────
+// ─── Endings ────────────────────────────────────────────────────────────────────────────
 
 export async function unlockEnding(
   ending: Omit<UnlockedEnding, "unlockedAt"> & { chapterId?: number },
@@ -356,10 +436,10 @@ export async function unlockEnding(
   const existing = endings.find((e) => e.endingKey === ending.endingKey);
   if (existing) return existing;
   const record: UnlockedEnding = {
-    endingKey: ending.endingKey,
-    endingTitle: ending.endingTitle,
-    endingDescription: ending.endingDescription,
-    unlockedAt: new Date().toISOString(),
+    endingKey:          ending.endingKey,
+    endingTitle:        ending.endingTitle,
+    endingDescription:  ending.endingDescription,
+    unlockedAt:         new Date().toISOString(),
   };
   endings.push(record);
   write(KEYS.endings, endings);
@@ -370,7 +450,7 @@ export async function getUnlockedEndings(): Promise<UnlockedEnding[]> {
   return read<UnlockedEnding[]>(KEYS.endings, []);
 }
 
-// ─── Snapshot ─────────────────────────────────────────────────────────────────
+// ─── Snapshot ───────────────────────────────────────────────────────────────────────────
 
 export async function getSnapshot(): Promise<StoryEngineSnapshot> {
   return {
@@ -381,7 +461,7 @@ export async function getSnapshot(): Promise<StoryEngineSnapshot> {
   };
 }
 
-// ─── Reset ────────────────────────────────────────────────────────────────────
+// ─── Reset ─────────────────────────────────────────────────────────────────────────────
 
 export async function resetStory(): Promise<void> {
   Object.values(KEYS).forEach((k) => localStorage.removeItem(k));
