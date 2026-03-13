@@ -35,38 +35,54 @@ function rarityFromRandom(): string {
   return "1";
 }
 
-// ── Equipment exp helper (uses shared EQUIP_RARITY_GROWTH) ───────────────────
+// ── Equipment exp helper (Phase 3: parallel writes) ──────────────────────────
 async function giveEquipmentExp(userId: string, expAmount: number) {
+  if (expAmount <= 0) return;
+
   const equips  = await storage.getEquipment(userId);
   const equipped = equips.filter(e => e.isEquipped);
+  if (equipped.length === 0) return;
+
+  // Phase 1: compute all new states in pure CPU (no DB calls yet)
+  type UpdatePayload = { id: number; changes: Record<string, any> };
+  const updates: UpdatePayload[] = [];
 
   for (const eq of equipped) {
-    let newExp      = eq.experience + expAmount;
-    let newLevel    = eq.level;
+    let newExp       = eq.experience + expAmount;
+    let newLevel     = eq.level;
     let newExpToNext = eq.expToNext;
-    let atkBonus    = eq.attackBonus;
-    let defBonus    = eq.defenseBonus;
-    let spdBonus    = eq.speedBonus;
+    let atkBonus     = eq.attackBonus;
+    let defBonus     = eq.defenseBonus;
+    let spdBonus     = eq.speedBonus;
 
     const growth = EQUIP_RARITY_GROWTH[eq.rarity] ?? EQUIP_RARITY_GROWTH.white;
 
     while (newExp >= newExpToNext) {
-      newExp      -= newExpToNext;
+      newExp       -= newExpToNext;
       newLevel++;
-      newExpToNext = calcEquipExpToNext(newLevel);
-      atkBonus     = Math.floor(atkBonus * growth.atk) + 1;
-      defBonus     = Math.floor(defBonus * growth.def) + 1;
-      spdBonus     = Math.floor(spdBonus * growth.spd) + 1;
+      newExpToNext  = calcEquipExpToNext(newLevel);
+      atkBonus      = Math.floor(atkBonus * growth.atk) + 1;
+      defBonus      = Math.floor(defBonus * growth.def) + 1;
+      spdBonus      = Math.floor(spdBonus * growth.spd) + 1;
     }
 
+    // Only queue items that actually changed
     if (newLevel !== eq.level) {
-      await storage.updateEquipment(eq.id, {
-        experience: newExp, level: newLevel, expToNext: newExpToNext,
-        attackBonus: atkBonus, defenseBonus: defBonus, speedBonus: spdBonus,
+      updates.push({
+        id: eq.id,
+        changes: {
+          experience: newExp, level: newLevel, expToNext: newExpToNext,
+          attackBonus: atkBonus, defenseBonus: defBonus, speedBonus: spdBonus,
+        },
       });
     } else if (newExp !== eq.experience) {
-      await storage.updateEquipment(eq.id, { experience: newExp });
+      updates.push({ id: eq.id, changes: { experience: newExp } });
     }
+  }
+
+  // Phase 2: fire all DB writes in parallel (was N serial awaits before)
+  if (updates.length > 0) {
+    await Promise.all(updates.map(u => storage.updateEquipment(u.id, u.changes)));
   }
 }
 // ─────────────────────────────────────────────────────────────────────────────
@@ -198,7 +214,6 @@ export async function registerRoutes(
     let hp = comp.hp, maxHp = comp.maxHp;
     let atk = comp.attack, def = comp.defense, spd = comp.speed;
 
-    // Use shared COMPANION_RARITY_GROWTH — no more inline duplication
     const growth        = COMPANION_RARITY_GROWTH[comp.rarity] ?? COMPANION_RARITY_GROWTH["1"];
     const specialBonus  = (comp as any).isSpecial ? 1.25 : 1.0;
 
@@ -301,7 +316,6 @@ export async function registerRoutes(
     let defBonus    = eq.defenseBonus;
     let spdBonus    = eq.speedBonus;
 
-    // Use shared EQUIP_RARITY_GROWTH — no more inline duplication
     const growth = EQUIP_RARITY_GROWTH[eq.rarity] ?? EQUIP_RARITY_GROWTH.white;
 
     while (newExp >= newExpToNext) {
@@ -374,7 +388,6 @@ export async function registerRoutes(
     let hp = pet.hp, maxHp = pet.maxHp;
     let atk = pet.attack, def = pet.defense, spd = pet.speed;
 
-    // Use shared PET_RARITY_GROWTH — no more inline duplication
     const growth = PET_RARITY_GROWTH[pet.rarity] ?? PET_RARITY_GROWTH.white;
 
     while (newExp >= newExpToNext) {
@@ -543,7 +556,6 @@ export async function registerRoutes(
         totalExpGained  += expGained;
         totalGoldGained += goldGained;
 
-        // Equipment drop
         if (Math.random() < 0.01) {
           try {
             const eq = await storage.createEquipment(generateEquipment(userId, locationId) as any);
@@ -554,7 +566,7 @@ export async function registerRoutes(
       }
     }
 
-    // Apply accumulated exp/gold ONCE after the loop (fixes stale-user bug)
+    // Apply accumulated exp/gold ONCE after the loop
     if (totalExpGained > 0) {
       const freshUser = await storage.getUser(userId);
       if (freshUser) {
@@ -571,6 +583,7 @@ export async function registerRoutes(
       }
     }
 
+    // giveEquipmentExp now fires all updates in parallel (Phase 3)
     await giveEquipmentExp(userId, totalExpGained);
 
     res.json({
@@ -646,7 +659,6 @@ export async function registerRoutes(
       const riceGained      = 10  + locationId * 5;
       const endowmentStones = 2   + Math.floor(Math.random() * 3);
 
-      // Use shared applyExpGain — no more inline level-up loop
       const leveled = applyExpGain(user, expGained);
       await storage.updateUser(userId, {
         ...leveled,
@@ -682,7 +694,6 @@ export async function registerRoutes(
       const goldGained      = 150 + locationId * 75;
       const endowmentStones = 5   + Math.floor(Math.random() * 6);
 
-      // Use shared applyExpGain — no more inline level-up loop
       const leveled = applyExpGain(user, expGained);
       await storage.updateUser(userId, {
         ...leveled,
