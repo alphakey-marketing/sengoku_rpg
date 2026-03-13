@@ -3,8 +3,8 @@
  * ─────────────────────────────────────────────────────────────────────────────
  * All REST endpoints for the VN story engine.
  *
- * Mount in routes.ts with:
- *   app.use("/api/story", storyRouter);
+ * Mounted in routes.ts with:
+ *   app.use("/api/story", isAuthenticated, storyRouter);
  *
  * Endpoints
  * ─────────────────────────────────────────────────────────────────────────────
@@ -12,7 +12,7 @@
  *  GET  /api/story/chapters/:id         → full chapter with scenes + dialogue + choices
  *  GET  /api/story/progress             → player's progress for all chapters
  *  POST /api/story/progress             → upsert progress (start / advance scene)
- *  POST /api/story/progress/complete    → mark chapter complete + write ending
+ *  POST /api/story/progress/complete    → mark chapter complete, unlock next chapter, write ending
  *  GET  /api/story/flags                → all player flags
  *  POST /api/story/flags                → apply flag mutations (additive)
  *  GET  /api/story/endings              → all unlocked endings
@@ -26,19 +26,16 @@ import {
   type StoryChapter, type StoryScene, type DialogueLine,
   type StoryChoice, type PlayerFlag, type PlayerProgress,
 } from "@shared/schema";
-import { eq, and, asc } from "drizzle-orm";
+import { eq, and, asc, gt } from "drizzle-orm";
 
 export const storyRouter = Router();
 
 // ─── Auth helper ──────────────────────────────────────────────────────────────
-
-function requireAuth(req: Request, res: Response): string | null {
-  const userId = (req as any).user?.claims?.sub;
-  if (!userId) {
-    res.status(401).json({ error: "Unauthorised" });
-    return null;
-  }
-  return userId as string;
+// Note: isAuthenticated middleware is applied at mount-point in routes.ts,
+// so every handler here is already authenticated. This helper just extracts
+// the userId from the already-verified request.
+function getUserId(req: Request): string {
+  return (req as any).user.claims.sub as string;
 }
 
 // ─── Chapter list ─────────────────────────────────────────────────────────────
@@ -77,15 +74,12 @@ storyRouter.get("/chapters/:id", async (req: Request, res: Response) => {
 
     const sceneIds = scenes.map((s) => s.id);
 
-    // Fetch all dialogue lines and choices for all scenes in one query each
     const allLines: DialogueLine[] = sceneIds.length
       ? await db
           .select()
           .from(dialogueLines)
           .where(eq(dialogueLines.sceneId, sceneIds[0]))
           .then(async () => {
-            // Drizzle doesn't support `in` in a clean array way without rawSQL;
-            // iterate per scene and flatten — acceptable for ≤20 scenes
             const results = await Promise.all(
               sceneIds.map((sid) =>
                 db.select().from(dialogueLines).where(eq(dialogueLines.sceneId, sid))
@@ -105,7 +99,6 @@ storyRouter.get("/chapters/:id", async (req: Request, res: Response) => {
         ).then((r) => r.flat())
       : [];
 
-    // Group lines + choices by sceneId
     const linesByScene = new Map<number, DialogueLine[]>();
     const choicesByScene = new Map<number, StoryChoice[]>();
     for (const line of allLines) linesByScene.set(line.sceneId, [...(linesByScene.get(line.sceneId) ?? []), line]);
@@ -127,8 +120,7 @@ storyRouter.get("/chapters/:id", async (req: Request, res: Response) => {
 // ─── Player progress ──────────────────────────────────────────────────────────
 
 storyRouter.get("/progress", async (req: Request, res: Response) => {
-  const userId = requireAuth(req, res);
-  if (!userId) return;
+  const userId = getUserId(req);
   try {
     const rows = await db
       .select()
@@ -143,14 +135,9 @@ storyRouter.get("/progress", async (req: Request, res: Response) => {
 /**
  * POST /api/story/progress
  * Body: { chapterId: number; currentSceneId?: number; forceRestart?: boolean }
- *
- * Creates a new progress row if none exists for this user+chapter.
- * If forceRestart is true, deletes the existing row and creates fresh.
- * Otherwise upserts currentSceneId onto the existing row.
  */
 storyRouter.post("/progress", async (req: Request, res: Response) => {
-  const userId = requireAuth(req, res);
-  if (!userId) return;
+  const userId = getUserId(req);
   try {
     const { chapterId, currentSceneId, forceRestart } = req.body as {
       chapterId: number;
@@ -185,7 +172,6 @@ storyRouter.post("/progress", async (req: Request, res: Response) => {
       return res.json(created);
     }
 
-    // Advance scene + mark scene seen
     const seenIds = (existing.seenSceneIds as number[]) ?? [];
     if (currentSceneId && !seenIds.includes(currentSceneId)) seenIds.push(currentSceneId);
 
@@ -204,11 +190,15 @@ storyRouter.post("/progress", async (req: Request, res: Response) => {
 
 /**
  * POST /api/story/progress/complete
- * Body: { chapterId: number; endingKey: string; endingTitle: string; endingDescription: string }
+ * Body: { chapterId, endingKey, endingTitle, endingDescription }
+ *
+ * Item 3: after marking the chapter complete, find the next chapter by
+ * chapterOrder and set isLocked = false on it so it becomes playable.
+ * Response includes { nextChapterUnlocked, nextChapterId } so the client
+ * can show a "Next chapter unlocked!" message.
  */
 storyRouter.post("/progress/complete", async (req: Request, res: Response) => {
-  const userId = requireAuth(req, res);
-  if (!userId) return;
+  const userId = getUserId(req);
   try {
     const { chapterId, endingKey, endingTitle, endingDescription } = req.body as {
       chapterId: number;
@@ -217,12 +207,13 @@ storyRouter.post("/progress/complete", async (req: Request, res: Response) => {
       endingDescription: string;
     };
 
+    // 1. Mark this chapter complete
     await db
       .update(playerProgress)
       .set({ isCompleted: true, completedAt: new Date() })
       .where(and(eq(playerProgress.userId, userId), eq(playerProgress.chapterId, chapterId)));
 
-    // Upsert ending (idempotent)
+    // 2. Upsert the ending record (idempotent)
     const [existingEnding] = await db
       .select()
       .from(unlockedEndings)
@@ -232,7 +223,40 @@ storyRouter.post("/progress/complete", async (req: Request, res: Response) => {
       await db.insert(unlockedEndings).values({ userId, endingKey, endingTitle, endingDescription });
     }
 
-    res.json({ success: true });
+    // 3. Auto-unlock the next chapter (Item 3)
+    //    Find the completed chapter's order, then unlock the immediately following one.
+    const [completedChapter] = await db
+      .select({ chapterOrder: storyChapters.chapterOrder })
+      .from(storyChapters)
+      .where(eq(storyChapters.id, chapterId));
+
+    let nextChapterId: number | null = null;
+    let nextChapterUnlocked = false;
+
+    if (completedChapter) {
+      const [nextChapter] = await db
+        .select({ id: storyChapters.id, isLocked: storyChapters.isLocked })
+        .from(storyChapters)
+        .where(
+          and(
+            gt(storyChapters.chapterOrder, completedChapter.chapterOrder),
+            eq(storyChapters.isLocked, true),
+          )
+        )
+        .orderBy(asc(storyChapters.chapterOrder))
+        .limit(1);
+
+      if (nextChapter) {
+        await db
+          .update(storyChapters)
+          .set({ isLocked: false })
+          .where(eq(storyChapters.id, nextChapter.id));
+        nextChapterId      = nextChapter.id;
+        nextChapterUnlocked = true;
+      }
+    }
+
+    res.json({ success: true, nextChapterUnlocked, nextChapterId });
   } catch (e) {
     console.error("[story] POST /progress/complete", e);
     res.status(500).json({ error: "Failed to complete chapter" });
@@ -242,14 +266,12 @@ storyRouter.post("/progress/complete", async (req: Request, res: Response) => {
 // ─── Player flags ─────────────────────────────────────────────────────────────
 
 storyRouter.get("/flags", async (req: Request, res: Response) => {
-  const userId = requireAuth(req, res);
-  if (!userId) return;
+  const userId = getUserId(req);
   try {
     const flags = await db
       .select()
       .from(playerFlags)
       .where(eq(playerFlags.userId, userId));
-    // Return as Record<string, number> for easy consumption
     const record: Record<string, number> = {};
     for (const f of flags) record[f.flagKey] = f.flagValue;
     res.json(record);
@@ -263,8 +285,7 @@ storyRouter.get("/flags", async (req: Request, res: Response) => {
  * Body: { mutations: Record<string, number> }  — values are additive deltas
  */
 storyRouter.post("/flags", async (req: Request, res: Response) => {
-  const userId = requireAuth(req, res);
-  if (!userId) return;
+  const userId = getUserId(req);
   try {
     const { mutations } = req.body as { mutations: Record<string, number> };
     if (!mutations || typeof mutations !== "object") {
@@ -291,7 +312,6 @@ storyRouter.post("/flags", async (req: Request, res: Response) => {
       }
     }
 
-    // Return updated record
     const updated = await db.select().from(playerFlags).where(eq(playerFlags.userId, userId));
     const record: Record<string, number> = {};
     for (const f of updated) record[f.flagKey] = f.flagValue;
@@ -305,8 +325,7 @@ storyRouter.post("/flags", async (req: Request, res: Response) => {
 // ─── Unlocked endings ─────────────────────────────────────────────────────────
 
 storyRouter.get("/endings", async (req: Request, res: Response) => {
-  const userId = requireAuth(req, res);
-  if (!userId) return;
+  const userId = getUserId(req);
   try {
     const endings = await db
       .select()

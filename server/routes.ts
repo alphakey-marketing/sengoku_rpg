@@ -7,6 +7,7 @@
 import type { Express } from "express";
 import { type Server } from "http";
 import { setupAuth, registerAuthRoutes } from "./replit_integrations/auth";
+import { isAuthenticated } from "./replit_integrations/auth";
 
 import { registerPlayerRoutes }         from "./routes/player";
 import { registerCompanionRoutes }      from "./routes/companions";
@@ -19,6 +20,9 @@ import { registerBattleRoutes }         from "./routes/battle";
 import { registerCampaignRoutes }       from "./routes/campaign";
 import { registerGachaRoutes }          from "./routes/gacha";
 import { registerQuestRoutes }          from "./routes/quests";
+
+// Item 1: mount the VN story router
+import { storyRouter } from "./story-routes";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -38,6 +42,9 @@ export async function registerRoutes(
   registerCampaignRoutes(app);
   registerGachaRoutes(app);
   registerQuestRoutes(app);
+
+  // VN story engine — all routes live under /api/story
+  app.use("/api/story", isAuthenticated, storyRouter);
 
   return httpServer;
 }

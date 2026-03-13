@@ -61,6 +61,45 @@ interface ChapterData {
   scenes: Scene[];
 }
 
+// ─── Battle gate helpers ──────────────────────────────────────────────────────
+
+/**
+ * Derive the correct API endpoint and locationId from a battleEnemyKey.
+ * Convention:
+ *   boss_<locationId>       → /api/battle/boss
+ *   special_<locationId>    → /api/battle/special-boss
+ *   field_<locationId>      → /api/battle/field  (default)
+ */
+function parseBattleEnemyKey(key: string | null | undefined): {
+  endpoint: string;
+  locationId: number;
+  enemyName?: string;
+} {
+  if (!key) return { endpoint: "/api/battle/field", locationId: 1 };
+  const parts = key.split("_");
+  const lastPart = parts[parts.length - 1];
+  const locationId = isNaN(Number(lastPart)) ? 1 : Number(lastPart);
+  const prefix = isNaN(Number(lastPart)) ? key : parts.slice(0, -1).join("_");
+  if (prefix.startsWith("boss"))    return { endpoint: "/api/battle/boss",         locationId, enemyName: key };
+  if (prefix.startsWith("special")) return { endpoint: "/api/battle/special-boss", locationId, enemyName: key };
+  return { endpoint: "/api/battle/field", locationId, enemyName: key };
+}
+
+async function runStoryBattle(scene: Scene): Promise<{ victory: boolean; logs: string[] }> {
+  const { endpoint, locationId, enemyName } = parseBattleEnemyKey(scene.battleEnemyKey);
+  const resp = await fetch(endpoint, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ locationId, enemyName }),
+  });
+  if (!resp.ok) {
+    // If the combat API fails treat it as a defeat so story stays playable
+    return { victory: false, logs: ["Battle system error — you retreat."] };
+  }
+  const data = await resp.json();
+  return { victory: !!data.victory, logs: Array.isArray(data.logs) ? data.logs : [] };
+}
+
 // ─── Visual maps ──────────────────────────────────────────────────────────────
 
 const BG_MAP: Record<string, string> = {
@@ -110,7 +149,7 @@ const CHAPTER_ID = 1;
 
 function Portrait({ portraitKey, side }: { portraitKey: string | null; side: "left" | "right" }) {
   if (!portraitKey) return <div className="w-28 h-36 md:w-32 md:h-44" />;
-  const colours = PORTRAIT_COLOURS[portraitKey] ?? "bg-stone-700 border-stone-500";
+  const colours  = PORTRAIT_COLOURS[portraitKey] ?? "bg-stone-700 border-stone-500";
   const initials = PORTRAIT_INITIALS[portraitKey] ?? "?";
   const flip = side === "right" ? "scale-x-[-1]" : "";
   return (
@@ -135,20 +174,93 @@ function FlagBar({ flags }: { flags: StoryFlags }) {
   );
 }
 
+// ─── Battle overlay (Item 2) ─────────────────────────────────────────────────
+
+type BattlePhase = "idle" | "fighting" | "result";
+
+function BattleGate({
+  scene,
+  bgGradient,
+  onResult,
+}: {
+  scene: Scene;
+  bgGradient: string;
+  onResult: (won: boolean) => void;
+}) {
+  const [phase, setPhase]   = useState<BattlePhase>("idle");
+  const [logs, setLogs]     = useState<string[]>([]);
+  const [victory, setVictory] = useState<boolean | null>(null);
+
+  const fight = useCallback(async () => {
+    setPhase("fighting");
+    setLogs(["Crossing blades…"]);
+    const result = await runStoryBattle(scene);
+    setLogs(result.logs);
+    setVictory(result.victory);
+    setPhase("result");
+  }, [scene]);
+
+  return (
+    <div className={`min-h-screen bg-gradient-to-b ${bgGradient} flex flex-col items-center justify-center p-8 text-center`}>
+      <div className="max-w-md w-full">
+        <p className="text-red-400 text-xs tracking-widest uppercase mb-4 animate-pulse">⚔ Battle</p>
+        <h2 className="text-2xl font-bold text-white mb-2">Battle of Okehazama</h2>
+        <p className="text-stone-400 text-sm mb-6">Imagawa Vanguard stands before you.</p>
+
+        {/* Battle log */}
+        {logs.length > 0 && (
+          <div className="mb-6 max-h-48 overflow-y-auto rounded bg-black/60 border border-white/10 p-3 text-left">
+            {logs.map((l, i) => (
+              <p key={i} className="text-xs text-stone-300 leading-relaxed">{l}</p>
+            ))}
+          </div>
+        )}
+
+        {phase === "idle" && (
+          <button
+            onClick={fight}
+            className="px-8 py-3 bg-amber-700 hover:bg-amber-600 text-white rounded font-semibold transition">
+            ⚡ Enter Battle
+          </button>
+        )}
+
+        {phase === "fighting" && (
+          <p className="text-stone-400 text-sm animate-pulse">Combat in progress…</p>
+        )}
+
+        {phase === "result" && victory !== null && (
+          <div className="flex flex-col items-center gap-4">
+            <p className={`text-lg font-bold ${victory ? "text-amber-400" : "text-red-400"}`}>
+              {victory ? "Victory!" : "Defeat…"}
+            </p>
+            <button
+              onClick={() => onResult(victory)}
+              className="px-6 py-2 bg-stone-700 hover:bg-stone-600 text-white rounded text-sm transition">
+              Continue ▸
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function StoryPage() {
-  const [chapter, setChapter] = useState<ChapterData | null>(null);
-  const [sceneId, setSceneId] = useState<number | null>(null);
-  const [lineIndex, setLineIndex] = useState(0);
+  const [chapter, setChapter]       = useState<ChapterData | null>(null);
+  const [sceneId, setSceneId]       = useState<number | null>(null);
+  const [lineIndex, setLineIndex]   = useState(0);
   const [showChoices, setShowChoices] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
   const [isBattleGate, setIsBattleGate] = useState(false);
-  const [flags, setFlags] = useState<StoryFlags>({});
+  const [flags, setFlags]           = useState<StoryFlags>({});
   const [displayedText, setDisplayedText] = useState("");
-  const [isTyping, setIsTyping] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [isTyping, setIsTyping]     = useState(false);
+  const [loading, setLoading]       = useState(true);
+  const [error, setError]           = useState<string | null>(null);
+  // Item 3: surface next-chapter unlock message after completion
+  const [nextChapterId, setNextChapterId] = useState<number | null>(null);
   const typeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const sceneMap = chapter
@@ -157,7 +269,7 @@ export default function StoryPage() {
   const scene = sceneId ? sceneMap[sceneId] ?? null : null;
   const currentLine = scene?.dialogueLines[lineIndex] ?? null;
 
-  // ── Boot: fetch chapter + resume progress ──────────────────────────────────
+  // ── Boot ───────────────────────────────────────────────────────────────────
   useEffect(() => {
     (async () => {
       try {
@@ -229,13 +341,15 @@ export default function StoryPage() {
     if (scene.isBattleGate) { setIsBattleGate(true); return; }
 
     if (scene.isChapterEnd) {
-      await completeChapter();
+      // Item 3: server now unlocks next chapter; capture the id from response
+      const completionData = await completeChapter();
       await unlockEnding({
         chapterId: CHAPTER_ID,
         endingKey: "ch1_complete",
         endingTitle: "The Fool of Owari",
         endingDescription: "Chapter 1 complete. Japan watches.",
       });
+      if (completionData?.nextChapterId) setNextChapterId(completionData.nextChapterId);
       setIsComplete(true);
       return;
     }
@@ -251,7 +365,7 @@ export default function StoryPage() {
   const handleChoice = useCallback(async (choice: Choice) => {
     if (!scene) return;
     const mutations: StoryFlags = {};
-    if (choice.flagKey && choice.flagValue !== null) mutations[choice.flagKey] = choice.flagValue ?? 0;
+    if (choice.flagKey  && choice.flagValue  !== null) mutations[choice.flagKey]  = choice.flagValue  ?? 0;
     if (choice.flagKey2 && choice.flagValue2 !== null) mutations[choice.flagKey2] = choice.flagValue2 ?? 0;
     if (Object.keys(mutations).length) {
       const updated = await applyFlags(mutations);
@@ -263,6 +377,7 @@ export default function StoryPage() {
     setShowChoices(false);
   }, [scene]);
 
+  // Item 2: battle gate result handler — routes to win or lose scene
   const handleBattleResult = useCallback(async (won: boolean) => {
     if (!scene) return;
     const nextId = won ? scene.battleWinSceneId! : scene.battleLoseSceneId!;
@@ -283,10 +398,11 @@ export default function StoryPage() {
     setShowChoices(false);
     setIsComplete(false);
     setIsBattleGate(false);
+    setNextChapterId(null);
     setFlags({});
   }, [chapter]);
 
-  // ── Loading / error screens ────────────────────────────────────────────────
+  // ── Loading / error ────────────────────────────────────────────────────────
   if (loading) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
@@ -302,11 +418,22 @@ export default function StoryPage() {
     );
   }
 
-  const bgGradient = BG_MAP[scene.backgroundKey] ?? BG_MAP.default;
+  const bgGradient    = BG_MAP[scene.backgroundKey] ?? BG_MAP.default;
   const leftPortrait  = currentLine?.speakerSide === "left"  ? currentLine.portraitKey : null;
   const rightPortrait = currentLine?.speakerSide === "right" ? currentLine.portraitKey : null;
 
-  // ── Chapter complete ───────────────────────────────────────────────────────
+  // ── Battle gate (Item 2) ───────────────────────────────────────────────────
+  if (isBattleGate) {
+    return (
+      <BattleGate
+        scene={scene}
+        bgGradient={bgGradient}
+        onResult={handleBattleResult}
+      />
+    );
+  }
+
+  // ── Chapter complete (Item 3) ──────────────────────────────────────────────
   if (isComplete) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-zinc-950 to-black flex flex-col items-center justify-center p-8 text-center">
@@ -318,6 +445,15 @@ export default function StoryPage() {
             <p className="text-stone-300 text-sm mb-3">Your story so far:</p>
             <FlagBar flags={flags} />
           </div>
+
+          {/* Item 3: next chapter unlock banner */}
+          {nextChapterId && (
+            <div className="mb-6 p-3 rounded border border-amber-700/50 bg-amber-900/20">
+              <p className="text-amber-300 text-sm font-semibold">✦ New chapter unlocked!</p>
+              <p className="text-stone-400 text-xs mt-1">Continue the story when you're ready.</p>
+            </div>
+          )}
+
           <div className="flex gap-3 justify-center flex-wrap">
             <button onClick={handleReset}
               className="px-5 py-2 bg-stone-800 hover:bg-stone-700 text-white rounded text-sm transition">
@@ -328,32 +464,6 @@ export default function StoryPage() {
                 → Campaign Map
               </button>
             </Link>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // ── Battle gate ────────────────────────────────────────────────────────────
-  if (isBattleGate) {
-    return (
-      <div className={`min-h-screen bg-gradient-to-b ${bgGradient} flex flex-col items-center justify-center p-8 text-center`}>
-        <div className="max-w-md">
-          <p className="text-red-400 text-xs tracking-widest uppercase mb-4 animate-pulse">⚔ Battle</p>
-          <h2 className="text-2xl font-bold text-white mb-2">Battle of Okehazama</h2>
-          <p className="text-stone-400 text-sm mb-8">Imagawa Vanguard stands before you.</p>
-          <p className="text-stone-500 text-xs mb-6 italic">
-            Full battle integration wires into the existing combat engine.
-          </p>
-          <div className="flex gap-4 justify-center">
-            <button onClick={() => handleBattleResult(true)}
-              className="px-6 py-3 bg-amber-700 hover:bg-amber-600 text-white rounded font-semibold transition">
-              ⚡ Victory
-            </button>
-            <button onClick={() => handleBattleResult(false)}
-              className="px-6 py-3 bg-stone-700 hover:bg-stone-600 text-white rounded font-semibold transition">
-              ✕ Defeat
-            </button>
           </div>
         </div>
       </div>
@@ -410,7 +520,6 @@ export default function StoryPage() {
           )}
         </div>
 
-        {/* Choices */}
         {showChoices && scene.choices.length > 0 && (
           <div className="mt-3 flex flex-col gap-2">
             {[...scene.choices]
