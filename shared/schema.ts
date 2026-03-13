@@ -79,7 +79,7 @@ export const equipment = pgTable("equipment", {
   id: serial("id").primaryKey(),
   userId: varchar("user_id").notNull(),
   name: text("name").notNull(),
-  type: text("type").notNull(),
+  type: text("text").notNull(),
   rarity: text("rarity").notNull().default("white"),
   weaponType: text("weapon_type"),
   level: integer("level").notNull().default(1),
@@ -164,6 +164,10 @@ export const transformations = pgTable("transformations", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// campaignEvents table is retained to avoid an unplanned Drizzle migration
+// against the live DB. The route, page, TS types, and Drizzle relation that
+// referenced it have all been removed (Phase C1). Physical table drop is
+// deferred to Phase C2 schema audit.
 export const campaignEvents = pgTable("campaign_events", {
   id: serial("id").primaryKey(),
   userId: varchar("user_id").notNull(),
@@ -186,58 +190,42 @@ export const userQuests = pgTable("user_quests", {
 // VN STORY ENGINE — STATIC CONTENT TABLES
 // =============================================================
 
-// Chapters: top-level story units (e.g. "Chapter 1 — The Fool of Owari")
 export const storyChapters = pgTable("story_chapters", {
   id: serial("id").primaryKey(),
   title: text("title").notNull(),
   subtitle: text("subtitle"),
   chapterOrder: integer("chapter_order").notNull(),
-  // firstSceneId is set after scenes are inserted; nullable to avoid circular deps
   firstSceneId: integer("first_scene_id"),
   isLocked: boolean("is_locked").notNull().default(true),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// Scenes: a single screen/moment within a chapter
-// backgroundKey maps to a CSS class or image asset key on the client
-// bgmKey maps to an audio file key on the client
-// nextSceneId is set for auto-advance scenes (no choices); null if scene has choices
 export const storyScenes = pgTable("story_scenes", {
   id: serial("id").primaryKey(),
   chapterId: integer("chapter_id").notNull(),
   backgroundKey: text("background_key").notNull().default("default"),
   bgmKey: text("bgm_key").notNull().default("default"),
   sceneOrder: integer("scene_order").notNull(),
-  // For auto-advance (no choices): points to next scene
   nextSceneId: integer("next_scene_id"),
-  // For battle-gate scenes
   isBattleGate: boolean("is_battle_gate").notNull().default(false),
   battleEnemyKey: text("battle_enemy_key"),
-  // Scene on battle win vs loss (only used when isBattleGate = true)
   battleWinSceneId: integer("battle_win_scene_id"),
   battleLoseSceneId: integer("battle_lose_scene_id"),
-  // Marks the final scene of a chapter
   isChapterEnd: boolean("is_chapter_end").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// DialogueLines: individual lines of text within a scene, displayed in order
-// speakerSide: 'left' | 'right' | 'none' (narrator)
-// portraitKey: maps to a character portrait asset key on the client
 export const dialogueLines = pgTable("dialogue_lines", {
   id: serial("id").primaryKey(),
   sceneId: integer("scene_id").notNull(),
   speakerName: text("speaker_name").notNull(),
-  speakerSide: text("speaker_side").notNull().default("none"), // 'left' | 'right' | 'none'
+  speakerSide: text("speaker_side").notNull().default("none"),
   text: text("text").notNull(),
   portraitKey: text("portrait_key"),
   lineOrder: integer("line_order").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// StoryChoices: player decision options shown after all dialogue lines in a scene
-// flagKey / flagValue: the flag this choice sets on the player (optional)
-// flagKey2 / flagValue2: a second flag this choice sets (optional, for dual-flag choices)
 export const storyChoices = pgTable("story_choices", {
   id: serial("id").primaryKey(),
   sceneId: integer("scene_id").notNull(),
@@ -255,10 +243,6 @@ export const storyChoices = pgTable("story_choices", {
 // VN STORY ENGINE — PLAYER STATE TABLES
 // =============================================================
 
-// PlayerFlags: key-value store for each player's accumulated story flags
-// flagKey examples: 'ruthlessness', 'political_power', 'supernatural_affinity',
-//   'mitsuhide_loyalty', 'hideyoshi_loyalty', 'ieyasu_loyalty'
-// flagValue is cumulative (additive per choice)
 export const playerFlags = pgTable("player_flags", {
   id: serial("id").primaryKey(),
   userId: varchar("user_id").notNull(),
@@ -267,22 +251,17 @@ export const playerFlags = pgTable("player_flags", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-// PlayerProgress: tracks which chapter/scene the player is currently on
-// and which chapters are completed
 export const playerProgress = pgTable("player_progress", {
   id: serial("id").primaryKey(),
   userId: varchar("user_id").notNull(),
   chapterId: integer("chapter_id").notNull(),
   currentSceneId: integer("current_scene_id"),
   isCompleted: boolean("is_completed").notNull().default(false),
-  // Stores array of seen scene IDs for skip functionality (Phase 8)
   seenSceneIds: jsonb("seen_scene_ids").notNull().default(sql`'[]'::jsonb`),
   startedAt: timestamp("started_at").defaultNow(),
   completedAt: timestamp("completed_at"),
 });
 
-// UnlockedEndings: records which endings a player has reached
-// endingKey examples: 'unifier', 'demon_king', 'flame_harvest', 'puppetmaster', 'honnoji'
 export const unlockedEndings = pgTable("unlocked_endings", {
   id: serial("id").primaryKey(),
   userId: varchar("user_id").notNull(),
@@ -293,7 +272,7 @@ export const unlockedEndings = pgTable("unlocked_endings", {
 });
 
 // =============================================================
-// RELATIONS — EXISTING
+// RELATIONS
 // =============================================================
 
 export const usersRelations = relations(users, ({ many }) => ({
@@ -302,7 +281,6 @@ export const usersRelations = relations(users, ({ many }) => ({
   pets: many(pets),
   horses: many(horses),
   transformations: many(transformations),
-  campaignEvents: many(campaignEvents),
   quests: many(userQuests),
   playerFlags: many(playerFlags),
   playerProgress: many(playerProgress),
@@ -337,10 +315,6 @@ export const horsesRelations = relations(horses, ({ one }) => ({
 
 export const transformationsRelations = relations(transformations, ({ one }) => ({
   user: one(users, { fields: [transformations.userId], references: [users.id] }),
-}));
-
-export const campaignEventsRelations = relations(campaignEvents, ({ one }) => ({
-  user: one(users, { fields: [campaignEvents.userId], references: [users.id] }),
 }));
 
 // =============================================================
@@ -380,7 +354,7 @@ export const unlockedEndingsRelations = relations(unlockedEndings, ({ one }) => 
 }));
 
 // =============================================================
-// INSERT SCHEMAS & TYPES — EXISTING
+// INSERT SCHEMAS & TYPES
 // =============================================================
 
 export const insertCardSchema = createInsertSchema(cards).omit({ id: true, createdAt: true });
@@ -401,9 +375,6 @@ export const insertHorseSchema = createInsertSchema(horses, {
   isActive: z.boolean(),
 }).omit({ id: true, createdAt: true });
 export const insertTransformationSchema = createInsertSchema(transformations).omit({ id: true, createdAt: true });
-export const insertCampaignEventSchema = createInsertSchema(campaignEvents, {
-  isTriggered: z.boolean(),
-}).omit({ id: true });
 
 export type User = typeof users.$inferSelect;
 export type UpsertUser = typeof users.$inferInsert;
@@ -412,7 +383,6 @@ export type Equipment = typeof equipment.$inferSelect;
 export type Pet = typeof pets.$inferSelect;
 export type Horse = typeof horses.$inferSelect;
 export type Transformation = typeof transformations.$inferSelect;
-export type CampaignEvent = typeof campaignEvents.$inferSelect;
 export type InsertCompanion = z.infer<typeof insertCompanionSchema>;
 export type InsertEquipment = z.infer<typeof insertEquipmentSchema>;
 export type InsertPet = z.infer<typeof insertPetSchema>;

@@ -17,11 +17,10 @@ import { registerPetRoutes }            from "./routes/pets";
 import { registerHorseRoutes }          from "./routes/horses";
 import { registerTransformationRoutes } from "./routes/transformations";
 import { registerBattleRoutes }         from "./routes/battle";
-import { registerCampaignRoutes }       from "./routes/campaign";
 import { registerGachaRoutes }          from "./routes/gacha";
 import { registerQuestRoutes }          from "./routes/quests";
 
-// Item 1: mount the VN story router
+// VN story engine
 import { storyRouter } from "./story-routes";
 
 export async function registerRoutes(
@@ -39,7 +38,6 @@ export async function registerRoutes(
   registerHorseRoutes(app);
   registerTransformationRoutes(app);
   registerBattleRoutes(app);
-  registerCampaignRoutes(app);
   registerGachaRoutes(app);
   registerQuestRoutes(app);
 
