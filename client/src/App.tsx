@@ -8,6 +8,7 @@ import { AuthGuard } from "@/components/auth-guard";
 import NotFound from "@/pages/not-found";
 import LandingPage from "@/pages/landing";
 import LoginPage from "@/pages/login";
+import AuthCallback from "@/pages/auth-callback";
 import Home from "@/pages/home";
 import Party from "@/pages/party";
 import EquipmentPage from "@/pages/equipment";
@@ -25,6 +26,7 @@ function Router() {
       {/* Public routes — no auth required */}
       <Route path="/landing" component={LandingPage} />
       <Route path="/login" component={LoginPage} />
+      <Route path="/auth/callback" component={AuthCallback} />
 
       {/* Protected routes — <AuthGuard> redirects to /login if not signed in */}
       <Route path="/">
