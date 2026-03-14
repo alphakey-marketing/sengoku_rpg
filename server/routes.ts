@@ -4,6 +4,7 @@ import { storage } from "./storage";
 import { setupAuth, registerAuthRoutes, isAuthenticated } from "./auth";
 import { api } from "@shared/routes";
 import { runTurnBasedCombat, applyFlagModifiers } from "./combat";
+import { storyRouter } from "./story-routes";
 
 // ─── Name pools ────────────────────────────────────────────────────────────────
 const JP_ENEMY_NAMES = ["Ashigaru","Ronin","Bandit","Mercenary","Scout","Raider","Footsoldier","Brigand"];
@@ -324,9 +325,17 @@ function generateEnemyStats(type: "field" | "boss" | "special", playerLevel: num
 
 // ─── Route registration ────────────────────────────────────────────────────────
 
-export async function registerRoutes(app: Express): Promise<Server> {
+/**
+ * index.ts calls: registerRoutes(httpServer, app)
+ * The function accepts the pre-created httpServer as the first arg so that
+ * Vite's HMR WebSocket (which binds to the same server) keeps working.
+ */
+export async function registerRoutes(server: Server, app: Express): Promise<Server> {
   await setupAuth(app);
   registerAuthRoutes(app);
+
+  // ── Story engine ─────────────────────────────────────────────────────────
+  app.use("/api/story", isAuthenticated, storyRouter);
 
   // ── Onboarding ──────────────────────────────────────────────────────────
   app.post("/api/player/mark-intro-seen", isAuthenticated, async (req: any, res) => {
@@ -596,15 +605,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json(await storage.claimQuest(req.user.claims.sub, req.params.key));
   });
 
-  // ── Battle helpers ───────────────────────────────────────────────────────
-  //
-  // Every battle endpoint:
-  //   1. Builds teamStats via getPlayerTeamStats
-  //   2. Generates enemy array
-  //   3. Calls applyFlagModifiers(userId, team, enemies) — mutates in place
-  //      and prepends any modifier narration lines to the combat log
-  //   4. Passes the mutated objects to runTurnBasedCombat
-
   // ── Field skirmish ───────────────────────────────────────────────────────
   app.post(api.battle.field.path, isAuthenticated, async (req: any, res) => {
     const userId = req.user.claims.sub;
@@ -625,7 +625,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     for (let i = 0; i < repeatCount; i++) {
       if (repeatCount > 1) allLogs.push(`--- BATTLE ${i + 1} ---`);
 
-      // Rare ninja interrupt
       if (!ninjaEncounter && Math.random() < (locationId >= 100 ? 0.05 : 0.03)) {
         const names  = locationId >= 100
           ? ["Zhuge Liang (Ghost)","Lu Bu's Spirit","Empress Wu Zetian"]
@@ -647,7 +646,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const enemy = generateEnemyStats("field", user.level, locationId);
       if (i === 0 && req.body.enemyName) enemy.name = req.body.enemyName;
 
-      // ── A1: apply flag modifiers before combat ──
       const modLogs = await applyFlagModifiers(userId, teamStats, [enemy]);
       allLogs.push(...modLogs);
 
@@ -662,7 +660,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         totalExp  += exp;
         totalGold += gold;
 
-        // Level-up loop
         let xp = user.experience + totalExp;
         let lv = user.level;
         let mhp = user.maxHp;
@@ -694,7 +691,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const team = await getPlayerTeamStats(userId);
     if (!team) return res.status(400).json({ message: "Team not found" });
 
-    // Ensure statusEffects array present
     if (!(ninjaStats as any).statusEffects) (ninjaStats as any).statusEffects = [];
 
     const modLogs = await applyFlagModifiers(userId, team, [ninjaStats]);
@@ -910,6 +906,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     ]);
   });
 
-  const httpServer = (await import("http")).createServer(app);
-  return httpServer;
+  // Return the server that was passed in (index.ts already created it and
+  // Vite will later bind its HMR WebSocket to the same instance).
+  return server;
 }
