@@ -583,7 +583,8 @@ export default function Home() {
               <div>
                 <p className="font-bold text-white">{teamStatus.horse.name}</p>
                 <p className="text-xs text-muted-foreground">Lv{teamStatus.horse.level} | +{teamStatus.horse.speedBonus} SPD | +{teamStatus.horse.attackBonus} ATK</p>
-                {teamStatus.horse.skill && <p className="text-xs text-cyan-400 mt-1">Skill: {teamStatus.horse.skill}</p>}</n              </div>
+                {teamStatus.horse.skill && <p className="text-xs text-cyan-400 mt-1">Skill: {teamStatus.horse.skill}</p>}
+              </div>
             </div>
           </div>
         )}
