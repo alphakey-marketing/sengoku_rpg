@@ -13,7 +13,6 @@ function serial(name: string) {
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   // Phase 3: Supabase auth UUID — populated on first Supabase sign-in.
-  // Null while AUTH_PROVIDER=replit; used as the lookup key for Supabase path.
   authUserId: varchar("auth_user_id").unique(),
   email: varchar("email").unique(),
   firstName: varchar("first_name"),
@@ -52,6 +51,16 @@ export const users = pgTable("users", {
   permDefenseBonus: integer("perm_defense_bonus").notNull().default(0),
   permSpeedBonus: integer("perm_speed_bonus").notNull().default(0),
   permHpBonus: integer("perm_hp_bonus").notNull().default(0),
+  // ── Onboarding ───────────────────────────────────────────────────────────
+  // currentChapter: how many story chapters the player has completed.
+  // 0 = brand-new account → redirect to /story on first login.
+  // Each chapter completion increments this via POST /api/chapters/:id/complete.
+  currentChapter: integer("current_chapter").notNull().default(0),
+  // hasSeenIntro: prevents the fullscreen title-card overlay from showing
+  // more than once per account.
+  hasSeenIntro: boolean("has_seen_intro").notNull().default(false),
+  // titleSuffix: set when a Chronicle Wall ending is unlocked (Phase C2).
+  titleSuffix: varchar("title_suffix", { length: 64 }),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -184,6 +193,3 @@ export const userQuests = pgTable("user_quests", {
   isClaimed: boolean("is_claimed").notNull().default(false),
   lastUpdated: timestamp("last_updated").defaultNow(),
 });
-
-// =============================================================
-// V
