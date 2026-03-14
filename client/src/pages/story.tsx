@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Link, useParams, useLocation } from "wouter";
+import { queryClient } from "@/lib/queryClient";
 import {
   startChapter,
   advanceScene,
@@ -116,18 +117,11 @@ const FLAG_LABELS: Record<string, string> = {
 };
 
 /**
- * The unlock chain per nav-unlock.ts:
- *   ch 0  → /story only (new player)
- *   ch 1  → / (Dojo/Home) + /quests
- *   ch 2  → /stable (War Council)
- *   ch 3  → /gear + /equipment
- *   ch 4  → /gacha
- *   ch 5  → /pets
- *   ch 6  → /party
- *   ch 7  → /map
- *
- * After completing a chapter we always send the player to the NEXT
- * destination they just unlocked, never to a locked one.
+ * Unlock chain (mirrors nav-unlock.ts exactly):
+ *   ch 1 → / (Dojo/Home)     ch 5 → /pets
+ *   ch 2 → /stable           ch 6 → /party
+ *   ch 3 → /gear             ch 7 → /map
+ *   ch 4 → /gacha
  */
 const CHAPTER_COMPLETE_DESTINATION: Record<number, { path: string; label: string }> = {
   1: { path: "/",       label: "Enter the Dojo" },
@@ -185,10 +179,10 @@ interface BattleGateProps {
 }
 
 function BattleGateOverlay({ scene, bgGradient, onResult }: BattleGateProps) {
-  const [phase, setPhase]       = useState<"idle" | "fighting" | "done">("idle");
+  const [phase, setPhase]           = useState<"idle" | "fighting" | "done">("idle");
   const [combatLogs, setCombatLogs] = useState<string[]>([]);
-  const [won, setWon]           = useState<boolean | null>(null);
-  const logRef                  = useRef<HTMLDivElement>(null);
+  const [won, setWon]               = useState<boolean | null>(null);
+  const logRef                      = useRef<HTMLDivElement>(null);
 
   const locationId = (() => {
     if (!scene.battleEnemyKey) return 1;
@@ -207,7 +201,7 @@ function BattleGateOverlay({ scene, bgGradient, onResult }: BattleGateProps) {
         body: JSON.stringify({ locationId, repeatCount: 1 }),
       });
       const data = await res.json();
-      const logs: string[] = data.logs ?? [];
+      const logs: string[]  = data.logs ?? [];
       const victory: boolean = !!data.victory;
       setCombatLogs(logs);
       setWon(victory);
@@ -320,7 +314,6 @@ export default function StoryPage() {
   const isAtLastLine = !!scene && lineIndex >= scene.dialogueLines.length - 1;
   const battleReady  = isBattleGate && isAtLastLine && !isTyping;
 
-  // Destination the player will be sent to after completing this chapter
   const completionDest = CHAPTER_COMPLETE_DESTINATION[CHAPTER_ID]
     ?? { path: "/", label: "Enter the Dojo" };
 
@@ -388,7 +381,7 @@ export default function StoryPage() {
     const nextLineIdx = lineIndex + 1;
     if (nextLineIdx < scene.dialogueLines.length) { setLineIndex(nextLineIdx); return; }
     if (scene.choices.length > 0) { setShowChoices(true); return; }
-    if (scene.isBattleGate) return; // BattleGateOverlay handles this
+    if (scene.isBattleGate) return;
     if (scene.isChapterEnd) {
       await completeChapter();
       await unlockEnding({
@@ -397,6 +390,9 @@ export default function StoryPage() {
         endingTitle: chapter.title,
         endingDescription: `Chapter ${CHAPTER_ID} complete.`,
       });
+      // ⚡ Bust the player cache so AuthGuard reads the fresh currentChapter
+      // from the server on the next render rather than the stale ch=0 value.
+      await queryClient.invalidateQueries({ queryKey: ["/api/player"] });
       setIsComplete(true);
       return;
     }
@@ -475,25 +471,22 @@ export default function StoryPage() {
           <h1 className="text-3xl font-bold text-white mb-2">{chapter.title}</h1>
           <p className="text-stone-400 italic mb-8">{chapter.subtitle}</p>
 
-          {/* Flag summary */}
           <div className="mb-8 p-4 bg-white/5 rounded border border-white/10">
             <p className="text-stone-300 text-sm mb-3">Your legacy choices:</p>
             <FlagBar flags={flags} />
           </div>
 
-          {/* Teaser: what just unlocked */}
           <div className="mb-8 p-4 bg-amber-900/20 rounded border border-amber-700/30 text-left">
-            <p className="text-amber-400 text-xs font-semibold uppercase tracking-widest mb-1">★ New area unlocked
-            </p>
+            <p className="text-amber-400 text-xs font-semibold uppercase tracking-widest mb-1">★ New area unlocked</p>
             <p className="text-white text-sm font-semibold">{completionDest.label}</p>
             <p className="text-stone-400 text-xs mt-1">
-              {CHAPTER_ID === 1 && "Your Dojo is now open — review your stats and spend your first stat points."}
-              {CHAPTER_ID === 2 && "The War Council opens — recruit companions and build your party."}
-              {CHAPTER_ID === 3 && "The Armoury is unlocked — equip and upgrade the loot you’ve earned."}
-              {CHAPTER_ID === 4 && "The Shrine awaits — summon new warriors with the Gacha."}
-              {CHAPTER_ID === 5 && "The Menagerie is open — tame and equip spirit beasts."}
-              {CHAPTER_ID === 6 && "The Stables are ready — mount your war horses."}
-              {CHAPTER_ID === 7 && "The Campaign Map is open — lead your armies across Japan."}
+              {CHAPTER_ID === 1 && "Your Dojo is now open \u2014 review your stats and spend your first stat points."}
+              {CHAPTER_ID === 2 && "The War Council opens \u2014 recruit companions and build your party."}
+              {CHAPTER_ID === 3 && "The Armoury is unlocked \u2014 equip and upgrade the loot you\u2019ve earned."}
+              {CHAPTER_ID === 4 && "The Shrine awaits \u2014 summon new warriors with the Gacha."}
+              {CHAPTER_ID === 5 && "The Menagerie is open \u2014 tame and equip spirit beasts."}
+              {CHAPTER_ID === 6 && "The Stables are ready \u2014 mount your war horses."}
+              {CHAPTER_ID === 7 && "The Campaign Map is open \u2014 lead your armies across Japan."}
             </p>
           </div>
 
@@ -515,7 +508,7 @@ export default function StoryPage() {
     );
   }
 
-  // ── B2: Battle gate ──────────────────────────────────────────────────────────
+  // ── Battle gate ──────────────────────────────────────────────────────────
   if (battleReady) {
     return (
       <BattleGateOverlay
@@ -532,7 +525,6 @@ export default function StoryPage() {
       className={`min-h-screen bg-gradient-to-b ${bgGradient} flex flex-col select-none`}
       onClick={!showChoices ? advance : undefined}
     >
-      {/* Top bar */}
       <div className="flex items-center justify-between px-4 py-2 bg-black/40 backdrop-blur-sm">
         <Link href="/story">
           <span className="text-stone-400 hover:text-white text-xs transition cursor-pointer">← Chapters</span>
@@ -552,7 +544,6 @@ export default function StoryPage() {
         </div>
       </div>
 
-      {/* Portrait stage */}
       <div className="flex-1 flex items-end justify-between px-6 pb-2 pointer-events-none">
         <div className={`transition-all duration-300 ${
           leftPortrait ? "opacity-100 translate-y-0" : "opacity-30 translate-y-2"
@@ -566,7 +557,6 @@ export default function StoryPage() {
         </div>
       </div>
 
-      {/* Dialogue box */}
       <div className="mx-3 mb-3 rounded bg-black/70 backdrop-blur border border-white/10 p-4 min-h-[130px] flex flex-col justify-between">
         <div>
           {currentLine && (
