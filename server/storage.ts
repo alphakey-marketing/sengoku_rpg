@@ -10,6 +10,8 @@ import { eq, and } from "drizzle-orm";
 
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
+  // Phase 3: look up game-user row by Supabase auth UUID
+  getUserByAuthId(authUserId: string): Promise<User | undefined>;
   upsertUser(user: UpsertUser): Promise<User>;
   updateUser(id: string, updates: Partial<User>): Promise<User>;
 
@@ -54,6 +56,19 @@ export interface IStorage {
 export class DatabaseStorage implements IStorage {
   async getUser(id: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user;
+  }
+
+  /**
+   * Phase 3: Look up a game-user row using the Supabase auth UUID stored in
+   * `auth_user_id`. Used by the Supabase `isAuthenticated` middleware so that
+   * all downstream routes continue to receive a plain `userId` string.
+   */
+  async getUserByAuthId(authUserId: string): Promise<User | undefined> {
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.authUserId, authUserId));
     return user;
   }
 

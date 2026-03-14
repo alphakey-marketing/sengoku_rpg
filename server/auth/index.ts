@@ -5,6 +5,9 @@
  * Phase 1: delegates to Replit auth when AUTH_PROVIDER=replit (default).
  * Phase 2: Supabase JWT middleware is now wired. Still inactive until
  *          AUTH_PROVIDER is flipped to "supabase".
+ * Phase 3: On first Supabase sign-in the middleware auto-upserts a users row
+ *          and attaches req.user.claims.sub = gameUser.id so all downstream
+ *          routes remain unchanged.
  *
  * DO NOT import from server/replit_integrations/auth outside this file.
  */
@@ -16,6 +19,7 @@ import {
 } from "../replit_integrations/auth";
 import { AUTH_PROVIDER } from "./config";
 import { getSupabaseAdmin } from "../lib/supabase";
+import { storage } from "../storage";
 
 // ─── setup ───────────────────────────────────────────────────────────────────
 
@@ -25,7 +29,6 @@ export async function setupAuth(app: Express) {
   }
 
   // Supabase: no server-side session setup needed — JWT is stateless.
-  // Nothing to do here; middleware is applied per-route via isAuthenticated.
 }
 
 // ─── routes ──────────────────────────────────────────────────────────────────
@@ -74,15 +77,12 @@ export function registerAuthRoutes(app: Express) {
     }
   });
 
-  // Supabase Phase 2: logout (client handles token removal; this is a convenience redirect)
+  // Supabase: logout redirect (client calls supabase.auth.signOut() directly)
   app.get("/api/logout", (_req, res) => {
-    // Supabase sessions are client-managed (JWT).
-    // Client calls supabase.auth.signOut() directly.
-    // This endpoint exists for parity with Replit auth redirects.
     return res.redirect("/");
   });
 
-  // Current user from JWT
+  // Current user endpoint — returns game-user row enriched with Supabase identity
   app.get("/api/auth/user", isAuthenticated, (req: any, res) => {
     res.json(req.supabaseUser);
   });
@@ -108,18 +108,65 @@ export const isAuthenticated: RequestHandler = async (req, res, next) => {
 
   try {
     const {
-      data: { user },
+      data: { user: supabaseUser },
       error,
     } = await getSupabaseAdmin().auth.getUser(token);
 
-    if (error || !user) {
+    if (error || !supabaseUser) {
       return res
         .status(401)
         .json({ message: error?.message ?? "Unauthorized: invalid token" });
     }
 
-    // Attach user to request for downstream handlers
-    (req as any).supabaseUser = user;
+    // ── Phase 3: Resolve (or create) the game-user row ──────────────────────
+    // Look up by authUserId first, then fall back to email for accounts that
+    // existed before Phase 3 (so their game data is preserved).
+    let gameUser = await storage.getUserByAuthId(supabaseUser.id);
+
+    if (!gameUser && supabaseUser.email) {
+      // Try to claim an existing account created via Replit that shares the
+      // same email — stamp it with the Supabase auth UUID.
+      const { db } = await import("../db");
+      const { users } = await import("@shared/schema");
+      const { eq } = await import("drizzle-orm");
+      const [existing] = await db
+        .select()
+        .from(users)
+        .where(eq(users.email, supabaseUser.email));
+      if (existing) {
+        gameUser = await storage.updateUser(existing.id, {
+          authUserId: supabaseUser.id,
+        });
+      }
+    }
+
+    if (!gameUser) {
+      // First sign-in: create a brand-new game-user row.
+      gameUser = await storage.upsertUser({
+        id: undefined as any, // let the DB generate a UUID
+        authUserId: supabaseUser.id,
+        email: supabaseUser.email ?? null,
+        firstName:
+          (supabaseUser.user_metadata?.["full_name"] as string | undefined)
+            ?.split(" ")
+            .at(0) ?? null,
+        lastName:
+          (supabaseUser.user_metadata?.["full_name"] as string | undefined)
+            ?.split(" ")
+            .slice(1)
+            .join(" ") || null,
+        profileImageUrl:
+          (supabaseUser.user_metadata?.["avatar_url"] as string | undefined) ??
+          null,
+      });
+    }
+
+    // Attach both identities to the request:
+    //   req.supabaseUser  — raw Supabase auth user (for /api/auth/user)
+    //   req.user.claims.sub — game-user UUID used by all existing routes
+    (req as any).supabaseUser = supabaseUser;
+    (req as any).user = { claims: { sub: gameUser.id } };
+
     return next();
   } catch (err) {
     return res.status(500).json({ message: String(err) });
