@@ -78,6 +78,25 @@ const UnlockedEndingSchema = z.object({
   unlockedAt: z.string(),
 });
 
+// ── B3: Campaign Map ──────────────────────────────────────────────────────────
+//
+// HeldProvinceSchema is the shape returned by both:
+//   GET  /api/map/provinces        → array of HeldProvinceSchema
+//   POST /api/map/provinces/:id/hold → single HeldProvinceSchema
+//
+// Fields mirror the heldProvinces table exactly, with heldAt serialised as an
+// ISO-8601 string (JSON serialisation of timestamp columns).
+
+export const HeldProvinceSchema = z.object({
+  id: z.number(),
+  userId: z.string(),
+  locationId: z.number(),
+  bossDefeated: z.boolean(),
+  heldAt: z.string(), // ISO-8601 timestamp string
+});
+
+export type HeldProvinceDTO = z.infer<typeof HeldProvinceSchema>;
+
 export const api = {
   player: {
     get: {
@@ -359,6 +378,51 @@ export const api = {
       responses: {
         200: z.object({ success: z.boolean() }),
         401: errorSchemas.unauthorized,
+      },
+    },
+  },
+
+  // =============================================================
+  // B3: CAMPAIGN MAP
+  // =============================================================
+  map: {
+    // GET /api/map/provinces
+    // Returns every province this player has ever conquered (held).
+    // The client uses this array to decorate the campaign map with
+    // crown badges and "held since" timestamps.
+    provinces: {
+      method: 'GET' as const,
+      path: '/api/map/provinces' as const,
+      responses: {
+        200: z.array(HeldProvinceSchema),
+        401: errorSchemas.unauthorized,
+      },
+    },
+
+    // POST /api/map/provinces/:id/hold
+    // Called by the server (internally from campaign/special-boss
+    // victory handlers) OR directly by the client after a confirmed
+    // victory to mark a province as held / refresh its heldAt date.
+    //
+    // :id  — the integer locationId (mirrors LOCATIONS[].id in map.tsx)
+    //
+    // Body: { bossDefeated?: boolean }  (defaults true)
+    //
+    // Behaviour:
+    //   • If a row for (userId, locationId) already exists → update heldAt
+    //     and set bossDefeated = true.
+    //   • If no row exists → insert a new one.
+    // Returns the upserted HeldProvinceSchema row.
+    holdProvince: {
+      method: 'POST' as const,
+      path: '/api/map/provinces/:id/hold' as const,
+      input: z.object({
+        bossDefeated: z.boolean().optional().default(true),
+      }),
+      responses: {
+        200: HeldProvinceSchema,
+        401: errorSchemas.unauthorized,
+        400: errorSchemas.validation,
       },
     },
   },

@@ -343,6 +343,41 @@ export const storyEndings = pgTable("story_endings", {
   unlockedAt: timestamp("unlocked_at").defaultNow(),
 });
 
+// ── B3: Campaign Map — Held Provinces ─────────────────────────────────────────
+//
+// One row per (user, locationId) pair.  Written by the server the first time a
+// player wins a campaign-mode boss battle at a given location.  The row is
+// idempotent: a second victory at the same location simply refreshes heldAt and
+// sets bossDefeated = true (it was already true on the first write).
+//
+// locationId mirrors the numeric ids in LOCATIONS (client/src/pages/map.tsx):
+//   1–6   Japan region
+//   101+  China region
+//
+// Columns:
+//   locationId    — FK-by-convention to the LOCATIONS constant (no hard FK to
+//                   avoid a table for static data).  Unique per userId.
+//   bossDefeated  — true once any boss (field, campaign, special) is beaten at
+//                   this location.  Allows the UI to show different badges.
+//   heldAt        — timestamp of the most-recent conquest; updated on each win.
+
+export const heldProvinces = pgTable("held_provinces", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull(),
+  locationId: integer("location_id").notNull(),
+  bossDefeated: boolean("boss_defeated").notNull().default(false),
+  heldAt: timestamp("held_at").notNull().defaultNow(),
+});
+
+// Insert schema — used by server/map-routes.ts when upserting a new conquest.
+export const insertHeldProvinceSchema = createInsertSchema(heldProvinces).omit({
+  id: true,
+});
+
+// TypeScript types inferred from the table for use across server + client.
+export type HeldProvince    = typeof heldProvinces.$inferSelect;
+export type InsertHeldProvince = typeof heldProvinces.$inferInsert;
+
 // ── Drizzle relations ─────────────────────────────────────────────────────────
 
 export const storyChaptersRelations = relations(storyChapters, ({ many }) => ({
