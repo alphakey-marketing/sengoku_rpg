@@ -1,4 +1,5 @@
-import { usePlayer, usePlayerFullStatus, useEquipment, useTransformations, useUpgradeStat, useBulkUpgradeStats } from "@/hooks/use-game";
+import { usePlayer, usePlayerFullStatus, useEquipment, useTransformations, useUpgradeStat, useBulkUpgradeStats, useCompanions } from "@/hooks/use-game";
+import { useStoryFlags, useStoryChapters } from "@/hooks/use-story";
 import { MainLayout } from "@/components/layout/main-layout";
 import { Shield, Sword, Coins, Wheat, Trophy, Zap, Heart, Sparkles, RefreshCcw, BookOpen, Users, Info, Plus, ChevronUp, ChevronDown, Check, X, AlertTriangle } from "lucide-react";
 import { motion } from "framer-motion";
@@ -33,6 +34,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { ContextualTips } from "@/components/home/contextual-tips";
+import { StoryProgressBanner } from "@/components/home/story-progress-banner";
 
 /** Attach Supabase Bearer token to any fetch call. */
 async function fetchWithAuth(url: string, options: RequestInit = {}) {
@@ -49,8 +52,11 @@ async function fetchWithAuth(url: string, options: RequestInit = {}) {
 export default function Home() {
   const { data: player, isLoading, error, refetch } = usePlayer();
   const { data: teamStatus } = usePlayerFullStatus();
-  const { data: equipment } = useEquipment();
+  const { data: equipment = [] } = useEquipment();
   const { data: transforms } = useTransformations();
+  const { data: companions = [] } = useCompanions();
+  const { data: flags = [] } = useStoryFlags();
+  const { data: chapters = [] } = useStoryChapters();
   const upgradeStat = useUpgradeStat();
   const bulkUpgrade = useBulkUpgradeStats();
   const { toast } = useToast();
@@ -161,7 +167,7 @@ export default function Home() {
     );
   }
 
-  // ── Error / no-data state — was previously `return null` (black screen) ──
+  // ── Error / no-data state ────────────────────────────────────────────────
   if (!player) {
     return (
       <MainLayout>
@@ -188,7 +194,7 @@ export default function Home() {
     );
   }
 
-  // ── Derived display data ────────────────────────────────────────────────
+  // ── Derived display data ─────────────────────────────────────────────────
   const statCards = [
     { label: "Level", value: player.level, icon: Trophy, color: "text-purple-400" },
     { label: "HP", value: teamStatus?.player ? `${teamStatus.player.hp}/${teamStatus.player.maxHp}` : `${player.hp}/${player.maxHp}`, icon: Heart, color: "text-red-400", bonus: (teamStatus?.player as any)?.permStats?.hp || 0 },
@@ -228,16 +234,6 @@ export default function Home() {
       case 'blue': return 'text-blue-400 border-blue-700';
       case 'green': return 'text-green-400 border-green-700';
       default: return 'text-zinc-400 border-zinc-700';
-    }
-  };
-
-  const getTypeIcon = (type: string) => {
-    switch (type) {
-      case 'weapon': return Sword;
-      case 'armor': return Shield;
-      case 'accessory': return Sparkles;
-      case 'horse_gear': return Zap;
-      default: return Sword;
     }
   };
 
@@ -313,6 +309,7 @@ export default function Home() {
           </Dialog>
         </div>
 
+        {/* ── Hero banner ─────────────────────────────────────────────────── */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -376,6 +373,15 @@ export default function Home() {
           </div>
         </motion.div>
 
+        {/* ── B1: Contextual tips ──────────────────────────────────────────── */}
+        <ContextualTips
+          player={player}
+          companions={companions}
+          equipment={equipment}
+          flags={flags}
+        />
+
+        {/* ── War Resources ────────────────────────────────────────────────── */}
         <h3 className="text-xl font-display font-semibold border-b border-border/50 pb-2 mt-12 mb-6">War Resources</h3>
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
           {statCards.map((stat, i) => (
@@ -401,6 +407,10 @@ export default function Home() {
           ))}
         </div>
 
+        {/* ── B1: Story progress banner ─────────────────────────────────────── */}
+        <StoryProgressBanner flags={flags} chapters={chapters} />
+
+        {/* ── Core Attributes + Combat Stats ───────────────────────────────── */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-12">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -573,8 +583,7 @@ export default function Home() {
               <div>
                 <p className="font-bold text-white">{teamStatus.horse.name}</p>
                 <p className="text-xs text-muted-foreground">Lv{teamStatus.horse.level} | +{teamStatus.horse.speedBonus} SPD | +{teamStatus.horse.attackBonus} ATK</p>
-                {teamStatus.horse.skill && <p className="text-xs text-cyan-400 mt-1">Skill: {teamStatus.horse.skill}</p>}
-              </div>
+                {teamStatus.horse.skill && <p className="text-xs text-cyan-400 mt-1">Skill: {teamStatus.horse.skill}</p>}</n              </div>
             </div>
           </div>
         )}
