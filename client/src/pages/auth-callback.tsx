@@ -16,32 +16,46 @@ export default function AuthCallback() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Supabase JS v2 automatically parses the hash fragment on page load.
-    // We just need to wait for onAuthStateChange to fire with SIGNED_IN.
+    let redirected = false;
+
+    function goHome() {
+      if (!redirected) {
+        redirected = true;
+        // Small delay so Supabase has time to persist the session to localStorage
+        setTimeout(() => setLocation("/"), 300);
+      }
+    }
+
+    // Listen for SIGNED_IN event from hash fragment processing
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === "SIGNED_IN" && session) {
+      if ((event === "SIGNED_IN" || event === "INITIAL_SESSION") && session) {
         subscription.unsubscribe();
-        setLocation("/");
+        goHome();
+      }
+      if (event === "SIGNED_IN" && !session) {
+        setError("Sign in failed. Please try again.");
       }
     });
 
-    // Also check if there's already a session (handles page refresh)
-    supabase.auth.getSession().then(({ data, error }) => {
-      if (error) {
-        setError(error.message);
+    // Also check immediately — handles cases where session is already set
+    supabase.auth.getSession().then(({ data, error: sessionError }) => {
+      if (sessionError) {
+        setError(sessionError.message);
         return;
       }
       if (data.session) {
         subscription.unsubscribe();
-        setLocation("/");
+        goHome();
       }
     });
 
-    // Fallback: if no session after 5 seconds, redirect to login
+    // Fallback timeout — if nothing fires in 6s, go back to login
     const timeout = setTimeout(() => {
-      subscription.unsubscribe();
-      setLocation("/login");
-    }, 5000);
+      if (!redirected) {
+        subscription.unsubscribe();
+        setLocation("/login");
+      }
+    }, 6000);
 
     return () => {
       subscription.unsubscribe();
