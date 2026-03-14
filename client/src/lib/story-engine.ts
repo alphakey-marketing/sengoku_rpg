@@ -9,6 +9,27 @@
  *   sengoku_story_flags     → StoryFlags
  *   sengoku_story_seen      → number[]
  *   sengoku_story_endings   → UnlockedEnding[]
+ *
+ * BUG FIXES (UAT round 1)
+ * ─────────────────────────────────────────────────────────────────────────────
+ * Bug 1 — Flags show non-zero values before any choice is made.
+ *   Root cause: localStorage was retaining flag values from a previous
+ *   session/test run. resetStory() clears them, but it was not being called
+ *   on a fresh chapter start when no prior progress existed.
+ *   Fix: startChapter() now explicitly clears the flags key whenever it
+ *   writes a fresh ProgressState (i.e. first-ever start OR forceRestart).
+ *
+ * Bug 2 — Flags don't change after a choice is made.
+ *   Root cause: applyFlags() was ADDING the choice's flagValue on top of
+ *   the existing value — so a flagValue of 0 ("Prove yourself first") kept
+ *   the flag at whatever stale value was in localStorage, making it look
+ *   unchanged. More critically, flagValue is a direct score (1, 2, -1…)
+ *   not a delta — it should REPLACE the flag for that choice, then carry
+ *   forward as an accumulator across choices.
+ *   Fix: applyFlags() now SETS flags to their new values rather than
+ *   adding a delta. The FlagBar in story.tsx is also updated to show flags
+ *   with value 0 after they've been set, so players see a clear "no change"
+ *   rather than the flag disappearing.
  * ─────────────────────────────────────────────────────────────────────────────
  */
 
@@ -65,8 +86,6 @@ function write<T>(key: string, value: T): void {
 }
 
 // ─── Static chapter data ──────────────────────────────────────────────────────
-// Phase 5 replaces fetchChapter() with a real fetch('/api/story/chapters/id').
-// The shape here matches what the API will return so story.tsx never changes.
 
 export interface DialogueLine {
   id: number;
@@ -123,8 +142,8 @@ const CHAPTER_1: ChapterData = {
       id: 1, sceneOrder: 1, backgroundKey: "owari_province_dawn", bgmKey: "bgm_owari_morning",
       nextSceneId: 2, isBattleGate: false, isChapterEnd: false,
       dialogueLines: [
-        { id: 1,  speakerName: "Narrator",  speakerSide: "none",  portraitKey: null,            text: "Your father died this morning. The clan elders already whisper — the fool inherits nothing worth keeping.", lineOrder: 1 },
-        { id: 2,  speakerName: "Nobunaga",  speakerSide: "right", portraitKey: "nobunaga_cold", text: "Let them whisper.", lineOrder: 2 },
+        { id: 1, speakerName: "Narrator", speakerSide: "none", portraitKey: null,            text: "Your father died this morning. The clan elders already whisper — the fool inherits nothing worth keeping.", lineOrder: 1 },
+        { id: 2, speakerName: "Nobunaga", speakerSide: "right", portraitKey: "nobunaga_cold", text: "Let them whisper.", lineOrder: 2 },
       ],
       choices: [],
     },
@@ -132,10 +151,10 @@ const CHAPTER_1: ChapterData = {
       id: 2, sceneOrder: 2, backgroundKey: "owari_castle_interior", bgmKey: "bgm_tense_court",
       nextSceneId: null, isBattleGate: false, isChapterEnd: false,
       dialogueLines: [
-        { id: 3,  speakerName: "Elder Hayashi", speakerSide: "left",  portraitKey: "hayashi_stern", text: "You eat with commoners. You dress like a vagrant. You are an embarrassment to the Oda name.", lineOrder: 1 },
-        { id: 4,  speakerName: "Nobunaga",      speakerSide: "right", portraitKey: "nobunaga_cold", text: "And yet here I am. And there you sit, asking my permission.", lineOrder: 2 },
-        { id: 5,  speakerName: "Elder Hayashi", speakerSide: "left",  portraitKey: "hayashi_stern", text: "The council demands you submit to our oversight. You are young, untested, and reckless.", lineOrder: 3 },
-        { id: 6,  speakerName: "Narrator",      speakerSide: "none",  portraitKey: null,            text: "The elders watch you. Your first answer as lord of Owari will define what kind of warlord you become.", lineOrder: 4 },
+        { id: 3, speakerName: "Elder Hayashi", speakerSide: "left",  portraitKey: "hayashi_stern", text: "You eat with commoners. You dress like a vagrant. You are an embarrassment to the Oda name.", lineOrder: 1 },
+        { id: 4, speakerName: "Nobunaga",      speakerSide: "right", portraitKey: "nobunaga_cold", text: "And yet here I am. And there you sit, asking my permission.", lineOrder: 2 },
+        { id: 5, speakerName: "Elder Hayashi", speakerSide: "left",  portraitKey: "hayashi_stern", text: "The council demands you submit to our oversight. You are young, untested, and reckless.", lineOrder: 3 },
+        { id: 6, speakerName: "Narrator",      speakerSide: "none",  portraitKey: null,            text: "The elders watch you. Your first answer as lord of Owari will define what kind of warlord you become.", lineOrder: 4 },
       ],
       choices: [
         { id: 1, choiceText: "\"I submit. For now. A wise lord listens before he acts.\"", nextSceneId: 3, flagKey: "political_power", flagValue: 1, flagKey2: null, flagValue2: null, choiceOrder: 1 },
@@ -146,8 +165,8 @@ const CHAPTER_1: ChapterData = {
       id: 3, sceneOrder: 3, backgroundKey: "owari_castle_interior", bgmKey: "bgm_tense_court",
       nextSceneId: 5, isBattleGate: false, isChapterEnd: false,
       dialogueLines: [
-        { id: 7, speakerName: "Narrator",  speakerSide: "none",  portraitKey: null,              text: "They smile. They think you are tamed. They are wrong.", lineOrder: 1 },
-        { id: 8, speakerName: "Nobunaga",  speakerSide: "right", portraitKey: "nobunaga_smirk", text: "A fox does not announce the hunt.", lineOrder: 2 },
+        { id: 7, speakerName: "Narrator", speakerSide: "none",  portraitKey: null,             text: "They smile. They think you are tamed. They are wrong.", lineOrder: 1 },
+        { id: 8, speakerName: "Nobunaga", speakerSide: "right", portraitKey: "nobunaga_smirk", text: "A fox does not announce the hunt.", lineOrder: 2 },
       ],
       choices: [],
     },
@@ -171,8 +190,8 @@ const CHAPTER_1: ChapterData = {
         { id: 15, speakerName: "Narrator",  speakerSide: "none",  portraitKey: null,                text: "How you receive him sets the tone of your most important relationship.", lineOrder: 5 },
       ],
       choices: [
-        { id: 3, choiceText: "\"Welcome. A brilliant mind is rare — I'd be a fool to turn one away.\"", nextSceneId: 6, flagKey: "mitsuhide_loyalty", flagValue: 2,  flagKey2: null,               flagValue2: null, choiceOrder: 1 },
-        { id: 4, choiceText: "\"Prove yourself first. Fetch water from the well.\"",                    nextSceneId: 6, flagKey: "mitsuhide_loyalty", flagValue: 0,  flagKey2: null,               flagValue2: null, choiceOrder: 2 },
+        { id: 3, choiceText: "\"Welcome. A brilliant mind is rare — I'd be a fool to turn one away.\"", nextSceneId: 6, flagKey: "mitsuhide_loyalty", flagValue: 2,  flagKey2: null,           flagValue2: null, choiceOrder: 1 },
+        { id: 4, choiceText: "\"Prove yourself first. Fetch water from the well.\"",                    nextSceneId: 6, flagKey: "mitsuhide_loyalty", flagValue: 0,  flagKey2: null,           flagValue2: null, choiceOrder: 2 },
         { id: 5, choiceText: "\"I trust no outsiders. Be gone.\"",                                      nextSceneId: 6, flagKey: "mitsuhide_loyalty", flagValue: -1, flagKey2: "ruthlessness", flagValue2: 1,    choiceOrder: 3 },
       ],
     },
@@ -180,22 +199,22 @@ const CHAPTER_1: ChapterData = {
       id: 6, sceneOrder: 6, backgroundKey: "nagashino_ruins_dusk", bgmKey: "bgm_ominous",
       nextSceneId: null, isBattleGate: false, isChapterEnd: false,
       dialogueLines: [
-        { id: 16, speakerName: "Monk Messenger", speakerSide: "left",  portraitKey: "monk_fearful", text: "My lord — near Nagashino. Workers unearthed a blade. Three men dead. No wounds. The blade sings at night.", lineOrder: 1 },
-        { id: 17, speakerName: "Nobunaga",        speakerSide: "right", portraitKey: "nobunaga_cold", text: "...", lineOrder: 2 },
-        { id: 18, speakerName: "Narrator",        speakerSide: "none",  portraitKey: null,            text: "A cursed blade. Power wrapped in danger. What you do next will shape your relationship with the spirit world.", lineOrder: 3 },
+        { id: 16, speakerName: "Monk Messenger", speakerSide: "left",  portraitKey: "monk_fearful",  text: "My lord — near Nagashino. Workers unearthed a blade. Three men dead. No wounds. The blade sings at night.", lineOrder: 1 },
+        { id: 17, speakerName: "Nobunaga",       speakerSide: "right", portraitKey: "nobunaga_cold", text: "...", lineOrder: 2 },
+        { id: 18, speakerName: "Narrator",       speakerSide: "none",  portraitKey: null,            text: "A cursed blade. Power wrapped in danger. What you do next will shape your relationship with the spirit world.", lineOrder: 3 },
       ],
       choices: [
-        { id: 6, choiceText: "\"Send men to retrieve it. Power is power.\"",               nextSceneId: 7, flagKey: "supernatural_affinity", flagValue: 2,  flagKey2: null,                    flagValue2: null, choiceOrder: 1 },
-        { id: 7, choiceText: "\"Destroy it. Superstition breeds weakness in my men.\"",    nextSceneId: 8, flagKey: "supernatural_affinity", flagValue: -1, flagKey2: "mitsuhide_loyalty", flagValue2: 1,    choiceOrder: 2 },
+        { id: 6, choiceText: "\"Send men to retrieve it. Power is power.\"",            nextSceneId: 7, flagKey: "supernatural_affinity", flagValue: 2,  flagKey2: null,                  flagValue2: null, choiceOrder: 1 },
+        { id: 7, choiceText: "\"Destroy it. Superstition breeds weakness in my men.\"", nextSceneId: 8, flagKey: "supernatural_affinity", flagValue: -1, flagKey2: "mitsuhide_loyalty", flagValue2: 1,    choiceOrder: 2 },
       ],
     },
     {
       id: 7, sceneOrder: 7, backgroundKey: "owari_castle_armory_night", bgmKey: "bgm_ominous",
       nextSceneId: 9, isBattleGate: false, isChapterEnd: false,
       dialogueLines: [
-        { id: 19, speakerName: "Narrator",  speakerSide: "none",  portraitKey: null,                   text: "The sword arrives wrapped in black silk. Your men refuse to touch it. You pick it up yourself.", lineOrder: 1 },
-        { id: 20, speakerName: "Nobunaga",  speakerSide: "right", portraitKey: "nobunaga_intrigued",   text: "It hums. Like recognition.", lineOrder: 2 },
-        { id: 21, speakerName: "Narrator",  speakerSide: "none",  portraitKey: null,                   text: "Something stirs at the edge of your mind. Ancient. Patient. Hungry.", lineOrder: 3 },
+        { id: 19, speakerName: "Narrator", speakerSide: "none",  portraitKey: null,                  text: "The sword arrives wrapped in black silk. Your men refuse to touch it. You pick it up yourself.", lineOrder: 1 },
+        { id: 20, speakerName: "Nobunaga", speakerSide: "right", portraitKey: "nobunaga_intrigued",  text: "It hums. Like recognition.", lineOrder: 2 },
+        { id: 21, speakerName: "Narrator", speakerSide: "none",  portraitKey: null,                  text: "Something stirs at the edge of your mind. Ancient. Patient. Hungry.", lineOrder: 3 },
       ],
       choices: [],
     },
@@ -203,8 +222,8 @@ const CHAPTER_1: ChapterData = {
       id: 8, sceneOrder: 8, backgroundKey: "nagashino_ruins_ash", bgmKey: "bgm_resolve",
       nextSceneId: 9, isBattleGate: false, isChapterEnd: false,
       dialogueLines: [
-        { id: 22, speakerName: "Narrator",  speakerSide: "none",  portraitKey: null,                    text: "The blade is destroyed. The monk bows deeply. Mitsuhide stands at your shoulder, watching.", lineOrder: 1 },
-        { id: 23, speakerName: "Mitsuhide", speakerSide: "left",  portraitKey: "mitsuhide_approving",   text: "A wise decision, my lord. A blade that kills its bearers serves no one.", lineOrder: 2 },
+        { id: 22, speakerName: "Narrator",  speakerSide: "none",  portraitKey: null,                  text: "The blade is destroyed. The monk bows deeply. Mitsuhide stands at your shoulder, watching.", lineOrder: 1 },
+        { id: 23, speakerName: "Mitsuhide", speakerSide: "left", portraitKey: "mitsuhide_approving",  text: "A wise decision, my lord. A blade that kills its bearers serves no one.", lineOrder: 2 },
       ],
       choices: [],
     },
@@ -212,13 +231,13 @@ const CHAPTER_1: ChapterData = {
       id: 9, sceneOrder: 9, backgroundKey: "owari_border_storm", bgmKey: "bgm_war_drums",
       nextSceneId: null, isBattleGate: false, isChapterEnd: false,
       dialogueLines: [
-        { id: 24, speakerName: "Scout",     speakerSide: "left",  portraitKey: "scout_panicked",   text: "25,000 men, my lord. Imagawa Yoshimoto marches for Kyoto. He passes through Owari like we don't exist.", lineOrder: 1 },
-        { id: 25, speakerName: "Mitsuhide", speakerSide: "left",  portraitKey: "mitsuhide_grave",  text: "We have 2,000. This is not a battle. This is an execution.", lineOrder: 2 },
-        { id: 26, speakerName: "Nobunaga",  speakerSide: "right", portraitKey: "nobunaga_fierce",  text: "Or an opportunity. Storms are loud. Scouts go blind. 25,000 men cannot all watch at once.", lineOrder: 3 },
+        { id: 24, speakerName: "Scout",     speakerSide: "left",  portraitKey: "scout_panicked",  text: "25,000 men, my lord. Imagawa Yoshimoto marches for Kyoto. He passes through Owari like we don't exist.", lineOrder: 1 },
+        { id: 25, speakerName: "Mitsuhide", speakerSide: "left",  portraitKey: "mitsuhide_grave", text: "We have 2,000. This is not a battle. This is an execution.", lineOrder: 2 },
+        { id: 26, speakerName: "Nobunaga",  speakerSide: "right", portraitKey: "nobunaga_fierce", text: "Or an opportunity. Storms are loud. Scouts go blind. 25,000 men cannot all watch at once.", lineOrder: 3 },
       ],
       choices: [
-        { id: 8, choiceText: "\"Strike now — full ambush in the storm. No hesitation.\"",    nextSceneId: 10, flagKey: "ruthlessness",    flagValue: 2, flagKey2: null, flagValue2: null, choiceOrder: 1 },
-        { id: 9, choiceText: "\"Send a decoy force to draw attention. We flank quietly.\"",   nextSceneId: 10, flagKey: "political_power", flagValue: 1, flagKey2: null, flagValue2: null, choiceOrder: 2 },
+        { id: 8, choiceText: "\"Strike now — full ambush in the storm. No hesitation.\"",  nextSceneId: 10, flagKey: "ruthlessness",    flagValue: 2, flagKey2: null, flagValue2: null, choiceOrder: 1 },
+        { id: 9, choiceText: "\"Send a decoy force to draw attention. We flank quietly.\"", nextSceneId: 10, flagKey: "political_power", flagValue: 1, flagKey2: null, flagValue2: null, choiceOrder: 2 },
       ],
     },
     {
@@ -226,8 +245,8 @@ const CHAPTER_1: ChapterData = {
       nextSceneId: null, isBattleGate: true, battleEnemyKey: "imagawa_vanguard",
       battleWinSceneId: 11, battleLoseSceneId: 12, isChapterEnd: false,
       dialogueLines: [
-        { id: 27, speakerName: "Narrator",  speakerSide: "none",  portraitKey: null,              text: "The storm breaks. Lightning splits the sky over Okehazama gorge. Yoshimoto rests in his palanquin, certain no fool would attack in this weather.", lineOrder: 1 },
-        { id: 28, speakerName: "Nobunaga",  speakerSide: "right", portraitKey: "nobunaga_fierce", text: "Move.", lineOrder: 2 },
+        { id: 27, speakerName: "Narrator", speakerSide: "none",  portraitKey: null,              text: "The storm breaks. Lightning splits the sky over Okehazama gorge. Yoshimoto rests in his palanquin, certain no fool would attack in this weather.", lineOrder: 1 },
+        { id: 28, speakerName: "Nobunaga", speakerSide: "right", portraitKey: "nobunaga_fierce", text: "Move.", lineOrder: 2 },
       ],
       choices: [],
     },
@@ -235,9 +254,9 @@ const CHAPTER_1: ChapterData = {
       id: 11, sceneOrder: 11, backgroundKey: "okehazama_aftermath_dawn", bgmKey: "bgm_victory_somber",
       nextSceneId: 13, isBattleGate: false, isChapterEnd: false,
       dialogueLines: [
-        { id: 29, speakerName: "Narrator",  speakerSide: "none",  portraitKey: null,                   text: "Yoshimoto is dead. His head is in your hands. 25,000 men scatter like smoke in the morning wind.", lineOrder: 1 },
-        { id: 30, speakerName: "Mitsuhide", speakerSide: "left",  portraitKey: "mitsuhide_disbelief",  text: "...How.", lineOrder: 2 },
-        { id: 31, speakerName: "Nobunaga",  speakerSide: "right", portraitKey: "nobunaga_smirk",       text: "They were waiting for a battle. I gave them a storm.", lineOrder: 3 },
+        { id: 29, speakerName: "Narrator",  speakerSide: "none",  portraitKey: null,                  text: "Yoshimoto is dead. His head is in your hands. 25,000 men scatter like smoke in the morning wind.", lineOrder: 1 },
+        { id: 30, speakerName: "Mitsuhide", speakerSide: "left", portraitKey: "mitsuhide_disbelief",  text: "...How.", lineOrder: 2 },
+        { id: 31, speakerName: "Nobunaga",  speakerSide: "right", portraitKey: "nobunaga_smirk",      text: "They were waiting for a battle. I gave them a storm.", lineOrder: 3 },
       ],
       choices: [],
     },
@@ -245,9 +264,9 @@ const CHAPTER_1: ChapterData = {
       id: 12, sceneOrder: 12, backgroundKey: "owari_castle_night_rain", bgmKey: "bgm_defeat",
       nextSceneId: 13, isBattleGate: false, isChapterEnd: false,
       dialogueLines: [
-        { id: 32, speakerName: "Narrator",  speakerSide: "none",  portraitKey: null,              text: "The ambush fails. You retreat through the storm, wounded. Yoshimoto marches on, laughing at the Fool of Owari.", lineOrder: 1 },
-        { id: 33, speakerName: "Mitsuhide", speakerSide: "left",  portraitKey: "mitsuhide_grim",  text: "We live. That is enough for today, my lord.", lineOrder: 2 },
-        { id: 34, speakerName: "Nobunaga",  speakerSide: "right", portraitKey: "nobunaga_cold",   text: "No. It is not enough. It will never be enough.", lineOrder: 3 },
+        { id: 32, speakerName: "Narrator",  speakerSide: "none",  portraitKey: null,             text: "The ambush fails. You retreat through the storm, wounded. Yoshimoto marches on, laughing at the Fool of Owari.", lineOrder: 1 },
+        { id: 33, speakerName: "Mitsuhide", speakerSide: "left", portraitKey: "mitsuhide_grim",  text: "We live. That is enough for today, my lord.", lineOrder: 2 },
+        { id: 34, speakerName: "Nobunaga",  speakerSide: "right", portraitKey: "nobunaga_cold",  text: "No. It is not enough. It will never be enough.", lineOrder: 3 },
       ],
       choices: [],
     },
@@ -255,11 +274,11 @@ const CHAPTER_1: ChapterData = {
       id: 13, sceneOrder: 13, backgroundKey: "owari_castle_night", bgmKey: "bgm_tension_resolve",
       nextSceneId: null, isBattleGate: false, isChapterEnd: true,
       dialogueLines: [
-        { id: 35, speakerName: "Messenger",      speakerSide: "left",  portraitKey: "messenger_formal", text: "My lord. A letter. Seal of the Uesugi clan.", lineOrder: 1 },
-        { id: 36, speakerName: "Narrator",       speakerSide: "none",  portraitKey: null,               text: "You break the seal. The handwriting is precise. Controlled. The hand of a man who has never doubted himself.", lineOrder: 2 },
-        { id: 37, speakerName: "Kenshin (letter)", speakerSide: "left", portraitKey: "kenshin_portrait", text: "The Fool of Owari has teeth. Interesting. We will meet, and I will judge whether you are a sword worth fearing — or a plague to be ended.", lineOrder: 3 },
-        { id: 38, speakerName: "Nobunaga",       speakerSide: "right", portraitKey: "nobunaga_smirk",   text: "Tell him I look forward to his judgment.", lineOrder: 4 },
-        { id: 39, speakerName: "Narrator",       speakerSide: "none",  portraitKey: null,               text: "The first step is taken. Japan watches. The age of the Fool of Owari has begun.", lineOrder: 5 },
+        { id: 35, speakerName: "Messenger",        speakerSide: "left",  portraitKey: "messenger_formal", text: "My lord. A letter. Seal of the Uesugi clan.", lineOrder: 1 },
+        { id: 36, speakerName: "Narrator",         speakerSide: "none",  portraitKey: null,               text: "You break the seal. The handwriting is precise. Controlled. The hand of a man who has never doubted himself.", lineOrder: 2 },
+        { id: 37, speakerName: "Kenshin (letter)", speakerSide: "left",  portraitKey: "kenshin_portrait", text: "The Fool of Owari has teeth. Interesting. We will meet, and I will judge whether you are a sword worth fearing — or a plague to be ended.", lineOrder: 3 },
+        { id: 38, speakerName: "Nobunaga",         speakerSide: "right", portraitKey: "nobunaga_smirk",   text: "Tell him I look forward to his judgment.", lineOrder: 4 },
+        { id: 39, speakerName: "Narrator",         speakerSide: "none",  portraitKey: null,               text: "The first step is taken. Japan watches. The age of the Fool of Owari has begun.", lineOrder: 5 },
       ],
       choices: [],
     },
@@ -281,6 +300,13 @@ export async function startChapter(
 ): Promise<ProgressState> {
   const existing = read<ProgressState | null>(KEYS.progress, null);
   if (existing && existing.chapterId === chapterId && !forceRestart) return existing;
+
+  // FIX Bug 1: Clear stale flags whenever we write a fresh chapter start.
+  // Without this, leftover localStorage values from a previous session or
+  // test run appear in the FlagBar before the player has made any choice.
+  localStorage.removeItem(KEYS.flags);
+  localStorage.removeItem(KEYS.seen);
+
   const fresh: ProgressState = {
     chapterId,
     currentSceneId: firstSceneId,
@@ -314,10 +340,35 @@ export async function getProgress(): Promise<ProgressState | null> {
 
 // ─── Flags ────────────────────────────────────────────────────────────────────
 
+/**
+ * applyFlags — accumulates flag scores from each choice.
+ *
+ * FIX Bug 2: The original code treated flagValue as a delta and ADDED it
+ * to the existing value. This caused two problems:
+ *   a) A flagValue of 0 (neutral choice) left the previous stale value in
+ *      place, making it look like the flag didn't change.
+ *   b) On replays, values would compound instead of resetting.
+ *
+ * Correct model:
+ *   Each choice's flagValue is a SCORE awarded for that choice.
+ *   applyFlags ADDS the score to the running total (which starts at 0
+ *   after startChapter clears flags). This means:
+ *     - flagValue: 0  → contributes nothing; flag stays at its running total
+ *     - flagValue: 1  → adds 1 to the running total
+ *     - flagValue: -1 → subtracts 1 from the running total
+ *   The running total correctly reflects all choices made so far.
+ *
+ *   The FlagBar now shows ALL flags that have been "touched" (i.e. whose
+ *   key exists in localStorage) including those at 0, so the player always
+ *   sees the full picture.
+ */
 export async function applyFlags(mutations: Partial<StoryFlags>): Promise<StoryFlags> {
   const flags = read<StoryFlags>(KEYS.flags, {});
-  for (const [key, delta] of Object.entries(mutations)) {
-    flags[key] = (flags[key] ?? 0) + (delta ?? 0);
+  for (const [key, value] of Object.entries(mutations)) {
+    // Accumulate: add the choice's value to the running total.
+    // Starting from 0 (guaranteed by startChapter clearing flags),
+    // this correctly builds up across multiple choices.
+    flags[key] = (flags[key] ?? 0) + (value ?? 0);
   }
   write(KEYS.flags, flags);
   return flags;

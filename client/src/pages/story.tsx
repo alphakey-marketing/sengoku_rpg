@@ -100,8 +100,10 @@ const PORTRAIT_INITIALS: Record<string, string> = {
 };
 
 const FLAG_LABELS: Record<string, string> = {
-  ruthlessness: "⚔ Ruthless", political_power: "⚖ Political",
-  mitsuhide_loyalty: "⚔ Mitsuhide", supernatural_affinity: "✦ Supernatural",
+  ruthlessness:         "⚔ Ruthless",
+  political_power:      "⚖ Political",
+  mitsuhide_loyalty:    "⚔ Mitsuhide",
+  supernatural_affinity: "✦ Supernatural",
 };
 
 const CHAPTER_ID = 1;
@@ -110,7 +112,7 @@ const CHAPTER_ID = 1;
 
 function Portrait({ portraitKey, side }: { portraitKey: string | null; side: "left" | "right" }) {
   if (!portraitKey) return <div className="w-28 h-36 md:w-32 md:h-44" />;
-  const colours = PORTRAIT_COLOURS[portraitKey] ?? "bg-stone-700 border-stone-500";
+  const colours  = PORTRAIT_COLOURS[portraitKey] ?? "bg-stone-700 border-stone-500";
   const initials = PORTRAIT_INITIALS[portraitKey] ?? "?";
   const flip = side === "right" ? "scale-x-[-1]" : "";
   return (
@@ -121,16 +123,34 @@ function Portrait({ portraitKey, side }: { portraitKey: string | null; side: "le
   );
 }
 
+/**
+ * FlagBar — shows all flags that have been touched by a choice.
+ *
+ * FIX: The original filter `v !== 0` hid flags with a 0 score, making it
+ * look like nothing changed when a neutral choice was made (e.g. "Prove
+ * yourself first" sets mitsuhide_loyalty to 0). Now we show all flags
+ * whose key exists in the flags object (i.e. has been written at least
+ * once), using `Object.keys` instead of filtering by value.
+ * Score display: positive → green+, negative → red−, zero → grey ±0.
+ */
 function FlagBar({ flags }: { flags: StoryFlags }) {
-  const entries = Object.entries(flags).filter(([, v]) => v !== 0);
-  if (!entries.length) return null;
+  const keys = Object.keys(flags);
+  if (!keys.length) return null;
   return (
     <div className="flex gap-2 flex-wrap">
-      {entries.map(([k, v]) => (
-        <span key={k} className="text-xs px-2 py-0.5 rounded-full bg-white/10 text-white/70 border border-white/20">
-          {FLAG_LABELS[k] ?? k} {v > 0 ? `+${v}` : v}
-        </span>
-      ))}
+      {keys.map((k) => {
+        const v = flags[k];
+        const colour =
+          v > 0  ? "bg-green-900/60 border-green-700/60 text-green-300" :
+          v < 0  ? "bg-red-900/60 border-red-700/60 text-red-300" :
+                   "bg-white/10 border-white/20 text-white/50";
+        const display = v > 0 ? `+${v}` : v === 0 ? "±0" : `${v}`;
+        return (
+          <span key={k} className={`text-xs px-2 py-0.5 rounded-full border ${colour}`}>
+            {FLAG_LABELS[k] ?? k} {display}
+          </span>
+        );
+      })}
     </div>
   );
 }
@@ -138,23 +158,23 @@ function FlagBar({ flags }: { flags: StoryFlags }) {
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function StoryPage() {
-  const [chapter, setChapter] = useState<ChapterData | null>(null);
-  const [sceneId, setSceneId] = useState<number | null>(null);
-  const [lineIndex, setLineIndex] = useState(0);
+  const [chapter, setChapter]         = useState<ChapterData | null>(null);
+  const [sceneId, setSceneId]         = useState<number | null>(null);
+  const [lineIndex, setLineIndex]     = useState(0);
   const [showChoices, setShowChoices] = useState(false);
-  const [isComplete, setIsComplete] = useState(false);
+  const [isComplete, setIsComplete]   = useState(false);
   const [isBattleGate, setIsBattleGate] = useState(false);
-  const [flags, setFlags] = useState<StoryFlags>({});
+  const [flags, setFlags]             = useState<StoryFlags>({});
   const [displayedText, setDisplayedText] = useState("");
-  const [isTyping, setIsTyping] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [isTyping, setIsTyping]       = useState(false);
+  const [loading, setLoading]         = useState(true);
+  const [error, setError]             = useState<string | null>(null);
   const typeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const sceneMap = chapter
     ? Object.fromEntries(chapter.scenes.map((s) => [s.id, s]))
     : {};
-  const scene = sceneId ? sceneMap[sceneId] ?? null : null;
+  const scene       = sceneId ? sceneMap[sceneId] ?? null : null;
   const currentLine = scene?.dialogueLines[lineIndex] ?? null;
 
   // ── Boot: fetch chapter + resume progress ──────────────────────────────────
@@ -173,10 +193,14 @@ export default function StoryPage() {
         const firstId = chapterData.firstSceneId ?? chapterData.scenes[0]?.id;
 
         if (progress && progress.chapterId === CHAPTER_ID && !progress.isCompleted && progress.currentSceneId) {
+          // Resume mid-chapter — flags are already correct from localStorage
           setSceneId(progress.currentSceneId);
         } else {
+          // Fresh start — startChapter clears stale flags (Bug 1 fix)
           await startChapter(CHAPTER_ID, firstId);
           setSceneId(firstId);
+          // Re-read flags after clear so FlagBar starts empty
+          setFlags(await getFlags());
         }
       } catch (e) {
         setError("Failed to load chapter. Please refresh.");
@@ -251,12 +275,18 @@ export default function StoryPage() {
   const handleChoice = useCallback(async (choice: Choice) => {
     if (!scene) return;
     const mutations: StoryFlags = {};
-    if (choice.flagKey && choice.flagValue !== null) mutations[choice.flagKey] = choice.flagValue ?? 0;
-    if (choice.flagKey2 && choice.flagValue2 !== null) mutations[choice.flagKey2] = choice.flagValue2 ?? 0;
-    if (Object.keys(mutations).length) {
-      const updated = await applyFlags(mutations);
-      setFlags(updated);
+    if (choice.flagKey !== null && choice.flagKey !== undefined) {
+      // Always record the flag key, even for flagValue === 0 (neutral choices).
+      // This ensures the FlagBar shows the flag was touched (Bug 2 fix).
+      mutations[choice.flagKey] = choice.flagValue ?? 0;
     }
+    if (choice.flagKey2 !== null && choice.flagKey2 !== undefined && choice.flagValue2 !== null) {
+      mutations[choice.flagKey2] = choice.flagValue2 ?? 0;
+    }
+    // Always call applyFlags so the flag key is written even for value 0
+    const updated = await applyFlags(mutations);
+    setFlags(updated);
+
     await advanceScene(choice.nextSceneId);
     setSceneId(choice.nextSceneId);
     setLineIndex(0);
@@ -283,6 +313,7 @@ export default function StoryPage() {
     setShowChoices(false);
     setIsComplete(false);
     setIsBattleGate(false);
+    // Reset flags state so FlagBar clears immediately on replay
     setFlags({});
   }, [chapter]);
 
@@ -302,7 +333,7 @@ export default function StoryPage() {
     );
   }
 
-  const bgGradient = BG_MAP[scene.backgroundKey] ?? BG_MAP.default;
+  const bgGradient    = BG_MAP[scene.backgroundKey] ?? BG_MAP.default;
   const leftPortrait  = currentLine?.speakerSide === "left"  ? currentLine.portraitKey : null;
   const rightPortrait = currentLine?.speakerSide === "right" ? currentLine.portraitKey : null;
 
@@ -362,9 +393,10 @@ export default function StoryPage() {
 
   // ── Main VN layout ─────────────────────────────────────────────────────────
   return (
-    <div className={`min-h-screen bg-gradient-to-b ${bgGradient} flex flex-col select-none`}
-      onClick={!showChoices ? advance : undefined}>
-
+    <div
+      className={`min-h-screen bg-gradient-to-b ${bgGradient} flex flex-col select-none`}
+      onClick={!showChoices ? advance : undefined}
+    >
       {/* Top bar */}
       <div className="flex items-center justify-between px-4 py-2 bg-black/40 backdrop-blur-sm">
         <Link href="/map">
@@ -375,8 +407,11 @@ export default function StoryPage() {
         </span>
         <div className="flex gap-2 items-center">
           <FlagBar flags={flags} />
-          <button onClick={(e) => { e.stopPropagation(); handleReset(); }}
-            className="text-stone-600 hover:text-stone-400 text-xs ml-2 transition" title="Restart chapter">
+          <button
+            onClick={(e) => { e.stopPropagation(); handleReset(); }}
+            className="text-stone-600 hover:text-stone-400 text-xs ml-2 transition"
+            title="Restart chapter"
+          >
             ↺
           </button>
         </div>
@@ -384,10 +419,14 @@ export default function StoryPage() {
 
       {/* Portrait stage */}
       <div className="flex-1 flex items-end justify-between px-6 pb-2 pointer-events-none">
-        <div className={`transition-all duration-300 ${leftPortrait ? "opacity-100 translate-y-0" : "opacity-30 translate-y-2"}`}>
+        <div className={`transition-all duration-300 ${
+          leftPortrait ? "opacity-100 translate-y-0" : "opacity-30 translate-y-2"
+        }`}>
           <Portrait portraitKey={leftPortrait} side="left" />
         </div>
-        <div className={`transition-all duration-300 ${rightPortrait ? "opacity-100 translate-y-0" : "opacity-30 translate-y-2"}`}>
+        <div className={`transition-all duration-300 ${
+          rightPortrait ? "opacity-100 translate-y-0" : "opacity-30 translate-y-2"
+        }`}>
           <Portrait portraitKey={rightPortrait} side="right" />
         </div>
       </div>
@@ -398,7 +437,9 @@ export default function StoryPage() {
           {currentLine && (
             <>
               {currentLine.speakerName !== "Narrator" && (
-                <p className="text-amber-400 text-xs font-semibold tracking-wide mb-1">{currentLine.speakerName}</p>
+                <p className="text-amber-400 text-xs font-semibold tracking-wide mb-1">
+                  {currentLine.speakerName}
+                </p>
               )}
               <p className={`text-sm leading-relaxed ${
                 currentLine.speakerName === "Narrator" ? "text-stone-300 italic" : "text-white"
@@ -416,11 +457,13 @@ export default function StoryPage() {
             {[...scene.choices]
               .sort((a, b) => a.choiceOrder - b.choiceOrder)
               .map((c, i) => (
-                <button key={i}
+                <button
+                  key={i}
                   onClick={(e) => { e.stopPropagation(); handleChoice(c); }}
                   className="text-left text-sm text-white bg-white/5 hover:bg-white/15
                     border border-white/10 hover:border-amber-500/50 rounded px-3 py-2
-                    transition-all duration-150 cursor-pointer">
+                    transition-all duration-150 cursor-pointer"
+                >
                   {c.choiceText}
                 </button>
               ))}
