@@ -1,13 +1,14 @@
 import { usePlayer, usePlayerFullStatus, useEquipment, useTransformations, useUpgradeStat, useBulkUpgradeStats } from "@/hooks/use-game";
 import { MainLayout } from "@/components/layout/main-layout";
-import { Shield, Sword, Coins, Wheat, Trophy, Zap, Heart, Sparkles, RefreshCcw, BookOpen, Users, Info, Plus, ChevronUp, ChevronDown, Check, X } from "lucide-react";
+import { Shield, Sword, Coins, Wheat, Trophy, Zap, Heart, Sparkles, RefreshCcw, BookOpen, Users, Info, Plus, ChevronUp, ChevronDown, Check, X, AlertTriangle } from "lucide-react";
 import { motion } from "framer-motion";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useMemo } from "react";
 import { Badge } from "@/components/ui/badge";
+import { supabase } from "@/lib/supabase";
 import {
   Tooltip,
   TooltipContent,
@@ -33,8 +34,20 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 
+/** Attach Supabase Bearer token to any fetch call. */
+async function fetchWithAuth(url: string, options: RequestInit = {}) {
+  const { data } = await supabase.auth.getSession();
+  const token = data.session?.access_token;
+  const headers: Record<string, string> = {
+    ...(options.headers as Record<string, string> | undefined),
+    "Content-Type": "application/json",
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+  return fetch(url, { credentials: "include", ...options, headers });
+}
+
 export default function Home() {
-  const { data: player, isLoading } = usePlayer();
+  const { data: player, isLoading, error, refetch } = usePlayer();
   const { data: teamStatus } = usePlayerFullStatus();
   const { data: equipment } = useEquipment();
   const { data: transforms } = useTransformations();
@@ -51,10 +64,6 @@ export default function Home() {
   const stagedInfo = useMemo(() => {
     if (!teamStatus?.player) return { totalCost: 0, pointsLeft: 0 };
     let cost = 0;
-    let tempPoints = teamStatus.player.statPoints;
-    const stats = { ...pendingUpgrades };
-    
-    // We need to calculate cost sequentially because it increases
     const entries = Object.entries(pendingUpgrades);
     entries.forEach(([stat, amount]) => {
       let val = (teamStatus.player as any)[stat];
@@ -62,7 +71,6 @@ export default function Home() {
         cost += getStatUpgradeCost(val + i);
       }
     });
-
     return {
       totalCost: cost,
       pointsLeft: teamStatus.player.statPoints - cost
@@ -72,7 +80,6 @@ export default function Home() {
   const handleStageUpgrade = (stat: string) => {
     const currentVal = (teamStatus?.player as any)[stat] + (pendingUpgrades[stat] || 0);
     if (currentVal >= 99) return;
-    
     const cost = getStatUpgradeCost(currentVal);
     if (stagedInfo.pointsLeft < cost) {
       toast({
@@ -82,19 +89,12 @@ export default function Home() {
       });
       return;
     }
-
-    setPendingUpgrades(prev => ({
-      ...prev,
-      [stat]: (prev[stat] || 0) + 1
-    }));
+    setPendingUpgrades(prev => ({ ...prev, [stat]: (prev[stat] || 0) + 1 }));
   };
 
   const handleUnstageUpgrade = (stat: string) => {
     if (!pendingUpgrades[stat]) return;
-    setPendingUpgrades(prev => ({
-      ...prev,
-      [stat]: Math.max(0, prev[stat] - 1)
-    }));
+    setPendingUpgrades(prev => ({ ...prev, [stat]: Math.max(0, prev[stat] - 1) }));
   };
 
   const handleConfirmUpgrades = async () => {
@@ -104,9 +104,7 @@ export default function Home() {
     } catch (e) {}
   };
 
-  const handleCancelUpgrades = () => {
-    setPendingUpgrades({});
-  };
+  const handleCancelUpgrades = () => setPendingUpgrades({});
 
   const mechanics = [
     {
@@ -133,7 +131,8 @@ export default function Home() {
 
   const handleRestart = async () => {
     try {
-      await apiRequest('POST', '/api/restart');
+      const res = await fetchWithAuth('/api/restart', { method: 'POST' });
+      if (!res.ok) throw new Error(await res.text());
       queryClient.invalidateQueries();
       toast({
         title: "Ritual Complete",
@@ -148,6 +147,7 @@ export default function Home() {
     }
   };
 
+  // ── Loading state ─────────────────────────────────────────────────────────
   if (isLoading) {
     return (
       <MainLayout>
@@ -161,8 +161,34 @@ export default function Home() {
     );
   }
 
-  if (!player) return null;
+  // ── Error / no-data state — was previously `return null` (black screen) ──
+  if (!player) {
+    return (
+      <MainLayout>
+        <div className="h-64 flex flex-col items-center justify-center gap-4 text-center">
+          <div className="p-4 bg-destructive/10 rounded-full border border-destructive/30">
+            <AlertTriangle size={32} className="text-destructive" />
+          </div>
+          <div>
+            <p className="text-white font-display text-lg font-semibold mb-1">Failed to load your profile</p>
+            <p className="text-muted-foreground text-sm max-w-xs">
+              {error ? String(error) : "Your warrior data could not be retrieved. Please try again."}
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            className="border-primary/50 text-primary hover:bg-primary/10"
+            onClick={() => refetch()}
+          >
+            <RefreshCcw size={16} className="mr-2" />
+            Retry
+          </Button>
+        </div>
+      </MainLayout>
+    );
+  }
 
+  // ── Derived display data ────────────────────────────────────────────────
   const statCards = [
     { label: "Level", value: player.level, icon: Trophy, color: "text-purple-400" },
     { label: "HP", value: teamStatus?.player ? `${teamStatus.player.hp}/${teamStatus.player.maxHp}` : `${player.hp}/${player.maxHp}`, icon: Heart, color: "text-red-400", bonus: (teamStatus?.player as any)?.permStats?.hp || 0 },
@@ -191,13 +217,6 @@ export default function Home() {
     { label: "FLEE", value: (teamStatus.player as any).flee, formula: "100 + LVL + AGI + LUK/5" },
     { label: "CRIT", value: `${(teamStatus.player as any).critChance}%`, formula: "0.3 * LUK" },
     { label: "ASPD", value: (teamStatus.player as any).speed, formula: "SPD + AGI/2" },
-  ] : [];
-
-  const combatStats = teamStatus?.player ? [
-    { label: "HIT", value: (teamStatus.player as any).hit, icon: Sparkles, color: "text-blue-400" },
-    { label: "FLEE", value: (teamStatus.player as any).flee, icon: Zap, color: "text-green-400" },
-    { label: "CRIT", value: `${(teamStatus.player as any).critChance}%`, icon: Trophy, color: "text-red-400" },
-    { label: "MDEF", value: (teamStatus.player as any).softMDEF, icon: Shield, color: "text-purple-400" },
   ] : [];
 
   const equippedItems = equipment?.filter(e => e.isEquipped && e.equippedToType === 'player') || [];
@@ -423,12 +442,12 @@ export default function Home() {
                       </div>
                       <p className="text-[10px] text-muted-foreground leading-tight">{stat.description}</p>
                     </div>
-                    
+
                     {!isMax && teamStatus?.player && (
                       <div className="flex flex-col items-center gap-1">
                           <div className="w-16 flex justify-end gap-1">
                             {staged > 0 ? (
-                              <button 
+                              <button
                                 className="h-7 w-7 flex items-center justify-center rounded border border-muted-foreground/20 hover:bg-muted/20 transition-colors"
                                 onClick={() => handleUnstageUpgrade(stat.key)}
                                 data-testid={`button-unstage-${stat.key}`}
@@ -438,7 +457,7 @@ export default function Home() {
                             ) : (
                               <div className="h-7 w-7" />
                             )}
-                            <button 
+                            <button
                               className={`h-7 w-7 flex items-center justify-center rounded border border-primary/20 hover:bg-primary/20 transition-colors ${!canAfford ? 'opacity-30 cursor-not-allowed' : ''}`}
                               disabled={!canAfford}
                               onClick={() => handleStageUpgrade(stat.key)}
@@ -456,14 +475,14 @@ export default function Home() {
             </div>
 
             {stagedInfo.totalCost > 0 && (
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 className="mt-8 flex justify-end gap-3 border-t border-border/30 pt-6"
               >
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
+                <Button
+                  variant="ghost"
+                  size="sm"
                   className="text-muted-foreground hover:text-white"
                   onClick={handleCancelUpgrades}
                   data-testid="button-discard-upgrades"
@@ -471,9 +490,9 @@ export default function Home() {
                   <X size={16} className="mr-2" />
                   Discard
                 </Button>
-                <Button 
-                  variant="default" 
-                  size="sm" 
+                <Button
+                  variant="default"
+                  size="sm"
                   className="bg-primary hover:bg-primary/90 text-white"
                   onClick={handleConfirmUpgrades}
                   disabled={bulkUpgrade.isPending}
@@ -504,7 +523,7 @@ export default function Home() {
                 <TooltipProvider key={stat.label}>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <div 
+                      <div
                         className="bg-background/40 border border-border/30 rounded-lg p-3 group hover:border-primary/50 transition-colors cursor-help"
                         data-testid={`combat-stat-${stat.label.toLowerCase()}`}
                       >
