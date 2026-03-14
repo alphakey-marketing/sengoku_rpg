@@ -4,6 +4,9 @@ import { serveStatic } from "./static";
 import { createServer } from "http";
 import "./env"; // validate all env vars at startup — fail fast on missing config
 import { pool } from "./db";
+import { syncTitleCatalogue } from "./lib/titles";
+// inside your startup async block:
+await syncTitleCatalogue();
 
 const app = express();
 const httpServer = createServer(app);
