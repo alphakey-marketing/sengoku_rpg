@@ -12,7 +12,6 @@ function serial(name: string) {
 
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  // Phase 3: Supabase auth UUID — populated on first Supabase sign-in.
   authUserId: varchar("auth_user_id").unique(),
   email: varchar("email").unique(),
   firstName: varchar("first_name"),
@@ -52,14 +51,8 @@ export const users = pgTable("users", {
   permSpeedBonus: integer("perm_speed_bonus").notNull().default(0),
   permHpBonus: integer("perm_hp_bonus").notNull().default(0),
   // ── Onboarding ───────────────────────────────────────────────────────────
-  // currentChapter: how many story chapters the player has completed.
-  // 0 = brand-new account → redirect to /story on first login.
-  // Each chapter completion increments this via POST /api/chapters/:id/complete.
   currentChapter: integer("current_chapter").notNull().default(0),
-  // hasSeenIntro: prevents the fullscreen title-card overlay from showing
-  // more than once per account.
   hasSeenIntro: boolean("has_seen_intro").notNull().default(false),
-  // titleSuffix: set when a Chronicle Wall ending is unlocked (Phase C2).
   titleSuffix: varchar("title_suffix", { length: 64 }),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -193,3 +186,114 @@ export const userQuests = pgTable("user_quests", {
   isClaimed: boolean("is_claimed").notNull().default(false),
   lastUpdated: timestamp("last_updated").defaultNow(),
 });
+
+// ── Story Engine Tables ───────────────────────────────────────────────────────
+// These power the visual-novel story system (Phase B).
+// seed-story.ts and story-routes.ts both import from here.
+
+export const storyChapters = pgTable("story_chapters", {
+  id: serial("id").primaryKey(),
+  title: text("title").notNull(),
+  subtitle: text("subtitle"),
+  chapterOrder: integer("chapter_order").notNull().default(0),
+  isLocked: boolean("is_locked").notNull().default(false),
+  firstSceneId: integer("first_scene_id"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const storyScenes = pgTable("story_scenes", {
+  id: serial("id").primaryKey(),
+  chapterId: integer("chapter_id").notNull(),
+  backgroundKey: text("background_key").notNull().default("default"),
+  bgmKey: text("bgm_key").notNull().default("bgm_default"),
+  sceneOrder: integer("scene_order").notNull().default(0),
+  nextSceneId: integer("next_scene_id"),
+  isBattleGate: boolean("is_battle_gate").notNull().default(false),
+  battleEnemyKey: text("battle_enemy_key"),
+  battleWinSceneId: integer("battle_win_scene_id"),
+  battleLoseSceneId: integer("battle_lose_scene_id"),
+  isChapterEnd: boolean("is_chapter_end").notNull().default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const dialogueLines = pgTable("dialogue_lines", {
+  id: serial("id").primaryKey(),
+  sceneId: integer("scene_id").notNull(),
+  speakerName: text("speaker_name").notNull().default("Narrator"),
+  speakerSide: text("speaker_side").notNull().default("none"),
+  portraitKey: text("portrait_key"),
+  text: text("text").notNull(),
+  lineOrder: integer("line_order").notNull().default(0),
+});
+
+export const storyChoices = pgTable("story_choices", {
+  id: serial("id").primaryKey(),
+  sceneId: integer("scene_id").notNull(),
+  choiceText: text("choice_text").notNull(),
+  nextSceneId: integer("next_scene_id").notNull(),
+  flagKey: text("flag_key"),
+  flagValue: integer("flag_value"),
+  flagKey2: text("flag_key2"),
+  flagValue2: integer("flag_value2"),
+  choiceOrder: integer("choice_order").notNull().default(0),
+});
+
+// Per-player progress through the current chapter
+export const playerStoryProgress = pgTable("player_story_progress", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull(),
+  chapterId: integer("chapter_id").notNull(),
+  currentSceneId: integer("current_scene_id"),
+  isCompleted: boolean("is_completed").notNull().default(false),
+  startedAt: timestamp("started_at").defaultNow(),
+  completedAt: timestamp("completed_at"),
+});
+
+// Persistent narrative flag values per player (ruthlessness, loyalty, etc.)
+export const playerFlags = pgTable("player_flags", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull(),
+  flagKey: text("flag_key").notNull(),
+  flagValue: integer("flag_value").notNull().default(0),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Chronicle Wall — one row per unlocked ending / achievement
+export const storyEndings = pgTable("story_endings", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull(),
+  chapterId: integer("chapter_id").notNull(),
+  endingKey: text("ending_key").notNull(),
+  endingTitle: text("ending_title").notNull(),
+  endingDescription: text("ending_description"),
+  unlockedAt: timestamp("unlocked_at").defaultNow(),
+});
+
+// ── Drizzle relations ─────────────────────────────────────────────────────────
+
+export const storyChaptersRelations = relations(storyChapters, ({ many }) => ({
+  scenes: many(storyScenes),
+}));
+
+export const storyScenesRelations = relations(storyScenes, ({ one, many }) => ({
+  chapter: one(storyChapters, {
+    fields: [storyScenes.chapterId],
+    references: [storyChapters.id],
+  }),
+  dialogueLines: many(dialogueLines),
+  choices: many(storyChoices),
+}));
+
+export const dialogueLinesRelations = relations(dialogueLines, ({ one }) => ({
+  scene: one(storyScenes, {
+    fields: [dialogueLines.sceneId],
+    references: [storyScenes.id],
+  }),
+}));
+
+export const storyChoicesRelations = relations(storyChoices, ({ one }) => ({
+  scene: one(storyScenes, {
+    fields: [storyChoices.sceneId],
+    references: [storyScenes.id],
+  }),
+}));
