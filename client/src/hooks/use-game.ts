@@ -216,6 +216,10 @@ export function usePlayer() {
       if (!res.ok) throw new Error("Failed to fetch player data");
       return res.json();
     },
+    // Retry once after 800 ms — handles the race where the query fires
+    // just before fetchWithAuth resolves the Supabase session token.
+    retry: 1,
+    retryDelay: 800,
   });
 }
 
