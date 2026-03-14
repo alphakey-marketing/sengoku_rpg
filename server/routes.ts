@@ -12,16 +12,18 @@ import { gachaRouter }      from "./routes/gacha";
 import { questsRouter }     from "./routes/quests";
 import { campaignRouter }   from "./routes/campaign";
 import { mapRouter }        from "./routes/map";
+import { chronicleRouter }  from "./routes/chronicle";
+import { titlesRouter }     from "./routes/titles";
 
 export async function registerRoutes(server: Server, app: Express): Promise<Server> {
   await setupAuth(app);
   registerAuthRoutes(app);
 
-  // ── Static / misc ─────────────────────────────────────────────────────────
+  // ── Static / misc ─────────────────────────────────────────────────────
   app.use("/api/story",    isAuthenticated, storyRouter);
   app.post("/api/restart", isAuthenticated, restartHandler);
 
-  // ── Domain routers ────────────────────────────────────────────────────────
+  // ── Domain routers ────────────────────────────────────────────────────
   app.use("/api/player",      isAuthenticated, playerRouter);
   app.use("/api/companions",  isAuthenticated, companionsRouter);
   app.use("/api/equipment",   isAuthenticated, equipmentRouter);
@@ -33,8 +35,10 @@ export async function registerRoutes(server: Server, app: Express): Promise<Serv
   app.use("/api/quests",      isAuthenticated, questsRouter);
   app.use("/api/campaign",    isAuthenticated, campaignRouter);
   app.use("/api/map",         isAuthenticated, mapRouter);
+  app.use("/api/chronicle",   isAuthenticated, chronicleRouter);
+  app.use("/api/titles",      isAuthenticated, titlesRouter);
 
-  // ── Locations (static lookup, stays inline) ───────────────────────────────
+  // ── Locations (static lookup) ─────────────────────────────────────────
   app.get("/api/locations", isAuthenticated, async (req: any, res) => {
     const { storage } = await import("./storage");
     const user = await storage.getUser(req.user.claims.sub);

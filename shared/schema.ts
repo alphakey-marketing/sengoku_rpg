@@ -10,24 +10,13 @@ function serial(name: string) {
   return integer(name).generatedAlwaysAsIdentity();
 }
 
-// ── A2 / A3: Narrative flag-gate condition ──────────────────────────────────────
+// ── A2 / A3: Narrative flag-gate condition ──────────────────────────────────
 //
-// A single nullable string shared by both companions (A2) and equipment (A3).
-// Evaluated at read-time by the server — never forwarded raw to the client.
-//
-// Grammar (one condition per row):
-//   "<flagKey><op><value>"
-//   where op ∈ { >=, >, <=, <, ==, != }
-//
-// Examples:
-//   "loyalty_hanzo>=3"    — companion / weapon available after Hanzo loyalty 3
-//   "ruthlessness<=1"     — item locked behind a merciful path
-//   "chapter_choice_A==1" — equipment behind a specific story branch
+// Grammar: "<flagKey><op><value>"   op ∈ { >=, >, <=, <, ==, != }
+// Examples: "loyalty_hanzo>=3"  "ruthlessness<=1"  "chapter_choice_A==1"
 
 export type CompanionUnlockCondition = string;
 
-/** Parse a flag-gate condition string into its constituent parts.
- *  Returns null if the string is malformed. */
 export function parseUnlockCondition(
   condition: string,
 ): { flagKey: string; op: string; threshold: number } | null {
@@ -36,9 +25,6 @@ export function parseUnlockCondition(
   return { flagKey: match[1], op: match[2], threshold: Number(match[3]) };
 }
 
-/** Evaluate a condition against the player's live flag map.
- *  Returns true when the item IS unlocked (condition satisfied).
- *  Malformed conditions fail-open (treated as unlocked). */
 export function evalUnlockCondition(
   condition: string,
   flagValues: Record<string, number>,
@@ -57,7 +43,6 @@ export function evalUnlockCondition(
   }
 }
 
-/** Human-readable lock reason for a condition that is NOT yet satisfied. */
 export function unlockConditionHint(
   condition: string,
   flagValues: Record<string, number>,
@@ -66,11 +51,13 @@ export function unlockConditionHint(
   if (!parsed) return "Story requirement not met";
   const current = flagValues[parsed.flagKey] ?? 0;
   const { flagKey, op, threshold } = parsed;
-  const label = flagKey
-    .replace(/_/g, " ")
-    .replace(/\b\w/g, c => c.toUpperCase());
+  const label = flagKey.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
   return `${label} ${op} ${threshold} (currently ${current})`;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Core game tables
+// ─────────────────────────────────────────────────────────────────────────────
 
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -112,10 +99,13 @@ export const users = pgTable("users", {
   permDefenseBonus: integer("perm_defense_bonus").notNull().default(0),
   permSpeedBonus: integer("perm_speed_bonus").notNull().default(0),
   permHpBonus: integer("perm_hp_bonus").notNull().default(0),
-  // ── Onboarding ───────────────────────────────────────────────────────
+  // ── Onboarding ────────────────────────────────────────────────────────
   currentChapter: integer("current_chapter").notNull().default(0),
   hasSeenIntro: boolean("has_seen_intro").notNull().default(false),
   titleSuffix: varchar("title_suffix", { length: 64 }),
+  // ── C2: active display title ──────────────────────────────────────────
+  // FK to player_titles.id — null means no title equipped
+  activeTitleId: integer("active_title_id"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -139,20 +129,9 @@ export const companions = pgTable("companions", {
   skill: text("skill"),
   isInParty: boolean("is_in_party").notNull().default(false),
   isSpecial: boolean("is_special").notNull().default(false),
-  // ── A2: narrative loyalty gate ────────────────────────────────────────────────
   flagUnlockCondition: text("flag_unlock_condition"),
   createdAt: timestamp("created_at").defaultNow(),
 });
-
-// ── A3: Story-unlocked equipment ───────────────────────────────────────────────────
-//
-// storyFlagRequirement mirrors flagUnlockCondition on companions but lives on
-// the equipment table.  Null means the item is universally available.
-// The server strips the raw value before returning to the client, injecting
-// isLocked + lockReason computed booleans instead.
-//
-// Reuses the same grammar as CompanionUnlockCondition:
-//   "<flagKey><op><value>"  e.g. "chapter_blade_unlocked==1"
 
 export const equipment = pgTable("equipment", {
   id: serial("id").primaryKey(),
@@ -178,23 +157,14 @@ export const equipment = pgTable("equipment", {
   equippedToId: integer("equipped_to_id"),
   equippedToType: text("equipped_to_type"),
   cardSlots: integer("card_slots").notNull().default(0),
-  // ── A3: story flag requirement ───────────────────────────────────────────────
-  // Nullable. When set, equipping this item requires the named story flag.
-  // Format: "flagKey>=value"  (same grammar as companions.flagUnlockCondition)
-  // Evaluated server-side; raw value never forwarded to the client.
   storyFlagRequirement: text("story_flag_requirement"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
 export const insertEquipmentSchema = createInsertSchema(equipment).omit({ id: true });
-export type Equipment      = typeof equipment.$inferSelect;
+export type Equipment       = typeof equipment.$inferSelect;
 export type InsertEquipment = typeof equipment.$inferInsert;
-
-/** The lock-state shape injected by the server into every equipment DTO. */
-export type EquipmentFlagLock = {
-  isLocked:   boolean;
-  lockReason: string | null;
-};
+export type EquipmentFlagLock = { isLocked: boolean; lockReason: string | null };
 
 export const cards = pgTable("cards", {
   id: serial("id").primaryKey(),
@@ -352,7 +322,7 @@ export const storyEndings = pgTable("story_endings", {
   unlockedAt: timestamp("unlocked_at").defaultNow(),
 });
 
-// ── B3: Campaign Map — Held Provinces ─────────────────────────────────────────
+// ── B3: Campaign Map — Held Provinces ────────────────────────────────────────
 export const heldProvinces = pgTable("held_provinces", {
   id: serial("id").primaryKey(),
   userId: varchar("user_id").notNull(),
@@ -364,6 +334,77 @@ export const heldProvinces = pgTable("held_provinces", {
 export const insertHeldProvinceSchema = createInsertSchema(heldProvinces).omit({ id: true });
 export type HeldProvince       = typeof heldProvinces.$inferSelect;
 export type InsertHeldProvince = typeof heldProvinces.$inferInsert;
+
+// ── C1: Chronicle Wall ────────────────────────────────────────────────────────
+//
+// One row per story milestone per player.
+// entryKey is a stable slug (e.g. "chapter_1_complete", "chose_mercy_owari").
+// Idempotent: the server skips writes when entryKey already exists.
+//
+// flagSnapshot stores the full player_flags map at the moment the entry was
+// written — a point-in-time record of story state for that milestone.
+// Schema: { [flagKey: string]: number }
+
+export const chronicleEntries = pgTable("chronicle_entries", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull(),
+  // Stable slug — unique per player
+  entryKey: text("entry_key").notNull(),
+  // Short display headline, e.g. "The Siege of Nagashino"
+  headline: text("headline").notNull(),
+  // Optional long-form narrative detail paragraph
+  detail: text("detail"),
+  // Full flag map snapshot at time of writing
+  flagSnapshot: jsonb("flag_snapshot").notNull().default(sql`'{}'::jsonb`),
+  // Chapter number for grouping in the UI
+  chapterNumber: integer("chapter_number").notNull().default(0),
+  recordedAt: timestamp("recorded_at").notNull().defaultNow(),
+});
+
+export const insertChronicleEntrySchema = createInsertSchema(chronicleEntries).omit({ id: true });
+export type ChronicleEntry       = typeof chronicleEntries.$inferSelect;
+export type InsertChronicleEntry = typeof chronicleEntries.$inferInsert;
+
+// ── C2: Player Titles ─────────────────────────────────────────────────────────
+//
+// player_titles     — static catalogue (seeded, not per-user)
+// player_earned_titles — join table: which titles each player has earned
+// users.activeTitleId  — FK to player_titles.id
+//
+// Each title has an optional earnCondition using the same flag-gate grammar
+// ("flagKey>=value") so the evaluateTitles() server function can auto-award
+// them after every chapter completion.
+
+export const playerTitles = pgTable("player_titles", {
+  id: serial("id").primaryKey(),
+  // Stable slug, e.g. "demon_king", "merciful_lord", "shadow_tactician"
+  titleKey: text("title_key").notNull().unique(),
+  // Display string shown in the UI, e.g. "Demon King"
+  displayName: text("display_name").notNull(),
+  // Flavour text shown in the title picker
+  description: text("description"),
+  // Optional: auto-award when this condition is met (same grammar as A2/A3)
+  // Null means the title is only granted via direct grantTitle() calls.
+  earnCondition: text("earn_condition"),
+  // Cosmetic rarity tier: "common" | "rare" | "epic" | "legendary"
+  rarity: text("rarity").notNull().default("common"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertPlayerTitleSchema = createInsertSchema(playerTitles).omit({ id: true });
+export type PlayerTitle       = typeof playerTitles.$inferSelect;
+export type InsertPlayerTitle = typeof playerTitles.$inferInsert;
+
+export const playerEarnedTitles = pgTable("player_earned_titles", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull(),
+  titleId: integer("title_id").notNull(),
+  earnedAt: timestamp("earned_at").notNull().defaultNow(),
+});
+
+export const insertPlayerEarnedTitleSchema = createInsertSchema(playerEarnedTitles).omit({ id: true });
+export type PlayerEarnedTitle       = typeof playerEarnedTitles.$inferSelect;
+export type InsertPlayerEarnedTitle = typeof playerEarnedTitles.$inferInsert;
 
 // ── Drizzle relations ─────────────────────────────────────────────────────────
 export const storyChaptersRelations = relations(storyChapters, ({ many }) => ({
@@ -390,5 +431,16 @@ export const storyChoicesRelations = relations(storyChoices, ({ one }) => ({
   scene: one(storyScenes, {
     fields: [storyChoices.sceneId],
     references: [storyScenes.id],
+  }),
+}));
+
+export const playerTitlesRelations = relations(playerTitles, ({ many }) => ({
+  earnedBy: many(playerEarnedTitles),
+}));
+
+export const playerEarnedTitlesRelations = relations(playerEarnedTitles, ({ one }) => ({
+  title: one(playerTitles, {
+    fields: [playerEarnedTitles.titleId],
+    references: [playerTitles.id],
   }),
 }));
