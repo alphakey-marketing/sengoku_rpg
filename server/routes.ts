@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { type Server } from "http";
 import { storage } from "./storage";
-import { setupAuth, registerAuthRoutes, isAuthenticated } from "./replit_integrations/auth";
+import { setupAuth, registerAuthRoutes, isAuthenticated } from "./auth";
 import { api, buildUrl } from "@shared/routes";
 import { runTurnBasedCombat } from "./combat";
 
@@ -259,16 +259,9 @@ function equipRarityFromRandom(locationId: number = 1): string {
   const r = Math.random();
   const isChina = locationId >= 100;
   
-  // Dynamic rarity scaling based on locationId
-  // locationId 1 (Owari) -> base rates
-  // locationId 2 (Mino) -> slightly better
-  // ...
-  // locationId 100+ (China) -> significantly better
-  
   if (isChina) {
     const chinaIndex = locationId - 100;
-    // China scaling: even more aggressive rarity improvements
-    const bonus = chinaIndex * 0.02; // 2% shift per China map
+    const bonus = chinaIndex * 0.02;
     if (r > 0.985 - bonus) return 'celestial';
     if (r > 0.965 - bonus) return 'transcendent';
     if (r > 0.92 - bonus) return 'exotic';
@@ -280,8 +273,7 @@ function equipRarityFromRandom(locationId: number = 1): string {
     return 'white';
   }
 
-  // Japan scaling: gradual improvement from map 1 to 6
-  const japanBonus = (locationId - 1) * 0.03; // 3% shift per Japan map
+  const japanBonus = (locationId - 1) * 0.03;
   
   if (r > 0.995 - japanBonus/5) return 'celestial';     
   if (r > 0.985 - japanBonus/2) return 'transcendent';  
@@ -293,10 +285,6 @@ function equipRarityFromRandom(locationId: number = 1): string {
   if (r > 0.15 - japanBonus) return 'green';          
   return 'white';                       
 }
-
-// Replace the old combat reward logic that was likely using generic names
-// Searching for where generateEquipment would be called or where items are given.
-// I'll look for `storage.createEquipment` in routes.ts to find the drop logic.
 
 async function getPlayerTeamStats(userId: string) {
   const user = await storage.getUser(userId);
@@ -316,7 +304,6 @@ async function getPlayerTeamStats(userId: string) {
     const weapon = playerEquipped.find(e => e.type === 'Weapon');
     const weaponType = (weapon as any)?.weaponType;
     
-    // Check for active transformation
     let activeTransform = null;
     if (user.activeTransformId && user.transformActiveUntil && new Date(user.transformActiveUntil) > new Date()) {
       activeTransform = allTransforms.find(t => t.id === user.activeTransformId);
@@ -327,7 +314,6 @@ async function getPlayerTeamStats(userId: string) {
     const totalSpdBonus = playerEquipped.reduce((s, e) => s + Math.floor(e.speedBonus * (1 + (e.level - 1) * 0.1)), 0);
     const totalHpBonus = playerEquipped.reduce((s, e) => s + Math.floor((e.hpBonus || 0) * (1 + (e.level - 1) * 0.1)), 0);
 
-    // Core stats (STR, AGI, VIT, INT, DEX, LUK)
     const STR = (user as any).str || 1;
     const AGI = (user as any).agi || 1;
     const VIT = (user as any).vit || 1;
@@ -336,28 +322,16 @@ async function getPlayerTeamStats(userId: string) {
     const LUK = (user as any).luk || 1;
     const BaseLv = user.level;
 
-    // Derived Stats based on RO formulas
-    // StatusATK: STR + floor(DEX / 5) + floor(LUK / 3)
     const statusATK = STR + Math.floor(DEX / 5) + Math.floor(LUK / 3);
-    // StatusMATK: 1.5 * INT + floor(DEX / 5) + floor(LUK / 3)
     const statusMATK = Math.floor(1.5 * INT) + Math.floor(DEX / 5) + Math.floor(LUK / 3);
-    
-    // SoftDEF: floor(VIT / 2) + floor(AGI / 5)
     const softDEF = Math.floor(VIT / 2) + Math.floor(AGI / 5);
-    // SoftMDEF: INT + floor(VIT / 5) + floor(DEX / 5)
     const softMDEF = INT + Math.floor(VIT / 5) + Math.floor(DEX / 5);
-
-    // HIT: 175 + BaseLv + DEX + floor(LUK / 3)
     const hit = 175 + BaseLv + DEX + Math.floor(LUK / 3);
-    // FLEE_A: 100 + BaseLv + AGI + floor(LUK / 5)
     const fleeA = 100 + BaseLv + AGI + Math.floor(LUK / 5);
     const perfectDodge = Math.floor(LUK / 10);
     const flee = fleeA + perfectDodge;
-
-    // CRIT_rate: 0.3 * LUK
     const critRate = 0.3 * LUK;
 
-    // Final calculations for the response
     const statusAtk = (weaponType === 'bow' || weaponType === 'gun' || weaponType === 'instrument' || weaponType === 'whip')
       ? Math.floor(BaseLv / 4) + Math.floor(STR / 5) + DEX + Math.floor(LUK / 3)
       : Math.floor(BaseLv / 4) + STR + Math.floor(DEX / 5) + Math.floor(LUK / 3);
@@ -370,20 +344,10 @@ async function getPlayerTeamStats(userId: string) {
   let attack = statusAtk + finalWeaponAtk;
     let defense = (user.defense || 0) + totalDefBonus + (user.permDefenseBonus || 0);
     let speed = (user.speed || 0) + totalSpdBonus + (user.permSpeedBonus || 0) + Math.floor(AGI / 2); 
-    
-    // StatusATK and softDEF are handled in combat.ts using the raw stats (STR, AGI, etc.)
-    // We pass the raw base attack/defense which will be used as weaponATK/hardDEF
-    
-    // MaxHP = ClassBaseHP(BaseLv) * (1 + 0.01 * VIT) + gearHP
-    // Using user.maxHp as ClassBaseHP
     let maxHp = Math.floor(((user.maxHp || 100) + (user.permHpBonus || 0)) * (1 + 0.01 * VIT)) + totalHpBonus;
     let hp = Math.min((user.hp || 100) + (user.permHpBonus || 0) + totalHpBonus, maxHp);
-    
-    // MaxSP = ClassBaseSP(BaseLv) * (1 + 0.01 * INT) + gearSP
-    // Assuming base SP logic or adding to schema if needed, for now we use a derived value or just pass it
     const maxSp = Math.floor(100 * (1 + 0.01 * INT)); 
 
-    // Apply transformation bonuses
     if (activeTransform) {
       attack = Math.floor(attack * (1 + activeTransform.attackPercent / 100));
       defense = Math.floor(defense * (1 + activeTransform.defensePercent / 100));
@@ -393,15 +357,14 @@ async function getPlayerTeamStats(userId: string) {
       hp += hpBonus;
     }
 
-    // Aggregate stats
     const stats = {
       player: {
         name: user.firstName || user.lastName || 'Warrior',
         level: user.level,
         hp,
         maxHp,
-        attack, // This acts as base weapon attack
-        defense, // This acts as hard defense
+        attack,
+        defense,
         speed,
         weaponType,
         str: STR,
@@ -455,7 +418,6 @@ async function getPlayerTeamStats(userId: string) {
       const cLUK = (c as any).luk || 1;
       const cLv = c.level || 1;
 
-      // Companion Status ATK
       const cStatusAtk = (cWeaponType === 'bow' || cWeaponType === 'gun' || cWeaponType === 'instrument' || cWeaponType === 'whip')
         ? Math.floor(cLv / 4) + Math.floor(cSTR / 5) + cDEX + Math.floor(cLUK / 3)
         : Math.floor(cLv / 4) + cSTR + Math.floor(cDEX / 5) + Math.floor(cLUK / 3);
@@ -514,7 +476,6 @@ async function getPlayerTeamStats(userId: string) {
     } : null,
   };
 
-  // Apply pet bonuses if active
   if (activePet) {
     const party = [stats.player, ...stats.companions];
     party.forEach(member => {
@@ -526,7 +487,6 @@ async function getPlayerTeamStats(userId: string) {
     });
   }
 
-  // Apply horse bonuses to the whole party if active
   if (activeHorse) {
     const party = [stats.player, ...stats.companions];
     party.forEach(member => {
@@ -550,28 +510,23 @@ function generateEnemyStats(
   playerLevel: number,
   locationId: number = 1
 ) {
-  // Determine targetLevel from location
   let targetLevel = 1;
   if (locationId >= 100) {
-    // 101 -> 7, 102 -> 8, etc.
     targetLevel = 7 + (locationId - 101);
   } else {
-    // 1 -> 1, 2 -> 2, etc.
     targetLevel = locationId;
   }
 
   const locationMultiplier = 1 + (targetLevel - 1) * 0.1;
 
-  // Helper: approximate RO-style core stats for enemies from level
   const makeBaseStats = (lvl: number) => {
-    // Simple patterns: can be tuned later
     return {
-      str: Math.floor(lvl * 1.5),   // physical power
-      agi: Math.floor(lvl * 1.2),   // flee / speed
-      vit: Math.floor(lvl * 1.3),   // hp / soft def
-      int: Math.floor(lvl * 0.8),   // magic placeholder
-      dex: Math.floor(lvl * 1.4),   // hit / ranged
-      luk: Math.max(1, Math.floor(lvl * 0.5)), // crit / dodge
+      str: Math.floor(lvl * 1.5),
+      agi: Math.floor(lvl * 1.2),
+      vit: Math.floor(lvl * 1.3),
+      int: Math.floor(lvl * 0.8),
+      dex: Math.floor(lvl * 1.4),
+      luk: Math.max(1, Math.floor(lvl * 0.5)),
     };
   };
 
@@ -588,26 +543,11 @@ function generateEnemyStats(
     const baseSpd = lvl * 5 + 10;
 
     const stats = makeBaseStats(lvl);
-
-    // Map your "defense" to HardDEF; SoftDEF will be derived from VIT/AGI in combat
     const hardDEF = Math.floor(baseDef * locationMultiplier);
-
-    // Weapon: treat "attack" as weaponATK for now
     const weaponATK = Math.floor(baseAtk * locationMultiplier);
-    const weaponLevel = 1; // early field mobs
-
-    // Classic-style HIT/FLEE using stats
-    const hit =
-      175 +
-      lvl +
-      stats.dex +
-      Math.floor(stats.luk / 3);
-
-    const fleeA =
-      100 +
-      lvl +
-      stats.agi +
-      Math.floor(stats.luk / 5);
+    const weaponLevel = 1;
+    const hit = 175 + lvl + stats.dex + Math.floor(stats.luk / 3);
+    const fleeA = 100 + lvl + stats.agi + Math.floor(stats.luk / 5);
     const perfectDodge = Math.floor(stats.luk / 10);
     const flee = fleeA + perfectDodge;
 
@@ -616,13 +556,9 @@ function generateEnemyStats(
       level: lvl,
       hp: Math.floor(baseHp * locationMultiplier),
       maxHp: Math.floor(baseHp * locationMultiplier),
-
-      // legacy fields
       attack: weaponATK,
       defense: hardDEF,
       speed: Math.floor(baseSpd * locationMultiplier),
-
-      // new RO-style stats
       weaponType: 'none',
       str: stats.str,
       agi: stats.agi,
@@ -630,21 +566,18 @@ function generateEnemyStats(
       int: stats.int,
       dex: stats.dex,
       luk: stats.luk,
-
       weaponATK,
       weaponLevel,
       hardDEF,
-      softDEF: 0, // extra soft DEF from gear if needed
-
+      softDEF: 0,
       hit,
       flee,
-
       skills: ["Scratch", "Bite"],
     };
   } else if (type === 'boss') {
     const name =
       locationId >= 100 ? pick(CN_BOSS_NAMES) : pick(JP_BOSS_NAMES);
-    const lvl = targetLevel + 2; // Boss slightly higher level
+    const lvl = targetLevel + 2;
 
     const baseHp = lvl * 200 + 1000;
     const baseAtk = lvl * 30 + 100;
@@ -652,25 +585,14 @@ function generateEnemyStats(
     const baseSpd = lvl * 15 + 50;
 
     const stats = makeBaseStats(lvl);
-    // Bosses a bit tougher in VIT / AGI
     stats.vit = Math.floor(stats.vit * 1.3);
     stats.agi = Math.floor(stats.agi * 1.2);
 
     const hardDEF = Math.floor(baseDef * locationMultiplier);
     const weaponATK = Math.floor(baseAtk * locationMultiplier);
-    const weaponLevel = 2; // bosses hit harder variance-wise
-
-    const hit =
-      175 +
-      lvl +
-      stats.dex +
-      Math.floor(stats.luk / 3);
-
-    const fleeA =
-      100 +
-      lvl +
-      stats.agi +
-      Math.floor(stats.luk / 5);
+    const weaponLevel = 2;
+    const hit = 175 + lvl + stats.dex + Math.floor(stats.luk / 3);
+    const fleeA = 100 + lvl + stats.agi + Math.floor(stats.luk / 5);
     const perfectDodge = Math.floor(stats.luk / 10);
     const flee = fleeA + perfectDodge;
 
@@ -679,11 +601,9 @@ function generateEnemyStats(
       level: lvl,
       hp: Math.floor(baseHp * locationMultiplier),
       maxHp: Math.floor(baseHp * locationMultiplier),
-
       attack: weaponATK,
       defense: hardDEF,
       speed: Math.floor(baseSpd * locationMultiplier),
-
       weaponType: 'none',
       str: stats.str,
       agi: stats.agi,
@@ -691,19 +611,15 @@ function generateEnemyStats(
       int: stats.int,
       dex: stats.dex,
       luk: stats.luk,
-
       weaponATK,
       weaponLevel,
       hardDEF,
       softDEF: 0,
-
       hit,
       flee,
-
       skills: ["War Cry", "Shield Wall", "Charge", "Strategic Strike"],
     };
   } else {
-    // special boss
     const sb = pick(SPECIAL_BOSSES);
     const name = locationId >= 100 ? "Celestial Dragon Emperor" : sb.name;
     const lvl = targetLevel + 5;
@@ -714,7 +630,6 @@ function generateEnemyStats(
     const baseSpd = lvl * 30 + 100;
 
     const stats = makeBaseStats(lvl);
-    // special bosses much tougher
     stats.vit = Math.floor(stats.vit * 1.6);
     stats.agi = Math.floor(stats.agi * 1.3);
     stats.dex = Math.floor(stats.dex * 1.2);
@@ -722,18 +637,8 @@ function generateEnemyStats(
     const hardDEF = Math.floor(baseDef * locationMultiplier);
     const weaponATK = Math.floor(baseAtk * locationMultiplier);
     const weaponLevel = 3;
-
-    const hit =
-      175 +
-      lvl +
-      stats.dex +
-      Math.floor(stats.luk / 3);
-
-    const fleeA =
-      100 +
-      lvl +
-      stats.agi +
-      Math.floor(stats.luk / 5);
+    const hit = 175 + lvl + stats.dex + Math.floor(stats.luk / 3);
+    const fleeA = 100 + lvl + stats.agi + Math.floor(stats.luk / 5);
     const perfectDodge = Math.floor(stats.luk / 10);
     const flee = fleeA + perfectDodge;
 
@@ -742,11 +647,9 @@ function generateEnemyStats(
       level: lvl,
       hp: Math.floor(baseHp * locationMultiplier),
       maxHp: Math.floor(baseHp * locationMultiplier),
-
       attack: weaponATK,
       defense: hardDEF,
       speed: Math.floor(baseSpd * locationMultiplier),
-
       weaponType: 'none',
       str: stats.str,
       agi: stats.agi,
@@ -754,15 +657,12 @@ function generateEnemyStats(
       int: stats.int,
       dex: stats.dex,
       luk: stats.luk,
-
       weaponATK,
       weaponLevel,
       hardDEF,
       softDEF: 0,
-
       hit,
       flee,
-
       skills: [sb.skill, "Roar", "Dark Aura", "Divine Intervention"],
     };
   }
@@ -803,7 +703,6 @@ export async function registerRoutes(
     }
     const allComps = await storage.getCompanions(userId);
     
-    // Check for duplicate names in the selected companion IDs
     const selectedComps = allComps.filter(c => companionIds.includes(c.id));
     const names = selectedComps.map(c => c.name);
     const uniqueNames = new Set(names);
@@ -1006,7 +905,6 @@ export async function registerRoutes(
     if (targetEquip.isEquipped) return res.status(400).json({ message: "Cannot recycle equipped item" });
 
     const stonesGained = 5;
-
     const user = await storage.getUser(userId);
     if (!user) return res.status(401).json({ message: "Unauthorized" });
 
@@ -1018,7 +916,6 @@ export async function registerRoutes(
 
   app.post("/api/equipment/recycle-rarity", isAuthenticated, async (req: any, res) => {
     const userId = req.user.claims.sub;
-    
     try {
       const result = await storage.recycleEquipment(userId);
       res.json(result);
@@ -1144,9 +1041,7 @@ export async function registerRoutes(
     const user = await storage.getUser(userId);
     if (!user) return res.status(401).json({ message: "Unauthorized" });
 
-    const costPerUpgrade = 1;
     const totalCost = upgradeAmount;
-
     if ((user.petEssence || 0) < totalCost) return res.status(400).json({ message: "Not enough pet essence" });
 
     const allPets = await storage.getPets(userId);
@@ -1305,7 +1200,6 @@ export async function registerRoutes(
     const newRarityIndex = upgraded && currentIndex < rarityOrder.length - 1 ? currentIndex + 1 : currentIndex;
     const newRarity = rarityOrder[newRarityIndex];
 
-    // Delete old horses first
     for (const id of horseIds) {
       await storage.deleteHorse(Number(id));
     }
@@ -1385,7 +1279,6 @@ export async function registerRoutes(
     const user = await storage.getUser(userId);
     if (!user) return res.status(401).json({ message: "Unauthorized" });
 
-    // Ensure locationId and repeatCount are parsed as numbers
     const locationId = Number(req.body.locationId) || 1;
     const repeatCount = Number(req.body.repeatCount) || 1;
     const count = Math.min(Math.max(1, repeatCount), 10);
@@ -1406,14 +1299,12 @@ export async function registerRoutes(
     for (let i = 0; i < count; i++) {
       if (count > 1) allLogs.push(`--- BATTLE ${i + 1} ---`);
 
-      // Ninja Encounter Logic
       if (!ninjaEncounter && Math.random() < (locationId >= 100 ? 0.05 : 0.03)) {
         ninjaEncounteredInThisSkirmish = true;
         const ninjaNames = locationId >= 100 ? ["Zhuge Liang (Ghost)", "Lu Bu's Spirit", "Empress Wu Zetian"] : ["Hattori Hanzo", "Fuma Kotaro", "Ishikawa Goemon", "Mochizuki Chiyome"];
         const ninjaName = pick(ninjaNames);
         const isSuperStrong = Math.random() < (locationId >= 100 ? 0.5 : 0.3);
         
-        // Target Level based on Location ID, NOT player level
         let targetLevel = 1;
         if (locationId >= 100) {
           targetLevel = 7 + (locationId - 100);
@@ -1424,7 +1315,7 @@ export async function registerRoutes(
         const ninjaStats = {
           name: ninjaName,
           level: isSuperStrong ? targetLevel + 20 : targetLevel + 2,
-          hp: isSuperStrong ? 5000 : 1000, // Static values or relative to location level
+          hp: isSuperStrong ? 5000 : 1000,
           maxHp: isSuperStrong ? 5000 : 1000,
           attack: isSuperStrong ? 500 : 100,
           defense: isSuperStrong ? 300 : 50,
@@ -1436,11 +1327,10 @@ export async function registerRoutes(
         
         ninjaEncounter = ninjaStats;
         allLogs.push(`A famous ninja, ${ninjaName}, blocks your path!`);
-        break; // Stop auto-battle for the encounter
+        break;
       }
 
       const enemy = generateEnemyStats('field', user.level, locationId);
-      // Use the name from the request if provided (for first battle of a repeat or single battle)
       if (i === 0 && req.body.enemyName) {
         enemy.name = req.body.enemyName;
       }
@@ -1451,7 +1341,6 @@ export async function registerRoutes(
       if (victory) {
         await storage.updateQuestProgress(userId, 'daily_skirmish', 1);
         await storage.updateQuestProgress(userId, 'daily_skirmish_elite', 1);
-        // Update user stats with level up logic
         const expGained = Math.floor(Math.random() * 50) + 30 + enemy.level * 5;
         const goldGained = Math.floor(Math.random() * 20) + 10 + enemy.level * 2;
         totalExpGained += expGained;
@@ -1494,7 +1383,6 @@ export async function registerRoutes(
 
         await storage.updateUser(userId, userUpdate);
 
-        // Revised Equipment Drop logic using CLASSIC_DROPS
         if (Math.random() < 0.01) {
           const eqData = generateEquipment(userId, locationId);
           try {
@@ -1505,38 +1393,9 @@ export async function registerRoutes(
             console.error("Failed to create equipment drop:", err);
           }
         }
-
-        // Horse Drop (5% chance)
-        /* Disabled by user request
-        if (Math.random() < 0.05) {
-          const horseData = generateHorse(userId, locationId);
-          try {
-            const horse = await storage.createHorse(horseData as any);
-            allHorsesDropped.push(horse);
-            allLogs.push(`HORSES: You managed to tame a wild ${horse.name}!`);
-          } catch (err) {
-            console.error("Failed to create horse drop:", err);
-          }
-        }
-        */
-
-        // Pet Drop (3% chance)
-        /* Disabled by user request
-        if (Math.random() < 0.03) {
-          const petData = generatePet(userId, locationId);
-          try {
-            const pet = await storage.createPet(petData as any);
-            allPetsDropped.push(pet);
-            allLogs.push(`PETS: A wild ${pet.name} decided to follow you!`);
-          } catch (err) {
-            console.error("Failed to create pet drop:", err);
-          }
-        }
-        */
       }
     }
 
-    // Total battle rewards...
     await giveEquipmentExp(userId, totalExpGained);
 
     res.json({
@@ -1575,7 +1434,6 @@ export async function registerRoutes(
       const teamStats = await getPlayerTeamStats(userId);
       if (!teamStats) return res.status(400).json({ message: "Team not found" });
 
-      // Target Level based on Location ID, NOT player level
       let targetLevel = 1;
       if (locationId >= 100) {
         targetLevel = 7 + (locationId - 100);
@@ -1598,7 +1456,7 @@ export async function registerRoutes(
       const battleResult = runTurnBasedCombat(teamStats, [enemy]);
       if (battleResult.victory) {
         const goldGained = goldDemanded * 2;
-        const stonesGained = 3 + Math.floor(Math.random() * 3); // 3-5 stones
+        const stonesGained = 3 + Math.floor(Math.random() * 3);
         await storage.updateUser(userId, { 
           gold: user.gold + goldGained,
           endowmentStones: (user.endowmentStones || 0) + stonesGained
@@ -1631,9 +1489,8 @@ export async function registerRoutes(
       const expGained = 100 + (locationId * 50);
       const goldGained = 50 + (locationId * 25);
       const riceGained = 10 + (locationId * 5);
-      const endowmentStones = 2 + Math.floor(Math.random() * 3); // 2-4 stones
+      const endowmentStones = 2 + Math.floor(Math.random() * 3);
 
-      // Level up logic
       let currentExp = user.experience + expGained;
       let currentLevel = user.level;
       let currentMaxHp = user.maxHp;
@@ -1666,7 +1523,6 @@ export async function registerRoutes(
         statPoints: currentStatPoints
       });
       
-      // Significantly improved drop for boss using generateEquipment
       if (Math.random() < 0.05) {
         const eqData = generateEquipment(userId, locationId, true);
         const eq = await storage.createEquipment(eqData);
@@ -1676,7 +1532,7 @@ export async function registerRoutes(
           goldGained: goldGained, 
           riceGained: riceGained, 
           equipmentDropped: [eq],
-          petDropped: null, // droppedPet
+          petDropped: null,
           logs 
         });
       } else {
@@ -1686,7 +1542,7 @@ export async function registerRoutes(
           goldGained: goldGained, 
           riceGained: riceGained, 
           equipmentDropped: [],
-          petDropped: null, // droppedPet
+          petDropped: null,
           logs 
         });
       }
@@ -1716,7 +1572,7 @@ export async function registerRoutes(
     if (victory) {
       const expGained = 250 + (locationId * 100);
       const goldGained = 150 + (locationId * 75);
-      const endowmentStones = 5 + Math.floor(Math.random() * 6); // 5-10 stones
+      const endowmentStones = 5 + Math.floor(Math.random() * 6);
 
       let currentExp = user.experience + expGained;
       let currentLevel = user.level;
@@ -1736,7 +1592,6 @@ export async function registerRoutes(
         currentSpd += 2;
       }
       
-      // Explicitly awaiting the database update
       await storage.updateUser(userId, { 
         level: currentLevel,
         experience: currentExp, 
@@ -1874,10 +1729,10 @@ export async function registerRoutes(
       
       const rarityFromSpecial = () => {
         const r = Math.random();
-        if (r > 0.85) return "5"; // 15%
-        if (r > 0.60) return "4"; // 25%
-        if (r > 0.30) return "3"; // 30%
-        return "2";               // 30% (No 1-star)
+        if (r > 0.85) return "5";
+        if (r > 0.60) return "4";
+        if (r > 0.30) return "3";
+        return "2";
       };
 
       const rarity = isSpecial ? rarityFromSpecial() : rarityFromRandom();
@@ -2038,7 +1893,7 @@ export async function registerRoutes(
   app.post("/api/equipment/:id/endow", isAuthenticated, async (req: any, res) => {
     const userId = req.user.claims.sub;
     const equipId = Number(req.params.id);
-    const { type, protect } = req.body; // type: 'normal', 'advanced', 'extreme'
+    const { type, protect } = req.body;
     
     const user = await storage.getUser(userId);
     if (!user) return res.status(401).json({ message: "Unauthorized" });
@@ -2049,7 +1904,6 @@ export async function registerRoutes(
 
     if (user.endowmentStones < 1) return res.status(400).json({ message: "Not enough endowment stones" });
 
-    // Success Rates: Base 90% - (CurrentPoints * 2%)
     const currentPoints = eq.endowmentPoints || 0;
     const baseRate = type === 'extreme' ? 0.7 : 0.9;
     const successRate = Math.max(0.1, baseRate - (currentPoints * 0.02));
@@ -2099,7 +1953,6 @@ export async function registerRoutes(
     const userId = req.user.claims.sub;
     await (storage as any).restartGame(userId);
     
-    // Create initial equipment
     await storage.createEquipment({
       userId,
       name: "Training Sword",
