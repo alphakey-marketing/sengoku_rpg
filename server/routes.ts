@@ -5,6 +5,10 @@ import { setupAuth, registerAuthRoutes, isAuthenticated } from "./auth";
 import { api } from "@shared/routes";
 import { runTurnBasedCombat, applyFlagModifiers } from "./combat";
 import { storyRouter } from "./story-routes";
+import { db } from "./db";
+import { playerFlags } from "@shared/schema";
+import { eq } from "drizzle-orm";
+import { evalUnlockCondition, unlockConditionHint } from "@shared/schema";
 
 // ─── Name pools ────────────────────────────────────────────────────────────────
 const JP_ENEMY_NAMES = ["Ashigaru","Ronin","Bandit","Mercenary","Scout","Raider","Footsoldier","Brigand"];
@@ -323,13 +327,17 @@ function generateEnemyStats(type: "field" | "boss" | "special", playerLevel: num
   };
 }
 
+// ─── A2: Load player flag map ──────────────────────────────────────────────────
+// Returns a plain Record<flagKey, flagValue> for the given user.
+async function getPlayerFlagMap(userId: string): Promise<Record<string, number>> {
+  const rows = await db.select().from(playerFlags).where(eq(playerFlags.userId, userId));
+  const out: Record<string, number> = {};
+  for (const row of rows) out[row.flagKey] = row.flagValue;
+  return out;
+}
+
 // ─── Route registration ────────────────────────────────────────────────────────
 
-/**
- * index.ts calls: registerRoutes(httpServer, app)
- * The function accepts the pre-created httpServer as the first arg so that
- * Vite's HMR WebSocket (which binds to the same server) keeps working.
- */
 export async function registerRoutes(server: Server, app: Express): Promise<Server> {
   await setupAuth(app);
   registerAuthRoutes(app);
@@ -375,9 +383,43 @@ export async function registerRoutes(server: Server, app: Express): Promise<Serv
   });
 
   // ── Companions ──────────────────────────────────────────────────────────
+  //
+  // A2: For each companion that has a flagUnlockCondition, we evaluate it
+  // against the player's live playerFlags rows and inject two computed fields:
+  //   isLocked   : boolean  — true when the condition is NOT yet satisfied
+  //   lockReason : string   — human-readable hint shown in the War Council UI
+  //
+  // The raw flagUnlockCondition string is intentionally stripped from the
+  // response so the client cannot reverse-engineer unfound companions.
   app.get("/api/companions", isAuthenticated, async (req: any, res) => {
     const userId = req.user.claims.sub;
-    res.json(await storage.getCompanions(userId));
+    const raw    = await storage.getCompanions(userId);
+
+    // Only fetch flags if at least one companion has a condition — avoids an
+    // unnecessary DB round-trip for the common (no-gate) case.
+    const needsFlags = raw.some((c: any) => c.flagUnlockCondition);
+    const flagMap    = needsFlags ? await getPlayerFlagMap(userId) : {};
+
+    const companions = raw.map((c: any) => {
+      const condition: string | null = c.flagUnlockCondition ?? null;
+
+      // Strip the raw condition from the outgoing payload.
+      const { flagUnlockCondition: _stripped, ...rest } = c;
+
+      if (!condition) {
+        // No gate → always unlocked.
+        return { ...rest, isLocked: false, lockReason: null };
+      }
+
+      const unlocked = evalUnlockCondition(condition, flagMap);
+      return {
+        ...rest,
+        isLocked:   !unlocked,
+        lockReason: unlocked ? null : unlockConditionHint(condition, flagMap),
+      };
+    });
+
+    res.json(companions);
   });
 
   app.post("/api/party", isAuthenticated, async (req: any, res) => {
@@ -385,8 +427,25 @@ export async function registerRoutes(server: Server, app: Express): Promise<Serv
     const { companionIds } = req.body;
     if (!Array.isArray(companionIds)) return res.status(400).json({ message: "companionIds must be an array" });
     if (companionIds.length > 3)      return res.status(400).json({ message: "Maximum 3 companions in party" });
-    const all   = await storage.getCompanions(userId);
-    const names = all.filter(c => companionIds.includes(c.id)).map(c => c.name);
+
+    const all    = await storage.getCompanions(userId);
+
+    // A2: Reject if any requested companion is loyalty-locked.
+    const flagMap    = await getPlayerFlagMap(userId);
+    for (const id of companionIds) {
+      const comp = all.find((c: any) => c.id === id) as any;
+      if (!comp) continue;
+      if (comp.flagUnlockCondition) {
+        const unlocked = evalUnlockCondition(comp.flagUnlockCondition, flagMap);
+        if (!unlocked) {
+          return res.status(403).json({
+            message: `${comp.name} is loyalty-locked: ${unlockConditionHint(comp.flagUnlockCondition, flagMap)}`,
+          });
+        }
+      }
+    }
+
+    const names = all.filter((c: any) => companionIds.includes(c.id)).map((c: any) => c.name);
     if (new Set(names).size !== names.length) return res.status(400).json({ message: "Duplicate companion names not allowed" });
     await storage.updateParty(userId, companionIds);
     res.json({ success: true });
@@ -906,7 +965,41 @@ export async function registerRoutes(server: Server, app: Express): Promise<Serv
     ]);
   });
 
-  // Return the server that was passed in (index.ts already created it and
-  // Vite will later bind its HMR WebSocket to the same instance).
+  // Companions recycle
+  app.post("/api/companions/:id/recycle", isAuthenticated, async (req: any, res) => {
+    const userId = req.user.claims.sub;
+    const compId = Number(req.params.id);
+    const all    = await storage.getCompanions(userId);
+    const comp   = all.find((c: any) => c.id === compId);
+    if (!comp || (comp as any).userId !== userId) return res.status(404).json({ message: "Companion not found" });
+    if (comp.isInParty) return res.status(400).json({ message: "Cannot dismiss a companion in your active party" });
+    const user = await storage.getUser(userId);
+    if (!user) return res.status(401).json({ message: "Unauthorized" });
+    await storage.deleteCompanion(compId);
+    await storage.updateUser(userId, { warriorSouls: (user.warriorSouls || 0) + 3 });
+    res.json({ success: true, soulsGained: 3 });
+  });
+
+  // Companions upgrade
+  app.post("/api/companions/:id/upgrade", isAuthenticated, async (req: any, res) => {
+    const userId = req.user.claims.sub;
+    const compId = Number(req.params.id);
+    const user   = await storage.getUser(userId);
+    if (!user) return res.status(401).json({ message: "Unauthorized" });
+    if ((user.warriorSouls || 0) < 10) return res.status(400).json({ message: "Not enough Warrior Souls (need 10)" });
+    const all  = await storage.getCompanions(userId);
+    const comp = all.find((c: any) => c.id === compId) as any;
+    if (!comp || comp.userId !== userId) return res.status(404).json({ message: "Companion not found" });
+    await storage.updateCompanion(compId, {
+      level:   (comp.level   || 1) + 1,
+      attack:  (comp.attack  || 10) + 5,
+      defense: (comp.defense || 5)  + 2,
+      speed:   (comp.speed   || 10) + 1,
+      maxHp:   (comp.maxHp   || 50) + 10,
+    });
+    await storage.updateUser(userId, { warriorSouls: user.warriorSouls - 10 });
+    res.json({ success: true });
+  });
+
   return server;
 }
