@@ -10,7 +10,7 @@
  * ──────────────────────────────────────────────────────────────────────────────
  *  GET  /api/story/chapters             → list all chapters (id, title, isLocked, chapterOrder)
  *  GET  /api/story/chapters/:id         → full chapter with scenes + dialogue + choices
- *  GET  /api/story/progress             → player’s progress for all chapters
+ *  GET  /api/story/progress             → player's progress for all chapters
  *  POST /api/story/progress             → upsert progress (start / advance scene)
  *  POST /api/story/progress/complete    → mark chapter complete + write ending
  *  GET  /api/story/flags                → all player flags as Record<string,number>
@@ -23,7 +23,7 @@ import { Router, type Request, type Response } from "express";
 import { db } from "./db";
 import {
   storyChapters, storyScenes, dialogueLines, storyChoices,
-  playerFlags, playerProgress, unlockedEndings,
+  playerFlags, playerStoryProgress, storyEndings,
   type StoryChapter, type StoryScene, type DialogueLine,
   type StoryChoice, type PlayerFlag,
 } from "@shared/schema";
@@ -145,9 +145,6 @@ storyRouter.get("/chapters/:id", async (req: Request, res: Response) => {
     const sceneIds = scenes.map((s) => s.id);
     if (!sceneIds.length) return res.json({ ...chapter, scenes: [] });
 
-    // Fetch all dialogue and choices for every scene in parallel (one query per scene)
-    // This replaces the old double-query bug where the first .then() fetched only
-    // sceneIds[0] then discarded its result before the real Promise.all ran.
     const [allLines, allChoices] = await Promise.all([
       Promise.all(
         sceneIds.map((sid) =>
@@ -165,8 +162,7 @@ storyRouter.get("/chapters/:id", async (req: Request, res: Response) => {
       ).then((r) => r.flat()),
     ]);
 
-    // Group by sceneId
-    const linesByScene  = new Map<number, DialogueLine[]>();
+    const linesByScene   = new Map<number, DialogueLine[]>();
     const choicesByScene = new Map<number, StoryChoice[]>();
     for (const l of allLines)   linesByScene.set(l.sceneId,   [...(linesByScene.get(l.sceneId)   ?? []), l]);
     for (const c of allChoices) choicesByScene.set(c.sceneId, [...(choicesByScene.get(c.sceneId) ?? []), c]);
@@ -192,7 +188,7 @@ storyRouter.get("/progress", async (req: Request, res: Response) => {
   if (!userId) return;
   try {
     res.json(
-      await db.select().from(playerProgress).where(eq(playerProgress.userId, userId))
+      await db.select().from(playerStoryProgress).where(eq(playerStoryProgress.userId, userId))
     );
   } catch {
     res.status(500).json({ error: "Failed to fetch progress" });
@@ -202,10 +198,6 @@ storyRouter.get("/progress", async (req: Request, res: Response) => {
 /**
  * POST /api/story/progress
  * Body: { chapterId: number; currentSceneId?: number; forceRestart?: boolean }
- *
- * Creates a fresh progress row if none exists.
- * forceRestart=true: deletes existing row and creates fresh.
- * Otherwise: upserts currentSceneId and adds it to seenSceneIds.
  */
 storyRouter.post("/progress", async (req: Request, res: Response) => {
   const userId = requireAuth(req, res);
@@ -220,34 +212,32 @@ storyRouter.post("/progress", async (req: Request, res: Response) => {
 
     const [existing] = await db
       .select()
-      .from(playerProgress)
-      .where(and(eq(playerProgress.userId, userId), eq(playerProgress.chapterId, chapterId)));
+      .from(playerStoryProgress)
+      .where(and(eq(playerStoryProgress.userId, userId), eq(playerStoryProgress.chapterId, chapterId)));
 
     if (forceRestart && existing) {
       await db
-        .delete(playerProgress)
-        .where(and(eq(playerProgress.userId, userId), eq(playerProgress.chapterId, chapterId)));
+        .delete(playerStoryProgress)
+        .where(and(eq(playerStoryProgress.userId, userId), eq(playerStoryProgress.chapterId, chapterId)));
       const [fresh] = await db
-        .insert(playerProgress)
-        .values({ userId, chapterId, currentSceneId: currentSceneId ?? null, isCompleted: false, seenSceneIds: [] })
+        .insert(playerStoryProgress)
+        .values({ userId, chapterId, currentSceneId: currentSceneId ?? null, isCompleted: false })
         .returning();
       return res.json(fresh);
     }
 
     if (!existing) {
       const [created] = await db
-        .insert(playerProgress)
-        .values({ userId, chapterId, currentSceneId: currentSceneId ?? null, isCompleted: false, seenSceneIds: [] })
+        .insert(playerStoryProgress)
+        .values({ userId, chapterId, currentSceneId: currentSceneId ?? null, isCompleted: false })
         .returning();
       return res.json(created);
     }
 
-    const seen = (existing.seenSceneIds as number[]) ?? [];
-    if (currentSceneId && !seen.includes(currentSceneId)) seen.push(currentSceneId);
     const [updated] = await db
-      .update(playerProgress)
-      .set({ currentSceneId: currentSceneId ?? existing.currentSceneId, seenSceneIds: seen })
-      .where(and(eq(playerProgress.userId, userId), eq(playerProgress.chapterId, chapterId)))
+      .update(playerStoryProgress)
+      .set({ currentSceneId: currentSceneId ?? existing.currentSceneId })
+      .where(and(eq(playerStoryProgress.userId, userId), eq(playerStoryProgress.chapterId, chapterId)))
       .returning();
     res.json(updated);
   } catch (e) {
@@ -272,17 +262,23 @@ storyRouter.post("/progress/complete", async (req: Request, res: Response) => {
     };
 
     await db
-      .update(playerProgress)
+      .update(playerStoryProgress)
       .set({ isCompleted: true, completedAt: new Date() })
-      .where(and(eq(playerProgress.userId, userId), eq(playerProgress.chapterId, chapterId)));
+      .where(and(eq(playerStoryProgress.userId, userId), eq(playerStoryProgress.chapterId, chapterId)));
 
     const [existing] = await db
       .select()
-      .from(unlockedEndings)
-      .where(and(eq(unlockedEndings.userId, userId), eq(unlockedEndings.endingKey, endingKey)));
+      .from(storyEndings)
+      .where(and(eq(storyEndings.userId, userId), eq(storyEndings.endingKey, endingKey)));
 
     if (!existing) {
-      await db.insert(unlockedEndings).values({ userId, endingKey, endingTitle, endingDescription });
+      await db.insert(storyEndings).values({
+        userId,
+        chapterId,
+        endingKey,
+        endingTitle,
+        endingDescription,
+      });
     }
 
     res.json({ success: true });
@@ -307,11 +303,6 @@ storyRouter.get("/flags", async (req: Request, res: Response) => {
 /**
  * POST /api/story/flags
  * Body: { mutations?: Record<string,number>, absolute?: Record<string,number> }
- *
- * mutations  — additive delta per flag key (legacy behaviour, still supported)
- * absolute   — exact SET value per flag key (B2: battle_won / battle_lost)
- *
- * Both can be present in the same request.
  */
 storyRouter.post("/flags", async (req: Request, res: Response) => {
   const userId = requireAuth(req, res);
@@ -338,7 +329,7 @@ storyRouter.get("/endings", async (req: Request, res: Response) => {
   if (!userId) return;
   try {
     res.json(
-      await db.select().from(unlockedEndings).where(eq(unlockedEndings.userId, userId))
+      await db.select().from(storyEndings).where(eq(storyEndings.userId, userId))
     );
   } catch {
     res.status(500).json({ error: "Failed to fetch endings" });
@@ -346,17 +337,6 @@ storyRouter.get("/endings", async (req: Request, res: Response) => {
 });
 
 // ─── B2: Battle-result endpoint ─────────────────────────────────────────────────────────
-//
-// POST /api/story/battle-result
-// Body: { sceneId: number; battleResult: 'win' | 'lose' }
-//
-// 1. Looks up the scene to find battleWinSceneId / battleLoseSceneId.
-// 2. Writes absolute flags: battle_won=1/0, battle_lost=1/0.
-// 3. Returns { nextSceneId, flagsUpdated } matching the submitChoice shape.
-//
-// This endpoint is the authoritative server-side counterpart to the client’s
-// BattleGateOverlay. The client still calls /api/battle/field for the actual
-// combat; this endpoint only handles the story-graph routing + flag writing.
 
 storyRouter.post("/battle-result", async (req: Request, res: Response) => {
   const userId = requireAuth(req, res);
