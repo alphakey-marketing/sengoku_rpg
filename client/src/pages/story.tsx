@@ -116,13 +116,6 @@ const FLAG_LABELS: Record<string, string> = {
   battle_lost:           "☠ Battle Lost",
 };
 
-/**
- * Unlock chain (mirrors nav-unlock.ts exactly):
- *   ch 1 → / (Dojo/Home)     ch 5 → /pets
- *   ch 2 → /stable           ch 6 → /party
- *   ch 3 → /gear             ch 7 → /map
- *   ch 4 → /gacha
- */
 const CHAPTER_COMPLETE_DESTINATION: Record<number, { path: string; label: string }> = {
   1: { path: "/",       label: "Enter the Dojo" },
   2: { path: "/stable", label: "Visit War Council" },
@@ -170,7 +163,7 @@ function FlagBar({ flags }: { flags: StoryFlags }) {
   );
 }
 
-// ─── B2: BattleGateOverlay ──────────────────────────────────────────────────────────
+// ─── BattleGateOverlay ────────────────────────────────────────────────────────
 
 interface BattleGateProps {
   scene: Scene;
@@ -285,24 +278,26 @@ function BattleGateOverlay({ scene, bgGradient, onResult }: BattleGateProps) {
   );
 }
 
-// ─── Main page ───────────────────────────────────────────────────────────────────
+// ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function StoryPage() {
   const params = useParams<{ chapterId?: string }>();
   const [, navigate] = useLocation();
   const CHAPTER_ID = params.chapterId ? parseInt(params.chapterId, 10) : 1;
 
-  const [chapter, setChapter]         = useState<ChapterData | null>(null);
-  const [sceneId, setSceneId]         = useState<number | null>(null);
-  const [lineIndex, setLineIndex]     = useState(0);
-  const [showChoices, setShowChoices] = useState(false);
-  const [isComplete, setIsComplete]   = useState(false);
-  const [flags, setFlags]             = useState<StoryFlags>({});
+  const [chapter, setChapter]             = useState<ChapterData | null>(null);
+  const [sceneId, setSceneId]             = useState<number | null>(null);
+  const [lineIndex, setLineIndex]         = useState(0);
+  const [showChoices, setShowChoices]     = useState(false);
+  const [isComplete, setIsComplete]       = useState(false);
+  const [flags, setFlags]                 = useState<StoryFlags>({});
   const [displayedText, setDisplayedText] = useState("");
-  const [isTyping, setIsTyping]       = useState(false);
-  const [loading, setLoading]         = useState(true);
-  const [error, setError]             = useState<string | null>(null);
+  const [isTyping, setIsTyping]           = useState(false);
+  const [loading, setLoading]             = useState(true);
+  const [error, setError]                 = useState<string | null>(null);
   const typeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Guard so the declarative fallback only fires the completion path once.
+  const completionFiredRef = useRef(false);
 
   const sceneMap = chapter
     ? Object.fromEntries(chapter.scenes.map((s) => [s.id, s]))
@@ -317,6 +312,28 @@ export default function StoryPage() {
   const completionDest = CHAPTER_COMPLETE_DESTINATION[CHAPTER_ID]
     ?? { path: "/", label: "Enter the Dojo" };
 
+  // ── Shared completion logic (called from advance() AND the fallback effect) ──
+  const triggerCompletion = useCallback(async () => {
+    if (completionFiredRef.current || !chapter) return;
+    completionFiredRef.current = true;
+    try {
+      await completeChapter();
+      await unlockEnding({
+        chapterId: CHAPTER_ID,
+        endingKey: `ch${CHAPTER_ID}_complete`,
+        endingTitle: chapter.title,
+        endingDescription: `Chapter ${CHAPTER_ID} complete.`,
+      });
+      // Best-effort cache bust — must not block setIsComplete.
+      try {
+        await queryClient.invalidateQueries({ queryKey: ["/api/player"] });
+      } catch { /* non-fatal */ }
+    } finally {
+      // Always show the complete screen, even if completeChapter/unlockEnding threw.
+      setIsComplete(true);
+    }
+  }, [chapter, CHAPTER_ID]);
+
   // ── Boot ─────────────────────────────────────────────────────────────────────
   useEffect(() => {
     (async () => {
@@ -330,8 +347,23 @@ export default function StoryPage() {
         setChapter(chapterData);
         setFlags(savedFlags);
         const firstId = chapterData.firstSceneId ?? chapterData.scenes[0]?.id;
-        if (progress && progress.chapterId === CHAPTER_ID && !progress.isCompleted && progress.currentSceneId) {
-          setSceneId(progress.currentSceneId);
+
+        if (progress && progress.chapterId === CHAPTER_ID) {
+          if (progress.isCompleted) {
+            // FIX: Restore the complete screen on a return visit instead of
+            // restarting the chapter (the old code fell into the else branch
+            // and called startChapter() which wiped localStorage).
+            completionFiredRef.current = true; // already done, don't re-fire
+            setSceneId(progress.currentSceneId ?? firstId);
+            setIsComplete(true);
+          } else if (progress.currentSceneId) {
+            // In-progress: resume from saved scene.
+            setSceneId(progress.currentSceneId);
+          } else {
+            await startChapter(CHAPTER_ID, firstId);
+            setSceneId(firstId);
+            setFlags(await getFlags());
+          }
         } else {
           await startChapter(CHAPTER_ID, firstId);
           setSceneId(firstId);
@@ -345,7 +377,7 @@ export default function StoryPage() {
     })();
   }, [CHAPTER_ID]);
 
-  // ── Typewriter ─────────────────────────────────────────────────────────────
+  // ── Typewriter ────────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!currentLine) return;
     if (typeTimerRef.current) clearTimeout(typeTimerRef.current);
@@ -367,6 +399,23 @@ export default function StoryPage() {
     if (scene) markSceneSeen(scene.sceneOrder);
   }, [sceneId]);
 
+  // ── DECLARATIVE FALLBACK: fire completion whenever we land on the final state
+  // of an isChapterEnd scene, regardless of whether advance() was called.
+  // The completionFiredRef guard prevents double-firing if advance() already
+  // ran the same path.
+  useEffect(() => {
+    if (
+      scene?.isChapterEnd &&
+      isAtLastLine &&
+      !isTyping &&
+      !showChoices &&
+      !isComplete &&
+      !completionFiredRef.current
+    ) {
+      triggerCompletion();
+    }
+  }, [scene, isAtLastLine, isTyping, showChoices, isComplete, triggerCompletion]);
+
   const skipTypewriter = useCallback(() => {
     if (isTyping && currentLine) {
       if (typeTimerRef.current) clearTimeout(typeTimerRef.current);
@@ -383,17 +432,9 @@ export default function StoryPage() {
     if (scene.choices.length > 0) { setShowChoices(true); return; }
     if (scene.isBattleGate) return;
     if (scene.isChapterEnd) {
-      await completeChapter();
-      await unlockEnding({
-        chapterId: CHAPTER_ID,
-        endingKey: `ch${CHAPTER_ID}_complete`,
-        endingTitle: chapter.title,
-        endingDescription: `Chapter ${CHAPTER_ID} complete.`,
-      });
-      // ⚡ Bust the player cache so AuthGuard reads the fresh currentChapter
-      // from the server on the next render rather than the stale ch=0 value.
-      await queryClient.invalidateQueries({ queryKey: ["/api/player"] });
-      setIsComplete(true);
+      // triggerCompletion is guarded by completionFiredRef so calling it
+      // here AND from the declarative effect is safe — only one will run.
+      await triggerCompletion();
       return;
     }
     if (scene.nextSceneId) {
@@ -402,7 +443,7 @@ export default function StoryPage() {
       setLineIndex(0);
       setShowChoices(false);
     }
-  }, [scene, chapter, lineIndex, isTyping, skipTypewriter, CHAPTER_ID]);
+  }, [scene, chapter, lineIndex, isTyping, skipTypewriter, triggerCompletion]);
 
   const handleChoice = useCallback(async (choice: Choice) => {
     if (!scene) return;
@@ -432,6 +473,7 @@ export default function StoryPage() {
 
   const handleReset = useCallback(async () => {
     if (!chapter) return;
+    completionFiredRef.current = false;
     await resetStory();
     const firstId = chapter.firstSceneId ?? chapter.scenes[0]?.id;
     await startChapter(CHAPTER_ID, firstId, true);
@@ -442,7 +484,7 @@ export default function StoryPage() {
     setFlags({});
   }, [chapter, CHAPTER_ID]);
 
-  // ── Loading / error ────────────────────────────────────────────────────────────
+  // ── Loading / error ───────────────────────────────────────────────────────────
   if (loading) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
@@ -450,19 +492,15 @@ export default function StoryPage() {
       </div>
     );
   }
-  if (error || !chapter || !scene) {
+  if (error || !chapter) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
-        <p className="text-red-400 text-sm">{error ?? "Scene not found."}</p>
+        <p className="text-red-400 text-sm">{error ?? "Chapter not found."}</p>
       </div>
     );
   }
 
-  const bgGradient    = BG_MAP[scene.backgroundKey] ?? BG_MAP.default;
-  const leftPortrait  = currentLine?.speakerSide === "left"  ? currentLine.portraitKey : null;
-  const rightPortrait = currentLine?.speakerSide === "right" ? currentLine.portraitKey : null;
-
-  // ── Chapter complete screen ────────────────────────────────────────────────────
+  // ── Chapter complete screen ───────────────────────────────────────────────────
   if (isComplete) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-zinc-950 to-black flex flex-col items-center justify-center p-8 text-center">
@@ -480,13 +518,13 @@ export default function StoryPage() {
             <p className="text-amber-400 text-xs font-semibold uppercase tracking-widest mb-1">★ New area unlocked</p>
             <p className="text-white text-sm font-semibold">{completionDest.label}</p>
             <p className="text-stone-400 text-xs mt-1">
-              {CHAPTER_ID === 1 && "Your Dojo is now open \u2014 review your stats and spend your first stat points."}
-              {CHAPTER_ID === 2 && "The War Council opens \u2014 recruit companions and build your party."}
-              {CHAPTER_ID === 3 && "The Armoury is unlocked \u2014 equip and upgrade the loot you\u2019ve earned."}
-              {CHAPTER_ID === 4 && "The Shrine awaits \u2014 summon new warriors with the Gacha."}
-              {CHAPTER_ID === 5 && "The Menagerie is open \u2014 tame and equip spirit beasts."}
-              {CHAPTER_ID === 6 && "The Stables are ready \u2014 mount your war horses."}
-              {CHAPTER_ID === 7 && "The Campaign Map is open \u2014 lead your armies across Japan."}
+              {CHAPTER_ID === 1 && "Your Dojo is now open — review your stats and spend your first stat points."}
+              {CHAPTER_ID === 2 && "The War Council opens — recruit companions and build your party."}
+              {CHAPTER_ID === 3 && "The Armoury is unlocked — equip and upgrade the loot you've earned."}
+              {CHAPTER_ID === 4 && "The Shrine awaits — summon new warriors with the Gacha."}
+              {CHAPTER_ID === 5 && "The Menagerie is open — tame and equip spirit beasts."}
+              {CHAPTER_ID === 6 && "The Stables are ready — mount your war horses."}
+              {CHAPTER_ID === 7 && "The Campaign Map is open — lead your armies across Japan."}
             </p>
           </div>
 
@@ -508,7 +546,21 @@ export default function StoryPage() {
     );
   }
 
-  // ── Battle gate ──────────────────────────────────────────────────────────
+  // scene must be non-null beyond this point (isComplete guard above handles
+  // the case where the player reloads after completion with no active scene)
+  if (!scene) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <p className="text-red-400 text-sm">Scene not found.</p>
+      </div>
+    );
+  }
+
+  const bgGradient    = BG_MAP[scene.backgroundKey] ?? BG_MAP.default;
+  const leftPortrait  = currentLine?.speakerSide === "left"  ? currentLine.portraitKey : null;
+  const rightPortrait = currentLine?.speakerSide === "right" ? currentLine.portraitKey : null;
+
+  // ── Battle gate ───────────────────────────────────────────────────────────────
   if (battleReady) {
     return (
       <BattleGateOverlay
@@ -519,7 +571,7 @@ export default function StoryPage() {
     );
   }
 
-  // ── Main VN layout ──────────────────────────────────────────────────────────
+  // ── Main VN layout ────────────────────────────────────────────────────────────
   return (
     <div
       className={`min-h-screen bg-gradient-to-b ${bgGradient} flex flex-col select-none`}
@@ -597,8 +649,11 @@ export default function StoryPage() {
         {scene.isBattleGate && isAtLastLine && !isTyping && (
           <p className="text-right text-red-500/70 text-xs mt-2 animate-pulse">tap to enter battle ⚔</p>
         )}
-        {!showChoices && !isTyping && !scene.isBattleGate && (
+        {!showChoices && !isTyping && !scene.isBattleGate && !scene.isChapterEnd && (
           <p className="text-right text-stone-600 text-xs mt-2 animate-pulse">tap to continue ▸</p>
+        )}
+        {scene.isChapterEnd && isAtLastLine && !isTyping && (
+          <p className="text-right text-amber-600/70 text-xs mt-2 animate-pulse">tap to complete chapter ★</p>
         )}
       </div>
     </div>
