@@ -51,8 +51,8 @@ export const isAuthenticated: RequestHandler = async (req, res, next) => {
     // 1. Try to find existing game-user row by Supabase auth UUID
     let gameUser = await storage.getUserByAuthId(supabaseUser.id);
 
-    // 2. If not found, create a fresh row — use the Supabase UUID as the game
-    //    user id so every lookup (getUser, updateUser, etc.) works consistently.
+    // 2. If not found, upsert — this handles both brand-new users and users
+    //    whose row was previously created with a different PK.
     if (!gameUser) {
       gameUser = await storage.upsertUser({
         id: supabaseUser.id,          // VARCHAR PK = Supabase UUID
@@ -73,8 +73,13 @@ export const isAuthenticated: RequestHandler = async (req, res, next) => {
       });
     }
 
+    if (!gameUser) {
+      console.error("[isAuthenticated] upsertUser returned null for", supabaseUser.id);
+      return res.status(500).json({ message: "Failed to resolve game user" });
+    }
+
     (req as any).supabaseUser = supabaseUser;
-    // All routes do req.user.claims.sub — give them the game-user's PK
+    // All routes use req.user.claims.sub — set it to the game-user's PK
     (req as any).user = { claims: { sub: gameUser.id } };
 
     return next();

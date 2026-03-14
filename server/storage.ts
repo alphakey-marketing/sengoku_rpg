@@ -66,26 +66,63 @@ export class DatabaseStorage implements IStorage {
   }
 
   /**
-   * Upsert on authUserId (the Supabase UUID).
-   * On first login the row is INSERT-ed with id = Supabase UUID.
-   * On subsequent logins the existing row is returned unchanged.
+   * Upsert a user row on first and subsequent Supabase logins.
+   *
+   * Strategy:
+   *   1. Try INSERT. Conflict on `id` (PK) OR `auth_user_id` (unique) is
+   *      handled by updating the profile columns so the row is always
+   *      returned with .returning().
+   *   2. Because Postgres only allows one ON CONFLICT target per statement
+   *      we run two sequential upserts:
+   *        a) conflict on auth_user_id  (returning user whose PK ≠ Supabase UUID)
+   *        b) conflict on id (PK)       (new user whose id = Supabase UUID)
+   *      Whichever upsert finds/creates the row wins; we re-fetch by authUserId
+   *      to guarantee we always return the canonical row.
    */
   async upsertUser(userData: UpsertUser): Promise<User> {
-    const [user] = await db
+    const profileSet = {
+      email: userData.email,
+      firstName: userData.firstName,
+      lastName: userData.lastName,
+      profileImageUrl: userData.profileImageUrl,
+      updatedAt: new Date(),
+    };
+
+    // Pass 1: conflict on authUserId — covers returning users
+    await db
       .insert(users)
       .values(userData)
       .onConflictDoUpdate({
         target: users.authUserId,
-        set: {
-          email: userData.email,
-          firstName: userData.firstName,
-          lastName: userData.lastName,
-          profileImageUrl: userData.profileImageUrl,
-          updatedAt: new Date(),
-        },
+        set: profileSet,
       })
-      .returning();
-    return user;
+      .returning()
+      .catch(() => {
+        // May throw if id PK conflicts first; handled in pass 2
+      });
+
+    // Pass 2: conflict on id (PK) — covers brand-new users whose UUID is the PK
+    await db
+      .insert(users)
+      .values(userData)
+      .onConflictDoUpdate({
+        target: users.id,
+        set: { ...profileSet, authUserId: userData.authUserId },
+      })
+      .returning()
+      .catch(() => {
+        // Ignore — row already exists from pass 1
+      });
+
+    // Always re-fetch by authUserId to get the definitive row
+    const existing = await this.getUserByAuthId(userData.authUserId!);
+    if (existing) return existing;
+
+    // Absolute fallback: fetch by id
+    const byId = await this.getUser(userData.id!);
+    if (byId) return byId;
+
+    throw new Error(`upsertUser: could not find or create user for authUserId=${userData.authUserId}`);
   }
 
   async updateUser(id: string, updates: Partial<User>): Promise<User> {
