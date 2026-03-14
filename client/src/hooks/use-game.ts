@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, buildUrl } from "@shared/routes";
 import { useToast } from "./use-toast";
+import { supabase } from "../lib/supabase";
 
 export interface PlayerData {
   id: string;
@@ -195,8 +196,15 @@ export interface GachaResult {
   companion: Companion;
 }
 
-function fetchWithAuth(url: string, options?: RequestInit) {
-  return fetch(url, { credentials: "include", ...options });
+/** Attach the current Supabase Bearer token to every game API request. */
+async function fetchWithAuth(url: string, options: RequestInit = {}) {
+  const { data } = await supabase.auth.getSession();
+  const token = data.session?.access_token;
+  const headers: Record<string, string> = {
+    ...(options.headers as Record<string, string> | undefined),
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+  return fetch(url, { credentials: "include", ...options, headers });
 }
 
 export function usePlayer() {
@@ -208,6 +216,10 @@ export function usePlayer() {
       if (!res.ok) throw new Error("Failed to fetch player data");
       return res.json();
     },
+    // Retry once after 800 ms — handles the race where the query fires
+    // just before fetchWithAuth resolves the Supabase session token.
+    retry: 1,
+    retryDelay: 800,
   });
 }
 
@@ -496,10 +508,9 @@ export function useCombineHorses() {
       queryClient.invalidateQueries({ queryKey: [api.horses.list.path] });
       toast({
         title: data.upgraded ? "Upgrade Success!" : "Combination Complete",
-        description: data.upgraded 
+        description: data.upgraded
           ? `You obtained a higher rarity horse: ${data.newHorse.name}!`
           : `You obtained a same rarity horse: ${data.newHorse.name}`,
-        variant: data.upgraded ? "default" : "default",
       });
     },
     onError: (error: any) => {
@@ -527,7 +538,7 @@ export function useFieldBattle() {
   const queryClient = useQueryClient();
   return useMutation<BattleResult, Error, number | { locationId: number; repeatCount: number }>({
     mutationFn: async (params) => {
-      const body = typeof params === 'number' ? { locationId: params } : params;
+      const body = typeof params === "number" ? { locationId: params } : params;
       const res = await fetchWithAuth(api.battle.field.path, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -622,7 +633,7 @@ export function useTriggerCampaignEvent() {
 
 export function useGachaPull() {
   const queryClient = useQueryClient();
-  return useMutation<GachaResult, Error, { isSpecial?: boolean, count?: number } | void>({
+  return useMutation<GachaResult, Error, { isSpecial?: boolean; count?: number } | void>({
     mutationFn: async (params) => {
       const body = params || {};
       const res = await fetchWithAuth(api.gacha.pull.path, {
@@ -645,7 +656,7 @@ export function useEquipmentGachaPull() {
   return useMutation<{ equipment: Equipment[] }, Error, { count?: number } | void>({
     mutationFn: async (params) => {
       const body = params || {};
-      const res = await fetchWithAuth(api.gacha.pullEquipment.path, { 
+      const res = await fetchWithAuth(api.gacha.pullEquipment.path, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
@@ -664,8 +675,8 @@ export function useEndowEquipment() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   return useMutation({
-    mutationFn: async ({ id, type, protect }: { id: number, type: string, protect?: boolean }) => {
-      const res = await fetch(`/api/equipment/${id}/endow`, {
+    mutationFn: async ({ id, type, protect }: { id: number; type: string; protect?: boolean }) => {
+      const res = await fetchWithAuth(`/api/equipment/${id}/endow`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ type, protect }),
@@ -682,7 +693,7 @@ export function useEndowEquipment() {
       queryClient.invalidateQueries({ queryKey: [api.player.fullStatus.path] });
       toast({
         title: data.success ? "Endowment Success!" : "Endowment Failed",
-        description: data.success 
+        description: data.success
           ? `Added ${data.pointsGained} points. Total: ${data.newPoints}`
           : `Lost points. Total: ${data.newPoints}`,
         variant: data.success ? "default" : "destructive",
@@ -694,7 +705,7 @@ export function useEndowEquipment() {
         description: error.message,
         variant: "destructive",
       });
-    }
+    },
   });
 }
 
@@ -702,7 +713,7 @@ export function useUpgradeStat() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   return useMutation({
-    mutationFn: async (stat: 'str' | 'agi' | 'vit' | 'int' | 'dex' | 'luk') => {
+    mutationFn: async (stat: "str" | "agi" | "vit" | "int" | "dex" | "luk") => {
       const res = await fetchWithAuth(api.stats.upgrade.path, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -724,7 +735,7 @@ export function useUpgradeStat() {
         description: error.message,
         variant: "destructive",
       });
-    }
+    },
   });
 }
 
@@ -758,6 +769,6 @@ export function useBulkUpgradeStats() {
         description: error.message,
         variant: "destructive",
       });
-    }
+    },
   });
 }

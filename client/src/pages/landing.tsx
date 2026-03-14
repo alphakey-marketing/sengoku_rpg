@@ -1,18 +1,17 @@
 import { useAuth } from "@/hooks/use-auth";
-import { Redirect } from "wouter";
+import { Redirect, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 import { Sword, Users, Shield, Zap, Info } from "lucide-react";
 
 export default function LandingPage() {
   const { isAuthenticated, isLoading } = useAuth();
+  const [, setLocation] = useLocation();
 
   if (isLoading) return null;
   if (isAuthenticated) return <Redirect to="/" />;
 
-  const handleLogin = () => {
-    window.location.href = "/api/login";
-  };
+  const handleLogin = () => setLocation("/login");
 
   const mechanics = [
     {
@@ -131,7 +130,7 @@ export default function LandingPage() {
               <ol className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs font-bold uppercase tracking-wider">
                 <li className="flex items-center gap-3 text-zinc-300">
                   <span className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center text-primary border border-primary/30 shrink-0">1</span>
-                  Fight & Loot
+                  Fight &amp; Loot
                 </li>
                 <li className="flex items-center gap-3 text-zinc-300">
                   <span className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center text-primary border border-primary/30 shrink-0">2</span>
