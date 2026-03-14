@@ -26,45 +26,24 @@ function optionalEnv(key: string, fallback = ""): string {
 }
 
 const IS_PRODUCTION = process.env.NODE_ENV === "production";
-const IS_REPLIT = !!process.env.REPL_ID;
-
-// Generate a random session secret for development
-const DEV_SESSION_SECRET = `dev-${Math.random().toString(36).substring(2, 15)}-${Math.random().toString(36).substring(2, 15)}`;
 
 export const env = {
+  // ---- Database ----
   DATABASE_URL: requireEnv("DATABASE_URL"),
-  SESSION_SECRET: optionalEnv(
-    "SESSION_SECRET",
-    IS_PRODUCTION ? "" : DEV_SESSION_SECRET,
-  ),
-  ISSUER_URL: optionalEnv("ISSUER_URL"),
-  REPL_ID: optionalEnv("REPL_ID"),
+
+  // ---- Supabase Auth ----
+  SUPABASE_URL: requireEnv("SUPABASE_URL"),
+  SUPABASE_SERVICE_ROLE_KEY: requireEnv("SUPABASE_SERVICE_ROLE_KEY"),
+
+  // ---- Server ----
   PORT: parseInt(optionalEnv("PORT", "5000"), 10),
   NODE_ENV: optionalEnv("NODE_ENV", "development"),
   IS_PRODUCTION,
-  IS_REPLIT,
 } as const;
-
-// Validate SESSION_SECRET in production
-if (IS_PRODUCTION && !process.env.SESSION_SECRET) {
-  throw new Error(
-    `\n\n═══════════════════════════════════════\n` +
-    `❌ SESSION_SECRET must be set in production!\n` +
-    `\n` +
-    `📝 Generate a strong secret:\n` +
-    `   openssl rand -hex 32\n` +
-    `\n` +
-    `   Then add it to your .env file:\n` +
-    `   SESSION_SECRET=your-generated-secret-here\n` +
-    `═══════════════════════════════════════\n\n`,
-  );
-}
 
 console.log(`\n✅ Environment validated successfully`);
 console.log(`   NODE_ENV: ${env.NODE_ENV}`);
 console.log(`   PORT: ${env.PORT}`);
 console.log(`   DATABASE: ${env.DATABASE_URL.split('@')[1] || 'configured'}`);
-if (IS_REPLIT) {
-  console.log(`   REPLIT_AUTH: enabled`);
-}
+console.log(`   SUPABASE: ${env.SUPABASE_URL}`);
 console.log(``);
