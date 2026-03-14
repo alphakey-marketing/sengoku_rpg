@@ -328,7 +328,6 @@ function generateEnemyStats(type: "field" | "boss" | "special", playerLevel: num
 }
 
 // ─── A2: Load player flag map ──────────────────────────────────────────────────
-// Returns a plain Record<flagKey, flagValue> for the given user.
 async function getPlayerFlagMap(userId: string): Promise<Record<string, number>> {
   const rows = await db.select().from(playerFlags).where(eq(playerFlags.userId, userId));
   const out: Record<string, number> = {};
@@ -358,14 +357,15 @@ export async function registerRoutes(server: Server, app: Express): Promise<Serv
   });
 
   // ── Player ──────────────────────────────────────────────────────────────
-  app.get("/api/player", isAuthenticated, async (req: any, res) => {
+  app.get(api.player.get.path, isAuthenticated, async (req: any, res) => {
     const userId = req.user.claims.sub;
     const user   = await storage.getUser(userId);
     if (!user) return res.status(404).json({ message: "Player not found" });
     res.json(user);
   });
 
-  app.get("/api/player/full-status", isAuthenticated, async (req: any, res) => {
+  // fix: was "/api/player/full-status" — client calls /api/player/status (api.player.fullStatus.path)
+  app.get(api.player.fullStatus.path, isAuthenticated, async (req: any, res) => {
     const userId = req.user.claims.sub;
     const team   = await getPlayerTeamStats(userId);
     if (!team) return res.status(404).json({ message: "Player not found" });
@@ -383,31 +383,18 @@ export async function registerRoutes(server: Server, app: Express): Promise<Serv
   });
 
   // ── Companions ──────────────────────────────────────────────────────────
-  //
-  // A2: For each companion that has a flagUnlockCondition, we evaluate it
-  // against the player's live playerFlags rows and inject two computed fields:
-  //   isLocked   : boolean  — true when the condition is NOT yet satisfied
-  //   lockReason : string   — human-readable hint shown in the War Council UI
-  //
-  // The raw flagUnlockCondition string is intentionally stripped from the
-  // response so the client cannot reverse-engineer unfound companions.
-  app.get("/api/companions", isAuthenticated, async (req: any, res) => {
+  app.get(api.companions.list.path, isAuthenticated, async (req: any, res) => {
     const userId = req.user.claims.sub;
     const raw    = await storage.getCompanions(userId);
 
-    // Only fetch flags if at least one companion has a condition — avoids an
-    // unnecessary DB round-trip for the common (no-gate) case.
     const needsFlags = raw.some((c: any) => c.flagUnlockCondition);
     const flagMap    = needsFlags ? await getPlayerFlagMap(userId) : {};
 
     const companions = raw.map((c: any) => {
       const condition: string | null = c.flagUnlockCondition ?? null;
-
-      // Strip the raw condition from the outgoing payload.
       const { flagUnlockCondition: _stripped, ...rest } = c;
 
       if (!condition) {
-        // No gate → always unlocked.
         return { ...rest, isLocked: false, lockReason: null };
       }
 
@@ -422,8 +409,6 @@ export async function registerRoutes(server: Server, app: Express): Promise<Serv
     res.json(companions);
   });
 
-  // fix: use shared/routes.ts as the single source of truth for this path
-  // was: app.post("/api/party", ...) — mismatched with client calling /api/companions/party
   app.post(api.companions.setParty.path, isAuthenticated, async (req: any, res) => {
     const userId = req.user.claims.sub;
     const { companionIds } = req.body;
@@ -432,7 +417,6 @@ export async function registerRoutes(server: Server, app: Express): Promise<Serv
 
     const all    = await storage.getCompanions(userId);
 
-    // A2: Reject if any requested companion is loyalty-locked.
     const flagMap    = await getPlayerFlagMap(userId);
     for (const id of companionIds) {
       const comp = all.find((c: any) => c.id === id) as any;
@@ -454,7 +438,7 @@ export async function registerRoutes(server: Server, app: Express): Promise<Serv
   });
 
   // ── Equipment ───────────────────────────────────────────────────────────
-  app.get("/api/equipment", isAuthenticated, async (req: any, res) => {
+  app.get(api.equipment.list.path, isAuthenticated, async (req: any, res) => {
     const userId = req.user.claims.sub;
     res.json(await storage.getEquipment(userId));
   });
@@ -500,7 +484,7 @@ export async function registerRoutes(server: Server, app: Express): Promise<Serv
     res.json({ success: true, stonesGained });
   });
 
-  app.post("/api/equipment/recycle-rarity", isAuthenticated, async (req: any, res) => {
+  app.post(api.equipment.recycleRarity.path, isAuthenticated, async (req: any, res) => {
     const userId = req.user.claims.sub;
     try {
       res.json(await storage.recycleEquipment(userId));
@@ -526,7 +510,8 @@ export async function registerRoutes(server: Server, app: Express): Promise<Serv
   });
 
   // ── Stats upgrade ───────────────────────────────────────────────────────
-  app.post("/api/stats/upgrade", isAuthenticated, async (req: any, res) => {
+  // fix: was "/api/stats/upgrade" — client calls /api/player/stats/upgrade (api.stats.upgrade.path)
+  app.post(api.stats.upgrade.path, isAuthenticated, async (req: any, res) => {
     const userId = req.user.claims.sub;
     const { stat } = req.body;
     const valid = ["str","agi","vit","int","dex","luk"];
@@ -541,7 +526,8 @@ export async function registerRoutes(server: Server, app: Express): Promise<Serv
     res.json({ success: true, newValue: cur + 1, pointsUsed: cost });
   });
 
-  app.post("/api/stats/bulk-upgrade", isAuthenticated, async (req: any, res) => {
+  // fix: was "/api/stats/bulk-upgrade" — client calls /api/player/stats/bulk-upgrade (api.stats.bulkUpgrade.path)
+  app.post(api.stats.bulkUpgrade.path, isAuthenticated, async (req: any, res) => {
     const userId = req.user.claims.sub;
     const { upgrades } = req.body;
     const valid = ["str","agi","vit","int","dex","luk"];
@@ -565,11 +551,11 @@ export async function registerRoutes(server: Server, app: Express): Promise<Serv
   });
 
   // ── Pets ────────────────────────────────────────────────────────────────
-  app.get("/api/pets", isAuthenticated, async (req: any, res) => {
+  app.get(api.pets.list.path, isAuthenticated, async (req: any, res) => {
     res.json(await storage.getPets(req.user.claims.sub));
   });
 
-  app.post("/api/pets/:id/activate", isAuthenticated, async (req: any, res) => {
+  app.post(api.pets.setActive.path, isAuthenticated, async (req: any, res) => {
     const userId = req.user.claims.sub;
     const petId  = Number(req.params.id);
     for (const p of await storage.getPets(userId)) await storage.updatePet(p.id, { isActive: false });
@@ -602,11 +588,11 @@ export async function registerRoutes(server: Server, app: Express): Promise<Serv
   });
 
   // ── Horses ──────────────────────────────────────────────────────────────
-  app.get("/api/horses", isAuthenticated, async (req: any, res) => {
+  app.get(api.horses.list.path, isAuthenticated, async (req: any, res) => {
     res.json(await storage.getHorses(req.user.claims.sub));
   });
 
-  app.post("/api/horses/:id/activate", isAuthenticated, async (req: any, res) => {
+  app.post(api.horses.setActive.path, isAuthenticated, async (req: any, res) => {
     const userId  = req.user.claims.sub;
     const horseId = Number(req.params.id);
     for (const h of await storage.getHorses(userId)) await storage.updateHorse(h.id, { isActive: false });
@@ -619,7 +605,21 @@ export async function registerRoutes(server: Server, app: Express): Promise<Serv
     res.json({ success: true });
   });
 
-  app.post("/api/horses/combine", isAuthenticated, async (req: any, res) => {
+  app.post(api.horses.recycle.path, isAuthenticated, async (req: any, res) => {
+    const userId  = req.user.claims.sub;
+    const horseId = Number(req.params.id);
+    const all     = await storage.getHorses(userId);
+    const horse   = all.find(h => h.id === horseId);
+    if (!horse || horse.userId !== userId) return res.status(404).json({ message: "Horse not found" });
+    if (horse.isActive) return res.status(400).json({ message: "Cannot recycle your active horse" });
+    await storage.deleteHorse(horseId);
+    const goldGained = 20;
+    const user = await storage.getUser(userId);
+    if (user) await storage.updateUser(userId, { gold: user.gold + goldGained });
+    res.json({ success: true, goldGained });
+  });
+
+  app.post(api.horses.combine.path, isAuthenticated, async (req: any, res) => {
     const userId = req.user.claims.sub;
     const { horseIds } = req.body;
     if (!Array.isArray(horseIds) || horseIds.length < 2) return res.status(400).json({ message: "Need at least 2 horses" });
@@ -643,7 +643,7 @@ export async function registerRoutes(server: Server, app: Express): Promise<Serv
   });
 
   // ── Transformations ─────────────────────────────────────────────────────
-  app.get("/api/transformations", isAuthenticated, async (req: any, res) => {
+  app.get(api.transformations.list.path, isAuthenticated, async (req: any, res) => {
     res.json(await storage.getTransformations(req.user.claims.sub));
   });
 
@@ -658,7 +658,7 @@ export async function registerRoutes(server: Server, app: Express): Promise<Serv
   });
 
   // ── Quests ──────────────────────────────────────────────────────────────
-  app.get("/api/quests", isAuthenticated, async (req: any, res) => {
+  app.get(api.quests.list.path, isAuthenticated, async (req: any, res) => {
     res.json(await storage.getQuests(req.user.claims.sub));
   });
 
@@ -892,6 +892,7 @@ export async function registerRoutes(server: Server, app: Express): Promise<Serv
     res.json({ companion });
   });
 
+  // fix: was api.gacha.pullEquipment.path already but let's keep it consistent
   app.post(api.gacha.pullEquipment.path, isAuthenticated, async (req: any, res) => {
     const userId = req.user.claims.sub;
     const user   = await storage.getUser(userId);
@@ -934,14 +935,16 @@ export async function registerRoutes(server: Server, app: Express): Promise<Serv
   });
 
   // ── Campaign events ──────────────────────────────────────────────────────
-  app.get("/api/campaign-events", isAuthenticated, async (req: any, res) => {
+  // fix: was "/api/campaign-events" — client calls /api/campaign/events (api.campaign.events.path)
+  app.get(api.campaign.events.path, isAuthenticated, async (req: any, res) => {
     res.json(await storage.getCampaignEvents(req.user.claims.sub));
   });
 
-  app.post("/api/campaign-events/:key/trigger", isAuthenticated, async (req: any, res) => {
+  // fix: was "/api/campaign-events/:key/trigger" — client calls /api/campaign/events/trigger with eventKey in body
+  app.post(api.campaign.triggerEvent.path, isAuthenticated, async (req: any, res) => {
     const userId   = req.user.claims.sub;
-    const eventKey = req.params.key;
-    const { choice } = req.body;
+    const { eventKey, choice } = req.body;
+    if (!eventKey) return res.status(400).json({ message: "eventKey required" });
     const events = await storage.getCampaignEvents(userId);
     let event = events.find(e => e.eventKey === eventKey);
     if (!event) event = await storage.createCampaignEvent({ userId, eventKey, isTriggered: false });
