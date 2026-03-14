@@ -1,14 +1,11 @@
 /**
  * server/auth/index.ts
- * ---
- * Single import point for auth across the entire server.
- * During Phase 1 this delegates to Replit auth.
- * In Phase 2 the supabase branch will be wired up here.
  *
- * RULES (Phase 1):
- *   - Keep AUTH_PROVIDER=replit in your env.
- *   - Do NOT import from server/replit_integrations/auth anywhere else.
- *   - Do NOT add new code that reads req.user.claims.sub outside this file.
+ * Single import point for auth across the app.
+ * Phase 1: delegates to Replit auth when AUTH_PROVIDER=replit (default).
+ * Phase 2: Supabase JWT middleware will be wired here.
+ *
+ * DO NOT import from server/replit_integrations/auth outside this file.
  */
 import type { Express, RequestHandler } from "express";
 import {
@@ -33,7 +30,7 @@ export function registerAuthRoutes(app: Express) {
     return registerReplitAuthRoutes(app);
   }
 
-  // Placeholder routes — will be replaced by Supabase flows in Phase 2
+  // Supabase auth stubs — will be replaced in Phase 2
   app.get("/api/login", (_req, res) => {
     res.status(503).json({
       message:

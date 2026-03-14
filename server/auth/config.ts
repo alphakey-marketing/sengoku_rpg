@@ -13,8 +13,8 @@ export const IS_SUPABASE_AUTH = AUTH_PROVIDER === "supabase";
 export const IS_REPLIT_AUTH = AUTH_PROVIDER === "replit";
 
 /**
- * Reads a required environment variable, throwing clearly if it is missing.
- * Use this in Phase 2+ to safely pull Supabase credentials.
+ * Throws if a required env var is missing.
+ * Use this in Phase 2+ when wiring Supabase-specific config.
  */
 export function requireEnv(name: string): string {
   const value = process.env[name];
