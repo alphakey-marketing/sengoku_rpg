@@ -10,47 +10,41 @@ function serial(name: string) {
   return integer(name).generatedAlwaysAsIdentity();
 }
 
-// ── A2: Companion loyalty-gate condition ──────────────────────────────────────
+// ── A2 / A3: Narrative flag-gate condition ──────────────────────────────────────
 //
-// A nullable string stored on the companions row, evaluated at read-time by the
-// server before returning the companion list.  Never null for normal companions
-// obtained through gacha (they are always available).  Set on story-granted or
-// special companions that require a narrative flag to be reached first.
+// A single nullable string shared by both companions (A2) and equipment (A3).
+// Evaluated at read-time by the server — never forwarded raw to the client.
 //
-// Grammar (one condition per companion):
-//   "<flagKey> <op> <value>"
+// Grammar (one condition per row):
+//   "<flagKey><op><value>"
 //   where op ∈ { >=, >, <=, <, ==, != }
 //
 // Examples:
-//   "loyalty_hanzo>=3"      — Hanzo joins only after loyalty_hanzo reaches 3
-//   "ruthlessness<=1"       — companion available only on a merciful path
-//   "chapter_choice_A==1"   — companion locked behind a specific story choice
-//
-// The server parses this string, looks up the player's live flagValue for
-// flagKey, applies the operator, and injects isLocked + lockReason into the
-// API response.  The column itself is never sent to the client — only the
-// computed booleans are.
+//   "loyalty_hanzo>=3"    — companion / weapon available after Hanzo loyalty 3
+//   "ruthlessness<=1"     — item locked behind a merciful path
+//   "chapter_choice_A==1" — equipment behind a specific story branch
 
-export type CompanionUnlockCondition = string; // "flagKey>=value"
+export type CompanionUnlockCondition = string;
 
-/** Parse a CompanionUnlockCondition string into its parts.
+/** Parse a flag-gate condition string into its constituent parts.
  *  Returns null if the string is malformed. */
 export function parseUnlockCondition(
-  condition: CompanionUnlockCondition,
+  condition: string,
 ): { flagKey: string; op: string; threshold: number } | null {
   const match = condition.match(/^([A-Za-z0-9_]+)(>=|<=|==|!=|>|<)(-?\d+)$/);
   if (!match) return null;
   return { flagKey: match[1], op: match[2], threshold: Number(match[3]) };
 }
 
-/** Evaluate a parsed condition against the player's current flag value.
- *  Returns true when the companion IS unlocked (condition satisfied). */
+/** Evaluate a condition against the player's live flag map.
+ *  Returns true when the item IS unlocked (condition satisfied).
+ *  Malformed conditions fail-open (treated as unlocked). */
 export function evalUnlockCondition(
-  condition: CompanionUnlockCondition,
+  condition: string,
   flagValues: Record<string, number>,
 ): boolean {
   const parsed = parseUnlockCondition(condition);
-  if (!parsed) return true; // malformed → treat as unlocked (fail-open)
+  if (!parsed) return true;
   const current = flagValues[parsed.flagKey] ?? 0;
   switch (parsed.op) {
     case ">=": return current >= parsed.threshold;
@@ -63,19 +57,18 @@ export function evalUnlockCondition(
   }
 }
 
-/** Human-readable lock reason produced from a condition that is NOT yet met. */
+/** Human-readable lock reason for a condition that is NOT yet satisfied. */
 export function unlockConditionHint(
-  condition: CompanionUnlockCondition,
+  condition: string,
   flagValues: Record<string, number>,
 ): string {
   const parsed = parseUnlockCondition(condition);
-  if (!parsed) return "Loyalty requirement not met";
+  if (!parsed) return "Story requirement not met";
   const current = flagValues[parsed.flagKey] ?? 0;
   const { flagKey, op, threshold } = parsed;
-  // Pretty-print the flag key: "loyalty_hanzo" → "Loyalty: Hanzo"
   const label = flagKey
     .replace(/_/g, " ")
-    .replace(/\b\w/g, (c) => c.toUpperCase());
+    .replace(/\b\w/g, c => c.toUpperCase());
   return `${label} ${op} ${threshold} (currently ${current})`;
 }
 
@@ -119,7 +112,7 @@ export const users = pgTable("users", {
   permDefenseBonus: integer("perm_defense_bonus").notNull().default(0),
   permSpeedBonus: integer("perm_speed_bonus").notNull().default(0),
   permHpBonus: integer("perm_hp_bonus").notNull().default(0),
-  // ── Onboarding ───────────────────────────────────────────────────────────
+  // ── Onboarding ───────────────────────────────────────────────────────
   currentChapter: integer("current_chapter").notNull().default(0),
   hasSeenIntro: boolean("has_seen_intro").notNull().default(false),
   titleSuffix: varchar("title_suffix", { length: 64 }),
@@ -146,13 +139,20 @@ export const companions = pgTable("companions", {
   skill: text("skill"),
   isInParty: boolean("is_in_party").notNull().default(false),
   isSpecial: boolean("is_special").notNull().default(false),
-  // ── A2: loyalty gate ─────────────────────────────────────────────────────
-  // Nullable. When set, the companion is hidden behind a narrative condition.
-  // Format: "flagKey>=value"  (see CompanionUnlockCondition above).
-  // Evaluated server-side; never forwarded raw to the client.
+  // ── A2: narrative loyalty gate ────────────────────────────────────────────────
   flagUnlockCondition: text("flag_unlock_condition"),
   createdAt: timestamp("created_at").defaultNow(),
 });
+
+// ── A3: Story-unlocked equipment ───────────────────────────────────────────────────
+//
+// storyFlagRequirement mirrors flagUnlockCondition on companions but lives on
+// the equipment table.  Null means the item is universally available.
+// The server strips the raw value before returning to the client, injecting
+// isLocked + lockReason computed booleans instead.
+//
+// Reuses the same grammar as CompanionUnlockCondition:
+//   "<flagKey><op><value>"  e.g. "chapter_blade_unlocked==1"
 
 export const equipment = pgTable("equipment", {
   id: serial("id").primaryKey(),
@@ -178,8 +178,23 @@ export const equipment = pgTable("equipment", {
   equippedToId: integer("equipped_to_id"),
   equippedToType: text("equipped_to_type"),
   cardSlots: integer("card_slots").notNull().default(0),
+  // ── A3: story flag requirement ───────────────────────────────────────────────
+  // Nullable. When set, equipping this item requires the named story flag.
+  // Format: "flagKey>=value"  (same grammar as companions.flagUnlockCondition)
+  // Evaluated server-side; raw value never forwarded to the client.
+  storyFlagRequirement: text("story_flag_requirement"),
   createdAt: timestamp("created_at").defaultNow(),
 });
+
+export const insertEquipmentSchema = createInsertSchema(equipment).omit({ id: true });
+export type Equipment      = typeof equipment.$inferSelect;
+export type InsertEquipment = typeof equipment.$inferInsert;
+
+/** The lock-state shape injected by the server into every equipment DTO. */
+export type EquipmentFlagLock = {
+  isLocked:   boolean;
+  lockReason: string | null;
+};
 
 export const cards = pgTable("cards", {
   id: serial("id").primaryKey(),
@@ -262,9 +277,6 @@ export const userQuests = pgTable("user_quests", {
 });
 
 // ── Story Engine Tables ───────────────────────────────────────────────────────
-// These power the visual-novel story system (Phase B).
-// seed-story.ts and story-routes.ts both import from here.
-
 export const storyChapters = pgTable("story_chapters", {
   id: serial("id").primaryKey(),
   title: text("title").notNull(),
@@ -312,7 +324,6 @@ export const storyChoices = pgTable("story_choices", {
   choiceOrder: integer("choice_order").notNull().default(0),
 });
 
-// Per-player progress through the current chapter
 export const playerStoryProgress = pgTable("player_story_progress", {
   id: serial("id").primaryKey(),
   userId: varchar("user_id").notNull(),
@@ -323,7 +334,6 @@ export const playerStoryProgress = pgTable("player_story_progress", {
   completedAt: timestamp("completed_at"),
 });
 
-// Persistent narrative flag values per player (ruthlessness, loyalty, etc.)
 export const playerFlags = pgTable("player_flags", {
   id: serial("id").primaryKey(),
   userId: varchar("user_id").notNull(),
@@ -332,7 +342,6 @@ export const playerFlags = pgTable("player_flags", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-// Chronicle Wall — one row per unlocked ending / achievement
 export const storyEndings = pgTable("story_endings", {
   id: serial("id").primaryKey(),
   userId: varchar("user_id").notNull(),
@@ -344,23 +353,6 @@ export const storyEndings = pgTable("story_endings", {
 });
 
 // ── B3: Campaign Map — Held Provinces ─────────────────────────────────────────
-//
-// One row per (user, locationId) pair.  Written by the server the first time a
-// player wins a campaign-mode boss battle at a given location.  The row is
-// idempotent: a second victory at the same location simply refreshes heldAt and
-// sets bossDefeated = true (it was already true on the first write).
-//
-// locationId mirrors the numeric ids in LOCATIONS (client/src/pages/map.tsx):
-//   1–6   Japan region
-//   101+  China region
-//
-// Columns:
-//   locationId    — FK-by-convention to the LOCATIONS constant (no hard FK to
-//                   avoid a table for static data).  Unique per userId.
-//   bossDefeated  — true once any boss (field, campaign, special) is beaten at
-//                   this location.  Allows the UI to show different badges.
-//   heldAt        — timestamp of the most-recent conquest; updated on each win.
-
 export const heldProvinces = pgTable("held_provinces", {
   id: serial("id").primaryKey(),
   userId: varchar("user_id").notNull(),
@@ -369,17 +361,11 @@ export const heldProvinces = pgTable("held_provinces", {
   heldAt: timestamp("held_at").notNull().defaultNow(),
 });
 
-// Insert schema — used by server/map-routes.ts when upserting a new conquest.
-export const insertHeldProvinceSchema = createInsertSchema(heldProvinces).omit({
-  id: true,
-});
-
-// TypeScript types inferred from the table for use across server + client.
-export type HeldProvince    = typeof heldProvinces.$inferSelect;
+export const insertHeldProvinceSchema = createInsertSchema(heldProvinces).omit({ id: true });
+export type HeldProvince       = typeof heldProvinces.$inferSelect;
 export type InsertHeldProvince = typeof heldProvinces.$inferInsert;
 
 // ── Drizzle relations ─────────────────────────────────────────────────────────
-
 export const storyChaptersRelations = relations(storyChapters, ({ many }) => ({
   scenes: many(storyScenes),
 }));
