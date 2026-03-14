@@ -7,8 +7,7 @@ import { appendChronicle } from "../lib/chronicle";
 export const chronicleRouter = Router();
 
 // GET /api/chronicle
-// Returns all chronicle entries for the authenticated player, newest first.
-chroniclleRouter.get("/", async (req: any, res) => {
+chronicleRouter.get("/", async (req: any, res) => {
   const userId = req.user.claims.sub;
   const entries = await db
     .select()
@@ -19,9 +18,8 @@ chroniclleRouter.get("/", async (req: any, res) => {
 });
 
 // POST /api/chronicle
-// Write a new chronicle entry (called by game engine / story routes).
 // Body: { entryKey, headline, detail?, chapterNumber? }
-chroniclleRouter.post("/", async (req: any, res) => {
+chronicleRouter.post("/", async (req: any, res) => {
   const userId = req.user.claims.sub;
   const { entryKey, headline, detail, chapterNumber } = req.body;
   if (!entryKey || !headline)
