@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Link, useParams, useLocation } from "wouter";
+import { useParams, useLocation } from "wouter";
 import { queryClient } from "@/lib/queryClient";
 import {
   startChapter,
@@ -324,12 +324,13 @@ export default function StoryPage() {
         endingTitle: chapter.title,
         endingDescription: `Chapter ${CHAPTER_ID} complete.`,
       });
-      // Best-effort cache bust — must not block setIsComplete.
-      try {
-        await queryClient.invalidateQueries({ queryKey: ["/api/player"] });
-      } catch { /* non-fatal */ }
+      // FIX: refetch (not just invalidate) so AuthGuard reads the updated
+      // currentChapter before the CTA button navigates away from /story.
+      await queryClient.refetchQueries({ queryKey: ["/api/player"] });
+    } catch {
+      // Non-fatal: complete screen still shows; guard may bounce once but
+      // a second click will succeed once the cache eventually updates.
     } finally {
-      // Always show the complete screen, even if completeChapter/unlockEnding threw.
       setIsComplete(true);
     }
   }, [chapter, CHAPTER_ID]);
@@ -350,14 +351,10 @@ export default function StoryPage() {
 
         if (progress && progress.chapterId === CHAPTER_ID) {
           if (progress.isCompleted) {
-            // FIX: Restore the complete screen on a return visit instead of
-            // restarting the chapter (the old code fell into the else branch
-            // and called startChapter() which wiped localStorage).
-            completionFiredRef.current = true; // already done, don't re-fire
+            completionFiredRef.current = true;
             setSceneId(progress.currentSceneId ?? firstId);
             setIsComplete(true);
           } else if (progress.currentSceneId) {
-            // In-progress: resume from saved scene.
             setSceneId(progress.currentSceneId);
           } else {
             await startChapter(CHAPTER_ID, firstId);
@@ -399,10 +396,7 @@ export default function StoryPage() {
     if (scene) markSceneSeen(scene.sceneOrder);
   }, [sceneId]);
 
-  // ── DECLARATIVE FALLBACK: fire completion whenever we land on the final state
-  // of an isChapterEnd scene, regardless of whether advance() was called.
-  // The completionFiredRef guard prevents double-firing if advance() already
-  // ran the same path.
+  // ── DECLARATIVE FALLBACK ──────────────────────────────────────────────────────
   useEffect(() => {
     if (
       scene?.isChapterEnd &&
@@ -432,8 +426,6 @@ export default function StoryPage() {
     if (scene.choices.length > 0) { setShowChoices(true); return; }
     if (scene.isBattleGate) return;
     if (scene.isChapterEnd) {
-      // triggerCompletion is guarded by completionFiredRef so calling it
-      // here AND from the declarative effect is safe — only one will run.
       await triggerCompletion();
       return;
     }
@@ -535,19 +527,23 @@ export default function StoryPage() {
             >
               ↺ Replay Chapter
             </button>
-            <Link href={completionDest.path}>
-              <button className="px-5 py-2 bg-amber-700 hover:bg-amber-600 text-white rounded text-sm font-semibold transition">
-                → {completionDest.label}
-              </button>
-            </Link>
+            {/* FIX: use navigate() instead of <Link> so navigation is
+                programmatic and only fires after triggerCompletion() has
+                already awaited refetchQueries — the AuthGuard will see
+                currentChapter >= 1 and will not bounce the user back to /story */}
+            <button
+              onClick={() => navigate(completionDest.path)}
+              className="px-5 py-2 bg-amber-700 hover:bg-amber-600 text-white rounded text-sm font-semibold transition"
+            >
+              → {completionDest.label}
+            </button>
           </div>
         </div>
       </div>
     );
   }
 
-  // scene must be non-null beyond this point (isComplete guard above handles
-  // the case where the player reloads after completion with no active scene)
+  // scene must be non-null beyond this point
   if (!scene) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
@@ -578,9 +574,12 @@ export default function StoryPage() {
       onClick={!showChoices ? advance : undefined}
     >
       <div className="flex items-center justify-between px-4 py-2 bg-black/40 backdrop-blur-sm">
-        <Link href="/story">
-          <span className="text-stone-400 hover:text-white text-xs transition cursor-pointer">← Chapters</span>
-        </Link>
+        <button
+          onClick={(e) => { e.stopPropagation(); navigate("/story"); }}
+          className="text-stone-400 hover:text-white text-xs transition cursor-pointer"
+        >
+          ← Chapters
+        </button>
         <span className="text-stone-500 text-xs tracking-widest uppercase">
           Ch.{CHAPTER_ID} · {chapter.title}
         </span>
