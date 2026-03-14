@@ -1,20 +1,15 @@
 /**
  * client/src/lib/queryClient.ts
  *
- * Phase 4: when VITE_AUTH_PROVIDER=supabase, every outgoing API request
- * attaches `Authorization: Bearer <token>` so the server-side
- * `isAuthenticated` middleware can validate the Supabase JWT.
- *
- * Replit path is completely unchanged (credentials: include, no header).
+ * Phase 5: Replit cookie auth retired.
+ * Every outgoing API request attaches `Authorization: Bearer <token>`
+ * from the active Supabase session.
  */
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 import { supabase } from "./supabase";
 
-const AUTH_PROVIDER = import.meta.env.VITE_AUTH_PROVIDER ?? "replit";
-
-/** Returns `{ Authorization: 'Bearer ...' }` when using Supabase, else `{}`. */
+/** Returns Authorization header with the current Supabase Bearer token. */
 async function authHeaders(): Promise<Record<string, string>> {
-  if (AUTH_PROVIDER !== "supabase") return {};
   const { data } = await supabase.auth.getSession();
   const token = data.session?.access_token;
   return token ? { Authorization: `Bearer ${token}` } : {};
@@ -40,7 +35,6 @@ export async function apiRequest(
       ...extraHeaders,
     },
     body: data ? JSON.stringify(data) : undefined,
-    // credentials: include is still needed for Replit cookie sessions
     credentials: "include",
   });
 

@@ -1,6 +1,6 @@
 export type AuthProvider = "replit" | "supabase";
 
-const rawProvider = process.env.AUTH_PROVIDER ?? "replit";
+const rawProvider = process.env.AUTH_PROVIDER ?? "supabase";
 
 if (rawProvider !== "replit" && rawProvider !== "supabase") {
   throw new Error(
@@ -14,7 +14,6 @@ export const IS_REPLIT_AUTH = AUTH_PROVIDER === "replit";
 
 /**
  * Throws if a required env var is missing.
- * Use this in Phase 2+ when wiring Supabase-specific config.
  */
 export function requireEnv(name: string): string {
   const value = process.env[name];

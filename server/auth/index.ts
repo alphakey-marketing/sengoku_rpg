@@ -1,44 +1,25 @@
 /**
  * server/auth/index.ts
  *
- * Single import point for auth across the app.
- * Phase 1: delegates to Replit auth when AUTH_PROVIDER=replit (default).
- * Phase 2: Supabase JWT middleware is now wired. Still inactive until
- *          AUTH_PROVIDER is flipped to "supabase".
- * Phase 3: On first Supabase sign-in the middleware auto-upserts a users row
- *          and attaches req.user.claims.sub = gameUser.id so all downstream
- *          routes remain unchanged.
+ * Phase 5: Replit auth retired. Supabase is the only auth provider.
  *
- * DO NOT import from server/replit_integrations/auth outside this file.
+ * setupAuth        — no-op (Supabase JWT is stateless, no session middleware)
+ * registerAuthRoutes — OAuth login/callback/logout + /api/auth/user
+ * isAuthenticated  — validates Bearer JWT, auto-upserts game-user row
  */
 import type { Express, RequestHandler } from "express";
-import {
-  setupAuth as setupReplitAuth,
-  registerAuthRoutes as registerReplitAuthRoutes,
-  isAuthenticated as replitIsAuthenticated,
-} from "../replit_integrations/auth";
-import { AUTH_PROVIDER } from "./config";
 import { getSupabaseAdmin } from "../lib/supabase";
 import { storage } from "../storage";
 
 // ─── setup ───────────────────────────────────────────────────────────────────
 
-export async function setupAuth(app: Express) {
-  if (AUTH_PROVIDER === "replit") {
-    return setupReplitAuth(app);
-  }
-
-  // Supabase: no server-side session setup needed — JWT is stateless.
-}
+// Supabase JWT is stateless — no server-side session middleware needed.
+export async function setupAuth(_app: Express) {}
 
 // ─── routes ──────────────────────────────────────────────────────────────────
 
 export function registerAuthRoutes(app: Express) {
-  if (AUTH_PROVIDER === "replit") {
-    return registerReplitAuthRoutes(app);
-  }
-
-  // Supabase Phase 2: OAuth login redirect
+  // OAuth login — redirect to Google via Supabase
   app.get("/api/login", async (_req, res) => {
     try {
       const { data, error } = await getSupabaseAdmin().auth.signInWithOAuth({
@@ -58,16 +39,14 @@ export function registerAuthRoutes(app: Express) {
     }
   });
 
-  // Supabase Phase 2: OAuth callback — exchange code for session
+  // OAuth callback — exchange code for session
   app.get("/api/callback", async (req, res) => {
     const code = req.query["code"] as string | undefined;
     if (!code) {
       return res.status(400).json({ message: "Missing OAuth code" });
     }
     try {
-      const { error } = await getSupabaseAdmin().auth.exchangeCodeForSession(
-        code,
-      );
+      const { error } = await getSupabaseAdmin().auth.exchangeCodeForSession(code);
       if (error) {
         return res.status(400).json({ message: error.message });
       }
@@ -77,12 +56,12 @@ export function registerAuthRoutes(app: Express) {
     }
   });
 
-  // Supabase: logout redirect (client calls supabase.auth.signOut() directly)
+  // Logout — Supabase sessions are client-managed; redirect to home
   app.get("/api/logout", (_req, res) => {
     return res.redirect("/");
   });
 
-  // Current user endpoint — returns game-user row enriched with Supabase identity
+  // Current user — returns raw Supabase identity attached by isAuthenticated
   app.get("/api/auth/user", isAuthenticated, (req: any, res) => {
     res.json(req.supabaseUser);
   });
@@ -91,11 +70,6 @@ export function registerAuthRoutes(app: Express) {
 // ─── middleware ───────────────────────────────────────────────────────────────
 
 export const isAuthenticated: RequestHandler = async (req, res, next) => {
-  if (AUTH_PROVIDER === "replit") {
-    return replitIsAuthenticated(req, res, next);
-  }
-
-  // Supabase: validate Bearer JWT from Authorization header
   const authHeader = req.headers["authorization"];
   const token =
     typeof authHeader === "string" && authHeader.startsWith("Bearer ")
@@ -118,14 +92,10 @@ export const isAuthenticated: RequestHandler = async (req, res, next) => {
         .json({ message: error?.message ?? "Unauthorized: invalid token" });
     }
 
-    // ── Phase 3: Resolve (or create) the game-user row ──────────────────────
-    // Look up by authUserId first, then fall back to email for accounts that
-    // existed before Phase 3 (so their game data is preserved).
+    // Resolve (or create) the game-user row
     let gameUser = await storage.getUserByAuthId(supabaseUser.id);
 
     if (!gameUser && supabaseUser.email) {
-      // Try to claim an existing account created via Replit that shares the
-      // same email — stamp it with the Supabase auth UUID.
       const { db } = await import("../db");
       const { users } = await import("@shared/schema");
       const { eq } = await import("drizzle-orm");
@@ -141,9 +111,8 @@ export const isAuthenticated: RequestHandler = async (req, res, next) => {
     }
 
     if (!gameUser) {
-      // First sign-in: create a brand-new game-user row.
       gameUser = await storage.upsertUser({
-        id: undefined as any, // let the DB generate a UUID
+        id: undefined as any,
         authUserId: supabaseUser.id,
         email: supabaseUser.email ?? null,
         firstName:
@@ -161,9 +130,6 @@ export const isAuthenticated: RequestHandler = async (req, res, next) => {
       });
     }
 
-    // Attach both identities to the request:
-    //   req.supabaseUser  — raw Supabase auth user (for /api/auth/user)
-    //   req.user.claims.sub — game-user UUID used by all existing routes
     (req as any).supabaseUser = supabaseUser;
     (req as any).user = { claims: { sub: gameUser.id } };
 
