@@ -1,21 +1,22 @@
 /**
  * story-routes.ts
- * ─────────────────────────────────────────────────────────────────────────────
+ * ──────────────────────────────────────────────────────────────────────────────
  * All REST endpoints for the VN story engine.
  *
- * Mount in routes.ts with:
- *   app.use("/api/story", storyRouter);
+ * Mount in server/index.ts (or routes.ts) with:
+ *   app.use("/api/story", isAuthenticated, storyRouter);
  *
  * Endpoints
- * ─────────────────────────────────────────────────────────────────────────────
- *  GET  /api/story/chapters             → list all chapters (id, title, isLocked)
+ * ──────────────────────────────────────────────────────────────────────────────
+ *  GET  /api/story/chapters             → list all chapters (id, title, isLocked, chapterOrder)
  *  GET  /api/story/chapters/:id         → full chapter with scenes + dialogue + choices
- *  GET  /api/story/progress             → player's progress for all chapters
+ *  GET  /api/story/progress             → player’s progress for all chapters
  *  POST /api/story/progress             → upsert progress (start / advance scene)
  *  POST /api/story/progress/complete    → mark chapter complete + write ending
- *  GET  /api/story/flags                → all player flags
- *  POST /api/story/flags                → apply flag mutations (additive)
+ *  GET  /api/story/flags                → all player flags as Record<string,number>
+ *  POST /api/story/flags                → additive mutations OR absolute overrides
  *  GET  /api/story/endings              → all unlocked endings
+ *  POST /api/story/battle-result        → B2: write battle outcome flags + return nextSceneId
  */
 
 import { Router, type Request, type Response } from "express";
@@ -24,13 +25,13 @@ import {
   storyChapters, storyScenes, dialogueLines, storyChoices,
   playerFlags, playerProgress, unlockedEndings,
   type StoryChapter, type StoryScene, type DialogueLine,
-  type StoryChoice, type PlayerFlag, type PlayerProgress,
+  type StoryChoice, type PlayerFlag,
 } from "@shared/schema";
 import { eq, and, asc } from "drizzle-orm";
 
 export const storyRouter = Router();
 
-// ─── Auth helper ──────────────────────────────────────────────────────────────
+// ─── Auth helper ────────────────────────────────────────────────────────────────────
 
 function requireAuth(req: Request, res: Response): string | null {
   const userId = (req as any).user?.claims?.sub;
@@ -41,21 +42,88 @@ function requireAuth(req: Request, res: Response): string | null {
   return userId as string;
 }
 
-// ─── Chapter list ─────────────────────────────────────────────────────────────
+// ─── Shared flag helpers ───────────────────────────────────────────────────────────
 
-storyRouter.get("/chapters", async (req: Request, res: Response) => {
+/** Read all flags for a user, returning a map keyed by flagKey. */
+async function getFlagMap(userId: string): Promise<Map<string, PlayerFlag>> {
+  const rows = await db.select().from(playerFlags).where(eq(playerFlags.userId, userId));
+  return new Map(rows.map((f) => [f.flagKey, f]));
+}
+
+/** Serialise a flag map to a plain Record. */
+function flagRecord(map: Map<string, PlayerFlag>): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const [k, v] of map) out[k] = v.flagValue;
+  return out;
+}
+
+/**
+ * Write flag mutations to DB.
+ * @param mutations  Additive deltas  { key: delta }  (default behaviour)
+ * @param absolute   Absolute sets    { key: value }  (B2: battle outcomes)
+ * Returns updated flag record.
+ */
+async function writeFlags(
+  userId: string,
+  mutations: Record<string, number> = {},
+  absolute: Record<string, number> = {},
+): Promise<Record<string, number>> {
+  const flagMap = await getFlagMap(userId);
+
+  // Additive mutations
+  for (const [key, delta] of Object.entries(mutations)) {
+    const existing = flagMap.get(key);
+    if (existing) {
+      await db
+        .update(playerFlags)
+        .set({ flagValue: existing.flagValue + delta, updatedAt: new Date() })
+        .where(eq(playerFlags.id, existing.id));
+      existing.flagValue += delta;
+    } else {
+      const [inserted] = await db
+        .insert(playerFlags)
+        .values({ userId, flagKey: key, flagValue: delta })
+        .returning();
+      flagMap.set(key, inserted);
+    }
+  }
+
+  // Absolute overrides (SET, not +delta)
+  for (const [key, value] of Object.entries(absolute)) {
+    const existing = flagMap.get(key);
+    if (existing) {
+      await db
+        .update(playerFlags)
+        .set({ flagValue: value, updatedAt: new Date() })
+        .where(eq(playerFlags.id, existing.id));
+      existing.flagValue = value;
+    } else {
+      const [inserted] = await db
+        .insert(playerFlags)
+        .values({ userId, flagKey: key, flagValue: value })
+        .returning();
+      flagMap.set(key, inserted);
+    }
+  }
+
+  return flagRecord(await getFlagMap(userId));
+}
+
+// ─── Chapter list ────────────────────────────────────────────────────────────────────
+
+storyRouter.get("/chapters", async (_req: Request, res: Response) => {
   try {
     const chapters = await db
       .select()
       .from(storyChapters)
       .orderBy(asc(storyChapters.chapterOrder));
     res.json(chapters);
-  } catch (e) {
+  } catch {
     res.status(500).json({ error: "Failed to fetch chapters" });
   }
 });
 
-// ─── Full chapter (scenes + dialogue + choices) ───────────────────────────────
+// ─── Full chapter (scenes + dialogue + choices) ─────────────────────────────────────────
 
 storyRouter.get("/chapters/:id", async (req: Request, res: Response) => {
   try {
@@ -66,7 +134,6 @@ storyRouter.get("/chapters/:id", async (req: Request, res: Response) => {
       .select()
       .from(storyChapters)
       .where(eq(storyChapters.id, chapterId));
-
     if (!chapter) return res.status(404).json({ error: "Chapter not found" });
 
     const scenes = await db
@@ -76,66 +143,58 @@ storyRouter.get("/chapters/:id", async (req: Request, res: Response) => {
       .orderBy(asc(storyScenes.sceneOrder));
 
     const sceneIds = scenes.map((s) => s.id);
+    if (!sceneIds.length) return res.json({ ...chapter, scenes: [] });
 
-    // Fetch all dialogue lines and choices for all scenes in one query each
-    const allLines: DialogueLine[] = sceneIds.length
-      ? await db
-          .select()
-          .from(dialogueLines)
-          .where(eq(dialogueLines.sceneId, sceneIds[0]))
-          .then(async () => {
-            // Drizzle doesn't support `in` in a clean array way without rawSQL;
-            // iterate per scene and flatten — acceptable for ≤20 scenes
-            const results = await Promise.all(
-              sceneIds.map((sid) =>
-                db.select().from(dialogueLines).where(eq(dialogueLines.sceneId, sid))
-                  .orderBy(asc(dialogueLines.lineOrder))
-              )
-            );
-            return results.flat();
-          })
-      : [];
+    // Fetch all dialogue and choices for every scene in parallel (one query per scene)
+    // This replaces the old double-query bug where the first .then() fetched only
+    // sceneIds[0] then discarded its result before the real Promise.all ran.
+    const [allLines, allChoices] = await Promise.all([
+      Promise.all(
+        sceneIds.map((sid) =>
+          db.select().from(dialogueLines)
+            .where(eq(dialogueLines.sceneId, sid))
+            .orderBy(asc(dialogueLines.lineOrder))
+        )
+      ).then((r) => r.flat()),
+      Promise.all(
+        sceneIds.map((sid) =>
+          db.select().from(storyChoices)
+            .where(eq(storyChoices.sceneId, sid))
+            .orderBy(asc(storyChoices.choiceOrder))
+        )
+      ).then((r) => r.flat()),
+    ]);
 
-    const allChoices: StoryChoice[] = sceneIds.length
-      ? await Promise.all(
-          sceneIds.map((sid) =>
-            db.select().from(storyChoices).where(eq(storyChoices.sceneId, sid))
-              .orderBy(asc(storyChoices.choiceOrder))
-          )
-        ).then((r) => r.flat())
-      : [];
-
-    // Group lines + choices by sceneId
-    const linesByScene = new Map<number, DialogueLine[]>();
+    // Group by sceneId
+    const linesByScene  = new Map<number, DialogueLine[]>();
     const choicesByScene = new Map<number, StoryChoice[]>();
-    for (const line of allLines) linesByScene.set(line.sceneId, [...(linesByScene.get(line.sceneId) ?? []), line]);
+    for (const l of allLines)   linesByScene.set(l.sceneId,   [...(linesByScene.get(l.sceneId)   ?? []), l]);
     for (const c of allChoices) choicesByScene.set(c.sceneId, [...(choicesByScene.get(c.sceneId) ?? []), c]);
 
-    const enrichedScenes = scenes.map((scene) => ({
-      ...scene,
-      dialogueLines: linesByScene.get(scene.id) ?? [],
-      choices: choicesByScene.get(scene.id) ?? [],
-    }));
-
-    res.json({ ...chapter, scenes: enrichedScenes });
+    res.json({
+      ...chapter,
+      scenes: scenes.map((scene) => ({
+        ...scene,
+        dialogueLines: linesByScene.get(scene.id)  ?? [],
+        choices:       choicesByScene.get(scene.id) ?? [],
+      })),
+    });
   } catch (e) {
     console.error("[story] GET /chapters/:id", e);
     res.status(500).json({ error: "Failed to fetch chapter" });
   }
 });
 
-// ─── Player progress ──────────────────────────────────────────────────────────
+// ─── Player progress ───────────────────────────────────────────────────────────────────
 
 storyRouter.get("/progress", async (req: Request, res: Response) => {
   const userId = requireAuth(req, res);
   if (!userId) return;
   try {
-    const rows = await db
-      .select()
-      .from(playerProgress)
-      .where(eq(playerProgress.userId, userId));
-    res.json(rows);
-  } catch (e) {
+    res.json(
+      await db.select().from(playerProgress).where(eq(playerProgress.userId, userId))
+    );
+  } catch {
     res.status(500).json({ error: "Failed to fetch progress" });
   }
 });
@@ -144,9 +203,9 @@ storyRouter.get("/progress", async (req: Request, res: Response) => {
  * POST /api/story/progress
  * Body: { chapterId: number; currentSceneId?: number; forceRestart?: boolean }
  *
- * Creates a new progress row if none exists for this user+chapter.
- * If forceRestart is true, deletes the existing row and creates fresh.
- * Otherwise upserts currentSceneId onto the existing row.
+ * Creates a fresh progress row if none exists.
+ * forceRestart=true: deletes existing row and creates fresh.
+ * Otherwise: upserts currentSceneId and adds it to seenSceneIds.
  */
 storyRouter.post("/progress", async (req: Request, res: Response) => {
   const userId = requireAuth(req, res);
@@ -157,7 +216,6 @@ storyRouter.post("/progress", async (req: Request, res: Response) => {
       currentSceneId?: number;
       forceRestart?: boolean;
     };
-
     if (!chapterId) return res.status(400).json({ error: "chapterId required" });
 
     const [existing] = await db
@@ -169,7 +227,6 @@ storyRouter.post("/progress", async (req: Request, res: Response) => {
       await db
         .delete(playerProgress)
         .where(and(eq(playerProgress.userId, userId), eq(playerProgress.chapterId, chapterId)));
-
       const [fresh] = await db
         .insert(playerProgress)
         .values({ userId, chapterId, currentSceneId: currentSceneId ?? null, isCompleted: false, seenSceneIds: [] })
@@ -185,16 +242,13 @@ storyRouter.post("/progress", async (req: Request, res: Response) => {
       return res.json(created);
     }
 
-    // Advance scene + mark scene seen
-    const seenIds = (existing.seenSceneIds as number[]) ?? [];
-    if (currentSceneId && !seenIds.includes(currentSceneId)) seenIds.push(currentSceneId);
-
+    const seen = (existing.seenSceneIds as number[]) ?? [];
+    if (currentSceneId && !seen.includes(currentSceneId)) seen.push(currentSceneId);
     const [updated] = await db
       .update(playerProgress)
-      .set({ currentSceneId: currentSceneId ?? existing.currentSceneId, seenSceneIds: seenIds })
+      .set({ currentSceneId: currentSceneId ?? existing.currentSceneId, seenSceneIds: seen })
       .where(and(eq(playerProgress.userId, userId), eq(playerProgress.chapterId, chapterId)))
       .returning();
-
     res.json(updated);
   } catch (e) {
     console.error("[story] POST /progress", e);
@@ -204,7 +258,7 @@ storyRouter.post("/progress", async (req: Request, res: Response) => {
 
 /**
  * POST /api/story/progress/complete
- * Body: { chapterId: number; endingKey: string; endingTitle: string; endingDescription: string }
+ * Body: { chapterId, endingKey, endingTitle, endingDescription }
  */
 storyRouter.post("/progress/complete", async (req: Request, res: Response) => {
   const userId = requireAuth(req, res);
@@ -222,13 +276,12 @@ storyRouter.post("/progress/complete", async (req: Request, res: Response) => {
       .set({ isCompleted: true, completedAt: new Date() })
       .where(and(eq(playerProgress.userId, userId), eq(playerProgress.chapterId, chapterId)));
 
-    // Upsert ending (idempotent)
-    const [existingEnding] = await db
+    const [existing] = await db
       .select()
       .from(unlockedEndings)
       .where(and(eq(unlockedEndings.userId, userId), eq(unlockedEndings.endingKey, endingKey)));
 
-    if (!existingEnding) {
+    if (!existing) {
       await db.insert(unlockedEndings).values({ userId, endingKey, endingTitle, endingDescription });
     }
 
@@ -239,81 +292,103 @@ storyRouter.post("/progress/complete", async (req: Request, res: Response) => {
   }
 });
 
-// ─── Player flags ─────────────────────────────────────────────────────────────
+// ─── Player flags ────────────────────────────────────────────────────────────────────
 
 storyRouter.get("/flags", async (req: Request, res: Response) => {
   const userId = requireAuth(req, res);
   if (!userId) return;
   try {
-    const flags = await db
-      .select()
-      .from(playerFlags)
-      .where(eq(playerFlags.userId, userId));
-    // Return as Record<string, number> for easy consumption
-    const record: Record<string, number> = {};
-    for (const f of flags) record[f.flagKey] = f.flagValue;
-    res.json(record);
-  } catch (e) {
+    res.json(flagRecord(await getFlagMap(userId)));
+  } catch {
     res.status(500).json({ error: "Failed to fetch flags" });
   }
 });
 
 /**
  * POST /api/story/flags
- * Body: { mutations: Record<string, number> }  — values are additive deltas
+ * Body: { mutations?: Record<string,number>, absolute?: Record<string,number> }
+ *
+ * mutations  — additive delta per flag key (legacy behaviour, still supported)
+ * absolute   — exact SET value per flag key (B2: battle_won / battle_lost)
+ *
+ * Both can be present in the same request.
  */
 storyRouter.post("/flags", async (req: Request, res: Response) => {
   const userId = requireAuth(req, res);
   if (!userId) return;
   try {
-    const { mutations } = req.body as { mutations: Record<string, number> };
-    if (!mutations || typeof mutations !== "object") {
-      return res.status(400).json({ error: "mutations object required" });
+    const { mutations = {}, absolute = {} } = req.body as {
+      mutations?: Record<string, number>;
+      absolute?:  Record<string, number>;
+    };
+    if (typeof mutations !== "object" || typeof absolute !== "object") {
+      return res.status(400).json({ error: "mutations and absolute must be objects" });
     }
-
-    const existingFlags = await db
-      .select()
-      .from(playerFlags)
-      .where(eq(playerFlags.userId, userId));
-
-    const flagMap = new Map<string, PlayerFlag>();
-    for (const f of existingFlags) flagMap.set(f.flagKey, f);
-
-    for (const [key, delta] of Object.entries(mutations)) {
-      const existing = flagMap.get(key);
-      if (existing) {
-        await db
-          .update(playerFlags)
-          .set({ flagValue: existing.flagValue + delta, updatedAt: new Date() })
-          .where(eq(playerFlags.id, existing.id));
-      } else {
-        await db.insert(playerFlags).values({ userId, flagKey: key, flagValue: delta });
-      }
-    }
-
-    // Return updated record
-    const updated = await db.select().from(playerFlags).where(eq(playerFlags.userId, userId));
-    const record: Record<string, number> = {};
-    for (const f of updated) record[f.flagKey] = f.flagValue;
-    res.json(record);
+    res.json(await writeFlags(userId, mutations, absolute));
   } catch (e) {
     console.error("[story] POST /flags", e);
     res.status(500).json({ error: "Failed to update flags" });
   }
 });
 
-// ─── Unlocked endings ─────────────────────────────────────────────────────────
+// ─── Unlocked endings ─────────────────────────────────────────────────────────────────
 
 storyRouter.get("/endings", async (req: Request, res: Response) => {
   const userId = requireAuth(req, res);
   if (!userId) return;
   try {
-    const endings = await db
-      .select()
-      .from(unlockedEndings)
-      .where(eq(unlockedEndings.userId, userId));
-    res.json(endings);
-  } catch (e) {
+    res.json(
+      await db.select().from(unlockedEndings).where(eq(unlockedEndings.userId, userId))
+    );
+  } catch {
     res.status(500).json({ error: "Failed to fetch endings" });
+  }
+});
+
+// ─── B2: Battle-result endpoint ─────────────────────────────────────────────────────────
+//
+// POST /api/story/battle-result
+// Body: { sceneId: number; battleResult: 'win' | 'lose' }
+//
+// 1. Looks up the scene to find battleWinSceneId / battleLoseSceneId.
+// 2. Writes absolute flags: battle_won=1/0, battle_lost=1/0.
+// 3. Returns { nextSceneId, flagsUpdated } matching the submitChoice shape.
+//
+// This endpoint is the authoritative server-side counterpart to the client’s
+// BattleGateOverlay. The client still calls /api/battle/field for the actual
+// combat; this endpoint only handles the story-graph routing + flag writing.
+
+storyRouter.post("/battle-result", async (req: Request, res: Response) => {
+  const userId = requireAuth(req, res);
+  if (!userId) return;
+  try {
+    const { sceneId, battleResult } = req.body as {
+      sceneId: number;
+      battleResult: "win" | "lose";
+    };
+    if (!sceneId || !battleResult) {
+      return res.status(400).json({ error: "sceneId and battleResult required" });
+    }
+
+    const [scene] = await db
+      .select()
+      .from(storyScenes)
+      .where(eq(storyScenes.id, sceneId));
+    if (!scene) return res.status(404).json({ error: "Scene not found" });
+
+    const won = battleResult === "win";
+    const nextSceneId = won
+      ? (scene.battleWinSceneId ?? scene.nextSceneId)
+      : (scene.battleLoseSceneId ?? scene.nextSceneId);
+
+    const flagsUpdated = await writeFlags(userId, {}, {
+      battle_won:  won ? 1 : 0,
+      battle_lost: won ? 0 : 1,
+    });
+
+    res.json({ nextSceneId, flagsUpdated });
+  } catch (e) {
+    console.error("[story] POST /battle-result", e);
+    res.status(500).json({ error: "Failed to process battle result" });
   }
 });
