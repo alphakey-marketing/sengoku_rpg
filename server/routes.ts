@@ -422,7 +422,9 @@ export async function registerRoutes(server: Server, app: Express): Promise<Serv
     res.json(companions);
   });
 
-  app.post("/api/party", isAuthenticated, async (req: any, res) => {
+  // fix: use shared/routes.ts as the single source of truth for this path
+  // was: app.post("/api/party", ...) — mismatched with client calling /api/companions/party
+  app.post(api.companions.setParty.path, isAuthenticated, async (req: any, res) => {
     const userId = req.user.claims.sub;
     const { companionIds } = req.body;
     if (!Array.isArray(companionIds)) return res.status(400).json({ message: "companionIds must be an array" });
