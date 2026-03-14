@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Link, useParams } from "wouter";
+import { Link, useParams, useLocation } from "wouter";
 import {
   startChapter,
   advanceScene,
@@ -11,7 +11,6 @@ import {
   getFlags,
   resetStory,
   fetchChapter,
-  type ProgressState,
   type StoryFlags,
 } from "@/lib/story-engine";
 
@@ -116,6 +115,30 @@ const FLAG_LABELS: Record<string, string> = {
   battle_lost:           "☠ Battle Lost",
 };
 
+/**
+ * The unlock chain per nav-unlock.ts:
+ *   ch 0  → /story only (new player)
+ *   ch 1  → / (Dojo/Home) + /quests
+ *   ch 2  → /stable (War Council)
+ *   ch 3  → /gear + /equipment
+ *   ch 4  → /gacha
+ *   ch 5  → /pets
+ *   ch 6  → /party
+ *   ch 7  → /map
+ *
+ * After completing a chapter we always send the player to the NEXT
+ * destination they just unlocked, never to a locked one.
+ */
+const CHAPTER_COMPLETE_DESTINATION: Record<number, { path: string; label: string }> = {
+  1: { path: "/",       label: "Enter the Dojo" },
+  2: { path: "/stable", label: "Visit War Council" },
+  3: { path: "/gear",   label: "Open the Armoury" },
+  4: { path: "/gacha",  label: "Visit the Shrine" },
+  5: { path: "/pets",   label: "Visit the Menagerie" },
+  6: { path: "/party",  label: "Visit the Stables" },
+  7: { path: "/map",    label: "Open Campaign Map" },
+};
+
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
 function Portrait({ portraitKey, side }: { portraitKey: string | null; side: "left" | "right" }) {
@@ -131,10 +154,6 @@ function Portrait({ portraitKey, side }: { portraitKey: string | null; side: "le
   );
 }
 
-/**
- * FlagBar — shows all flags whose key exists in the flags object.
- * Shows even flags with value === 0 (neutral choices), using \u00b10 display.
- */
 function FlagBar({ flags }: { flags: StoryFlags }) {
   const keys = Object.keys(flags);
   if (!keys.length) return null;
@@ -158,11 +177,6 @@ function FlagBar({ flags }: { flags: StoryFlags }) {
 }
 
 // ─── B2: BattleGateOverlay ──────────────────────────────────────────────────────────
-//
-// Calls POST /api/battle/field with the locationId derived from the scene's
-// battleEnemyKey ("location_3" → 3, falls back to 1).
-// On settlement writes an absolute flag (battle_won=1 or battle_lost=1)
-// via POST /api/story/flags, then calls onResult(won) to route the scene.
 
 interface BattleGateProps {
   scene: Scene;
@@ -176,7 +190,6 @@ function BattleGateOverlay({ scene, bgGradient, onResult }: BattleGateProps) {
   const [won, setWon]           = useState<boolean | null>(null);
   const logRef                  = useRef<HTMLDivElement>(null);
 
-  // Parse locationId from battleEnemyKey: "location_5" -> 5, else 1
   const locationId = (() => {
     if (!scene.battleEnemyKey) return 1;
     const m = scene.battleEnemyKey.match(/(\d+)/);
@@ -196,31 +209,24 @@ function BattleGateOverlay({ scene, bgGradient, onResult }: BattleGateProps) {
       const data = await res.json();
       const logs: string[] = data.logs ?? [];
       const victory: boolean = !!data.victory;
-
       setCombatLogs(logs);
       setWon(victory);
       setPhase("done");
-
-      // Write absolute battle outcome flag to DB
       await fetch("/api/story/flags", {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({
-          absolute: {
-            battle_won:  victory ? 1 : 0,
-            battle_lost: victory ? 0 : 1,
-          },
+          absolute: { battle_won: victory ? 1 : 0, battle_lost: victory ? 0 : 1 },
         }),
       });
-    } catch (err) {
+    } catch {
       setCombatLogs(["Error: could not reach battle server."]);
       setPhase("done");
       setWon(false);
     }
   }, [locationId]);
 
-  // Auto-scroll log
   useEffect(() => {
     if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight;
   }, [combatLogs]);
@@ -228,10 +234,7 @@ function BattleGateOverlay({ scene, bgGradient, onResult }: BattleGateProps) {
   return (
     <div className={`min-h-screen bg-gradient-to-b ${bgGradient} flex flex-col items-center justify-center p-6`}>
       <div className="w-full max-w-md">
-        {/* Header */}
-        <p className="text-red-400 text-xs tracking-widest uppercase mb-3 text-center animate-pulse">
-          ⚔ Story Battle
-        </p>
+        <p className="text-red-400 text-xs tracking-widest uppercase mb-3 text-center animate-pulse">⚔ Story Battle</p>
         <h2 className="text-xl font-bold text-white text-center mb-1">
           {scene.battleEnemyKey?.replace(/_/g, " ") ?? "Battle"}
         </h2>
@@ -239,17 +242,12 @@ function BattleGateOverlay({ scene, bgGradient, onResult }: BattleGateProps) {
           Location {locationId} enemy forces block your path.
         </p>
 
-        {/* Idle state — prompt player */}
         {phase === "idle" && (
-          <button
-            onClick={startBattle}
-            className="w-full py-3 bg-red-800 hover:bg-red-700 text-white font-semibold rounded transition"
-          >
+          <button onClick={startBattle} className="w-full py-3 bg-red-800 hover:bg-red-700 text-white font-semibold rounded transition">
             ⚡ Enter Battle
           </button>
         )}
 
-        {/* Fighting — spinner */}
         {phase === "fighting" && (
           <div className="text-center">
             <p className="text-amber-400 text-sm animate-pulse mb-4">Combat in progress…</p>
@@ -257,48 +255,32 @@ function BattleGateOverlay({ scene, bgGradient, onResult }: BattleGateProps) {
           </div>
         )}
 
-        {/* Done — result + log */}
         {phase === "done" && won !== null && (
           <div className="space-y-4">
             <div className={`text-center py-3 rounded border ${
-              won
-                ? "bg-amber-900/40 border-amber-600 text-amber-300"
-                : "bg-red-900/40 border-red-700 text-red-300"
+              won ? "bg-amber-900/40 border-amber-600 text-amber-300" : "bg-red-900/40 border-red-700 text-red-300"
             }`}>
               <p className="text-lg font-bold">{won ? "⚡ Victory" : "☠ Defeat"}</p>
               <p className="text-xs mt-1 text-white/50">
                 {won ? "Press below to continue your story." : "You may retry or accept defeat."}
               </p>
             </div>
-
-            {/* Scrollable combat log */}
-            <div
-              ref={logRef}
-              className="bg-black/50 border border-white/10 rounded p-3 max-h-48 overflow-y-auto text-xs
-                text-stone-300 space-y-0.5 font-mono"
-            >
+            <div ref={logRef} className="bg-black/50 border border-white/10 rounded p-3 max-h-48 overflow-y-auto text-xs text-stone-300 space-y-0.5 font-mono">
               {combatLogs.map((l, i) => (
                 <p key={i} className={l.startsWith("---") ? "text-white/40 text-center" : ""}>{l}</p>
               ))}
             </div>
-
             <div className="flex gap-3">
               {!won && (
-                <button
-                  onClick={() => { setPhase("idle"); setWon(null); setCombatLogs([]); }}
-                  className="flex-1 py-2 bg-stone-700 hover:bg-stone-600 text-white text-sm rounded transition"
-                >
+                <button onClick={() => { setPhase("idle"); setWon(null); setCombatLogs([]); }}
+                  className="flex-1 py-2 bg-stone-700 hover:bg-stone-600 text-white text-sm rounded transition">
                   ↺ Retry
                 </button>
               )}
-              <button
-                onClick={() => onResult(won, combatLogs)}
+              <button onClick={() => onResult(won, combatLogs)}
                 className={`flex-1 py-2 text-white text-sm rounded transition ${
-                  won
-                    ? "bg-amber-700 hover:bg-amber-600"
-                    : "bg-zinc-700 hover:bg-zinc-600"
-                }`}
-              >
+                  won ? "bg-amber-700 hover:bg-amber-600" : "bg-zinc-700 hover:bg-zinc-600"
+                }`}>
                 {won ? "→ Continue Story" : "→ Accept Defeat"}
               </button>
             </div>
@@ -312,8 +294,8 @@ function BattleGateOverlay({ scene, bgGradient, onResult }: BattleGateProps) {
 // ─── Main page ───────────────────────────────────────────────────────────────────
 
 export default function StoryPage() {
-  // Read chapterId from URL: /story/:chapterId (falls back to 1 for the root /story route)
   const params = useParams<{ chapterId?: string }>();
+  const [, navigate] = useLocation();
   const CHAPTER_ID = params.chapterId ? parseInt(params.chapterId, 10) : 1;
 
   const [chapter, setChapter]         = useState<ChapterData | null>(null);
@@ -334,12 +316,15 @@ export default function StoryPage() {
   const scene       = sceneId ? sceneMap[sceneId] ?? null : null;
   const currentLine = scene?.dialogueLines[lineIndex] ?? null;
 
-  // Derive battle-gate state directly from scene (no separate boolean state)
   const isBattleGate = !!scene?.isBattleGate && !showChoices;
   const isAtLastLine = !!scene && lineIndex >= scene.dialogueLines.length - 1;
   const battleReady  = isBattleGate && isAtLastLine && !isTyping;
 
-  // ── Boot: fetch chapter + resume progress ───────────────────────────────
+  // Destination the player will be sent to after completing this chapter
+  const completionDest = CHAPTER_COMPLETE_DESTINATION[CHAPTER_ID]
+    ?? { path: "/", label: "Enter the Dojo" };
+
+  // ── Boot ─────────────────────────────────────────────────────────────────────
   useEffect(() => {
     (async () => {
       try {
@@ -351,15 +336,8 @@ export default function StoryPage() {
         ]);
         setChapter(chapterData);
         setFlags(savedFlags);
-
         const firstId = chapterData.firstSceneId ?? chapterData.scenes[0]?.id;
-
-        if (
-          progress &&
-          progress.chapterId === CHAPTER_ID &&
-          !progress.isCompleted &&
-          progress.currentSceneId
-        ) {
+        if (progress && progress.chapterId === CHAPTER_ID && !progress.isCompleted && progress.currentSceneId) {
           setSceneId(progress.currentSceneId);
         } else {
           await startChapter(CHAPTER_ID, firstId);
@@ -374,7 +352,7 @@ export default function StoryPage() {
     })();
   }, [CHAPTER_ID]);
 
-  // ── Typewriter ──────────────────────────────────────────────────────────────
+  // ── Typewriter ─────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!currentLine) return;
     if (typeTimerRef.current) clearTimeout(typeTimerRef.current);
@@ -392,7 +370,6 @@ export default function StoryPage() {
     return () => { if (typeTimerRef.current) clearTimeout(typeTimerRef.current); };
   }, [sceneId, lineIndex]);
 
-  // ── Mark scene seen ───────────────────────────────────────────────────────────
   useEffect(() => {
     if (scene) markSceneSeen(scene.sceneOrder);
   }, [sceneId]);
@@ -408,16 +385,10 @@ export default function StoryPage() {
   const advance = useCallback(async () => {
     if (!scene || !chapter) return;
     if (isTyping) { skipTypewriter(); return; }
-
     const nextLineIdx = lineIndex + 1;
     if (nextLineIdx < scene.dialogueLines.length) { setLineIndex(nextLineIdx); return; }
-
-    // If there are choices, reveal them (battle-gate is handled by overlay)
     if (scene.choices.length > 0) { setShowChoices(true); return; }
-
-    // If this is a battle-gate, stop here — BattleGateOverlay takes over on next render
-    if (scene.isBattleGate) return;
-
+    if (scene.isBattleGate) return; // BattleGateOverlay handles this
     if (scene.isChapterEnd) {
       await completeChapter();
       await unlockEnding({
@@ -429,7 +400,6 @@ export default function StoryPage() {
       setIsComplete(true);
       return;
     }
-
     if (scene.nextSceneId) {
       await advanceScene(scene.nextSceneId);
       setSceneId(scene.nextSceneId);
@@ -451,14 +421,12 @@ export default function StoryPage() {
     setShowChoices(false);
   }, [scene]);
 
-  // B2: called by BattleGateOverlay after combat + flag write
   const handleBattleResult = useCallback(async (won: boolean, _logs: string[]) => {
     if (!scene) return;
     const nextId = won
       ? (scene.battleWinSceneId ?? scene.nextSceneId)
       : (scene.battleLoseSceneId ?? scene.nextSceneId);
     if (!nextId) return;
-    // Refresh flags from server so FlagBar reflects battle_won/battle_lost
     setFlags(await getFlags());
     await advanceScene(nextId);
     setSceneId(nextId);
@@ -478,7 +446,7 @@ export default function StoryPage() {
     setFlags({});
   }, [chapter, CHAPTER_ID]);
 
-  // ── Loading / error screens ─────────────────────────────────────────────────
+  // ── Loading / error ────────────────────────────────────────────────────────────
   if (loading) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
@@ -498,7 +466,7 @@ export default function StoryPage() {
   const leftPortrait  = currentLine?.speakerSide === "left"  ? currentLine.portraitKey : null;
   const rightPortrait = currentLine?.speakerSide === "right" ? currentLine.portraitKey : null;
 
-  // ── Chapter complete ─────────────────────────────────────────────────────
+  // ── Chapter complete screen ────────────────────────────────────────────────────
   if (isComplete) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-zinc-950 to-black flex flex-col items-center justify-center p-8 text-center">
@@ -506,18 +474,39 @@ export default function StoryPage() {
           <p className="text-amber-400 text-sm tracking-widest uppercase mb-4">Chapter Complete</p>
           <h1 className="text-3xl font-bold text-white mb-2">{chapter.title}</h1>
           <p className="text-stone-400 italic mb-8">{chapter.subtitle}</p>
+
+          {/* Flag summary */}
           <div className="mb-8 p-4 bg-white/5 rounded border border-white/10">
-            <p className="text-stone-300 text-sm mb-3">Your story so far:</p>
+            <p className="text-stone-300 text-sm mb-3">Your legacy choices:</p>
             <FlagBar flags={flags} />
           </div>
+
+          {/* Teaser: what just unlocked */}
+          <div className="mb-8 p-4 bg-amber-900/20 rounded border border-amber-700/30 text-left">
+            <p className="text-amber-400 text-xs font-semibold uppercase tracking-widest mb-1">★ New area unlocked
+            </p>
+            <p className="text-white text-sm font-semibold">{completionDest.label}</p>
+            <p className="text-stone-400 text-xs mt-1">
+              {CHAPTER_ID === 1 && "Your Dojo is now open — review your stats and spend your first stat points."}
+              {CHAPTER_ID === 2 && "The War Council opens — recruit companions and build your party."}
+              {CHAPTER_ID === 3 && "The Armoury is unlocked — equip and upgrade the loot you’ve earned."}
+              {CHAPTER_ID === 4 && "The Shrine awaits — summon new warriors with the Gacha."}
+              {CHAPTER_ID === 5 && "The Menagerie is open — tame and equip spirit beasts."}
+              {CHAPTER_ID === 6 && "The Stables are ready — mount your war horses."}
+              {CHAPTER_ID === 7 && "The Campaign Map is open — lead your armies across Japan."}
+            </p>
+          </div>
+
           <div className="flex gap-3 justify-center flex-wrap">
-            <button onClick={handleReset}
-              className="px-5 py-2 bg-stone-800 hover:bg-stone-700 text-white rounded text-sm transition">
+            <button
+              onClick={handleReset}
+              className="px-5 py-2 bg-stone-800 hover:bg-stone-700 text-white rounded text-sm transition"
+            >
               ↺ Replay Chapter
             </button>
-            <Link href="/map">
-              <button className="px-5 py-2 bg-amber-700 hover:bg-amber-600 text-white rounded text-sm transition">
-                → Campaign Map
+            <Link href={completionDest.path}>
+              <button className="px-5 py-2 bg-amber-700 hover:bg-amber-600 text-white rounded text-sm font-semibold transition">
+                → {completionDest.label}
               </button>
             </Link>
           </div>
@@ -527,7 +516,6 @@ export default function StoryPage() {
   }
 
   // ── B2: Battle gate ──────────────────────────────────────────────────────────
-  // Show BattleGateOverlay once all dialogue on a battle-gate scene is read
   if (battleReady) {
     return (
       <BattleGateOverlay
@@ -546,8 +534,8 @@ export default function StoryPage() {
     >
       {/* Top bar */}
       <div className="flex items-center justify-between px-4 py-2 bg-black/40 backdrop-blur-sm">
-        <Link href="/map">
-          <span className="text-stone-400 hover:text-white text-xs transition cursor-pointer">← Map</span>
+        <Link href="/story">
+          <span className="text-stone-400 hover:text-white text-xs transition cursor-pointer">← Chapters</span>
         </Link>
         <span className="text-stone-500 text-xs tracking-widest uppercase">
           Ch.{CHAPTER_ID} · {chapter.title}
@@ -598,7 +586,6 @@ export default function StoryPage() {
           )}
         </div>
 
-        {/* Choices */}
         {showChoices && scene.choices.length > 0 && (
           <div className="mt-3 flex flex-col gap-2">
             {[...scene.choices]
@@ -617,11 +604,9 @@ export default function StoryPage() {
           </div>
         )}
 
-        {/* Battle gate prompt (shown while reading dialogue on a battle scene) */}
         {scene.isBattleGate && isAtLastLine && !isTyping && (
           <p className="text-right text-red-500/70 text-xs mt-2 animate-pulse">tap to enter battle ⚔</p>
         )}
-
         {!showChoices && !isTyping && !scene.isBattleGate && (
           <p className="text-right text-stone-600 text-xs mt-2 animate-pulse">tap to continue ▸</p>
         )}
