@@ -10,6 +10,75 @@ function serial(name: string) {
   return integer(name).generatedAlwaysAsIdentity();
 }
 
+// ── A2: Companion loyalty-gate condition ──────────────────────────────────────
+//
+// A nullable string stored on the companions row, evaluated at read-time by the
+// server before returning the companion list.  Never null for normal companions
+// obtained through gacha (they are always available).  Set on story-granted or
+// special companions that require a narrative flag to be reached first.
+//
+// Grammar (one condition per companion):
+//   "<flagKey> <op> <value>"
+//   where op ∈ { >=, >, <=, <, ==, != }
+//
+// Examples:
+//   "loyalty_hanzo>=3"      — Hanzo joins only after loyalty_hanzo reaches 3
+//   "ruthlessness<=1"       — companion available only on a merciful path
+//   "chapter_choice_A==1"   — companion locked behind a specific story choice
+//
+// The server parses this string, looks up the player's live flagValue for
+// flagKey, applies the operator, and injects isLocked + lockReason into the
+// API response.  The column itself is never sent to the client — only the
+// computed booleans are.
+
+export type CompanionUnlockCondition = string; // "flagKey>=value"
+
+/** Parse a CompanionUnlockCondition string into its parts.
+ *  Returns null if the string is malformed. */
+export function parseUnlockCondition(
+  condition: CompanionUnlockCondition,
+): { flagKey: string; op: string; threshold: number } | null {
+  const match = condition.match(/^([A-Za-z0-9_]+)(>=|<=|==|!=|>|<)(-?\d+)$/);
+  if (!match) return null;
+  return { flagKey: match[1], op: match[2], threshold: Number(match[3]) };
+}
+
+/** Evaluate a parsed condition against the player's current flag value.
+ *  Returns true when the companion IS unlocked (condition satisfied). */
+export function evalUnlockCondition(
+  condition: CompanionUnlockCondition,
+  flagValues: Record<string, number>,
+): boolean {
+  const parsed = parseUnlockCondition(condition);
+  if (!parsed) return true; // malformed → treat as unlocked (fail-open)
+  const current = flagValues[parsed.flagKey] ?? 0;
+  switch (parsed.op) {
+    case ">=": return current >= parsed.threshold;
+    case ">":  return current >  parsed.threshold;
+    case "<=": return current <= parsed.threshold;
+    case "<":  return current <  parsed.threshold;
+    case "==": return current === parsed.threshold;
+    case "!=": return current !== parsed.threshold;
+    default:   return true;
+  }
+}
+
+/** Human-readable lock reason produced from a condition that is NOT yet met. */
+export function unlockConditionHint(
+  condition: CompanionUnlockCondition,
+  flagValues: Record<string, number>,
+): string {
+  const parsed = parseUnlockCondition(condition);
+  if (!parsed) return "Loyalty requirement not met";
+  const current = flagValues[parsed.flagKey] ?? 0;
+  const { flagKey, op, threshold } = parsed;
+  // Pretty-print the flag key: "loyalty_hanzo" → "Loyalty: Hanzo"
+  const label = flagKey
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+  return `${label} ${op} ${threshold} (currently ${current})`;
+}
+
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   authUserId: varchar("auth_user_id").unique(),
@@ -77,6 +146,11 @@ export const companions = pgTable("companions", {
   skill: text("skill"),
   isInParty: boolean("is_in_party").notNull().default(false),
   isSpecial: boolean("is_special").notNull().default(false),
+  // ── A2: loyalty gate ─────────────────────────────────────────────────────
+  // Nullable. When set, the companion is hidden behind a narrative condition.
+  // Format: "flagKey>=value"  (see CompanionUnlockCondition above).
+  // Evaluated server-side; never forwarded raw to the client.
+  flagUnlockCondition: text("flag_unlock_condition"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
