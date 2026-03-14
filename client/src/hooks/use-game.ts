@@ -48,6 +48,11 @@ export interface Companion {
   skill: string | null;
   isInParty: boolean;
   isSpecial: boolean;
+  // ── A2: loyalty gate (computed server-side, never the raw condition string) ──
+  /** true when the companion's flagUnlockCondition is not yet satisfied */
+  isLocked: boolean;
+  /** Human-readable requirement hint, e.g. "Loyalty Hanzo >= 3 (currently 1)". null when unlocked. */
+  lockReason: string | null;
 }
 
 export interface Equipment {
@@ -216,8 +221,6 @@ export function usePlayer() {
       if (!res.ok) throw new Error("Failed to fetch player data");
       return res.json();
     },
-    // Retry once after 800 ms — handles the race where the query fires
-    // just before fetchWithAuth resolves the Supabase session token.
     retry: 1,
     retryDelay: 800,
   });
