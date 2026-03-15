@@ -7,16 +7,26 @@ export const playerRouter = Router();
 
 // GET /api/player
 playerRouter.get("/", async (req: any, res) => {
-  const user = await storage.getUser(req.user.claims.sub);
-  if (!user) return res.status(404).json({ message: "Player not found" });
-  res.json(user);
+  try {
+    const user = await storage.getUser(req.user.claims.sub);
+    if (!user) return res.status(404).json({ message: "Player not found" });
+    res.json(user);
+  } catch (err) {
+    console.error("[player GET /]", err);
+    res.status(500).json({ message: "Failed to load player", error: String(err) });
+  }
 });
 
 // GET /api/player/status
 playerRouter.get("/status", async (req: any, res) => {
-  const team = await getPlayerTeamStats(req.user.claims.sub);
-  if (!team) return res.status(404).json({ message: "Player not found" });
-  res.json(team);
+  try {
+    const team = await getPlayerTeamStats(req.user.claims.sub);
+    if (!team) return res.status(404).json({ message: "Player not found" });
+    res.json(team);
+  } catch (err) {
+    console.error("[player GET /status]", err);
+    res.status(500).json({ message: "Failed to load player status", error: String(err) });
+  }
 });
 
 // POST /api/player/mark-intro-seen
