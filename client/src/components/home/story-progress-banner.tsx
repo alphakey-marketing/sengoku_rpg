@@ -17,15 +17,21 @@ interface Props {
 }
 
 export function StoryProgressBanner({ flags, chapters }: Props) {
-  if (!chapters || chapters.length === 0) return null;
+  // Guard against non-array values while queries are loading or if auth
+  // returns a non-200 response (e.g. during dev-mode initialisation).
+  const safeChapters = Array.isArray(chapters) ? chapters : [];
+  const safeFlags    = Array.isArray(flags)    ? flags    : [];
 
-  const completed = chapters.filter(c => c.isCompleted);
-  const current   = chapters.find(c => c.isUnlocked && !c.isCompleted);
-  const locked    = chapters.filter(c => !c.isUnlocked);
-  const totalChapters = chapters.length;
-  const percent = totalChapters > 0 ? Math.round((completed.length / totalChapters) * 100) : 0;
+  if (safeChapters.length === 0) return null;
 
-  const unlockedCompanions = flags.filter(f => f.flagKey.startsWith("companion_unlocked_") && f.flagValue >= 1);
+  const completed     = safeChapters.filter(c => c.isCompleted);
+  const current       = safeChapters.find(c => c.isUnlocked && !c.isCompleted);
+  const totalChapters = safeChapters.length;
+  const percent       = totalChapters > 0 ? Math.round((completed.length / totalChapters) * 100) : 0;
+
+  const unlockedCompanions = safeFlags.filter(
+    f => f.flagKey.startsWith("companion_unlocked_") && f.flagValue >= 1
+  );
 
   return (
     <motion.div
@@ -64,7 +70,7 @@ export function StoryProgressBanner({ flags, chapters }: Props) {
 
         {/* Chapter pills */}
         <div className="flex flex-wrap gap-2">
-          {chapters.slice(0, 6).map(ch => (
+          {safeChapters.slice(0, 6).map(ch => (
             <div
               key={ch.id}
               className={`px-3 py-1 rounded-full text-xs font-bold border transition-colors ${
@@ -79,9 +85,9 @@ export function StoryProgressBanner({ flags, chapters }: Props) {
               {ch.title}
             </div>
           ))}
-          {chapters.length > 6 && (
+          {safeChapters.length > 6 && (
             <div className="px-3 py-1 rounded-full text-xs font-bold border bg-zinc-800/50 border-zinc-700/30 text-zinc-500">
-              +{chapters.length - 6} more
+              +{safeChapters.length - 6} more
             </div>
           )}
         </div>

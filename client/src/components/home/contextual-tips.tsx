@@ -24,20 +24,28 @@ interface Props {
 }
 
 function getFlagValue(flags: PlayerFlag[], key: string): number {
+  // Guard: flags may be undefined/null or a non-array (e.g. a 401 error object)
+  // before the query resolves. Fall back to 0 safely.
+  if (!Array.isArray(flags)) return 0;
   return flags.find(f => f.flagKey === key)?.flagValue ?? 0;
 }
 
 export function ContextualTips({ player, companions, equipment, flags }: Props) {
   const tips: TipCard[] = [];
 
-  const partyMembers = companions.filter(c => c.isInParty);
-  const equippedItems = equipment.filter(e => e.isEquipped && e.equippedToType === "player");
+  // Normalise props that may not be arrays yet while queries are loading
+  const safeFlags      = Array.isArray(flags)      ? flags      : [];
+  const safeCompanions = Array.isArray(companions) ? companions : [];
+  const safeEquipment  = Array.isArray(equipment)  ? equipment  : [];
+
+  const partyMembers = safeCompanions.filter(c => c.isInParty);
+  const equippedItems = safeEquipment.filter(e => e.isEquipped && e.equippedToType === "player");
   const hasWeapon = equippedItems.some(e => e.type === "Weapon");
   const statPointsAvailable = player.statPoints > 0;
-  const totalCompanions = companions.length;
-  const loyaltyHanzo = getFlagValue(flags, "loyalty_hanzo");
-  const loyaltyYukimura = getFlagValue(flags, "loyalty_yukimura");
-  const campaignProgress = getFlagValue(flags, "campaign_chapter");
+  const totalCompanions = safeCompanions.length;
+  const loyaltyHanzo    = getFlagValue(safeFlags, "loyalty_hanzo");
+  const loyaltyYukimura = getFlagValue(safeFlags, "loyalty_yukimura");
+  const campaignProgress = getFlagValue(safeFlags, "campaign_chapter");
 
   // Priority 1 — No companions at all
   if (totalCompanions === 0) {
@@ -70,7 +78,7 @@ export function ContextualTips({ player, companions, equipment, flags }: Props) 
   }
 
   // Priority 3 — No weapon equipped
-  if (!hasWeapon && equipment.length > 0) {
+  if (!hasWeapon && safeEquipment.length > 0) {
     tips.push({
       id: "no-weapon",
       icon: Sword,
