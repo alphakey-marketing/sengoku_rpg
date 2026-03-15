@@ -133,16 +133,22 @@ export function calculateDamage(attacker: CombatUnit, defender: CombatUnit, isCr
   return Math.max(1, damage);
 }
 
-// ─── A1: Flag-modified battle stats ──────────────────────────────────────────
+// ─── A1: Flag-modified battle stats (continuous, story-driven) ────────────────
 //
-// Reads playerFlags from DB and applies the following modifiers BEFORE combat:
+// Each story flag applies a soft, incremental bonus that scales directly with
+// the raw flag value earned through Chapter choices — no hard thresholds.
 //
-//   ruthlessness >= 70        → every player-side unit gains +15% weaponATK & bonusATK
-//   supernatural_affinity >= 60 → every enemy starts with a spirit_debuff status
-//                                 (−10% effective hardDEF per stack, applied in calculateDamage)
-//   political_power >= 80     → enemy array is trimmed to max(1, n−1)
+//  ruthlessness          → +5% ATK per point (cap +50%) for every player unit
+//  supernatural_affinity → +4% HP per point (cap +40%); at ≥1 all enemies
+//                          gain a spirit_debuff (−10% effective hardDEF)
+//  political_power       → enemy count trimmed by 1 per 3 points (min 1 enemy)
+//  mitsuhide_loyalty     → amplifies all three above bonuses by +2% per point
+//                          (cap +20% amplification)
 //
-// The function mutates the team/enemy arrays in place and returns a log of what fired.
+// NOTE: ATK and HP bonuses are already baked into the team stats by
+// player-stats.ts before combat runs. applyFlagModifiers here only handles
+// effects that must be applied TO THE ENEMY ARRAY (spirit_debuff, enemy trim)
+// and appends narrative log lines so the player can see the effect.
 
 export async function applyFlagModifiers(
   userId: string,
@@ -151,38 +157,42 @@ export async function applyFlagModifiers(
 ): Promise<string[]> {
   const modifierLog: string[] = [];
 
-  // Fetch this player's flags
   const rows = await db.select().from(playerFlags).where(eq(playerFlags.userId, userId));
   const flags: Record<string, number> = {};
   for (const r of rows) flags[r.flagKey] = r.flagValue;
 
-  // ── ruthlessness >= 70 → +15% ATK for every player-side member ──────────
-  if ((flags.ruthlessness ?? 0) >= 70) {
-    const boost = (v: number) => Math.floor(v * 1.15);
-    team.player.attack    = boost(team.player.attack);
-    team.player.weaponATK = boost((team.player as any).weaponATK ?? team.player.attack);
-    (team.player as any).bonusATK = Math.floor(((team.player as any).bonusATK ?? 0) * 1.15 + team.player.attack * 0.15);
-    for (const c of team.companions) {
-      c.attack    = boost(c.attack);
-      (c as any).weaponATK  = boost((c as any).weaponATK ?? c.attack);
-      (c as any).bonusATK   = Math.floor(((c as any).bonusATK ?? 0) * 1.15 + c.attack * 0.15);
-    }
-    modifierLog.push("[ruthlessness ≥70] Your battlefield cruelty sharpens every blade. Team ATK +15%.");
+  const ruthlessness   = flags.ruthlessness          ?? 0;
+  const supernatural   = flags.supernatural_affinity ?? 0;
+  const political      = flags.political_power       ?? 0;
+  const loyalty        = flags.mitsuhide_loyalty     ?? 0;
+  const loyaltyAmp     = 1 + Math.min(0.20, loyalty * 0.02);
+
+  // ── ruthlessness → narrative ATK log (bonuses already in team stats) ──────
+  if (ruthlessness > 0) {
+    const pct = Math.round(Math.min(50, ruthlessness * 5) * loyaltyAmp);
+    modifierLog.push(`[Force +${pct}%] The blood of your past choices fuels your blade.`);
   }
 
-  // ── supernatural_affinity >= 60 → enemies start spirit_debuffed (−10% DEF) ─
-  if ((flags.supernatural_affinity ?? 0) >= 60) {
+  // ── supernatural_affinity → spirit_debuff on every enemy ─────────────────
+  if (supernatural >= 1) {
     for (const e of enemies) {
       if (!(e as any).statusEffects) (e as any).statusEffects = [];
       (e as any).statusEffects.push({ type: "spirit_debuff", duration: 99, value: 0.1 });
     }
-    modifierLog.push("[supernatural_affinity ≥60] Spirit energy weakens enemy armour. Enemies: −10% DEF.");
+    const pct = Math.round(Math.min(40, supernatural * 4) * loyaltyAmp);
+    modifierLog.push(`[Spirit +${pct}% HP] Unseen forces unnerve the enemy — their armour falters.`);
   }
 
-  // ── political_power >= 80 → reduce enemy count by 1 (min 1) ─────────────
-  if ((flags.political_power ?? 0) >= 80 && enemies.length > 1) {
-    enemies.splice(enemies.length - 1, 1);
-    modifierLog.push("[political_power ≥80] Your authority fractures their ranks. One enemy unit disbanded.");
+  // ── political_power → reduce enemy count (1 fewer per 3 pts, min 1) ──────
+  const trim = Math.min(enemies.length - 1, Math.floor(political / 3));
+  if (trim > 0) {
+    enemies.splice(enemies.length - trim, trim);
+    modifierLog.push(`[Influence] Your name alone disbands ${trim} enemy unit${trim > 1 ? "s" : ""}.`);
+  }
+
+  // ── mitsuhide_loyalty → narrative amplifier log ───────────────────────────
+  if (loyalty > 0) {
+    modifierLog.push(`[Mitsuhide] His unwavering loyalty amplifies your every advantage.`);
   }
 
   return modifierLog;
@@ -299,7 +309,6 @@ export function runTurnBasedCombat(playerTeam: TeamStats, enemies: EnemyStats[])
       hit:  (e as any).hit,
       flee: (e as any).flee,
       isPlayer: false,
-      // Carry over any statusEffects applied by applyFlagModifiers (e.g. spirit_debuff)
       statusEffects: (e as any).statusEffects ?? [],
       isGuarding: false,
       critChance: 0,
@@ -316,13 +325,11 @@ export function runTurnBasedCombat(playerTeam: TeamStats, enemies: EnemyStats[])
     turn++;
     logs.push(`--- TURN ${turn} ---`);
 
-    // ASPD determines initiative order
     units.sort((a, b) => (b.aspd ?? 0) - (a.aspd ?? 0));
 
     for (const unit of units) {
       if (unit.hp <= 0) continue;
 
-      // Multi-attack from ASPD (capped at 5)
       const numAttacks = Math.min(5, Math.max(1, Math.floor((unit.aspd ?? 100) / 100)));
 
       for (let i = 0; i < numAttacks; i++) {
@@ -330,7 +337,6 @@ export function runTurnBasedCombat(playerTeam: TeamStats, enemies: EnemyStats[])
         const playerAlive  = units.some(u =>  u.isPlayer && u.hp > 0);
         if (!enemiesAlive || !playerAlive) break;
 
-        // Stun check
         const stunIdx = unit.statusEffects.findIndex(s => s.type === "Stun");
         if (stunIdx !== -1) {
           logs.push(`${unit.name} is stunned and skips attack!`);
@@ -352,7 +358,6 @@ export function runTurnBasedCombat(playerTeam: TeamStats, enemies: EnemyStats[])
           logs.push(`${unit.name} attacks ${target.name} for ${damage}${isCrit ? " (CRITICAL!)" : ""} damage.`);
         }
 
-        // Ninja stun proc
         if (unit.name.toLowerCase().includes("ninja") && Math.random() < 0.3) {
           target.statusEffects.push({ type: "Stun", duration: 1 });
           logs.push(`${target.name} was stunned!`);
@@ -361,7 +366,6 @@ export function runTurnBasedCombat(playerTeam: TeamStats, enemies: EnemyStats[])
         if (target.hp <= 0) logs.push(`${target.name} has been KO'd!`);
       }
 
-      // Poison DoT
       const poisonIdx = unit.statusEffects.findIndex(s => s.type === "Poison");
       if (poisonIdx !== -1) {
         const dot = Math.floor(unit.maxHp * 0.05);
