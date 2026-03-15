@@ -15,8 +15,9 @@ import {
   fetchChapter,
   type StoryFlags,
 } from "@/lib/story-engine";
+import { usePlayer } from "@/hooks/use-game";
 
-// ─── Types ──────────────────────────────────────────────────────────────────────────────
+// ─── Types ───────────────────────────────────────────────────────────────────
 
 interface DialogueLine {
   id: number;
@@ -62,7 +63,7 @@ interface ChapterData {
   scenes: Scene[];
 }
 
-// ─── Visual maps ─────────────────────────────────────────────────────────────────────────
+// ─── Visual maps ──────────────────────────────────────────────────────────────
 
 const BG_MAP: Record<string, string> = {
   owari_province_dawn:       "from-amber-950 via-orange-900 to-stone-900",
@@ -117,10 +118,18 @@ const FLAG_LABELS: Record<string, string> = {
   battle_lost:           "☠ Battle Lost",
 };
 
-// Ch1 routes to /story (chapter-select, always exempt from AuthGuard chapter-0 gate)
-// so the player lands safely regardless of DB write timing.
+// ─── Completion destinations ──────────────────────────────────────────────────
+//
+// DESIGN: Ch1 now routes to "/" (the Dojo / Home screen).
+//
+// Previously it routed to "/story" — which is always exempt from AuthGuard's
+// chapter-gate, so the player never exercised the gate and the DB write was
+// never validated. Routing to "/" forces AuthGuard to confirm currentChapter >= 1
+// before rendering Home, which is the correct validation checkpoint.
+//
+// /story (no param) is now a chapter-select hub, not a replay of Ch1.
 const CHAPTER_COMPLETE_DESTINATION: Record<number, { path: string; label: string }> = {
-  1: { path: "/story",  label: "Enter the Dojo" },
+  1: { path: "/",       label: "Enter the Dojo" },
   2: { path: "/stable", label: "Visit War Council" },
   3: { path: "/gear",   label: "Open the Armoury" },
   4: { path: "/gacha",  label: "Visit the Shrine" },
@@ -129,7 +138,21 @@ const CHAPTER_COMPLETE_DESTINATION: Record<number, { path: string; label: string
   7: { path: "/map",    label: "Open Campaign Map" },
 };
 
-// ─── Sub-components ───────────────────────────────────────────────────────────────────────────
+// ─── Chapter catalogue (static until Phase 5 API) ────────────────────────────
+//
+// Only Ch1 is authored in story-engine.ts. Ch2-7 are stubs so the hub renders
+// proper "Coming Soon" cards rather than crashing.
+const CHAPTER_CATALOGUE = [
+  { id: 1, title: "The Fool of Owari",      subtitle: "1551 — The land mocks you. Let it.",        available: true  },
+  { id: 2, title: "The Wolf of Mino",        subtitle: "1554 — Alliances are chains. Pick yours.",  available: false },
+  { id: 3, title: "Blades of Kyoto",         subtitle: "1559 — The capital reeks of ambition.",     available: false },
+  { id: 4, title: "The Shrine at Azuchi",    subtitle: "1576 — Gods and generals keep score.",      available: false },
+  { id: 5, title: "Spirit Beasts of Kai",    subtitle: "1572 — Nature does not negotiate.",         available: false },
+  { id: 6, title: "The War Council",         subtitle: "1577 — Trust is a calculated risk.",        available: false },
+  { id: 7, title: "Flames Over Honnō-ji",   subtitle: "1582 — Every age ends the same way.",       available: false },
+];
+
+// ─── Sub-components ───────────────────────────────────────────────────────────
 
 function Portrait({ portraitKey, side }: { portraitKey: string | null; side: "left" | "right" }) {
   if (!portraitKey) return <div className="w-28 h-36 md:w-32 md:h-44" />;
@@ -166,7 +189,7 @@ function FlagBar({ flags }: { flags: StoryFlags }) {
   );
 }
 
-// ─── BattleGateOverlay ────────────────────────────────────────────────────────────────────────────
+// ─── BattleGateOverlay ────────────────────────────────────────────────────────
 
 interface BattleGateProps {
   scene: Scene;
@@ -271,12 +294,135 @@ function BattleGateOverlay({ scene, bgGradient, onResult }: BattleGateProps) {
   );
 }
 
-// ─── Main page ───────────────────────────────────────────────────────────────────────────────
+// ─── ChapterSelectHub ─────────────────────────────────────────────────────────
+//
+// Shown when the player visits /story without a chapterId param AND
+// currentChapter >= 1. New players (currentChapter = 0) never reach this
+// component — AuthGuard redirects them to /story which kicks off Ch1 inline
+// via the StoryPlayer below.
 
-export default function StoryPage() {
-  const params = useParams<{ chapterId?: string }>();
+interface ChapterSelectHubProps {
+  currentChapter: number;
+  onSelectChapter: (id: number) => void;
+}
+
+function ChapterSelectHub({ currentChapter, onSelectChapter }: ChapterSelectHubProps) {
   const [, navigate] = useLocation();
-  const CHAPTER_ID = params.chapterId ? parseInt(params.chapterId, 10) : 1;
+
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-stone-950 via-zinc-900 to-black flex flex-col">
+      {/* Header */}
+      <div className="flex items-center justify-between px-5 py-3 bg-black/40 backdrop-blur-sm border-b border-white/5">
+        <button
+          onClick={() => navigate("/")}
+          className="text-stone-400 hover:text-white text-xs transition"
+        >
+          ← Dojo
+        </button>
+        <span className="text-stone-400 text-xs tracking-widest uppercase">Chronicles</span>
+        <div className="w-16" />
+      </div>
+
+      {/* Title */}
+      <div className="px-6 pt-8 pb-4">
+        <p className="text-amber-400 text-xs tracking-widest uppercase mb-2">Sengoku Chronicles</p>
+        <h1 className="text-2xl font-bold text-white mb-1">Story Chapters</h1>
+        <p className="text-stone-400 text-sm">
+          Your legacy is forged through choice. Each chapter unlocks new areas of your domain.
+        </p>
+      </div>
+
+      {/* Chapter cards */}
+      <div className="flex-1 px-5 pb-8 space-y-3 overflow-y-auto">
+        {CHAPTER_CATALOGUE.map((ch) => {
+          const isUnlocked  = ch.available && ch.id <= currentChapter;
+          const isNext      = ch.available && ch.id === currentChapter + 1 && ch.id === 1;
+          const isCompleted = ch.id < currentChapter;
+          const isLocked    = !isUnlocked && !isNext;
+
+          // For Ch1 specifically: even if currentChapter < 1, it's always
+          // available to start (new player flow). AuthGuard ensures we only
+          // reach here when authenticated, so ch1 is never locked.
+          const canPlay = ch.available && (ch.id === 1 || ch.id <= currentChapter);
+
+          return (
+            <div
+              key={ch.id}
+              onClick={() => canPlay && onSelectChapter(ch.id)}
+              className={`relative rounded-lg border p-4 transition-all ${
+                canPlay
+                  ? "border-amber-700/40 bg-amber-900/10 hover:bg-amber-900/20 cursor-pointer"
+                  : "border-white/5 bg-white/3 cursor-not-allowed opacity-50"
+              }`}
+            >
+              {/* Status badge */}
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold border flex-shrink-0 ${
+                    isCompleted
+                      ? "bg-amber-800/60 border-amber-600/60 text-amber-300"
+                      : canPlay
+                      ? "bg-stone-800 border-stone-600 text-white"
+                      : "bg-stone-900 border-stone-700 text-stone-600"
+                  }`}>
+                    {isCompleted ? "✓" : ch.id}
+                  </div>
+                  <div>
+                    <p className={`text-sm font-semibold ${canPlay ? "text-white" : "text-stone-600"}`}>
+                      {ch.title}
+                    </p>
+                    <p className={`text-xs mt-0.5 ${canPlay ? "text-stone-400" : "text-stone-700"}`}>
+                      {ch.subtitle}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex-shrink-0 text-right">
+                  {!ch.available ? (
+                    <span className="text-xs text-stone-600 border border-stone-800 px-2 py-0.5 rounded-full">
+                      Coming Soon
+                    </span>
+                  ) : isCompleted ? (
+                    <span className="text-xs text-amber-500 border border-amber-700/40 px-2 py-0.5 rounded-full">
+                      Completed
+                    </span>
+                  ) : canPlay ? (
+                    <span className="text-xs text-green-400 border border-green-700/40 px-2 py-0.5 rounded-full animate-pulse">
+                      ▶ Play
+                    </span>
+                  ) : (
+                    <span className="text-xs text-stone-600 border border-stone-800 px-2 py-0.5 rounded-full">
+                      🔒 Locked
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Destination unlock hint */}
+              {canPlay && CHAPTER_COMPLETE_DESTINATION[ch.id] && (
+                <p className="text-[10px] text-stone-500 mt-2 pl-12">
+                  Completes → unlocks {CHAPTER_COMPLETE_DESTINATION[ch.id].label}
+                </p>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ─── StoryPlayer ──────────────────────────────────────────────────────────────
+//
+// The actual visual-novel engine. Receives a confirmed chapterId (always >= 1).
+
+interface StoryPlayerProps {
+  chapterId: number;
+}
+
+function StoryPlayer({ chapterId }: StoryPlayerProps) {
+  const CHAPTER_ID = chapterId;
+  const [, navigate] = useLocation();
 
   const [chapter, setChapter]             = useState<ChapterData | null>(null);
   const [sceneId, setSceneId]             = useState<number | null>(null);
@@ -288,7 +434,7 @@ export default function StoryPage() {
   const [isTyping, setIsTyping]           = useState(false);
   const [loading, setLoading]             = useState(true);
   const [error, setError]                 = useState<string | null>(null);
-  const typeTimerRef     = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const typeTimerRef       = useRef<ReturnType<typeof setTimeout> | null>(null);
   const completionFiredRef = useRef(false);
 
   const sceneMap = chapter
@@ -302,88 +448,50 @@ export default function StoryPage() {
   const battleReady  = isBattleGate && isAtLastLine && !isTyping;
 
   const completionDest = CHAPTER_COMPLETE_DESTINATION[CHAPTER_ID]
-    ?? { path: "/story", label: "Enter the Dojo" };
+    ?? { path: "/story", label: "Return to Chronicles" };
 
-  // ── triggerCompletion ───────────────────────────────────────────────────────────────────────────────
+  // ── triggerCompletion ────────────────────────────────────────────────────
   //
-  // ROOT CAUSE FIX — ordering matters:
-  //
-  // The previous order was:
-  //   1. completeChapter()        ← writes isCompleted:true to localStorage FIRST
-  //   2. unlockEnding()           ← localStorage only
-  //   3. POST /api/story/flags    ← server
-  //   4. POST /progress/complete  ← server (bumps currentChapter in DB)
-  //   5. refetchQueries
-  //   6. setIsComplete(true)
-  //
-  // The bug: React re-renders mid-sequence (between steps 1 and 4) cause the
-  // boot useEffect to re-run. It reads isCompleted:true from localStorage,
-  // sets completionFiredRef.current=true and setIsComplete(true), and returns
-  // early — skipping steps 3 & 4 entirely. currentChapter is NEVER written
-  // to the DB, so the "Enter the Dojo" button has nothing to navigate to.
-  //
-  // Fixed order:
-  //   1. Flush flags to server     ← fire-and-forget is fine; idempotent
-  //   2. POST /progress/complete   ← bumps currentChapter in DB
-  //   3. completeChapter()         ← NOW write isCompleted:true to localStorage
-  //   4. unlockEnding()            ← localStorage
-  //   5. refetchQueries            ← warm the cache so AuthGuard sees new chapter
-  //   6. setIsComplete(true)       ← render the complete screen
-  //
-  // By moving the localStorage write (step 3) to AFTER the server POST (step 2),
-  // the boot useEffect can never see isCompleted:true before the DB is updated.
+  // Fixed ordering (see previous commit comment for full explanation):
+  //   1. Flush flags to server      (fire-and-forget; idempotent)
+  //   2. POST /progress/complete    (bumps currentChapter in DB) ← MUST be first
+  //   3. completeChapter()          (write isCompleted:true to localStorage)
+  //   4. unlockEnding()             (localStorage)
+  //   5. refetchQueries             (warm cache so AuthGuard sees new chapter)
+  //   6. setIsComplete(true)        (render complete screen)
   const triggerCompletion = useCallback(async () => {
     if (completionFiredRef.current || !chapter) return;
     completionFiredRef.current = true;
     try {
-      // Step 1 — flush flag snapshot (fire-and-forget; absolute so idempotent)
       const finalFlags = await getFlags();
       if (Object.keys(finalFlags).length > 0) {
         apiRequest("POST", "/api/story/flags", { absolute: finalFlags }).catch(() => {});
       }
 
-      // Step 2 — server write: mark complete + bump currentChapter in DB
-      // This MUST succeed (or be caught) before we touch localStorage.
       await apiRequest("POST", "/api/story/progress/complete", {
-        chapterId:          CHAPTER_ID,
-        endingKey:          `ch${CHAPTER_ID}_complete`,
-        endingTitle:        chapter.title,
-        endingDescription:  `Chapter ${CHAPTER_ID} complete.`,
+        chapterId:         CHAPTER_ID,
+        endingKey:         `ch${CHAPTER_ID}_complete`,
+        endingTitle:       chapter.title,
+        endingDescription: `Chapter ${CHAPTER_ID} complete.`,
       });
 
-      // Step 3 — localStorage: mark chapter complete (only after server confirmed)
       await completeChapter();
-
-      // Step 4 — localStorage: record the ending
       await unlockEnding({
-        chapterId:          CHAPTER_ID,
-        endingKey:          `ch${CHAPTER_ID}_complete`,
-        endingTitle:        chapter.title,
-        endingDescription:  `Chapter ${CHAPTER_ID} complete.`,
+        chapterId:         CHAPTER_ID,
+        endingKey:         `ch${CHAPTER_ID}_complete`,
+        endingTitle:       chapter.title,
+        endingDescription: `Chapter ${CHAPTER_ID} complete.`,
       });
 
-      // Step 5 — warm the React Query cache so AuthGuard reads currentChapter >= 1
       await queryClient.refetchQueries({ queryKey: [api.player.get.path] });
-
-      // Step 6 — render the complete screen
       setIsComplete(true);
     } catch {
-      // Server call failed (e.g. network blip). Still mark localStorage so the
-      // player isn't permanently stuck, but DO NOT mark completionFiredRef as
-      // "done" — reset it so a page refresh will retry the server write.
       completionFiredRef.current = false;
-      // Show complete screen anyway so UX isn't frozen.
       setIsComplete(true);
     }
   }, [chapter, CHAPTER_ID]);
 
-  // ── Boot ──────────────────────────────────────────────────────────────────────────────────
-  //
-  // When localStorage shows isCompleted:true on boot we still need to confirm
-  // that the server has the matching currentChapter. If the server POST failed
-  // previously (e.g. network error during triggerCompletion), localStorage is
-  // ahead of the DB. In that case we re-run triggerCompletion (completionFiredRef
-  // was reset on error) so the server is eventually consistent.
+  // ── Boot ──────────────────────────────────────────────────────────────────
   useEffect(() => {
     (async () => {
       try {
@@ -399,9 +507,6 @@ export default function StoryPage() {
 
         if (progress && progress.chapterId === CHAPTER_ID) {
           if (progress.isCompleted) {
-            // localStorage says complete. Trust it for the UI — the complete
-            // screen has already been shown and the server POST already
-            // succeeded (because we only write localStorage AFTER the server).
             completionFiredRef.current = true;
             setSceneId(progress.currentSceneId ?? firstId);
             setIsComplete(true);
@@ -425,7 +530,7 @@ export default function StoryPage() {
     })();
   }, [CHAPTER_ID]);
 
-  // ── Typewriter ─────────────────────────────────────────────────────────────────────────────
+  // ── Typewriter ────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!currentLine) return;
     if (typeTimerRef.current) clearTimeout(typeTimerRef.current);
@@ -447,7 +552,7 @@ export default function StoryPage() {
     if (scene) markSceneSeen(scene.sceneOrder);
   }, [sceneId]);
 
-  // ── Declarative fallback ───────────────────────────────────────────────────────────────────────
+  // ── Declarative completion fallback ───────────────────────────────────────
   useEffect(() => {
     if (
       scene?.isChapterEnd &&
@@ -485,7 +590,6 @@ export default function StoryPage() {
     }
   }, [scene, chapter, lineIndex, isTyping, skipTypewriter, triggerCompletion]);
 
-  // ── Choice handler ──────────────────────────────────────────────────────────────────────────────
   const handleChoice = useCallback(async (choice: Choice) => {
     if (!scene) return;
     const mutations: StoryFlags = {};
@@ -505,7 +609,6 @@ export default function StoryPage() {
     setShowChoices(false);
   }, [scene]);
 
-  // ── Battle result handler ───────────────────────────────────────────────────────────────────────
   const handleBattleResult = useCallback(async (won: boolean, _logs: string[]) => {
     if (!scene) return;
     const nextId = won
@@ -537,7 +640,7 @@ export default function StoryPage() {
     setFlags({});
   }, [chapter, CHAPTER_ID]);
 
-  // ── Loading / error ───────────────────────────────────────────────────────────────────────────
+  // ── Loading / error ────────────────────────────────────────────────────────
   if (loading) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
@@ -547,13 +650,19 @@ export default function StoryPage() {
   }
   if (error || !chapter) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
+      <div className="min-h-screen bg-black flex flex-col items-center justify-center gap-4 p-6 text-center">
         <p className="text-red-400 text-sm">{error ?? "Chapter not found."}</p>
+        <button
+          onClick={() => navigate("/story")}
+          className="px-4 py-2 bg-stone-800 hover:bg-stone-700 text-white text-sm rounded transition"
+        >
+          ← Back to Chronicles
+        </button>
       </div>
     );
   }
 
-  // ── Chapter complete screen ─────────────────────────────────────────────────────────────────────
+  // ── Chapter complete screen ────────────────────────────────────────────────
   if (isComplete) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-zinc-950 to-black flex flex-col items-center justify-center p-8 text-center">
@@ -711,4 +820,65 @@ export default function StoryPage() {
       </div>
     </div>
   );
+}
+
+// ─── Main page ────────────────────────────────────────────────────────────────
+//
+// Routing logic:
+//
+//   /story          → no chapterId param
+//     currentChapter = 0  → new player: start Ch1 directly (same as before)
+//     currentChapter >= 1 → returning player: show ChapterSelectHub
+//
+//   /story/1        → play Ch1 directly (StoryPlayer)
+//   /story/2+       → play that chapter (StoryPlayer; throws if not authored yet)
+//
+// Why not redirect new players to /story/1?
+//   AuthGuard exempts /story/* from the chapter-0 gate, so doing
+//   navigate("/story/1") inside the guard would be a no-op loop. Instead we
+//   just render StoryPlayer inline for chapter 1 when currentChapter is 0,
+//   which is indistinguishable from the old behaviour.
+
+export default function StoryPage() {
+  const params = useParams<{ chapterId?: string }>();
+  const [, navigate] = useLocation();
+
+  // Read the player's current chapter from the server cache so we know
+  // whether to show the hub or go straight into Ch1.
+  const { data: player, isLoading: playerLoading } = usePlayer();
+  const currentChapter = player?.currentChapter ?? 0;
+
+  const hasChapterParam = !!params.chapterId;
+  const chapterIdFromParam = params.chapterId ? parseInt(params.chapterId, 10) : null;
+
+  // Show hub when the player has a chapter param — let StoryPlayer handle it.
+  // Show hub when no param AND player has progressed past ch0.
+  // Show Ch1 inline when no param AND player is new (ch0).
+
+  if (playerLoading) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <p className="text-stone-500 text-sm animate-pulse">Loading…</p>
+      </div>
+    );
+  }
+
+  // Direct chapter link (e.g. /story/1, /story/2)
+  if (hasChapterParam && chapterIdFromParam) {
+    return <StoryPlayer chapterId={chapterIdFromParam} />;
+  }
+
+  // Returning player: show chapter-select hub
+  if (currentChapter >= 1) {
+    return (
+      <ChapterSelectHub
+        currentChapter={currentChapter}
+        onSelectChapter={(id) => navigate(`/story/${id}`)}
+      />
+    );
+  }
+
+  // New player (currentChapter = 0): start Ch1 directly, same as legacy behaviour.
+  // AuthGuard has already redirected them to /story, so we just begin Ch1 inline.
+  return <StoryPlayer chapterId={1} />;
 }
