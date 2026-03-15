@@ -400,12 +400,7 @@ function ChapterSelectHub({ currentChapter, onSelectChapter }: ChapterSelectHubP
 
       <div className="flex-1 px-5 pb-8 space-y-3 overflow-y-auto">
         {CHAPTER_CATALOGUE.map((ch) => {
-          // isCompleted: chapters up to and including currentChapter are done.
           const isCompleted = ch.id <= currentChapter;
-          // canPlay:
-          //   • Ch1 is always accessible (new player, currentChapter === 0)
-          //   • Any completed chapter can be replayed
-          //   • Exactly one chapter ahead (currentChapter + 1) is the next unlocked chapter
           const canPlay = ch.available && (
             ch.id === 1 ||
             ch.id <= currentChapter ||
@@ -494,6 +489,8 @@ function StoryPlayer({ chapterId }: StoryPlayerProps) {
   const [loading, setLoading]             = useState(true);
   const [error, setError]                 = useState<string | null>(null);
   const [comingSoon, setComingSoon]       = useState(false);
+  // FIX 2: track a transient advance error so the player can see it and tap again
+  const [advanceError, setAdvanceError]   = useState<string | null>(null);
   const typeTimerRef       = useRef<ReturnType<typeof setTimeout> | null>(null);
   const completionFiredRef = useRef(false);
 
@@ -632,38 +629,64 @@ function StoryPlayer({ chapterId }: StoryPlayerProps) {
     }
   }, [isTyping, currentLine]);
 
+  // FIX 2: advance() — server call is fire-and-forget; scene transition is
+  // never blocked by a network or auth error.  A subtle hint is shown so QA
+  // can spot server issues without the story locking up.
   const advance = useCallback(async () => {
     if (!scene || !chapter) return;
     if (isTyping) { skipTypewriter(); return; }
+    setAdvanceError(null);
     const nextLineIdx = lineIndex + 1;
     if (nextLineIdx < scene.dialogueLines.length) { setLineIndex(nextLineIdx); return; }
     if (scene.choices.length > 0) { setShowChoices(true); return; }
     if (scene.isBattleGate) return;
     if (scene.isChapterEnd) { await triggerCompletion(); return; }
     if (scene.nextSceneId) {
-      await advanceScene(scene.nextSceneId);
-      setSceneId(scene.nextSceneId);
+      // Apply local transition immediately — do not await the server call
+      const nextId = scene.nextSceneId;
+      setSceneId(nextId);
       setLineIndex(0);
       setShowChoices(false);
+      // Persist progress in the background; swallow errors so story never freezes
+      advanceScene(nextId).catch((err: any) => {
+        console.warn("[story] advanceScene server error (non-blocking):", err?.message ?? err);
+        setAdvanceError("⚠ sync error — tap again if needed");
+        setTimeout(() => setAdvanceError(null), 3000);
+      });
     }
   }, [scene, chapter, lineIndex, isTyping, skipTypewriter, triggerCompletion]);
 
+  // FIX 2: handleChoice() — same pattern: apply flags and transition locally,
+  // then persist to the server asynchronously.
   const handleChoice = useCallback(async (choice: Choice) => {
     if (!scene) return;
     const mutations: StoryFlags = {};
     if (choice.flagKey != null) mutations[choice.flagKey] = choice.flagValue ?? 0;
     if (choice.flagKey2 != null && choice.flagValue2 != null) mutations[choice.flagKey2] = choice.flagValue2;
-    const updated = await applyFlags(mutations);
+
+    // Apply flags locally first so the UI updates instantly
+    let updated = { ...flags, ...mutations };
+    try {
+      updated = await applyFlags(mutations);
+    } catch (err: any) {
+      console.warn("[story] applyFlags error (non-blocking):", err?.message ?? err);
+    }
     setFlags(updated);
+
     if (Object.keys(mutations).length > 0) {
       apiRequest("POST", "/api/story/flags", { mutations }).catch(() => {});
     }
-    await advanceScene(choice.nextSceneId);
+
+    // Transition immediately, persist in background
     setSceneId(choice.nextSceneId);
     setLineIndex(0);
     setShowChoices(false);
-  }, [scene]);
+    advanceScene(choice.nextSceneId).catch((err: any) => {
+      console.warn("[story] advanceScene (choice) server error (non-blocking):", err?.message ?? err);
+    });
+  }, [scene, flags]);
 
+  // FIX 2: handleBattleResult() — same pattern.
   const handleBattleResult = useCallback(async (won: boolean, _logs: string[]) => {
     if (!scene) return;
     const nextId = won
@@ -673,12 +696,18 @@ function StoryPlayer({ chapterId }: StoryPlayerProps) {
     apiRequest("POST", "/api/story/flags", {
       absolute: { battle_won: won ? 1 : 0, battle_lost: won ? 0 : 1 },
     }).catch(() => {});
-    setFlags(await getFlags());
-    await advanceScene(nextId);
+
+    // Transition immediately, persist in background
+    let latestFlags = flags;
+    try { latestFlags = await getFlags(); } catch {}
+    setFlags(latestFlags);
     setSceneId(nextId);
     setLineIndex(0);
     setShowChoices(false);
-  }, [scene]);
+    advanceScene(nextId).catch((err: any) => {
+      console.warn("[story] advanceScene (battle) server error (non-blocking):", err?.message ?? err);
+    });
+  }, [scene, flags]);
 
   const handleReset = useCallback(async () => {
     if (!chapter) return;
@@ -896,7 +925,9 @@ function StoryPlayer({ chapterId }: StoryPlayerProps) {
           <p className="text-right text-red-500/70 text-xs mt-2 animate-pulse">tap to enter battle ⚔</p>
         )}
         {!showChoices && !isTyping && !scene.isBattleGate && !scene.isChapterEnd && (
-          <p className="text-right text-stone-600 text-xs mt-2 animate-pulse">tap to continue ▸</p>
+          <p className="text-right text-stone-600 text-xs mt-2 animate-pulse">
+            {advanceError ?? "tap to continue ▸"}
+          </p>
         )}
         {scene.isChapterEnd && isAtLastLine && !isTyping && (
           <p className="text-right text-amber-600/70 text-xs mt-2 animate-pulse">tap to complete chapter ★</p>
