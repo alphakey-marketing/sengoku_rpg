@@ -37,13 +37,6 @@ export interface UnlockedEnding {
   unlockedAt: string;
 }
 
-export interface StoryEngineSnapshot {
-  progress: ProgressState | null;
-  flags: StoryFlags;
-  seenSceneIds: number[];
-  endings: UnlockedEnding[];
-}
-
 // ─── Storage keys ─────────────────────────────────────────────────────────────
 
 const KEYS = {
@@ -94,6 +87,9 @@ export interface Scene {
   id: number;
   sceneOrder: number;
   backgroundKey: string;
+  // bgmKey is present in the API response but the audio system is not yet
+  // implemented. Typed here so the field is not silently dropped from the
+  // API shape; use it once the BGM layer is wired up.
   bgmKey: string;
   nextSceneId: number | null;
   isBattleGate: boolean;
@@ -110,6 +106,9 @@ export interface ChapterData {
   title: string;
   subtitle: string | null;
   firstSceneId: number | null;
+  // isLocked comes from the API but locking is enforced client-side via
+  // currentChapter arithmetic in ChapterSelectHub; kept typed so the
+  // API contract is explicit.
   isLocked: boolean;
   scenes: Scene[];
 }
@@ -224,14 +223,6 @@ export async function markSceneSeen(sceneId: number): Promise<void> {
   if (!seen.includes(sceneId)) { seen.push(sceneId); write(KEYS.seen, seen); }
 }
 
-export async function hasSeenScene(sceneId: number): Promise<boolean> {
-  return read<number[]>(KEYS.seen, []).includes(sceneId);
-}
-
-export async function getSeenSceneIds(): Promise<number[]> {
-  return read<number[]>(KEYS.seen, []);
-}
-
 // ─── Endings ──────────────────────────────────────────────────────────────────
 
 export async function unlockEnding(
@@ -255,24 +246,8 @@ export async function getUnlockedEndings(): Promise<UnlockedEnding[]> {
   return read<UnlockedEnding[]>(KEYS.endings, []);
 }
 
-// ─── Snapshot ─────────────────────────────────────────────────────────────────
-
-export async function getSnapshot(): Promise<StoryEngineSnapshot> {
-  return {
-    progress:     read<ProgressState | null>(KEYS.progress, null),
-    flags:        read<StoryFlags>(KEYS.flags, {}),
-    seenSceneIds: read<number[]>(KEYS.seen, []),
-    endings:      read<UnlockedEnding[]>(KEYS.endings, []),
-  };
-}
-
 // ─── Reset ────────────────────────────────────────────────────────────────────
 
 export async function resetStory(): Promise<void> {
   Object.values(KEYS).forEach((k) => localStorage.removeItem(k));
-}
-
-export async function resetFlagsAndSeen(): Promise<void> {
-  localStorage.removeItem(KEYS.flags);
-  localStorage.removeItem(KEYS.seen);
 }

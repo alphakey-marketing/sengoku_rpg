@@ -14,56 +14,14 @@ import {
   resetStory,
   fetchChapter,
   type StoryFlags,
+  type DialogueLine,
+  type Choice,
+  type Scene,
+  type ChapterData,
 } from "@/lib/story-engine";
 import { usePlayer } from "@/hooks/use-game";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-interface DialogueLine {
-  id: number;
-  speakerName: string;
-  speakerSide: "left" | "right" | "none";
-  portraitKey: string | null;
-  text: string;
-  lineOrder: number;
-}
-
-interface Choice {
-  id: number;
-  choiceText: string;
-  nextSceneId: number;
-  flagKey: string | null;
-  flagValue: number | null;
-  flagKey2: string | null;
-  flagValue2: number | null;
-  choiceOrder: number;
-}
-
-interface Scene {
-  id: number;
-  sceneOrder: number;
-  backgroundKey: string;
-  bgmKey: string;
-  nextSceneId: number | null;
-  isBattleGate: boolean;
-  battleEnemyKey: string | null;
-  battleWinSceneId: number | null;
-  battleLoseSceneId: number | null;
-  isChapterEnd: boolean;
-  dialogueLines: DialogueLine[];
-  choices: Choice[];
-}
-
-interface ChapterData {
-  id: number;
-  title: string;
-  subtitle: string | null;
-  firstSceneId: number | null;
-  isLocked: boolean;
-  scenes: Scene[];
-}
-
-// ─── Visual maps ──────────────────────────────────────────────────────────────────
+// ─── Visual maps ──────────────────────────────────────────────────────────────
 
 const BG_MAP: Record<string, string> = {
   // ── Chapter 1 ──
@@ -201,7 +159,7 @@ const FLAG_LABELS: Record<string, string> = {
   kennyo_hate:           "☯ Kennyo",
 };
 
-// ─── Completion destinations ────────────────────────────────────────────────────────
+// ─── Completion destinations ──────────────────────────────────────────────────
 const CHAPTER_COMPLETE_DESTINATION: Record<number, { path: string; label: string }> = {
   1: { path: "/",       label: "Enter the Dojo" },
   2: { path: "/stable", label: "Visit War Council" },
@@ -213,7 +171,7 @@ const CHAPTER_COMPLETE_DESTINATION: Record<number, { path: string; label: string
   8: { path: "/story",  label: "Return to Chronicles" },
 };
 
-// ─── Chapter catalogue ────────────────────────────────────────────────────────────
+// ─── Chapter catalogue ────────────────────────────────────────────────────────
 const CHAPTER_CATALOGUE = [
   { id: 1, title: "The Fool of Owari",          subtitle: "1551 — The land mocks you. Let it.",                                         available: true },
   { id: 2, title: "The Alliance of Wolves",      subtitle: "1552 — Every alliance is a leash. The question is who holds it.",            available: true },
@@ -225,7 +183,7 @@ const CHAPTER_CATALOGUE = [
   { id: 8, title: "Honnoji",                     subtitle: "1582 — Every age ends the same way. The question is whether you chose it.",  available: true },
 ];
 
-// ─── Sub-components ─────────────────────────────────────────────────────────────────
+// ─── Sub-components ───────────────────────────────────────────────────────────
 
 function Portrait({ portraitKey, side }: { portraitKey: string | null; side: "left" | "right" }) {
   if (!portraitKey) return <div className="w-28 h-36 md:w-32 md:h-44" />;
@@ -262,7 +220,7 @@ function FlagBar({ flags }: { flags: StoryFlags }) {
   );
 }
 
-// ─── BattleGateOverlay ──────────────────────────────────────────────────────────────────
+// ─── BattleGateOverlay ────────────────────────────────────────────────────────
 
 interface BattleGateProps {
   scene: Scene;
@@ -367,7 +325,7 @@ function BattleGateOverlay({ scene, bgGradient, onResult }: BattleGateProps) {
   );
 }
 
-// ─── ChapterSelectHub ─────────────────────────────────────────────────────────────────
+// ─── ChapterSelectHub ─────────────────────────────────────────────────────────
 
 interface ChapterSelectHubProps {
   currentChapter: number;
@@ -468,14 +426,13 @@ function ChapterSelectHub({ currentChapter, onSelectChapter }: ChapterSelectHubP
   );
 }
 
-// ─── StoryPlayer ────────────────────────────────────────────────────────────────────
+// ─── StoryPlayer ──────────────────────────────────────────────────────────────
 
 interface StoryPlayerProps {
   chapterId: number;
 }
 
 function StoryPlayer({ chapterId }: StoryPlayerProps) {
-  const CHAPTER_ID = chapterId;
   const [, navigate] = useLocation();
 
   const [chapter, setChapter]             = useState<ChapterData | null>(null);
@@ -499,16 +456,15 @@ function StoryPlayer({ chapterId }: StoryPlayerProps) {
   const scene       = sceneId ? sceneMap[sceneId] ?? null : null;
   const currentLine = scene?.dialogueLines[lineIndex] ?? null;
 
-  const isBattleGate = !!scene?.isBattleGate && !showChoices;
   const isAtLastLine = !!scene && lineIndex >= scene.dialogueLines.length - 1;
-  const battleReady  = isBattleGate && isAtLastLine && !isTyping;
+  const battleReady  = !!scene?.isBattleGate && !showChoices && isAtLastLine && !isTyping;
 
-  const completionDest = CHAPTER_COMPLETE_DESTINATION[CHAPTER_ID]
+  const completionDest = CHAPTER_COMPLETE_DESTINATION[chapterId]
     ?? { path: "/story", label: "Return to Chronicles" };
 
-  const catalogueEntry = CHAPTER_CATALOGUE.find((c) => c.id === CHAPTER_ID);
+  const catalogueEntry = CHAPTER_CATALOGUE.find((c) => c.id === chapterId);
 
-  // ── triggerCompletion ────────────────────────────────────────────────────────────
+  // ── triggerCompletion ─────────────────────────────────────────────────────
   const triggerCompletion = useCallback(async () => {
     if (completionFiredRef.current || !chapter) return;
     completionFiredRef.current = true;
@@ -518,17 +474,17 @@ function StoryPlayer({ chapterId }: StoryPlayerProps) {
         apiRequest("POST", "/api/story/flags", { absolute: finalFlags }).catch(() => {});
       }
       await apiRequest("POST", "/api/story/progress/complete", {
-        chapterId:         CHAPTER_ID,
-        endingKey:         `ch${CHAPTER_ID}_complete`,
+        chapterId,
+        endingKey:         `ch${chapterId}_complete`,
         endingTitle:       chapter.title,
-        endingDescription: `Chapter ${CHAPTER_ID} complete.`,
+        endingDescription: `Chapter ${chapterId} complete.`,
       });
       await completeChapter();
       await unlockEnding({
-        chapterId:         CHAPTER_ID,
-        endingKey:         `ch${CHAPTER_ID}_complete`,
+        chapterId,
+        endingKey:         `ch${chapterId}_complete`,
         endingTitle:       chapter.title,
-        endingDescription: `Chapter ${CHAPTER_ID} complete.`,
+        endingDescription: `Chapter ${chapterId} complete.`,
       });
       await queryClient.refetchQueries({ queryKey: [api.player.get.path] });
       setIsComplete(true);
@@ -536,9 +492,9 @@ function StoryPlayer({ chapterId }: StoryPlayerProps) {
       completionFiredRef.current = false;
       setIsComplete(true);
     }
-  }, [chapter, CHAPTER_ID]);
+  }, [chapter, chapterId]);
 
-  // ── Boot ────────────────────────────────────────────────────────────────────
+  // ── Boot ──────────────────────────────────────────────────────────────────
   useEffect(() => {
     (async () => {
       try {
@@ -546,7 +502,7 @@ function StoryPlayer({ chapterId }: StoryPlayerProps) {
         setComingSoon(false);
         setError(null);
         const [chapterData, savedFlags, progress] = await Promise.all([
-          fetchChapter(CHAPTER_ID),
+          fetchChapter(chapterId),
           getFlags(),
           getProgress(),
         ]);
@@ -554,7 +510,7 @@ function StoryPlayer({ chapterId }: StoryPlayerProps) {
         setFlags(savedFlags);
         const firstId = chapterData.firstSceneId ?? chapterData.scenes[0]?.id;
 
-        if (progress && progress.chapterId === CHAPTER_ID) {
+        if (progress && progress.chapterId === chapterId) {
           if (progress.isCompleted) {
             completionFiredRef.current = true;
             setSceneId(progress.currentSceneId ?? firstId);
@@ -562,12 +518,12 @@ function StoryPlayer({ chapterId }: StoryPlayerProps) {
           } else if (progress.currentSceneId) {
             setSceneId(progress.currentSceneId);
           } else {
-            await startChapter(CHAPTER_ID, firstId);
+            await startChapter(chapterId, firstId);
             setSceneId(firstId);
             setFlags(await getFlags());
           }
         } else {
-          await startChapter(CHAPTER_ID, firstId);
+          await startChapter(chapterId, firstId);
           setSceneId(firstId);
           setFlags(await getFlags());
         }
@@ -582,9 +538,9 @@ function StoryPlayer({ chapterId }: StoryPlayerProps) {
         setLoading(false);
       }
     })();
-  }, [CHAPTER_ID]);
+  }, [chapterId]);
 
-  // ── Typewriter ────────────────────────────────────────────────────────────────
+  // ── Typewriter ────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!currentLine) return;
     if (typeTimerRef.current) clearTimeout(typeTimerRef.current);
@@ -606,7 +562,7 @@ function StoryPlayer({ chapterId }: StoryPlayerProps) {
     if (scene) markSceneSeen(scene.sceneOrder);
   }, [sceneId]);
 
-  // ── Declarative completion fallback ──────────────────────────────────────────
+  // ── Declarative completion fallback ───────────────────────────────────────
   useEffect(() => {
     if (
       scene?.isChapterEnd &&
@@ -650,40 +606,28 @@ function StoryPlayer({ chapterId }: StoryPlayerProps) {
     }
   }, [scene, chapter, lineIndex, isTyping, skipTypewriter, triggerCompletion]);
 
-  // ── handleChoice ────────────────────────────────────────────────────────────────
-  //
-  // BUG FIX: previously used `{ ...flags, ...mutations }` which overwrites
-  // existing flag values. A choice that grants mitsuhide_loyalty: +2 in Ch1
-  // followed by one that sets mitsuhide_loyalty: -1 in Ch3 would produce -1
-  // instead of the correct running total of +1.
-  //
-  // Fix: build the optimistic local update with the same additive loop used
-  // by applyFlags() in story-engine.ts, so the React state, localStorage,
-  // and the server DB all stay in sync.
+  // ── handleChoice ──────────────────────────────────────────────────────────
   const handleChoice = useCallback(async (choice: Choice) => {
     if (!scene) return;
     const mutations: StoryFlags = {};
     if (choice.flagKey != null) mutations[choice.flagKey] = choice.flagValue ?? 0;
     if (choice.flagKey2 != null && choice.flagValue2 != null) mutations[choice.flagKey2] = choice.flagValue2;
 
-    // Build additive optimistic state (mirrors applyFlags logic)
+    // Additive optimistic state — mirrors applyFlags() in story-engine.ts
     const optimistic = { ...flags };
     for (const [k, v] of Object.entries(mutations)) {
       optimistic[k] = (optimistic[k] ?? 0) + v;
     }
     setFlags(optimistic);
 
-    // Persist to localStorage (applyFlags is additive, so pass only deltas)
     applyFlags(mutations).catch((err: any) => {
       console.warn("[story] applyFlags error (non-blocking):", err?.message ?? err);
     });
 
-    // Persist to server DB (mutations = additive deltas on the server too)
     if (Object.keys(mutations).length > 0) {
       apiRequest("POST", "/api/story/flags", { mutations }).catch(() => {});
     }
 
-    // Scene transition — immediate, no awaiting
     setSceneId(choice.nextSceneId);
     setLineIndex(0);
     setShowChoices(false);
@@ -718,15 +662,15 @@ function StoryPlayer({ chapterId }: StoryPlayerProps) {
     completionFiredRef.current = false;
     await resetStory();
     const firstId = chapter.firstSceneId ?? chapter.scenes[0]?.id;
-    await startChapter(CHAPTER_ID, firstId, true);
+    await startChapter(chapterId, firstId, true);
     setSceneId(firstId);
     setLineIndex(0);
     setShowChoices(false);
     setIsComplete(false);
     setFlags({});
-  }, [chapter, CHAPTER_ID]);
+  }, [chapter, chapterId]);
 
-  // ── Loading ─────────────────────────────────────────────────────────────────
+  // ── Loading ───────────────────────────────────────────────────────────────
   if (loading) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
@@ -735,14 +679,14 @@ function StoryPlayer({ chapterId }: StoryPlayerProps) {
     );
   }
 
-  // ── Coming Soon (unwritten chapter) ─────────────────────────────────────────
+  // ── Coming Soon ───────────────────────────────────────────────────────────
   if (comingSoon) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-stone-950 via-zinc-900 to-black flex flex-col items-center justify-center p-8 text-center">
         <div className="max-w-md">
           <p className="text-amber-400 text-xs tracking-widest uppercase mb-4">Coming Soon</p>
           <h1 className="text-2xl font-bold text-white mb-2">
-            Chapter {CHAPTER_ID}{catalogueEntry ? `: ${catalogueEntry.title}` : ""}
+            Chapter {chapterId}{catalogueEntry ? `: ${catalogueEntry.title}` : ""}
           </h1>
           {catalogueEntry && (
             <p className="text-stone-400 italic mb-6">{catalogueEntry.subtitle}</p>
@@ -763,7 +707,7 @@ function StoryPlayer({ chapterId }: StoryPlayerProps) {
     );
   }
 
-  // ── Hard error ─────────────────────────────────────────────────────────────────
+  // ── Hard error ────────────────────────────────────────────────────────────
   if (error || !chapter) {
     return (
       <div className="min-h-screen bg-black flex flex-col items-center justify-center gap-4 p-6 text-center">
@@ -778,7 +722,7 @@ function StoryPlayer({ chapterId }: StoryPlayerProps) {
     );
   }
 
-  // ── Chapter complete screen ──────────────────────────────────────────────────────
+  // ── Chapter complete screen ───────────────────────────────────────────────
   if (isComplete) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-zinc-950 to-black flex flex-col items-center justify-center p-8 text-center">
@@ -796,14 +740,14 @@ function StoryPlayer({ chapterId }: StoryPlayerProps) {
             <p className="text-amber-400 text-xs font-semibold uppercase tracking-widest mb-1">★ New area unlocked</p>
             <p className="text-white text-sm font-semibold">{completionDest.label}</p>
             <p className="text-stone-400 text-xs mt-1">
-              {CHAPTER_ID === 1 && "Your Dojo is now open — review your stats and spend your first stat points."}
-              {CHAPTER_ID === 2 && "The War Council opens — recruit companions and build your party."}
-              {CHAPTER_ID === 3 && "The Armoury is unlocked — equip and upgrade the loot you've earned."}
-              {CHAPTER_ID === 4 && "The Shrine awaits — summon new warriors with the Gacha."}
-              {CHAPTER_ID === 5 && "The Menagerie is open — tame and equip spirit beasts."}
-              {CHAPTER_ID === 6 && "The Stables are ready — mount your war horses."}
-              {CHAPTER_ID === 7 && "The Campaign Map is open — lead your armies across Japan."}
-              {CHAPTER_ID === 8 && "The chronicle is complete. Your legacy is written."}
+              {chapterId === 1 && "Your Dojo is now open — review your stats and spend your first stat points."}
+              {chapterId === 2 && "The War Council opens — recruit companions and build your party."}
+              {chapterId === 3 && "The Armoury is unlocked — equip and upgrade the loot you've earned."}
+              {chapterId === 4 && "The Shrine awaits — summon new warriors with the Gacha."}
+              {chapterId === 5 && "The Menagerie is open — tame and equip spirit beasts."}
+              {chapterId === 6 && "The Stables are ready — mount your war horses."}
+              {chapterId === 7 && "The Campaign Map is open — lead your armies across Japan."}
+              {chapterId === 8 && "The chronicle is complete. Your legacy is written."}
             </p>
           </div>
 
@@ -861,7 +805,7 @@ function StoryPlayer({ chapterId }: StoryPlayerProps) {
           ← Chapters
         </button>
         <span className="text-stone-500 text-xs tracking-widest uppercase">
-          Ch.{CHAPTER_ID} · {chapter.title}
+          Ch.{chapterId} · {chapter.title}
         </span>
         <div className="flex gap-2 items-center">
           <FlagBar flags={flags} />
@@ -941,7 +885,7 @@ function StoryPlayer({ chapterId }: StoryPlayerProps) {
   );
 }
 
-// ─── Main page ────────────────────────────────────────────────────────────────────
+// ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function StoryPage() {
   const params = useParams<{ chapterId?: string }>();
