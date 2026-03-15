@@ -14,6 +14,8 @@
  *   sengoku_story_endings   → UnlockedEnding[]
  */
 
+import { apiRequest } from "./queryClient";
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface ProgressState {
@@ -114,29 +116,27 @@ export interface ChapterData {
 
 // ─── fetchChapter ─────────────────────────────────────────────────────────────
 //
-// Calls the real API so all authored chapters are available.
+// Uses apiRequest() so the correct auth header is always attached:
+//   - Supabase mode: Authorization: Bearer <token>
+//   - Dev mode:      x-dev-user-id: <uuid>
+//
 // Two "not yet available" cases are handled:
 //   1. HTTP 404  — chapter row not found, or no scenes seeded (server fix)
-//   2. HTTP 200 with scenes:[] — defensive guard in case an older server
-//      build still returns an empty array instead of 404
+//   2. HTTP 200 with scenes:[] — defensive guard for older server builds
 
 export async function fetchChapter(chapterId: number): Promise<ChapterData> {
-  const res = await fetch(`/api/story/chapters/${chapterId}`, {
-    credentials: "include",
-  });
-
-  if (!res.ok) {
-    if (res.status === 404) {
+  let data: ChapterData;
+  try {
+    data = await apiRequest("GET", `/api/story/chapters/${chapterId}`);
+  } catch (err: any) {
+    // apiRequest throws "404: ..." for 404s — map to "not yet available"
+    if (typeof err?.message === "string" && err.message.startsWith("404")) {
       throw new Error(`Chapter ${chapterId} not yet available.`);
     }
-    throw new Error(`Failed to load chapter ${chapterId}: ${res.status}`);
+    throw new Error(`Failed to load chapter ${chapterId}: ${err?.message ?? err}`);
   }
 
-  const data = await res.json() as ChapterData;
-
-  // Defensive: server should now return 404 for unseeded chapters, but guard
-  // here too so an empty scenes array never reaches StoryPlayer and causes
-  // startChapter(N, undefined) to crash.
+  // Defensive guard: empty scenes array → treat as not yet available
   if (!data.scenes || data.scenes.length === 0) {
     throw new Error(`Chapter ${chapterId} not yet available.`);
   }
