@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useLocation } from "wouter";
-import { queryClient } from "@/lib/queryClient";
+import { queryClient, apiRequest } from "@/lib/queryClient";
+import { api } from "@shared/routes";
 import {
   startChapter,
   advanceScene,
@@ -187,25 +188,14 @@ function BattleGateOverlay({ scene, bgGradient, onResult }: BattleGateProps) {
     setPhase("fighting");
     setCombatLogs([]);
     try {
-      const res = await fetch("/api/battle/field", {
-        method:  "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ locationId, repeatCount: 1 }),
-      });
-      const data = await res.json();
+      const data = await apiRequest("POST", api.battle.field.path, { locationId, repeatCount: 1 });
       const logs: string[]  = data.logs ?? [];
       const victory: boolean = !!data.victory;
       setCombatLogs(logs);
       setWon(victory);
       setPhase("done");
-      await fetch("/api/story/flags", {
-        method:  "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-          absolute: { battle_won: victory ? 1 : 0, battle_lost: victory ? 0 : 1 },
-        }),
+      await apiRequest("POST", "/api/story/flags", {
+        absolute: { battle_won: victory ? 1 : 0, battle_lost: victory ? 0 : 1 },
       });
     } catch {
       setCombatLogs(["Error: could not reach battle server."]);
@@ -312,21 +302,33 @@ export default function StoryPage() {
   const completionDest = CHAPTER_COMPLETE_DESTINATION[CHAPTER_ID]
     ?? { path: "/", label: "Enter the Dojo" };
 
-  // ── Shared completion logic (called from advance() AND the fallback effect) ──
+  // ── Shared completion logic ───────────────────────────────────────────────────
   const triggerCompletion = useCallback(async () => {
     if (completionFiredRef.current || !chapter) return;
     completionFiredRef.current = true;
     try {
+      // 1. Mark complete in localStorage (Phase 3 local state)
       await completeChapter();
+      // 2. Persist ending locally
       await unlockEnding({
         chapterId: CHAPTER_ID,
         endingKey: `ch${CHAPTER_ID}_complete`,
         endingTitle: chapter.title,
         endingDescription: `Chapter ${CHAPTER_ID} complete.`,
       });
-      // FIX: refetch (not just invalidate) so AuthGuard reads the updated
-      // currentChapter before the CTA button navigates away from /story.
-      await queryClient.refetchQueries({ queryKey: ["/api/player"] });
+      // 3. FIX (critical): Tell the server the chapter is complete so it bumps
+      //    users.currentChapter. Without this the GET /api/player refetch below
+      //    returns the same currentChapter value (still 0) and AuthGuard keeps
+      //    redirecting the player back to /story after they click the CTA.
+      await apiRequest("POST", "/api/story/progress/complete", {
+        chapterId: CHAPTER_ID,
+        endingKey: `ch${CHAPTER_ID}_complete`,
+        endingTitle: chapter.title,
+        endingDescription: `Chapter ${CHAPTER_ID} complete.`,
+      });
+      // 4. FIX (robustness): Use the shared api constant for the query key instead
+      //    of a hardcoded string — prevents silent breakage if the path ever moves.
+      await queryClient.refetchQueries({ queryKey: [api.player.get.path] });
     } catch {
       // Non-fatal: complete screen still shows; guard may bounce once but
       // a second click will succeed once the cache eventually updates.
@@ -527,10 +529,6 @@ export default function StoryPage() {
             >
               ↺ Replay Chapter
             </button>
-            {/* FIX: use navigate() instead of <Link> so navigation is
-                programmatic and only fires after triggerCompletion() has
-                already awaited refetchQueries — the AuthGuard will see
-                currentChapter >= 1 and will not bounce the user back to /story */}
             <button
               onClick={() => navigate(completionDest.path)}
               className="px-5 py-2 bg-amber-700 hover:bg-amber-600 text-white rounded text-sm font-semibold transition"

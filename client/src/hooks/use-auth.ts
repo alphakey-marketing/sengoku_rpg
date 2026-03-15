@@ -6,9 +6,9 @@
  * Reads supabase.auth.getSession() on mount and subscribes to
  * onAuthStateChange for cross-tab / token-refresh sync.
  *
- * When a new session arrives (SIGNED_IN / TOKEN_REFRESHED) all
- * React-Query caches are invalidated so game queries that fired
- * before the token was ready automatically re-fetch with auth.
+ * When a new session arrives (SIGNED_IN / TOKEN_REFRESHED) only the
+ * /api/player query is invalidated — not the entire cache — so in-flight
+ * battle / gacha / equipment queries are not disrupted.
  *
  * Returned shape:
  *   user            — mapped User | null
@@ -21,6 +21,7 @@ import { useEffect, useState } from "react";
 import type { User } from "@shared/models/auth";
 import { supabase } from "../lib/supabase";
 import { queryClient } from "../lib/queryClient";
+import { api } from "@shared/routes";
 import type { Session } from "@supabase/supabase-js";
 
 export function useAuth() {
@@ -33,9 +34,9 @@ export function useAuth() {
       setSession(data.session);
       setIsLoading(false);
       // If a session was already present (returning user / page refresh)
-      // invalidate so any queries that ran before this resolves retry.
+      // invalidate the player query so it re-fetches with the current token.
       if (data.session) {
-        queryClient.invalidateQueries();
+        queryClient.invalidateQueries({ queryKey: [api.player.get.path] });
       }
     });
 
@@ -44,9 +45,11 @@ export function useAuth() {
     } = supabase.auth.onAuthStateChange((event, newSession) => {
       setSession(newSession);
       setIsLoading(false);
-      // On fresh sign-in or token refresh, clear stale 401 query cache
+      // On fresh sign-in or token refresh, clear only the player cache so the
+      // AuthGuard reads fresh currentChapter / hasSeenIntro values without
+      // nuking in-flight battle, gacha, or equipment caches.
       if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED") {
-        queryClient.invalidateQueries();
+        queryClient.invalidateQueries({ queryKey: [api.player.get.path] });
       }
     });
 

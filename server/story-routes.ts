@@ -12,7 +12,7 @@
  *  GET  /api/story/chapters/:id         → full chapter with scenes + dialogue + choices
  *  GET  /api/story/progress             → player's progress for all chapters
  *  POST /api/story/progress             → upsert progress (start / advance scene)
- *  POST /api/story/progress/complete    → mark chapter complete + write ending
+ *  POST /api/story/progress/complete    → mark chapter complete + write ending + bump currentChapter
  *  GET  /api/story/flags                → all player flags as Record<string,number>
  *  POST /api/story/flags                → additive mutations OR absolute overrides
  *  GET  /api/story/endings              → all unlocked endings
@@ -28,6 +28,7 @@ import {
   type StoryChoice, type PlayerFlag,
 } from "@shared/schema";
 import { eq, and, asc } from "drizzle-orm";
+import { storage } from "./storage";
 
 export const storyRouter = Router();
 
@@ -249,6 +250,10 @@ storyRouter.post("/progress", async (req: Request, res: Response) => {
 /**
  * POST /api/story/progress/complete
  * Body: { chapterId, endingKey, endingTitle, endingDescription }
+ *
+ * FIX: also bumps users.currentChapter to MAX(existing, chapterId) so that
+ * AuthGuard reads an updated currentChapter on the next GET /api/player and
+ * stops bouncing the player back to /story after chapter completion.
  */
 storyRouter.post("/progress/complete", async (req: Request, res: Response) => {
   const userId = requireAuth(req, res);
@@ -261,11 +266,13 @@ storyRouter.post("/progress/complete", async (req: Request, res: Response) => {
       endingDescription: string;
     };
 
+    // Mark story progress row complete
     await db
       .update(playerStoryProgress)
       .set({ isCompleted: true, completedAt: new Date() })
       .where(and(eq(playerStoryProgress.userId, userId), eq(playerStoryProgress.chapterId, chapterId)));
 
+    // Write ending (idempotent)
     const [existing] = await db
       .select()
       .from(storyEndings)
@@ -279,6 +286,16 @@ storyRouter.post("/progress/complete", async (req: Request, res: Response) => {
         endingTitle,
         endingDescription,
       });
+    }
+
+    // FIX: bump users.currentChapter so AuthGuard sees the completed chapter.
+    // We use MAX(existing, chapterId) so replays never regress the counter.
+    const player = await storage.getUser(userId);
+    if (player) {
+      const newChapter = Math.max(player.currentChapter ?? 0, chapterId);
+      if (newChapter > (player.currentChapter ?? 0)) {
+        await storage.updateUser(userId, { currentChapter: newChapter });
+      }
     }
 
     res.json({ success: true });

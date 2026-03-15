@@ -516,7 +516,7 @@ export function useCombineHorses() {
           : `You obtained a same rarity horse: ${data.newHorse.name}`,
       });
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({
         title: "Combination Failed",
         description: error.message,
