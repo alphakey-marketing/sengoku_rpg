@@ -63,7 +63,7 @@ interface ChapterData {
   scenes: Scene[];
 }
 
-// ─── Visual maps ──────────────────────────────────────────────────────────────
+// ─── Visual maps ──────────────────────────────────────────────────────────────────
 
 const BG_MAP: Record<string, string> = {
   // ── Chapter 1 ──
@@ -201,7 +201,7 @@ const FLAG_LABELS: Record<string, string> = {
   kennyo_hate:           "☯ Kennyo",
 };
 
-// ─── Completion destinations ──────────────────────────────────────────────────
+// ─── Completion destinations ────────────────────────────────────────────────────────
 const CHAPTER_COMPLETE_DESTINATION: Record<number, { path: string; label: string }> = {
   1: { path: "/",       label: "Enter the Dojo" },
   2: { path: "/stable", label: "Visit War Council" },
@@ -213,7 +213,7 @@ const CHAPTER_COMPLETE_DESTINATION: Record<number, { path: string; label: string
   8: { path: "/story",  label: "Return to Chronicles" },
 };
 
-// ─── Chapter catalogue ────────────────────────────────────────────────────────
+// ─── Chapter catalogue ────────────────────────────────────────────────────────────
 const CHAPTER_CATALOGUE = [
   { id: 1, title: "The Fool of Owari",          subtitle: "1551 — The land mocks you. Let it.",                                         available: true },
   { id: 2, title: "The Alliance of Wolves",      subtitle: "1552 — Every alliance is a leash. The question is who holds it.",            available: true },
@@ -225,7 +225,7 @@ const CHAPTER_CATALOGUE = [
   { id: 8, title: "Honnoji",                     subtitle: "1582 — Every age ends the same way. The question is whether you chose it.",  available: true },
 ];
 
-// ─── Sub-components ───────────────────────────────────────────────────────────
+// ─── Sub-components ─────────────────────────────────────────────────────────────────
 
 function Portrait({ portraitKey, side }: { portraitKey: string | null; side: "left" | "right" }) {
   if (!portraitKey) return <div className="w-28 h-36 md:w-32 md:h-44" />;
@@ -262,7 +262,7 @@ function FlagBar({ flags }: { flags: StoryFlags }) {
   );
 }
 
-// ─── BattleGateOverlay ────────────────────────────────────────────────────────
+// ─── BattleGateOverlay ──────────────────────────────────────────────────────────────────
 
 interface BattleGateProps {
   scene: Scene;
@@ -367,7 +367,7 @@ function BattleGateOverlay({ scene, bgGradient, onResult }: BattleGateProps) {
   );
 }
 
-// ─── ChapterSelectHub ─────────────────────────────────────────────────────────
+// ─── ChapterSelectHub ─────────────────────────────────────────────────────────────────
 
 interface ChapterSelectHubProps {
   currentChapter: number;
@@ -468,7 +468,7 @@ function ChapterSelectHub({ currentChapter, onSelectChapter }: ChapterSelectHubP
   );
 }
 
-// ─── StoryPlayer ──────────────────────────────────────────────────────────────
+// ─── StoryPlayer ────────────────────────────────────────────────────────────────────
 
 interface StoryPlayerProps {
   chapterId: number;
@@ -489,7 +489,6 @@ function StoryPlayer({ chapterId }: StoryPlayerProps) {
   const [loading, setLoading]             = useState(true);
   const [error, setError]                 = useState<string | null>(null);
   const [comingSoon, setComingSoon]       = useState(false);
-  // FIX 2: track a transient advance error so the player can see it and tap again
   const [advanceError, setAdvanceError]   = useState<string | null>(null);
   const typeTimerRef       = useRef<ReturnType<typeof setTimeout> | null>(null);
   const completionFiredRef = useRef(false);
@@ -509,7 +508,7 @@ function StoryPlayer({ chapterId }: StoryPlayerProps) {
 
   const catalogueEntry = CHAPTER_CATALOGUE.find((c) => c.id === CHAPTER_ID);
 
-  // ── triggerCompletion ─────────────────────────────────────────────────────
+  // ── triggerCompletion ────────────────────────────────────────────────────────────
   const triggerCompletion = useCallback(async () => {
     if (completionFiredRef.current || !chapter) return;
     completionFiredRef.current = true;
@@ -539,7 +538,7 @@ function StoryPlayer({ chapterId }: StoryPlayerProps) {
     }
   }, [chapter, CHAPTER_ID]);
 
-  // ── Boot ────────────────────────────────────────────────────────────────
+  // ── Boot ────────────────────────────────────────────────────────────────────
   useEffect(() => {
     (async () => {
       try {
@@ -585,7 +584,7 @@ function StoryPlayer({ chapterId }: StoryPlayerProps) {
     })();
   }, [CHAPTER_ID]);
 
-  // ── Typewriter ────────────────────────────────────────────────────────────
+  // ── Typewriter ────────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!currentLine) return;
     if (typeTimerRef.current) clearTimeout(typeTimerRef.current);
@@ -607,7 +606,7 @@ function StoryPlayer({ chapterId }: StoryPlayerProps) {
     if (scene) markSceneSeen(scene.sceneOrder);
   }, [sceneId]);
 
-  // ── Declarative completion fallback ──────────────────────────────────────
+  // ── Declarative completion fallback ──────────────────────────────────────────
   useEffect(() => {
     if (
       scene?.isChapterEnd &&
@@ -629,9 +628,6 @@ function StoryPlayer({ chapterId }: StoryPlayerProps) {
     }
   }, [isTyping, currentLine]);
 
-  // FIX 2: advance() — server call is fire-and-forget; scene transition is
-  // never blocked by a network or auth error.  A subtle hint is shown so QA
-  // can spot server issues without the story locking up.
   const advance = useCallback(async () => {
     if (!scene || !chapter) return;
     if (isTyping) { skipTypewriter(); return; }
@@ -642,12 +638,10 @@ function StoryPlayer({ chapterId }: StoryPlayerProps) {
     if (scene.isBattleGate) return;
     if (scene.isChapterEnd) { await triggerCompletion(); return; }
     if (scene.nextSceneId) {
-      // Apply local transition immediately — do not await the server call
       const nextId = scene.nextSceneId;
       setSceneId(nextId);
       setLineIndex(0);
       setShowChoices(false);
-      // Persist progress in the background; swallow errors so story never freezes
       advanceScene(nextId).catch((err: any) => {
         console.warn("[story] advanceScene server error (non-blocking):", err?.message ?? err);
         setAdvanceError("⚠ sync error — tap again if needed");
@@ -656,28 +650,40 @@ function StoryPlayer({ chapterId }: StoryPlayerProps) {
     }
   }, [scene, chapter, lineIndex, isTyping, skipTypewriter, triggerCompletion]);
 
-  // FIX 2: handleChoice() — same pattern: apply flags and transition locally,
-  // then persist to the server asynchronously.
+  // ── handleChoice ────────────────────────────────────────────────────────────────
+  //
+  // BUG FIX: previously used `{ ...flags, ...mutations }` which overwrites
+  // existing flag values. A choice that grants mitsuhide_loyalty: +2 in Ch1
+  // followed by one that sets mitsuhide_loyalty: -1 in Ch3 would produce -1
+  // instead of the correct running total of +1.
+  //
+  // Fix: build the optimistic local update with the same additive loop used
+  // by applyFlags() in story-engine.ts, so the React state, localStorage,
+  // and the server DB all stay in sync.
   const handleChoice = useCallback(async (choice: Choice) => {
     if (!scene) return;
     const mutations: StoryFlags = {};
     if (choice.flagKey != null) mutations[choice.flagKey] = choice.flagValue ?? 0;
     if (choice.flagKey2 != null && choice.flagValue2 != null) mutations[choice.flagKey2] = choice.flagValue2;
 
-    // Apply flags locally first so the UI updates instantly
-    let updated = { ...flags, ...mutations };
-    try {
-      updated = await applyFlags(mutations);
-    } catch (err: any) {
-      console.warn("[story] applyFlags error (non-blocking):", err?.message ?? err);
+    // Build additive optimistic state (mirrors applyFlags logic)
+    const optimistic = { ...flags };
+    for (const [k, v] of Object.entries(mutations)) {
+      optimistic[k] = (optimistic[k] ?? 0) + v;
     }
-    setFlags(updated);
+    setFlags(optimistic);
 
+    // Persist to localStorage (applyFlags is additive, so pass only deltas)
+    applyFlags(mutations).catch((err: any) => {
+      console.warn("[story] applyFlags error (non-blocking):", err?.message ?? err);
+    });
+
+    // Persist to server DB (mutations = additive deltas on the server too)
     if (Object.keys(mutations).length > 0) {
       apiRequest("POST", "/api/story/flags", { mutations }).catch(() => {});
     }
 
-    // Transition immediately, persist in background
+    // Scene transition — immediate, no awaiting
     setSceneId(choice.nextSceneId);
     setLineIndex(0);
     setShowChoices(false);
@@ -686,7 +692,6 @@ function StoryPlayer({ chapterId }: StoryPlayerProps) {
     });
   }, [scene, flags]);
 
-  // FIX 2: handleBattleResult() — same pattern.
   const handleBattleResult = useCallback(async (won: boolean, _logs: string[]) => {
     if (!scene) return;
     const nextId = won
@@ -697,7 +702,6 @@ function StoryPlayer({ chapterId }: StoryPlayerProps) {
       absolute: { battle_won: won ? 1 : 0, battle_lost: won ? 0 : 1 },
     }).catch(() => {});
 
-    // Transition immediately, persist in background
     let latestFlags = flags;
     try { latestFlags = await getFlags(); } catch {}
     setFlags(latestFlags);
@@ -722,7 +726,7 @@ function StoryPlayer({ chapterId }: StoryPlayerProps) {
     setFlags({});
   }, [chapter, CHAPTER_ID]);
 
-  // ── Loading ────────────────────────────────────────────────────────────────
+  // ── Loading ─────────────────────────────────────────────────────────────────
   if (loading) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
@@ -731,7 +735,7 @@ function StoryPlayer({ chapterId }: StoryPlayerProps) {
     );
   }
 
-  // ── Coming Soon (unwritten chapter) ───────────────────────────────────────
+  // ── Coming Soon (unwritten chapter) ─────────────────────────────────────────
   if (comingSoon) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-stone-950 via-zinc-900 to-black flex flex-col items-center justify-center p-8 text-center">
@@ -759,7 +763,7 @@ function StoryPlayer({ chapterId }: StoryPlayerProps) {
     );
   }
 
-  // ── Hard error ─────────────────────────────────────────────────────────────
+  // ── Hard error ─────────────────────────────────────────────────────────────────
   if (error || !chapter) {
     return (
       <div className="min-h-screen bg-black flex flex-col items-center justify-center gap-4 p-6 text-center">
@@ -774,7 +778,7 @@ function StoryPlayer({ chapterId }: StoryPlayerProps) {
     );
   }
 
-  // ── Chapter complete screen ────────────────────────────────────────────────
+  // ── Chapter complete screen ──────────────────────────────────────────────────────
   if (isComplete) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-zinc-950 to-black flex flex-col items-center justify-center p-8 text-center">
@@ -937,7 +941,7 @@ function StoryPlayer({ chapterId }: StoryPlayerProps) {
   );
 }
 
-// ─── Main page ────────────────────────────────────────────────────────────────
+// ─── Main page ────────────────────────────────────────────────────────────────────
 
 export default function StoryPage() {
   const params = useParams<{ chapterId?: string }>();
