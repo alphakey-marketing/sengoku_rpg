@@ -9,7 +9,7 @@
  *
  * Storage keys (prefix: "sengoku_story_")
  *   sengoku_story_progress  → ProgressState
- *   sengoku_story_flags     → StoryFlags
+ *   sengoku_story_flags     → StoryFlags   ← persists across ALL chapters
  *   sengoku_story_seen      → number[]
  *   sengoku_story_endings   → UnlockedEnding[]
  */
@@ -154,7 +154,16 @@ export async function startChapter(
   const existing = read<ProgressState | null>(KEYS.progress, null);
   if (existing && existing.chapterId === chapterId && !forceRestart) return existing;
 
-  localStorage.removeItem(KEYS.flags);
+  // Only wipe flags on an explicit replay (forceRestart).
+  // Normal chapter progression MUST preserve accumulated flags so they
+  // compound correctly across all 8 chapters.
+  if (forceRestart) {
+    localStorage.removeItem(KEYS.flags);
+  }
+
+  // Seen-scene tracking is always reset when entering a new chapter
+  // (or replaying), since it's used for per-chapter "has player seen
+  // this scene" logic, not cross-chapter state.
   localStorage.removeItem(KEYS.seen);
 
   const fresh: ProgressState = {
@@ -238,7 +247,7 @@ export async function unlockEnding(
     unlockedAt: new Date().toISOString(),
   };
   endings.push(record);
-  write(KEYS.endings, endings);
+  write(KEYS.endings, record);
   return record;
 }
 
