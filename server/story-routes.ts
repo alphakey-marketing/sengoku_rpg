@@ -33,7 +33,7 @@ import { storage } from "./storage";
 
 export const storyRouter = Router();
 
-// ─── Auth helper ────────────────────────────────────────────────────────────────────
+// ─── Auth helper ─────────────────────────────────────────────────────────────
 
 function requireAuth(req: Request, res: Response): string | null {
   const userId = (req as any).user?.claims?.sub;
@@ -44,7 +44,7 @@ function requireAuth(req: Request, res: Response): string | null {
   return userId as string;
 }
 
-// ─── Shared flag helpers ───────────────────────────────────────────────────────────
+// ─── Shared flag helpers ──────────────────────────────────────────────────────
 
 /** Read all flags for a user, returning a map keyed by flagKey. */
 async function getFlagMap(userId: string): Promise<Map<string, PlayerFlag>> {
@@ -72,7 +72,6 @@ async function writeFlags(
 ): Promise<Record<string, number>> {
   const flagMap = await getFlagMap(userId);
 
-  // Additive mutations
   for (const [key, delta] of Object.entries(mutations)) {
     const existing = flagMap.get(key);
     if (existing) {
@@ -90,7 +89,6 @@ async function writeFlags(
     }
   }
 
-  // Absolute overrides (SET, not +delta)
   for (const [key, value] of Object.entries(absolute)) {
     const existing = flagMap.get(key);
     if (existing) {
@@ -111,18 +109,8 @@ async function writeFlags(
   return flagRecord(await getFlagMap(userId));
 }
 
-// ─── Chapter list ────────────────────────────────────────────────────────────────────
-/**
- * GET /api/story/chapters
- *
- * Returns all chapters enriched with per-user computed fields:
- *   isUnlocked  – true when chapterOrder <= user.currentChapter OR it's the
- *                 first chapter (chapterOrder 1) which is always accessible.
- *                 isLocked=true in the DB permanently disables a chapter
- *                 regardless of progress.
- *   isCompleted – true when the player has a completed progress row for this chapter.
- *   currentSceneId – the player's last saved scene for in-progress chapters.
- */
+// ─── Chapter list ─────────────────────────────────────────────────────────────
+
 storyRouter.get("/chapters", async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user?.claims?.sub as string | undefined;
@@ -133,11 +121,9 @@ storyRouter.get("/chapters", async (req: Request, res: Response) => {
       .orderBy(asc(storyChapters.chapterOrder));
 
     if (!userId) {
-      // Unauthenticated: return raw rows (chapter select screen may still render)
       return res.json(chapters);
     }
 
-    // Fetch player's currentChapter and progress rows in parallel
     const [userRow] = await db
       .select({ currentChapter: users.currentChapter })
       .from(users)
@@ -155,18 +141,13 @@ storyRouter.get("/chapters", async (req: Request, res: Response) => {
     const currentChapter = userRow?.currentChapter ?? 0;
 
     const enriched = chapters.map((ch) => {
-      // A chapter is permanently disabled if the DB flag is set
       if (ch.isLocked) {
         return { ...ch, isUnlocked: false, isCompleted: false, currentSceneId: null };
       }
 
-      // Chapter is unlocked when:
-      //   - it is the very first chapter (order 1), always open
-      //   - OR its order is <= currentChapter + 1  (unlock one ahead)
       const isUnlocked = ch.chapterOrder <= currentChapter + 1;
-
       const progress = progressByChapter.get(ch.id);
-      const isCompleted   = progress?.isCompleted ?? false;
+      const isCompleted    = progress?.isCompleted ?? false;
       const currentSceneId = progress?.currentSceneId ?? null;
 
       return { ...ch, isUnlocked, isCompleted, currentSceneId };
@@ -179,7 +160,12 @@ storyRouter.get("/chapters", async (req: Request, res: Response) => {
   }
 });
 
-// ─── Full chapter (scenes + dialogue + choices) ─────────────────────────────────────────
+// ─── Full chapter (scenes + dialogue + choices) ───────────────────────────────
+//
+// FIX: if the chapter row exists but has no scenes seeded yet, return 404
+// with "Chapter N not yet available" rather than 200 + { scenes: [] }.
+// The client's fetchChapter() already handles 404 → Coming Soon screen.
+// Returning 200 + empty array caused startChapter(N, undefined) → crash.
 
 storyRouter.get("/chapters/:id", async (req: Request, res: Response) => {
   try {
@@ -190,7 +176,7 @@ storyRouter.get("/chapters/:id", async (req: Request, res: Response) => {
       .select()
       .from(storyChapters)
       .where(eq(storyChapters.id, chapterId));
-    if (!chapter) return res.status(404).json({ error: "Chapter not found" });
+    if (!chapter) return res.status(404).json({ error: `Chapter ${chapterId} not yet available` });
 
     const scenes = await db
       .select()
@@ -198,8 +184,13 @@ storyRouter.get("/chapters/:id", async (req: Request, res: Response) => {
       .where(eq(storyScenes.chapterId, chapterId))
       .orderBy(asc(storyScenes.sceneOrder));
 
+    // No scenes seeded → treat as not yet available so the client shows
+    // the Coming Soon screen instead of crashing on an undefined firstSceneId.
+    if (!scenes.length) {
+      return res.status(404).json({ error: `Chapter ${chapterId} not yet available` });
+    }
+
     const sceneIds = scenes.map((s) => s.id);
-    if (!sceneIds.length) return res.json({ ...chapter, scenes: [] });
 
     const [allLines, allChoices] = await Promise.all([
       Promise.all(
@@ -237,7 +228,7 @@ storyRouter.get("/chapters/:id", async (req: Request, res: Response) => {
   }
 });
 
-// ─── Player progress ───────────────────────────────────────────────────────────────────
+// ─── Player progress ──────────────────────────────────────────────────────────
 
 storyRouter.get("/progress", async (req: Request, res: Response) => {
   const userId = requireAuth(req, res);
@@ -251,10 +242,6 @@ storyRouter.get("/progress", async (req: Request, res: Response) => {
   }
 });
 
-/**
- * POST /api/story/progress
- * Body: { chapterId: number; currentSceneId?: number; forceRestart?: boolean }
- */
 storyRouter.post("/progress", async (req: Request, res: Response) => {
   const userId = requireAuth(req, res);
   if (!userId) return;
@@ -302,14 +289,6 @@ storyRouter.post("/progress", async (req: Request, res: Response) => {
   }
 });
 
-/**
- * POST /api/story/progress/complete
- * Body: { chapterId, endingKey, endingTitle, endingDescription }
- *
- * FIX: also bumps users.currentChapter to MAX(existing, chapterId) so that
- * AuthGuard reads an updated currentChapter on the next GET /api/player and
- * stops bouncing the player back to /story after chapter completion.
- */
 storyRouter.post("/progress/complete", async (req: Request, res: Response) => {
   const userId = requireAuth(req, res);
   if (!userId) return;
@@ -321,13 +300,11 @@ storyRouter.post("/progress/complete", async (req: Request, res: Response) => {
       endingDescription: string;
     };
 
-    // Mark story progress row complete
     await db
       .update(playerStoryProgress)
       .set({ isCompleted: true, completedAt: new Date() })
       .where(and(eq(playerStoryProgress.userId, userId), eq(playerStoryProgress.chapterId, chapterId)));
 
-    // Write ending (idempotent)
     const [existing] = await db
       .select()
       .from(storyEndings)
@@ -343,8 +320,6 @@ storyRouter.post("/progress/complete", async (req: Request, res: Response) => {
       });
     }
 
-    // Bump users.currentChapter so AuthGuard sees the completed chapter.
-    // We use MAX(existing, chapterId) so replays never regress the counter.
     const player = await storage.getUser(userId);
     if (player) {
       const newChapter = Math.max(player.currentChapter ?? 0, chapterId);
@@ -360,7 +335,7 @@ storyRouter.post("/progress/complete", async (req: Request, res: Response) => {
   }
 });
 
-// ─── Player flags ────────────────────────────────────────────────────────────────────
+// ─── Player flags ─────────────────────────────────────────────────────────────
 
 storyRouter.get("/flags", async (req: Request, res: Response) => {
   const userId = requireAuth(req, res);
@@ -372,10 +347,6 @@ storyRouter.get("/flags", async (req: Request, res: Response) => {
   }
 });
 
-/**
- * POST /api/story/flags
- * Body: { mutations?: Record<string,number>, absolute?: Record<string,number> }
- */
 storyRouter.post("/flags", async (req: Request, res: Response) => {
   const userId = requireAuth(req, res);
   if (!userId) return;
@@ -394,7 +365,7 @@ storyRouter.post("/flags", async (req: Request, res: Response) => {
   }
 });
 
-// ─── Unlocked endings ─────────────────────────────────────────────────────────────────
+// ─── Unlocked endings ─────────────────────────────────────────────────────────
 
 storyRouter.get("/endings", async (req: Request, res: Response) => {
   const userId = requireAuth(req, res);
@@ -408,7 +379,7 @@ storyRouter.get("/endings", async (req: Request, res: Response) => {
   }
 });
 
-// ─── B2: Battle-result endpoint ─────────────────────────────────────────────────────────
+// ─── B2: Battle-result endpoint ───────────────────────────────────────────────
 
 storyRouter.post("/battle-result", async (req: Request, res: Response) => {
   const userId = requireAuth(req, res);

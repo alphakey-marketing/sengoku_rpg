@@ -42,7 +42,7 @@ export interface StoryEngineSnapshot {
   endings: UnlockedEnding[];
 }
 
-// ─── Storage keys ───────────────────────────────────────────────────────────────
+// ─── Storage keys ─────────────────────────────────────────────────────────────
 
 const KEYS = {
   progress: "sengoku_story_progress",
@@ -51,7 +51,7 @@ const KEYS = {
   endings:  "sengoku_story_endings",
 } as const;
 
-// ─── Low-level helpers ────────────────────────────────────────────────────────────
+// ─── Low-level helpers ────────────────────────────────────────────────────────
 
 function read<T>(key: string, fallback: T): T {
   try {
@@ -66,7 +66,7 @@ function write<T>(key: string, value: T): void {
   localStorage.setItem(key, JSON.stringify(value));
 }
 
-// ─── Chapter data types ──────────────────────────────────────────────────────────
+// ─── Chapter data types ───────────────────────────────────────────────────────
 
 export interface DialogueLine {
   id: number;
@@ -112,29 +112,39 @@ export interface ChapterData {
   scenes: Scene[];
 }
 
-// ─── fetchChapter ───────────────────────────────────────────────────────────────
+// ─── fetchChapter ─────────────────────────────────────────────────────────────
 //
-// Phase 5 swap: call the real API so ALL authored chapters are available.
-// The server endpoint GET /api/story/chapters/:id reads from the DB and
-// returns the full chapter with scenes + dialogue + choices.
-//
-// Cookies are included automatically (same-origin) so the session auth
-// header is not needed explicitly.
+// Calls the real API so all authored chapters are available.
+// Two "not yet available" cases are handled:
+//   1. HTTP 404  — chapter row not found, or no scenes seeded (server fix)
+//   2. HTTP 200 with scenes:[] — defensive guard in case an older server
+//      build still returns an empty array instead of 404
 
 export async function fetchChapter(chapterId: number): Promise<ChapterData> {
   const res = await fetch(`/api/story/chapters/${chapterId}`, {
     credentials: "include",
   });
+
   if (!res.ok) {
     if (res.status === 404) {
       throw new Error(`Chapter ${chapterId} not yet available.`);
     }
     throw new Error(`Failed to load chapter ${chapterId}: ${res.status}`);
   }
-  return res.json() as Promise<ChapterData>;
+
+  const data = await res.json() as ChapterData;
+
+  // Defensive: server should now return 404 for unseeded chapters, but guard
+  // here too so an empty scenes array never reaches StoryPlayer and causes
+  // startChapter(N, undefined) to crash.
+  if (!data.scenes || data.scenes.length === 0) {
+    throw new Error(`Chapter ${chapterId} not yet available.`);
+  }
+
+  return data;
 }
 
-// ─── Progress ────────────────────────────────────────────────────────────────
+// ─── Progress ─────────────────────────────────────────────────────────────────
 
 export async function startChapter(
   chapterId: number,
@@ -144,7 +154,6 @@ export async function startChapter(
   const existing = read<ProgressState | null>(KEYS.progress, null);
   if (existing && existing.chapterId === chapterId && !forceRestart) return existing;
 
-  // Clear stale flags/seen whenever writing a fresh chapter start.
   localStorage.removeItem(KEYS.flags);
   localStorage.removeItem(KEYS.seen);
 
@@ -199,7 +208,7 @@ export async function getFlag(key: string): Promise<number> {
   return flags[key] ?? 0;
 }
 
-// ─── Seen scenes ────────────────────────────────────────────────────────────────
+// ─── Seen scenes ──────────────────────────────────────────────────────────────
 
 export async function markSceneSeen(sceneId: number): Promise<void> {
   const seen = read<number[]>(KEYS.seen, []);
@@ -214,7 +223,7 @@ export async function getSeenSceneIds(): Promise<number[]> {
   return read<number[]>(KEYS.seen, []);
 }
 
-// ─── Endings ───────────────────────────────────────────────────────────────────
+// ─── Endings ──────────────────────────────────────────────────────────────────
 
 export async function unlockEnding(
   ending: Omit<UnlockedEnding, "unlockedAt"> & { chapterId?: number },
@@ -237,7 +246,7 @@ export async function getUnlockedEndings(): Promise<UnlockedEnding[]> {
   return read<UnlockedEnding[]>(KEYS.endings, []);
 }
 
-// ─── Snapshot ────────────────────────────────────────────────────────────────
+// ─── Snapshot ─────────────────────────────────────────────────────────────────
 
 export async function getSnapshot(): Promise<StoryEngineSnapshot> {
   return {
