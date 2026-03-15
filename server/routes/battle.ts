@@ -9,75 +9,85 @@ export const battleRouter = Router();
 
 // ── Field skirmish ────────────────────────────────────────────────────────────
 battleRouter.post("/field", async (req: any, res) => {
-  const userId = req.user.claims.sub;
-  const user   = await storage.getUser(userId);
-  if (!user) return res.status(401).json({ message: "Unauthorized" });
+  try {
+    const userId = req.user.claims.sub;
+    const user   = await storage.getUser(userId);
+    if (!user) return res.status(401).json({ message: "Unauthorized" });
 
-  const locationId  = Number(req.body.locationId)  || 1;
-  const repeatCount = Math.min(Math.max(1, Number(req.body.repeatCount) || 1), 10);
-  const teamStats   = await getPlayerTeamStats(userId);
-  if (!teamStats) return res.status(400).json({ message: "Team not found" });
+    const locationId  = Number(req.body.locationId)  || 1;
+    const repeatCount = Math.min(Math.max(1, Number(req.body.repeatCount) || 1), 10);
+    const teamStats   = await getPlayerTeamStats(userId);
+    if (!teamStats) return res.status(400).json({ message: "Team not found" });
 
-  let totalExp  = 0;
-  let totalGold = 0;
-  const allLogs: string[] = [];
-  const dropped: any[]    = [];
-  let ninjaEncounter: any = null;
+    let totalExp      = 0;
+    let totalGold     = 0;
+    let overallVictory = false;  // FIX B: use a proper boolean accumulator
+    const allLogs: string[] = [];
+    const dropped: any[]    = [];
+    let ninjaEncounter: any = null;
 
-  for (let i = 0; i < repeatCount; i++) {
-    if (repeatCount > 1) allLogs.push(`--- BATTLE ${i + 1} ---`);
+    for (let i = 0; i < repeatCount; i++) {
+      if (repeatCount > 1) allLogs.push(`--- BATTLE ${i + 1} ---`);
 
-    if (!ninjaEncounter && Math.random() < (locationId >= 100 ? 0.05 : 0.03)) {
-      const names = locationId >= 100
-        ? ["Zhuge Liang (Ghost)","Lu Bu's Spirit","Empress Wu Zetian"]
-        : ["Hattori Hanzo","Fuma Kotaro","Ishikawa Goemon","Mochizuki Chiyome"];
-      const lvl    = locationId >= 100 ? 7 + (locationId - 100) : locationId;
-      const strong = Math.random() < (locationId >= 100 ? 0.5 : 0.3);
-      ninjaEncounter = {
-        name: pick(names), level: strong ? lvl + 20 : lvl + 2,
-        hp: strong ? 5000 : 1000, maxHp: strong ? 5000 : 1000,
-        attack: strong ? 500 : 100, defense: strong ? 300 : 50, speed: strong ? 200 : 80,
-        weaponType: "sword", str:20, agi:20, vit:20, int:10, dex:20, luk:10,
-        weaponATK: strong ? 500 : 100, weaponLevel:3, hardDEF:50, softDEF:0,
-        hit:220, flee:150, skills:["Shadow Strike","Vanish"], statusEffects: [],
-      };
-      allLogs.push(`A famous warrior, ${ninjaEncounter.name}, blocks your path!`);
-      break;
-    }
+      if (!ninjaEncounter && Math.random() < (locationId >= 100 ? 0.05 : 0.03)) {
+        const names = locationId >= 100
+          ? ["Zhuge Liang (Ghost)","Lu Bu's Spirit","Empress Wu Zetian"]
+          : ["Hattori Hanzo","Fuma Kotaro","Ishikawa Goemon","Mochizuki Chiyome"];
+        const lvl    = locationId >= 100 ? 7 + (locationId - 100) : locationId;
+        const strong = Math.random() < (locationId >= 100 ? 0.5 : 0.3);
+        ninjaEncounter = {
+          name: pick(names), level: strong ? lvl + 20 : lvl + 2,
+          hp: strong ? 5000 : 1000, maxHp: strong ? 5000 : 1000,
+          attack: strong ? 500 : 100, defense: strong ? 300 : 50, speed: strong ? 200 : 80,
+          weaponType: "sword", str:20, agi:20, vit:20, int:10, dex:20, luk:10,
+          weaponATK: strong ? 500 : 100, weaponLevel:3, hardDEF:50, softDEF:0,
+          hit:220, flee:150, skills:["Shadow Strike","Vanish"], statusEffects: [],
+        };
+        allLogs.push(`A famous warrior, ${ninjaEncounter.name}, blocks your path!`);
+        break;
+      }
 
-    const enemy = generateEnemyStats("field", user.level, locationId);
-    if (i === 0 && req.body.enemyName) enemy.name = req.body.enemyName;
+      const enemy = generateEnemyStats("field", user.level, locationId);
+      if (i === 0 && req.body.enemyName) enemy.name = req.body.enemyName;
 
-    const modLogs = await applyFlagModifiers(userId, teamStats, [enemy]);
-    allLogs.push(...modLogs);
-    const result = runTurnBasedCombat(teamStats, [enemy]);
-    allLogs.push(...(result.logs || []));
+      const modLogs = await applyFlagModifiers(userId, teamStats, [enemy]);
+      allLogs.push(...modLogs);
+      const result = runTurnBasedCombat(teamStats, [enemy]);
+      allLogs.push(...(result.logs || []));
 
-    if (result.victory) {
-      await storage.updateQuestProgress(userId, "daily_skirmish",       1);
-      await storage.updateQuestProgress(userId, "daily_skirmish_elite", 1);
-      const exp  = Math.floor(Math.random() * 50) + 30 + enemy.level * 5;
-      const gold = Math.floor(Math.random() * 20) + 10 + enemy.level * 2;
-      totalExp  += exp;
-      totalGold += gold;
+      // FIX B: accumulate victory from the typed boolean, not string scanning
+      if (result.victory) {
+        overallVictory = true;
+        await storage.updateQuestProgress(userId, "daily_skirmish",       1);
+        await storage.updateQuestProgress(userId, "daily_skirmish_elite", 1);
+        const exp  = Math.floor(Math.random() * 50) + 30 + enemy.level * 5;
+        const gold = Math.floor(Math.random() * 20) + 10 + enemy.level * 2;
+        totalExp  += exp;
+        totalGold += gold;
 
-      let xp = user.experience + totalExp;
-      let lv = user.level, mhp = user.maxHp, sp = user.statPoints;
-      while (xp >= lv * 100) { xp -= lv * 100; lv++; mhp += 10; sp += 3; }
-      await storage.updateUser(userId, { experience: xp, level: lv, maxHp: mhp, statPoints: sp, gold: user.gold + totalGold });
+        let xp = user.experience + totalExp;
+        let lv = user.level, mhp = user.maxHp, sp = user.statPoints;
+        while (xp >= lv * 100) { xp -= lv * 100; lv++; mhp += 10; sp += 3; }
+        await storage.updateUser(userId, { experience: xp, level: lv, maxHp: mhp, statPoints: sp, gold: user.gold + totalGold });
 
-      if (Math.random() < 0.01) {
-        try { dropped.push(await storage.createEquipment(generateEquipment(userId, locationId))); } catch {}
+        if (Math.random() < 0.01) {
+          try { dropped.push(await storage.createEquipment(generateEquipment(userId, locationId))); } catch {}
+        }
       }
     }
-  }
 
-  await giveEquipmentExp(userId, totalExp);
-  res.json({
-    victory: allLogs.some(l => l.includes("Victory")),
-    logs: allLogs, expGained: totalExp, goldGained: totalGold,
-    equipmentDropped: dropped, ninjaEncounter,
-  });
+    await giveEquipmentExp(userId, totalExp);
+    res.json({
+      victory: overallVictory,
+      logs: allLogs, expGained: totalExp, goldGained: totalGold,
+      equipmentDropped: dropped, ninjaEncounter,
+    });
+  } catch (err) {
+    // FIX A: surface real server errors as JSON so the client catch block
+    // can distinguish a network failure from a battle-server error.
+    console.error("[battle/field] unhandled error:", err);
+    res.status(500).json({ message: "Battle server error", error: String(err) });
+  }
 });
 
 // ── Ninja battle ──────────────────────────────────────────────────────────────
