@@ -16,7 +16,7 @@ import {
   type StoryFlags,
 } from "@/lib/story-engine";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+// ─── Types ──────────────────────────────────────────────────────────────────────────────
 
 interface DialogueLine {
   id: number;
@@ -62,7 +62,7 @@ interface ChapterData {
   scenes: Scene[];
 }
 
-// ─── Visual maps ───────────────────────────────────────────────────────────
+// ─── Visual maps ─────────────────────────────────────────────────────────────────────────
 
 const BG_MAP: Record<string, string> = {
   owari_province_dawn:       "from-amber-950 via-orange-900 to-stone-900",
@@ -112,7 +112,7 @@ const FLAG_LABELS: Record<string, string> = {
   ruthlessness:          "⚔ Ruthless",
   political_power:       "⚖ Political",
   mitsuhide_loyalty:     "⚔ Mitsuhide",
-  supernatural_affinity: "✦ Supernatural",
+  supernatural_affinity: "❆ Supernatural",
   battle_won:            "⚡ Battle Won",
   battle_lost:           "☠ Battle Lost",
 };
@@ -127,7 +127,7 @@ const CHAPTER_COMPLETE_DESTINATION: Record<number, { path: string; label: string
   7: { path: "/map",    label: "Open Campaign Map" },
 };
 
-// ─── Sub-components ───────────────────────────────────────────────────────────
+// ─── Sub-components ───────────────────────────────────────────────────────────────────────────
 
 function Portrait({ portraitKey, side }: { portraitKey: string | null; side: "left" | "right" }) {
   if (!portraitKey) return <div className="w-28 h-36 md:w-32 md:h-44" />;
@@ -164,7 +164,7 @@ function FlagBar({ flags }: { flags: StoryFlags }) {
   );
 }
 
-// ─── BattleGateOverlay ────────────────────────────────────────────────────────
+// ─── BattleGateOverlay ────────────────────────────────────────────────────────────────────────────
 
 interface BattleGateProps {
   scene: Scene;
@@ -188,23 +188,20 @@ function BattleGateOverlay({ scene, bgGradient, onResult }: BattleGateProps) {
     setPhase("fighting");
     setCombatLogs([]);
     try {
-      // FIX (Bug 1 + Bug 2): apiRequest returns a raw Response; call .json() to
-      // parse the body. Without this, data was a Response object so data.logs
-      // was undefined (no combat log) and data.victory was always falsy
-      // (battle always showed as defeat). The flags POST below also depended on
-      // `victory` being a real boolean, so battle_won was always written as 0.
-      const res  = await apiRequest("POST", api.battle.field.path, { locationId, repeatCount: 1 });
-      const data = await res.json();
-      const logs: string[]   = data.logs ?? [];
-      const victory: boolean = !!data.victory;
+      // apiRequest now returns parsed JSON directly — no .json() call needed.
+      const data = await apiRequest("POST", api.battle.field.path, { locationId, repeatCount: 1 });
+      const logs: string[]   = data?.logs    ?? [];
+      const victory: boolean = !!data?.victory;
       setCombatLogs(logs);
       setWon(victory);
       setPhase("done");
       await apiRequest("POST", "/api/story/flags", {
         absolute: { battle_won: victory ? 1 : 0, battle_lost: victory ? 0 : 1 },
       });
-    } catch {
-      setCombatLogs(["Error: could not reach battle server."]);
+    } catch (err: any) {
+      // Surface the real server error message if available
+      const msg = err?.message ?? String(err);
+      setCombatLogs([`Error: ${msg}`]);
       setPhase("done");
       setWon(false);
     }
@@ -274,7 +271,7 @@ function BattleGateOverlay({ scene, bgGradient, onResult }: BattleGateProps) {
   );
 }
 
-// ─── Main page ────────────────────────────────────────────────────────────────
+// ─── Main page ───────────────────────────────────────────────────────────────────────────────
 
 export default function StoryPage() {
   const params = useParams<{ chapterId?: string }>();
@@ -308,42 +305,33 @@ export default function StoryPage() {
   const completionDest = CHAPTER_COMPLETE_DESTINATION[CHAPTER_ID]
     ?? { path: "/", label: "Enter the Dojo" };
 
-  // ── Shared completion logic ───────────────────────────────────────────────────
+  // ── Shared completion logic ───────────────────────────────────────────────────────────────────────────
   const triggerCompletion = useCallback(async () => {
     if (completionFiredRef.current || !chapter) return;
     completionFiredRef.current = true;
     try {
-      // 1. Mark complete in localStorage (Phase 3 local state)
       await completeChapter();
-      // 2. Persist ending locally
       await unlockEnding({
         chapterId: CHAPTER_ID,
         endingKey: `ch${CHAPTER_ID}_complete`,
         endingTitle: chapter.title,
         endingDescription: `Chapter ${CHAPTER_ID} complete.`,
       });
-      // 3. FIX (critical): Tell the server the chapter is complete so it bumps
-      //    users.currentChapter. Without this the GET /api/player refetch below
-      //    returns the same currentChapter value (still 0) and AuthGuard keeps
-      //    redirecting the player back to /story after they click the CTA.
       await apiRequest("POST", "/api/story/progress/complete", {
         chapterId: CHAPTER_ID,
         endingKey: `ch${CHAPTER_ID}_complete`,
         endingTitle: chapter.title,
         endingDescription: `Chapter ${CHAPTER_ID} complete.`,
       });
-      // 4. FIX (robustness): Use the shared api constant for the query key instead
-      //    of a hardcoded string — prevents silent breakage if the path ever moves.
       await queryClient.refetchQueries({ queryKey: [api.player.get.path] });
     } catch {
-      // Non-fatal: complete screen still shows; guard may bounce once but
-      // a second click will succeed once the cache eventually updates.
+      // Non-fatal: complete screen still shows.
     } finally {
       setIsComplete(true);
     }
   }, [chapter, CHAPTER_ID]);
 
-  // ── Boot ─────────────────────────────────────────────────────────────────────
+  // ── Boot ──────────────────────────────────────────────────────────────────────────────────
   useEffect(() => {
     (async () => {
       try {
@@ -382,7 +370,7 @@ export default function StoryPage() {
     })();
   }, [CHAPTER_ID]);
 
-  // ── Typewriter ────────────────────────────────────────────────────────────────
+  // ── Typewriter ──────────────────────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!currentLine) return;
     if (typeTimerRef.current) clearTimeout(typeTimerRef.current);
@@ -404,7 +392,7 @@ export default function StoryPage() {
     if (scene) markSceneSeen(scene.sceneOrder);
   }, [sceneId]);
 
-  // ── DECLARATIVE FALLBACK ──────────────────────────────────────────────────────
+  // ── DECLARATIVE FALLBACK ──────────────────────────────────────────────────────────────────────────
   useEffect(() => {
     if (
       scene?.isChapterEnd &&
@@ -484,7 +472,7 @@ export default function StoryPage() {
     setFlags({});
   }, [chapter, CHAPTER_ID]);
 
-  // ── Loading / error ───────────────────────────────────────────────────────────
+  // ── Loading / error ───────────────────────────────────────────────────────────────────────────
   if (loading) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
@@ -500,7 +488,7 @@ export default function StoryPage() {
     );
   }
 
-  // ── Chapter complete screen ───────────────────────────────────────────────────
+  // ── Chapter complete screen ──────────────────────────────────────────────────────────────────────
   if (isComplete) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-zinc-950 to-black flex flex-col items-center justify-center p-8 text-center">
@@ -560,7 +548,7 @@ export default function StoryPage() {
   const leftPortrait  = currentLine?.speakerSide === "left"  ? currentLine.portraitKey : null;
   const rightPortrait = currentLine?.speakerSide === "right" ? currentLine.portraitKey : null;
 
-  // ── Battle gate ───────────────────────────────────────────────────────────────
+  // ── Battle gate ──────────────────────────────────────────────────────────────────────────────
   if (battleReady) {
     return (
       <BattleGateOverlay
@@ -571,7 +559,7 @@ export default function StoryPage() {
     );
   }
 
-  // ── Main VN layout ────────────────────────────────────────────────────────────
+  // ── Main VN layout ─────────────────────────────────────────────────────────────────────────────
   return (
     <div
       className={`min-h-screen bg-gradient-to-b ${bgGradient} flex flex-col select-none`}
