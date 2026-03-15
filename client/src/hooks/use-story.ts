@@ -16,6 +16,22 @@ export interface PlayerFlag {
   flagValue: number;
 }
 
+/** Shape returned by GET /api/story/chapters (enriched with per-user fields) */
+export interface StoryChapter {
+  id: number;
+  title: string;
+  subtitle: string | null;
+  chapterOrder: number;
+  isLocked: boolean;
+  firstSceneId: number | null;
+  /** Computed server-side: true when chapterOrder <= currentChapter + 1 */
+  isUnlocked: boolean;
+  /** Computed server-side: true when the player has a completed progress row */
+  isCompleted: boolean;
+  /** The player's last saved sceneId for this chapter, or null */
+  currentSceneId: number | null;
+}
+
 export function useStoryFlags() {
   return useQuery<PlayerFlag[]>({
     queryKey: [api.story.flags.path],
@@ -27,9 +43,9 @@ export function useStoryFlags() {
 }
 
 export function useStoryChapters() {
-  return useQuery<any[]>({
+  return useQuery<StoryChapter[]>({
     queryKey: [api.story.chapters.path],
-    queryFn: getQueryFn<any[]>({ on401: "returnNull" })({ queryKey: [api.story.chapters.path], meta: undefined, signal: new AbortController().signal }),
+    queryFn: getQueryFn<StoryChapter[]>({ on401: "returnNull" })({ queryKey: [api.story.chapters.path], meta: undefined, signal: new AbortController().signal }),
     staleTime: 30_000,
     select: (data) => (Array.isArray(data) ? data : []),
   });

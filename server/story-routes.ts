@@ -8,7 +8,7 @@
  *
  * Endpoints
  * ──────────────────────────────────────────────────────────────────────────────
- *  GET  /api/story/chapters             → list all chapters (id, title, isLocked, chapterOrder)
+ *  GET  /api/story/chapters             → list all chapters with per-user isUnlocked / isCompleted
  *  GET  /api/story/chapters/:id         → full chapter with scenes + dialogue + choices
  *  GET  /api/story/progress             → player's progress for all chapters
  *  POST /api/story/progress             → upsert progress (start / advance scene)
@@ -24,6 +24,7 @@ import { db } from "./db";
 import {
   storyChapters, storyScenes, dialogueLines, storyChoices,
   playerFlags, playerStoryProgress, storyEndings,
+  users,
   type StoryChapter, type StoryScene, type DialogueLine,
   type StoryChoice, type PlayerFlag,
 } from "@shared/schema";
@@ -111,15 +112,69 @@ async function writeFlags(
 }
 
 // ─── Chapter list ────────────────────────────────────────────────────────────────────
-
-storyRouter.get("/chapters", async (_req: Request, res: Response) => {
+/**
+ * GET /api/story/chapters
+ *
+ * Returns all chapters enriched with per-user computed fields:
+ *   isUnlocked  – true when chapterOrder <= user.currentChapter OR it's the
+ *                 first chapter (chapterOrder 1) which is always accessible.
+ *                 isLocked=true in the DB permanently disables a chapter
+ *                 regardless of progress.
+ *   isCompleted – true when the player has a completed progress row for this chapter.
+ *   currentSceneId – the player's last saved scene for in-progress chapters.
+ */
+storyRouter.get("/chapters", async (req: Request, res: Response) => {
   try {
+    const userId = (req as any).user?.claims?.sub as string | undefined;
+
     const chapters = await db
       .select()
       .from(storyChapters)
       .orderBy(asc(storyChapters.chapterOrder));
-    res.json(chapters);
-  } catch {
+
+    if (!userId) {
+      // Unauthenticated: return raw rows (chapter select screen may still render)
+      return res.json(chapters);
+    }
+
+    // Fetch player's currentChapter and progress rows in parallel
+    const [userRow] = await db
+      .select({ currentChapter: users.currentChapter })
+      .from(users)
+      .where(eq(users.id, userId));
+
+    const progressRows = await db
+      .select()
+      .from(playerStoryProgress)
+      .where(eq(playerStoryProgress.userId, userId));
+
+    const progressByChapter = new Map(
+      progressRows.map((p) => [p.chapterId, p])
+    );
+
+    const currentChapter = userRow?.currentChapter ?? 0;
+
+    const enriched = chapters.map((ch) => {
+      // A chapter is permanently disabled if the DB flag is set
+      if (ch.isLocked) {
+        return { ...ch, isUnlocked: false, isCompleted: false, currentSceneId: null };
+      }
+
+      // Chapter is unlocked when:
+      //   - it is the very first chapter (order 1), always open
+      //   - OR its order is <= currentChapter + 1  (unlock one ahead)
+      const isUnlocked = ch.chapterOrder <= currentChapter + 1;
+
+      const progress = progressByChapter.get(ch.id);
+      const isCompleted   = progress?.isCompleted ?? false;
+      const currentSceneId = progress?.currentSceneId ?? null;
+
+      return { ...ch, isUnlocked, isCompleted, currentSceneId };
+    });
+
+    res.json(enriched);
+  } catch (e) {
+    console.error("[story] GET /chapters", e);
     res.status(500).json({ error: "Failed to fetch chapters" });
   }
 });
@@ -288,7 +343,7 @@ storyRouter.post("/progress/complete", async (req: Request, res: Response) => {
       });
     }
 
-    // FIX: bump users.currentChapter so AuthGuard sees the completed chapter.
+    // Bump users.currentChapter so AuthGuard sees the completed chapter.
     // We use MAX(existing, chapterId) so replays never regress the counter.
     const player = await storage.getUser(userId);
     if (player) {
