@@ -188,7 +188,6 @@ function BattleGateOverlay({ scene, bgGradient, onResult }: BattleGateProps) {
     setPhase("fighting");
     setCombatLogs([]);
     try {
-      // apiRequest now returns parsed JSON directly — no .json() call needed.
       const data = await apiRequest("POST", api.battle.field.path, { locationId, repeatCount: 1 });
       const logs: string[]   = data?.logs    ?? [];
       const victory: boolean = !!data?.victory;
@@ -199,7 +198,6 @@ function BattleGateOverlay({ scene, bgGradient, onResult }: BattleGateProps) {
         absolute: { battle_won: victory ? 1 : 0, battle_lost: victory ? 0 : 1 },
       });
     } catch (err: any) {
-      // Surface the real server error message if available
       const msg = err?.message ?? String(err);
       setCombatLogs([`Error: ${msg}`]);
       setPhase("done");
@@ -289,7 +287,6 @@ export default function StoryPage() {
   const [loading, setLoading]             = useState(true);
   const [error, setError]                 = useState<string | null>(null);
   const typeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // Guard so the declarative fallback only fires the completion path once.
   const completionFiredRef = useRef(false);
 
   const sceneMap = chapter
@@ -323,10 +320,14 @@ export default function StoryPage() {
         endingTitle: chapter.title,
         endingDescription: `Chapter ${CHAPTER_ID} complete.`,
       });
+      // FIX: await the refetch BEFORE setIsComplete so the chapter-complete
+      // screen renders with an already-warm currentChapter in the cache.
+      // AuthGuard will read currentChapter >= 1 when the CTA button fires.
       await queryClient.refetchQueries({ queryKey: [api.player.get.path] });
+      // Cache is now warm — safe to show the complete screen.
+      setIsComplete(true);
     } catch {
-      // Non-fatal: complete screen still shows.
-    } finally {
+      // Non-fatal: show the complete screen anyway so the player isn't stuck.
       setIsComplete(true);
     }
   }, [chapter, CHAPTER_ID]);
@@ -392,7 +393,7 @@ export default function StoryPage() {
     if (scene) markSceneSeen(scene.sceneOrder);
   }, [sceneId]);
 
-  // ── DECLARATIVE FALLBACK ──────────────────────────────────────────────────────────────────────────
+  // ── Declarative fallback ────────────────────────────────────────────────────────────────────────
   useEffect(() => {
     if (
       scene?.isChapterEnd &&
@@ -421,10 +422,7 @@ export default function StoryPage() {
     if (nextLineIdx < scene.dialogueLines.length) { setLineIndex(nextLineIdx); return; }
     if (scene.choices.length > 0) { setShowChoices(true); return; }
     if (scene.isBattleGate) return;
-    if (scene.isChapterEnd) {
-      await triggerCompletion();
-      return;
-    }
+    if (scene.isChapterEnd) { await triggerCompletion(); return; }
     if (scene.nextSceneId) {
       await advanceScene(scene.nextSceneId);
       setSceneId(scene.nextSceneId);
@@ -535,7 +533,6 @@ export default function StoryPage() {
     );
   }
 
-  // scene must be non-null beyond this point
   if (!scene) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
@@ -548,7 +545,6 @@ export default function StoryPage() {
   const leftPortrait  = currentLine?.speakerSide === "left"  ? currentLine.portraitKey : null;
   const rightPortrait = currentLine?.speakerSide === "right" ? currentLine.portraitKey : null;
 
-  // ── Battle gate ──────────────────────────────────────────────────────────────────────────────
   if (battleReady) {
     return (
       <BattleGateOverlay
@@ -559,7 +555,6 @@ export default function StoryPage() {
     );
   }
 
-  // ── Main VN layout ─────────────────────────────────────────────────────────────────────────────
   return (
     <div
       className={`min-h-screen bg-gradient-to-b ${bgGradient} flex flex-col select-none`}
