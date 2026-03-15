@@ -250,9 +250,6 @@ function BattleGateOverlay({ scene, bgGradient, onResult }: BattleGateProps) {
       setCombatLogs(logs);
       setWon(victory);
       setPhase("done");
-      apiRequest("POST", "/api/story/flags", {
-        absolute: { battle_won: victory ? 1 : 0, battle_lost: victory ? 0 : 1 },
-      }).catch(() => {});
     } catch (err: any) {
       const msg = err?.message ?? String(err);
       setCombatLogs([`Error: ${msg}`]);
@@ -464,7 +461,7 @@ function StoryPlayer({ chapterId }: StoryPlayerProps) {
 
   const catalogueEntry = CHAPTER_CATALOGUE.find((c) => c.id === chapterId);
 
-  // ── triggerCompletion ─────────────────────────────────────────────────────
+  // ── triggerCompletion ──────────────────────────────────────────────────────
   const triggerCompletion = useCallback(async () => {
     if (completionFiredRef.current || !chapter) return;
     completionFiredRef.current = true;
@@ -494,7 +491,7 @@ function StoryPlayer({ chapterId }: StoryPlayerProps) {
     }
   }, [chapter, chapterId]);
 
-  // ── Boot ──────────────────────────────────────────────────────────────────
+  // ── Boot ───────────────────────────────────────────────────────────────────
   useEffect(() => {
     (async () => {
       try {
@@ -540,7 +537,7 @@ function StoryPlayer({ chapterId }: StoryPlayerProps) {
     })();
   }, [chapterId]);
 
-  // ── Typewriter ────────────────────────────────────────────────────────────
+  // ── Typewriter ─────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!currentLine) return;
     if (typeTimerRef.current) clearTimeout(typeTimerRef.current);
@@ -606,14 +603,13 @@ function StoryPlayer({ chapterId }: StoryPlayerProps) {
     }
   }, [scene, chapter, lineIndex, isTyping, skipTypewriter, triggerCompletion]);
 
-  // ── handleChoice ──────────────────────────────────────────────────────────
+  // ── handleChoice ───────────────────────────────────────────────────────────
   const handleChoice = useCallback(async (choice: Choice) => {
     if (!scene) return;
     const mutations: StoryFlags = {};
     if (choice.flagKey != null) mutations[choice.flagKey] = choice.flagValue ?? 0;
     if (choice.flagKey2 != null && choice.flagValue2 != null) mutations[choice.flagKey2] = choice.flagValue2;
 
-    // Additive optimistic state — mirrors applyFlags() in story-engine.ts
     const optimistic = { ...flags };
     for (const [k, v] of Object.entries(mutations)) {
       optimistic[k] = (optimistic[k] ?? 0) + v;
@@ -636,25 +632,42 @@ function StoryPlayer({ chapterId }: StoryPlayerProps) {
     });
   }, [scene, flags]);
 
+  // ── handleBattleResult ─────────────────────────────────────────────────────
+  //
+  // Previously: manually resolved battleWinSceneId/battleLoseSceneId client-
+  // side AND wrote flags inline — duplicating server logic.
+  // Now: delegates entirely to POST /api/story/battle-result which resolves
+  // the next scene and writes outcome flags in one server round trip.
   const handleBattleResult = useCallback(async (won: boolean, _logs: string[]) => {
     if (!scene) return;
-    const nextId = won
-      ? (scene.battleWinSceneId ?? scene.nextSceneId)
-      : (scene.battleLoseSceneId ?? scene.nextSceneId);
-    if (!nextId) return;
-    apiRequest("POST", "/api/story/flags", {
-      absolute: { battle_won: won ? 1 : 0, battle_lost: won ? 0 : 1 },
-    }).catch(() => {});
+    try {
+      const result = await apiRequest("POST", "/api/story/battle-result", {
+        sceneId: scene.id,
+        battleResult: won ? "win" : "lose",
+      });
+      const nextId: number | null = result?.nextSceneId ?? null;
+      if (!nextId) return;
 
-    let latestFlags = flags;
-    try { latestFlags = await getFlags(); } catch {}
-    setFlags(latestFlags);
-    setSceneId(nextId);
-    setLineIndex(0);
-    setShowChoices(false);
-    advanceScene(nextId).catch((err: any) => {
-      console.warn("[story] advanceScene (battle) server error (non-blocking):", err?.message ?? err);
-    });
+      let latestFlags = flags;
+      try { latestFlags = await getFlags(); } catch {}
+      setFlags(latestFlags);
+      setSceneId(nextId);
+      setLineIndex(0);
+      setShowChoices(false);
+      advanceScene(nextId).catch((err: any) => {
+        console.warn("[story] advanceScene (battle) server error (non-blocking):", err?.message ?? err);
+      });
+    } catch (err: any) {
+      console.warn("[story] handleBattleResult error:", err?.message ?? err);
+      // Fallback: resolve locally so the player is never stuck.
+      const nextId = won
+        ? (scene.battleWinSceneId ?? scene.nextSceneId)
+        : (scene.battleLoseSceneId ?? scene.nextSceneId);
+      if (!nextId) return;
+      setSceneId(nextId);
+      setLineIndex(0);
+      setShowChoices(false);
+    }
   }, [scene, flags]);
 
   const handleReset = useCallback(async () => {
@@ -670,7 +683,7 @@ function StoryPlayer({ chapterId }: StoryPlayerProps) {
     setFlags({});
   }, [chapter, chapterId]);
 
-  // ── Loading ───────────────────────────────────────────────────────────────
+  // ── Loading ────────────────────────────────────────────────────────────────
   if (loading) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
@@ -679,7 +692,7 @@ function StoryPlayer({ chapterId }: StoryPlayerProps) {
     );
   }
 
-  // ── Coming Soon ───────────────────────────────────────────────────────────
+  // ── Coming Soon ────────────────────────────────────────────────────────────
   if (comingSoon) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-stone-950 via-zinc-900 to-black flex flex-col items-center justify-center p-8 text-center">
@@ -707,7 +720,7 @@ function StoryPlayer({ chapterId }: StoryPlayerProps) {
     );
   }
 
-  // ── Hard error ────────────────────────────────────────────────────────────
+  // ── Hard error ─────────────────────────────────────────────────────────────
   if (error || !chapter) {
     return (
       <div className="min-h-screen bg-black flex flex-col items-center justify-center gap-4 p-6 text-center">
@@ -722,7 +735,7 @@ function StoryPlayer({ chapterId }: StoryPlayerProps) {
     );
   }
 
-  // ── Chapter complete screen ───────────────────────────────────────────────
+  // ── Chapter complete screen ────────────────────────────────────────────────
   if (isComplete) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-zinc-950 to-black flex flex-col items-center justify-center p-8 text-center">

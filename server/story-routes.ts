@@ -3,7 +3,7 @@
  * ──────────────────────────────────────────────────────────────────────────────
  * All REST endpoints for the VN story engine.
  *
- * Mount in server/index.ts (or routes.ts) with:
+ * Mount in server/routes.ts with:
  *   app.use("/api/story", isAuthenticated, storyRouter);
  *
  * Endpoints
@@ -16,7 +16,7 @@
  *  GET  /api/story/flags                → all player flags as Record<string,number>
  *  POST /api/story/flags                → additive mutations OR absolute overrides
  *  GET  /api/story/endings              → all unlocked endings
- *  POST /api/story/battle-result        → B2: write battle outcome flags + return nextSceneId
+ *  POST /api/story/battle-result        → write battle outcome flags + return nextSceneId
  */
 
 import { Router, type Request, type Response } from "express";
@@ -25,15 +25,16 @@ import {
   storyChapters, storyScenes, dialogueLines, storyChoices,
   playerFlags, playerStoryProgress, storyEndings,
   users,
-  type StoryChapter, type StoryScene, type DialogueLine,
-  type StoryChoice, type PlayerFlag,
+  type DialogueLine,
+  type StoryChoice,
+  type PlayerFlag,
 } from "@shared/schema";
-import { eq, and, asc } from "drizzle-orm";
+import { eq, and, asc, sql } from "drizzle-orm";
 import { storage } from "./storage";
 
 export const storyRouter = Router();
 
-// ─── Auth helper ─────────────────────────────────────────────────────────────
+// ─── Auth helper ──────────────────────────────────────────────────────────────
 
 function requireAuth(req: Request, res: Response): string | null {
   const userId = (req as any).user?.claims?.sub;
@@ -60,69 +61,82 @@ function flagRecord(map: Map<string, PlayerFlag>): Record<string, number> {
 }
 
 /**
- * Write flag mutations to DB.
+ * Write flag mutations to DB in a single batch upsert.
+ *
  * @param mutations  Additive deltas  { key: delta }  (default behaviour)
- * @param absolute   Absolute sets    { key: value }  (B2: battle outcomes)
- * Returns updated flag record.
+ * @param absolute   Absolute sets    { key: value }  (battle outcomes)
+ *
+ * Uses INSERT … ON CONFLICT (userId, flagKey) DO UPDATE so all keys land
+ * in one round trip instead of N individual UPDATE/INSERT pairs.
+ * The in-memory flagMap is updated after the upsert and returned directly
+ * (no redundant re-read from DB).
  */
 async function writeFlags(
   userId: string,
   mutations: Record<string, number> = {},
   absolute: Record<string, number> = {},
 ): Promise<Record<string, number>> {
+  const allKeys = [...Object.keys(mutations), ...Object.keys(absolute)];
+  if (allKeys.length === 0) {
+    // Nothing to write — just return current flags.
+    return flagRecord(await getFlagMap(userId));
+  }
+
+  // Read current values once.
   const flagMap = await getFlagMap(userId);
 
+  // Build the merged set of (key → newValue) to upsert.
+  const toUpsert: { flagKey: string; flagValue: number }[] = [];
+
   for (const [key, delta] of Object.entries(mutations)) {
+    const current = flagMap.get(key)?.flagValue ?? 0;
+    const newValue = current + delta;
+    toUpsert.push({ flagKey: key, flagValue: newValue });
+    // Update in-memory map so flagRecord() at the end is accurate.
     const existing = flagMap.get(key);
     if (existing) {
-      await db
-        .update(playerFlags)
-        .set({ flagValue: existing.flagValue + delta, updatedAt: new Date() })
-        .where(eq(playerFlags.id, existing.id));
-      existing.flagValue += delta;
+      existing.flagValue = newValue;
     } else {
-      const [inserted] = await db
-        .insert(playerFlags)
-        .values({ userId, flagKey: key, flagValue: delta })
-        .returning();
-      flagMap.set(key, inserted);
+      flagMap.set(key, { id: -1, userId, flagKey: key, flagValue: newValue, updatedAt: new Date() });
     }
   }
 
   for (const [key, value] of Object.entries(absolute)) {
+    toUpsert.push({ flagKey: key, flagValue: value });
     const existing = flagMap.get(key);
     if (existing) {
-      await db
-        .update(playerFlags)
-        .set({ flagValue: value, updatedAt: new Date() })
-        .where(eq(playerFlags.id, existing.id));
       existing.flagValue = value;
     } else {
-      const [inserted] = await db
-        .insert(playerFlags)
-        .values({ userId, flagKey: key, flagValue: value })
-        .returning();
-      flagMap.set(key, inserted);
+      flagMap.set(key, { id: -1, userId, flagKey: key, flagValue: value, updatedAt: new Date() });
     }
   }
 
-  return flagRecord(await getFlagMap(userId));
+  // Single batch upsert — one DB round trip for all keys.
+  await db
+    .insert(playerFlags)
+    .values(toUpsert.map((r) => ({ userId, flagKey: r.flagKey, flagValue: r.flagValue })))
+    .onConflictDoUpdate({
+      target: [playerFlags.userId, playerFlags.flagKey],
+      set: {
+        flagValue: sql`excluded.flag_value`,
+        updatedAt: sql`now()`,
+      },
+    });
+
+  return flagRecord(flagMap);
 }
 
 // ─── Chapter list ─────────────────────────────────────────────────────────────
 
 storyRouter.get("/chapters", async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).user?.claims?.sub as string | undefined;
+    const userId = requireAuth(req, res);
+    if (!userId) return;
 
     const chapters = await db
       .select()
       .from(storyChapters)
       .orderBy(asc(storyChapters.chapterOrder));
-
-    if (!userId) {
-      return res.json(chapters);
-    }
 
     const [userRow] = await db
       .select({ currentChapter: users.currentChapter })
@@ -144,12 +158,10 @@ storyRouter.get("/chapters", async (req: Request, res: Response) => {
       if (ch.isLocked) {
         return { ...ch, isUnlocked: false, isCompleted: false, currentSceneId: null };
       }
-
-      const isUnlocked = ch.chapterOrder <= currentChapter + 1;
-      const progress = progressByChapter.get(ch.id);
+      const isUnlocked    = ch.chapterOrder <= currentChapter + 1;
+      const progress      = progressByChapter.get(ch.id);
       const isCompleted    = progress?.isCompleted ?? false;
       const currentSceneId = progress?.currentSceneId ?? null;
-
       return { ...ch, isUnlocked, isCompleted, currentSceneId };
     });
 
@@ -161,11 +173,6 @@ storyRouter.get("/chapters", async (req: Request, res: Response) => {
 });
 
 // ─── Full chapter (scenes + dialogue + choices) ───────────────────────────────
-//
-// FIX: if the chapter row exists but has no scenes seeded yet, return 404
-// with "Chapter N not yet available" rather than 200 + { scenes: [] }.
-// The client's fetchChapter() already handles 404 → Coming Soon screen.
-// Returning 200 + empty array caused startChapter(N, undefined) → crash.
 
 storyRouter.get("/chapters/:id", async (req: Request, res: Response) => {
   try {
@@ -184,8 +191,6 @@ storyRouter.get("/chapters/:id", async (req: Request, res: Response) => {
       .where(eq(storyScenes.chapterId, chapterId))
       .orderBy(asc(storyScenes.sceneOrder));
 
-    // No scenes seeded → treat as not yet available so the client shows
-    // the Coming Soon screen instead of crashing on an undefined firstSceneId.
     if (!scenes.length) {
       return res.status(404).json({ error: `Chapter ${chapterId} not yet available` });
     }
@@ -246,12 +251,13 @@ storyRouter.post("/progress", async (req: Request, res: Response) => {
   const userId = requireAuth(req, res);
   if (!userId) return;
   try {
-    const { chapterId, currentSceneId, forceRestart } = req.body as {
-      chapterId: number;
+    const { chapterId: rawChapterId, currentSceneId, forceRestart } = req.body as {
+      chapterId: unknown;
       currentSceneId?: number;
       forceRestart?: boolean;
     };
-    if (!chapterId) return res.status(400).json({ error: "chapterId required" });
+    const chapterId = Number(rawChapterId);
+    if (!chapterId || isNaN(chapterId)) return res.status(400).json({ error: "chapterId required" });
 
     const [existing] = await db
       .select()
@@ -293,12 +299,16 @@ storyRouter.post("/progress/complete", async (req: Request, res: Response) => {
   const userId = requireAuth(req, res);
   if (!userId) return;
   try {
-    const { chapterId, endingKey, endingTitle, endingDescription } = req.body as {
-      chapterId: number;
+    const { chapterId: rawChapterId, endingKey, endingTitle, endingDescription } = req.body as {
+      chapterId: unknown;
       endingKey: string;
       endingTitle: string;
       endingDescription: string;
     };
+    const chapterId = Number(rawChapterId);
+    if (!chapterId || isNaN(chapterId)) {
+      return res.status(400).json({ error: "chapterId must be a valid integer" });
+    }
 
     await db
       .update(playerStoryProgress)
@@ -379,7 +389,12 @@ storyRouter.get("/endings", async (req: Request, res: Response) => {
   }
 });
 
-// ─── B2: Battle-result endpoint ───────────────────────────────────────────────
+// ─── Battle-result ────────────────────────────────────────────────────────────
+//
+// Single endpoint that resolves win/lose scene routing AND writes battle
+// outcome flags in one server call. The client previously duplicated both
+// of these jobs inline; now it just calls this endpoint and uses the
+// returned nextSceneId to advance.
 
 storyRouter.post("/battle-result", async (req: Request, res: Response) => {
   const userId = requireAuth(req, res);

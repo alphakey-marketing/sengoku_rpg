@@ -118,24 +118,18 @@ export interface ChapterData {
 // Uses apiRequest() so the correct auth header is always attached:
 //   - Supabase mode: Authorization: Bearer <token>
 //   - Dev mode:      x-dev-user-id: <uuid>
-//
-// Two "not yet available" cases are handled:
-//   1. HTTP 404  — chapter row not found, or no scenes seeded (server fix)
-//   2. HTTP 200 with scenes:[] — defensive guard for older server builds
 
 export async function fetchChapter(chapterId: number): Promise<ChapterData> {
   let data: ChapterData;
   try {
     data = await apiRequest("GET", `/api/story/chapters/${chapterId}`);
   } catch (err: any) {
-    // apiRequest throws "404: ..." for 404s — map to "not yet available"
     if (typeof err?.message === "string" && err.message.startsWith("404")) {
       throw new Error(`Chapter ${chapterId} not yet available.`);
     }
     throw new Error(`Failed to load chapter ${chapterId}: ${err?.message ?? err}`);
   }
 
-  // Defensive guard: empty scenes array → treat as not yet available
   if (!data.scenes || data.scenes.length === 0) {
     throw new Error(`Chapter ${chapterId} not yet available.`);
   }
@@ -153,16 +147,10 @@ export async function startChapter(
   const existing = read<ProgressState | null>(KEYS.progress, null);
   if (existing && existing.chapterId === chapterId && !forceRestart) return existing;
 
-  // Only wipe flags on an explicit replay (forceRestart).
-  // Normal chapter progression MUST preserve accumulated flags so they
-  // compound correctly across all 8 chapters.
   if (forceRestart) {
     localStorage.removeItem(KEYS.flags);
   }
 
-  // Seen-scene tracking is always reset when entering a new chapter
-  // (or replaying), since it's used for per-chapter "has player seen
-  // this scene" logic, not cross-chapter state.
   localStorage.removeItem(KEYS.seen);
 
   const fresh: ProgressState = {
@@ -176,11 +164,27 @@ export async function startChapter(
   return fresh;
 }
 
+/**
+ * Advance the current scene.
+ *
+ * Writes to localStorage synchronously (so the UI is never blocked), then
+ * fires POST /api/story/progress as a fire-and-forget background sync so
+ * the server always has the latest scene position. This enables correct
+ * chapter resume if the player closes the tab mid-chapter.
+ */
 export async function advanceScene(nextSceneId: number): Promise<ProgressState> {
   const progress = read<ProgressState | null>(KEYS.progress, null);
   if (!progress) throw new Error("No active chapter. Call startChapter first.");
   const updated: ProgressState = { ...progress, currentSceneId: nextSceneId };
   write(KEYS.progress, updated);
+
+  // Background server sync — non-blocking, errors are intentionally swallowed
+  // so a network blip never interrupts story playback.
+  apiRequest("POST", "/api/story/progress", {
+    chapterId: progress.chapterId,
+    currentSceneId: nextSceneId,
+  }).catch(() => {});
+
   return updated;
 }
 
