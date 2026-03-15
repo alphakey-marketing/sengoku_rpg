@@ -143,14 +143,14 @@ const BG_MAP: Record<string, string> = {
   kyoto_retreat_rainy:          "from-slate-900 via-blue-950 to-black",
 
   // ── Chapter 8 ──
-  honnoji_temple_night_arrival: "from-zinc-950 via-slate-950 to-black",
+  honnoji_temple_night_arrival:     "from-zinc-950 via-slate-950 to-black",
   honnoji_temple_courtyard_torches: "from-red-950 via-zinc-950 to-black",
-  honnoji_inner_hall_smoke:     "from-stone-800 via-red-950 to-black",
-  honnoji_inner_hall_desk:      "from-stone-900 via-zinc-950 to-black",
-  honnoji_burning_inner_hall:   "from-red-950 via-orange-950 to-black",
-  honnoji_dawn_aftermath:       "from-orange-950 via-stone-900 to-zinc-950",
-  honnoji_burning_final:        "from-red-900 via-orange-950 to-black",
-  japan_map_painted_scroll:     "from-amber-900 via-stone-900 to-zinc-950",
+  honnoji_inner_hall_smoke:         "from-stone-800 via-red-950 to-black",
+  honnoji_inner_hall_desk:          "from-stone-900 via-zinc-950 to-black",
+  honnoji_burning_inner_hall:       "from-red-950 via-orange-950 to-black",
+  honnoji_dawn_aftermath:           "from-orange-950 via-stone-900 to-zinc-950",
+  honnoji_burning_final:            "from-red-900 via-orange-950 to-black",
+  japan_map_painted_scroll:         "from-amber-900 via-stone-900 to-zinc-950",
 
   default: "from-stone-950 via-zinc-900 to-black",
 };
@@ -214,19 +214,15 @@ const CHAPTER_COMPLETE_DESTINATION: Record<number, { path: string; label: string
 };
 
 // ─── Chapter catalogue ────────────────────────────────────────────────────────
-//
-// UAT: all chapters are available:true so the hub shows them as clickable.
-// StoryPlayer handles the "not yet authored" case gracefully with a Coming Soon
-// screen instead of crashing.
 const CHAPTER_CATALOGUE = [
-  { id: 1, title: "The Fool of Owari",          subtitle: "1551 — The land mocks you. Let it.",                                      available: true },
-  { id: 2, title: "The Alliance of Wolves",      subtitle: "1552 — Every alliance is a leash. The question is who holds it.",         available: true },
-  { id: 3, title: "The Mino Gambit",             subtitle: "1553 — Dosan built his empire on betrayal. Respect the lesson.",          available: true },
-  { id: 4, title: "The Monk's Fire",             subtitle: "1554 — Religion is politics. Politics is war. War is religion.",          available: true },
-  { id: 5, title: "The Mountain and the Mirror", subtitle: "1556 — Kenshin sees you. The question is whether you can see yourself.", available: true },
-  { id: 6, title: "Nohime's Gambit",             subtitle: "1558 — The sharpest blade in the castle was never at your hip.",          available: true },
+  { id: 1, title: "The Fool of Owari",          subtitle: "1551 — The land mocks you. Let it.",                                         available: true },
+  { id: 2, title: "The Alliance of Wolves",      subtitle: "1552 — Every alliance is a leash. The question is who holds it.",            available: true },
+  { id: 3, title: "The Mino Gambit",             subtitle: "1553 — Dosan built his empire on betrayal. Respect the lesson.",             available: true },
+  { id: 4, title: "The Monk's Fire",             subtitle: "1554 — Religion is politics. Politics is war. War is religion.",             available: true },
+  { id: 5, title: "The Mountain and the Mirror", subtitle: "1556 — Kenshin sees you. The question is whether you can see yourself.",    available: true },
+  { id: 6, title: "Nohime's Gambit",             subtitle: "1558 — The sharpest blade in the castle was never at your hip.",             available: true },
   { id: 7, title: "The Price of Heaven",         subtitle: "1560 — Kyoto does not want you. It needs you. These are not the same thing.", available: true },
-  { id: 8, title: "Honnoji",                     subtitle: "1582 — Every age ends the same way. The question is whether you chose it.", available: true },
+  { id: 8, title: "Honnoji",                     subtitle: "1582 — Every age ends the same way. The question is whether you chose it.",  available: true },
 ];
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
@@ -404,10 +400,17 @@ function ChapterSelectHub({ currentChapter, onSelectChapter }: ChapterSelectHubP
 
       <div className="flex-1 px-5 pb-8 space-y-3 overflow-y-auto">
         {CHAPTER_CATALOGUE.map((ch) => {
-          // Bug #5 fix: use <= so a completed chapter is marked complete on the
-          // same pass, not only once the player advances to the next chapter.
+          // isCompleted: chapters up to and including currentChapter are done.
           const isCompleted = ch.id <= currentChapter;
-          const canPlay     = ch.available && (ch.id === 1 || ch.id <= currentChapter);
+          // canPlay:
+          //   • Ch1 is always accessible (new player, currentChapter === 0)
+          //   • Any completed chapter can be replayed
+          //   • Exactly one chapter ahead (currentChapter + 1) is the next unlocked chapter
+          const canPlay = ch.available && (
+            ch.id === 1 ||
+            ch.id <= currentChapter ||
+            ch.id === currentChapter + 1
+          );
 
           return (
             <div
@@ -490,7 +493,6 @@ function StoryPlayer({ chapterId }: StoryPlayerProps) {
   const [isTyping, setIsTyping]           = useState(false);
   const [loading, setLoading]             = useState(true);
   const [error, setError]                 = useState<string | null>(null);
-  // Distinct from a hard error: chapter exists in catalogue but has no authored content yet.
   const [comingSoon, setComingSoon]       = useState(false);
   const typeTimerRef       = useRef<ReturnType<typeof setTimeout> | null>(null);
   const completionFiredRef = useRef(false);
@@ -508,10 +510,9 @@ function StoryPlayer({ chapterId }: StoryPlayerProps) {
   const completionDest = CHAPTER_COMPLETE_DESTINATION[CHAPTER_ID]
     ?? { path: "/story", label: "Return to Chronicles" };
 
-  // Find the chapter title from the catalogue for the Coming Soon screen.
   const catalogueEntry = CHAPTER_CATALOGUE.find((c) => c.id === CHAPTER_ID);
 
-  // ── triggerCompletion ──────────────────────────────────────────────────────
+  // ── triggerCompletion ─────────────────────────────────────────────────────
   const triggerCompletion = useCallback(async () => {
     if (completionFiredRef.current || !chapter) return;
     completionFiredRef.current = true;
@@ -541,7 +542,7 @@ function StoryPlayer({ chapterId }: StoryPlayerProps) {
     }
   }, [chapter, CHAPTER_ID]);
 
-  // ── Boot ──────────────────────────────────────────────────────────────────
+  // ── Boot ────────────────────────────────────────────────────────────────
   useEffect(() => {
     (async () => {
       try {
@@ -575,9 +576,6 @@ function StoryPlayer({ chapterId }: StoryPlayerProps) {
           setFlags(await getFlags());
         }
       } catch (err: any) {
-        // fetchChapter throws "Chapter N not yet available" for unwritten chapters.
-        // Detect this by checking for "not yet available" in the message and
-        // render a polished Coming Soon screen instead of a generic error.
         const msg: string = err?.message ?? String(err);
         if (msg.toLowerCase().includes("not yet available") || msg.toLowerCase().includes("not available")) {
           setComingSoon(true);
@@ -612,7 +610,7 @@ function StoryPlayer({ chapterId }: StoryPlayerProps) {
     if (scene) markSceneSeen(scene.sceneOrder);
   }, [sceneId]);
 
-  // ── Declarative completion fallback ───────────────────────────────────────
+  // ── Declarative completion fallback ──────────────────────────────────────
   useEffect(() => {
     if (
       scene?.isChapterEnd &&
