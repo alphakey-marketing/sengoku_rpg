@@ -3,7 +3,7 @@ import { useStoryFlags, useStoryChapters } from "@/hooks/use-story";
 import { MainLayout } from "@/components/layout/main-layout";
 import {
   Shield, Sword, Coins, Wheat, Trophy, Zap, Heart, Sparkles,
-  RefreshCcw, BookOpen, Users, Info, Plus, ChevronUp, ChevronDown,
+  RefreshCcw, BookOpen, Users, Info, ChevronUp, ChevronDown,
   Check, X, AlertTriangle, Flame, Crown, Wind,
 } from "lucide-react";
 import { motion } from "framer-motion";
@@ -40,6 +40,7 @@ import {
 } from "@/components/ui/dialog";
 import { ContextualTips } from "@/components/home/contextual-tips";
 import { StoryProgressBanner } from "@/components/home/story-progress-banner";
+import { statUpgradeCost, totalUpgradeCost } from "@shared/stat-cost";
 
 async function fetchWithAuth(url: string, options: RequestInit = {}) {
   const { data } = await supabase.auth.getSession();
@@ -52,11 +53,11 @@ async function fetchWithAuth(url: string, options: RequestInit = {}) {
   return fetch(url, { credentials: "include", ...options, headers });
 }
 
-// ── Thematic stat definitions ─────────────────────────────────────────────────
+// ── Thematic stat definitions ────────────────────────────────────────────────
 const THEMATIC_STATS = [
   {
     key: "force",
-    dbKey: "str",       // stat-point spending writes to `str`
+    dbKey: "str",
     label: "Force",
     icon: Flame,
     color: "text-red-400",
@@ -68,7 +69,7 @@ const THEMATIC_STATS = [
   },
   {
     key: "influence",
-    dbKey: "int",       // stat-point spending writes to `int`
+    dbKey: "int",
     label: "Influence",
     icon: Crown,
     color: "text-amber-400",
@@ -80,7 +81,7 @@ const THEMATIC_STATS = [
   },
   {
     key: "spirit",
-    dbKey: "agi",       // stat-point spending writes to `agi`
+    dbKey: "agi",
     label: "Spirit",
     icon: Wind,
     color: "text-cyan-400",
@@ -106,46 +107,45 @@ export default function Home() {
 
   const [pendingUpgrades, setPendingUpgrades] = useState<Record<string, number>>({});
 
-  // Cost function: 2 pts for first upgrade, +1 per 10 points in stat
-  const getStatUpgradeCost = (currentVal: number) => {
-    return Math.floor((currentVal - 1) / 10) + 2;
-  };
-
   const stagedInfo = useMemo(() => {
-    if (!teamStatus?.player) return { totalCost: 0, pointsLeft: player?.statPoints ?? 0 };
+    const basePoints = teamStatus?.player?.statPoints ?? player?.statPoints ?? 0;
     let cost = 0;
-    Object.entries(pendingUpgrades).forEach(([stat, amount]) => {
-      let val = (teamStatus.player as any)[stat]   // thematic key e.g. "force"
-             ?? (teamStatus.player as any)[THEMATIC_STATS.find(s => s.key === stat)?.dbKey ?? stat]
-             ?? 1;
-      for (let i = 0; i < amount; i++) cost += getStatUpgradeCost(val + i);
-    });
-    const pointsLeft = (teamStatus.player.statPoints ?? player?.statPoints ?? 0) - cost;
-    return { totalCost: cost, pointsLeft };
+    for (const [key, amount] of Object.entries(pendingUpgrades)) {
+      const stat = THEMATIC_STATS.find(s => s.key === key);
+      // Read the current value from teamStatus using both the thematic key
+      // and the db column key as fallbacks, then compute the incremental cost.
+      const currentVal =
+        (teamStatus?.player as any)?.[key]
+        ?? (teamStatus?.player as any)?.[stat?.dbKey ?? key]
+        ?? 1;
+      cost += totalUpgradeCost(currentVal, amount);
+    }
+    return { totalCost: cost, pointsLeft: basePoints - cost };
   }, [pendingUpgrades, teamStatus?.player, player?.statPoints]);
 
-  const handleStageUpgrade = (stat: string, dbKey: string) => {
+  const handleStageUpgrade = (statKey: string, dbKey: string) => {
     const currentVal =
-      (teamStatus?.player as any)?.[stat]
+      (teamStatus?.player as any)?.[statKey]
       ?? (teamStatus?.player as any)?.[dbKey]
       ?? 1;
-    const staged = pendingUpgrades[stat] || 0;
-    if (currentVal + staged >= 99) return;
-    const cost = getStatUpgradeCost(currentVal + staged);
+    const staged  = pendingUpgrades[statKey] || 0;
+    const nextVal = currentVal + staged;          // value AFTER staged increments
+    if (nextVal >= 99) return;
+    const cost = statUpgradeCost(nextVal);        // cost of the NEXT increment
     if (stagedInfo.pointsLeft < cost) {
       toast({
-        title: "Not enough points",
-        description: `You need ${cost} stat points for this upgrade.`,
-        variant: "destructive"
+        title: "Not enough stat points",
+        description: `Need ${cost} point${cost > 1 ? "s" : ""} — only ${stagedInfo.pointsLeft} remaining.`,
+        variant: "destructive",
       });
       return;
     }
-    setPendingUpgrades(prev => ({ ...prev, [stat]: (prev[stat] || 0) + 1 }));
+    setPendingUpgrades(prev => ({ ...prev, [statKey]: staged + 1 }));
   };
 
-  const handleUnstageUpgrade = (stat: string) => {
-    if (!pendingUpgrades[stat]) return;
-    setPendingUpgrades(prev => ({ ...prev, [stat]: Math.max(0, prev[stat] - 1) }));
+  const handleUnstageUpgrade = (statKey: string) => {
+    if (!pendingUpgrades[statKey]) return;
+    setPendingUpgrades(prev => ({ ...prev, [statKey]: Math.max(0, prev[statKey] - 1) }));
   };
 
   const handleConfirmUpgrades = async () => {
@@ -153,7 +153,7 @@ export default function Home() {
     const dbMapped: Record<string, number> = {};
     for (const [key, amt] of Object.entries(pendingUpgrades)) {
       const stat = THEMATIC_STATS.find(s => s.key === key);
-      dbMapped[stat?.dbKey ?? key] = amt;
+      if (amt > 0) dbMapped[stat?.dbKey ?? key] = amt;
     }
     try {
       await bulkUpgrade.mutateAsync(dbMapped);
@@ -181,7 +181,6 @@ export default function Home() {
     }
   };
 
-  // ── Loading / error states ────────────────────────────────────────────────
   if (isLoading) {
     return (
       <MainLayout>
@@ -205,7 +204,7 @@ export default function Home() {
           <div>
             <p className="text-white font-display text-lg font-semibold mb-1">Failed to load your profile</p>
             <p className="text-muted-foreground text-sm max-w-xs">
-              {error ? String(error) : "Your warrior data could not be retrieved. Please try again."}
+              {error ? String(error) : "Your warrior data could not be retrieved."}
             </p>
           </div>
           <Button variant="outline" className="border-primary/50 text-primary hover:bg-primary/10" onClick={() => refetch()}>
@@ -216,7 +215,6 @@ export default function Home() {
     );
   }
 
-  // ── Derived display data ──────────────────────────────────────────────────
   const statCards = [
     { label: "Level",  value: player.level,  icon: Trophy, color: "text-purple-400" },
     { label: "HP",     value: teamStatus?.player ? `${teamStatus.player.hp}/${teamStatus.player.maxHp}` : `${player.hp}/${player.maxHp}`, icon: Heart, color: "text-red-400" },
@@ -227,7 +225,6 @@ export default function Home() {
     { label: "Rice",   value: (player.rice || 0).toLocaleString(),             icon: Wheat,  color: "text-green-400" },
   ];
 
-  // Quick combat summary (replaces the 8-cell derived stats grid)
   const combatSummary = teamStatus?.player ? [
     {
       label: "Damage",
@@ -252,16 +249,13 @@ export default function Home() {
     },
   ] : [];
 
-  const equippedItems = equipment?.filter(e => e.isEquipped && e.equippedToType === "player") || [];
-
-  const expToNext   = Math.floor(100 * Math.pow(1.25, (player.level || 1) - 1));
-  const expPercent  = player.level > 0 ? Math.min(100, (player.experience / expToNext) * 100) : 0;
+  const expToNext  = Math.floor(100 * Math.pow(1.25, (player.level || 1) - 1));
+  const expPercent = player.level > 0 ? Math.min(100, (player.experience / expToNext) * 100) : 0;
 
   return (
     <MainLayout>
       <div className="space-y-8">
 
-        {/* ── Title row ──────────────────────────────────────────────────── */}
         <div className="flex justify-between items-end">
           <div>
             <h1 className="text-3xl font-display font-bold text-white mb-2" data-testid="text-page-title">
@@ -300,7 +294,7 @@ export default function Home() {
           </Dialog>
         </div>
 
-        {/* ── Hero banner ─────────────────────────────────────────────────── */}
+        {/* Hero banner */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -346,7 +340,7 @@ export default function Home() {
                   <AlertDialogTitle className="text-destructive font-display">Confirm Final Sacrifice</AlertDialogTitle>
                   <AlertDialogDescription className="text-zinc-400 space-y-2">
                     <p>This will permanently delete all your companions, equipment, pets, and current progress.</p>
-                    <div className="bg-destructive/10 border border-destructive/20 rounded p-3 text-destructive-foreground">
+                    <div className="bg-destructive/10 border border-destructive/20 rounded p-3">
                       <p className="font-bold text-xs uppercase tracking-wider mb-1">Total Reset</p>
                       <p className="text-sm">There are <span className="font-bold">no permanent bonuses</span> passed down.</p>
                     </div>
@@ -354,19 +348,16 @@ export default function Home() {
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                   <AlertDialogCancel className="bg-zinc-800 text-white border-zinc-700">Withdraw</AlertDialogCancel>
-                  <AlertDialogAction onClick={handleRestart} className="bg-destructive hover:bg-destructive/90 text-white">
-                    Accept Fate
-                  </AlertDialogAction>
+                  <AlertDialogAction onClick={handleRestart} className="bg-destructive hover:bg-destructive/90 text-white">Accept Fate</AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
           </div>
         </motion.div>
 
-        {/* ── Contextual tips ──────────────────────────────────────────────── */}
         <ContextualTips player={player} companions={companions} equipment={equipment} flags={flags} />
 
-        {/* ── War Resources ────────────────────────────────────────────────── */}
+        {/* War Resources */}
         <h3 className="text-xl font-display font-semibold border-b border-border/50 pb-2 mt-12 mb-6">War Resources</h3>
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
           {statCards.map((stat, i) => (
@@ -387,13 +378,12 @@ export default function Home() {
           ))}
         </div>
 
-        {/* ── Story progress banner ─────────────────────────────────────────── */}
         <StoryProgressBanner flags={flags} chapters={chapters} />
 
-        {/* ── Identity panel: 3 thematic stats + combat summary ────────────── */}
+        {/* Warlord's Identity + Battle Readiness */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-12">
 
-          {/* Left: Force / Influence / Spirit ───────────────────────────────── */}
+          {/* Left: Force / Influence / Spirit */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -403,7 +393,6 @@ export default function Home() {
               <Flame size={80} className="opacity-5 absolute top-0 right-0" />
             </div>
 
-            {/* Stat points badge */}
             <div className="absolute top-4 right-4 bg-primary/20 border border-primary/30 rounded px-3 py-1 text-center z-10" data-testid="container-stat-points">
               <span className="text-[10px] text-primary-foreground font-bold uppercase tracking-wider block">Stat Points</span>
               <span className="text-xl font-display font-bold text-white">{stagedInfo.pointsLeft}</span>
@@ -426,11 +415,11 @@ export default function Home() {
                   (teamStatus?.player as any)?.[stat.key]
                   ?? (teamStatus?.player as any)?.[stat.dbKey]
                   ?? 1;
-                const staged  = pendingUpgrades[stat.key] || 0;
-                const total   = currentVal + staged;
-                const cost    = getStatUpgradeCost(total);
+                const staged   = pendingUpgrades[stat.key] || 0;
+                const nextVal  = currentVal + staged;
+                const cost     = statUpgradeCost(nextVal);   // cost of the NEXT step
                 const canAfford = stagedInfo.pointsLeft >= cost;
-                const isMax   = total >= 99;
+                const isMax    = nextVal >= 99;
                 const bonusPct = (teamStatus?.player as any)?.[stat.bonusPctKey] ?? 0;
                 const Icon = stat.icon;
 
@@ -439,13 +428,9 @@ export default function Home() {
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <div className={`bg-background/40 border border-border/30 rounded-lg p-4 ${stat.borderHover} transition-colors flex items-center gap-4`}>
-
-                          {/* Icon */}
                           <div className={`p-2 rounded-full bg-background/60 border border-border/40 flex-shrink-0 ${stat.color}`}>
                             <Icon size={20} />
                           </div>
-
-                          {/* Label + value */}
                           <div className="flex-1 min-w-0">
                             <div className="flex items-baseline gap-2 flex-wrap">
                               <span className={`text-sm font-bold uppercase tracking-widest ${stat.color}`}>{stat.label}</span>
@@ -460,8 +445,6 @@ export default function Home() {
                               </span>
                             )}
                           </div>
-
-                          {/* Upgrade buttons */}
                           {!isMax && teamStatus?.player && (
                             <div className="flex flex-col items-center gap-1 flex-shrink-0">
                               <div className="flex gap-1">
@@ -501,7 +484,6 @@ export default function Home() {
               })}
             </div>
 
-            {/* Apply / Discard */}
             {stagedInfo.totalCost > 0 && (
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
@@ -518,7 +500,7 @@ export default function Home() {
             )}
           </motion.div>
 
-          {/* Right: Combat Summary ───────────────────────────────────────────── */}
+          {/* Right: Battle Readiness */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -535,7 +517,6 @@ export default function Home() {
             <p className="text-xs text-muted-foreground mb-6">
               Derived from your identity stats and equipped gear.
             </p>
-
             <div className="flex flex-col gap-4 flex-1">
               {combatSummary.map((s) => (
                 <div
@@ -553,25 +534,18 @@ export default function Home() {
                   </div>
                 </div>
               ))}
-
-              {/* Story flag bonuses active this session */}
               {teamStatus?.player && (
                 <div className="mt-2 p-3 bg-amber-900/10 border border-amber-700/20 rounded-lg">
                   <p className="text-[10px] font-bold text-amber-500 uppercase tracking-widest mb-2">Story Bonuses Active</p>
                   <div className="flex flex-wrap gap-2">
                     {[
-                      { key: "forceBonusPct",     label: "Force",     color: "text-red-300",   bg: "bg-red-900/40"    },
+                      { key: "forceBonusPct",     label: "Force",     color: "text-red-300",   bg: "bg-red-900/40" },
                       { key: "influenceBonusPct", label: "Influence", color: "text-amber-300", bg: "bg-amber-900/40" },
-                      { key: "spiritBonusPct",    label: "Spirit",    color: "text-cyan-300",  bg: "bg-cyan-900/40"  },
+                      { key: "spiritBonusPct",    label: "Spirit",    color: "text-cyan-300",  bg: "bg-cyan-900/40" },
                     ].map(({ key, label, color, bg }) => {
                       const pct = (teamStatus.player as any)[key] ?? 0;
                       return (
-                        <span
-                          key={key}
-                          className={`text-xs px-2 py-0.5 rounded-full border border-white/10 ${bg} ${color} ${
-                            pct === 0 ? "opacity-30" : ""
-                          }`}
-                        >
+                        <span key={key} className={`text-xs px-2 py-0.5 rounded-full border border-white/10 ${bg} ${color} ${pct === 0 ? "opacity-30" : ""}`}>
                           {label} {pct > 0 ? `+${pct}%` : "—"}
                         </span>
                       );
@@ -583,14 +557,11 @@ export default function Home() {
           </motion.div>
         </div>
 
-        {/* ── Active Pet ───────────────────────────────────────────────────── */}
         {teamStatus?.pet && (
           <div className="mt-4">
             <h3 className="text-xl font-display font-semibold border-b border-border/50 pb-2 mb-4">Active Pet</h3>
             <div className="bg-card border border-accent/30 rounded-lg p-4 bg-washi flex items-center gap-4">
-              <div className="p-3 bg-accent/10 rounded-full border border-accent/30">
-                <Sparkles size={24} className="text-accent" />
-              </div>
+              <div className="p-3 bg-accent/10 rounded-full border border-accent/30"><Sparkles size={24} className="text-accent" /></div>
               <div>
                 <p className="font-bold text-white">{teamStatus.pet.name}</p>
                 <p className="text-xs text-muted-foreground">Lv{teamStatus.pet.level} | ATK {teamStatus.pet.attack} | DEF {teamStatus.pet.defense} | SPD {teamStatus.pet.speed}</p>
@@ -600,14 +571,11 @@ export default function Home() {
           </div>
         )}
 
-        {/* ── Active Horse ──────────────────────────────────────────────────── */}
         {teamStatus?.horse && (
           <div className="mt-4">
             <h3 className="text-xl font-display font-semibold border-b border-border/50 pb-2 mb-4">Active Horse</h3>
             <div className="bg-card border border-cyan-700/30 rounded-lg p-4 bg-washi flex items-center gap-4">
-              <div className="p-3 bg-cyan-900/20 rounded-full border border-cyan-700/30">
-                <Zap size={24} className="text-cyan-400" />
-              </div>
+              <div className="p-3 bg-cyan-900/20 rounded-full border border-cyan-700/30"><Zap size={24} className="text-cyan-400" /></div>
               <div>
                 <p className="font-bold text-white">{teamStatus.horse.name}</p>
                 <p className="text-xs text-muted-foreground">Lv{teamStatus.horse.level} | +{teamStatus.horse.speedBonus} SPD | +{teamStatus.horse.attackBonus} ATK</p>
@@ -617,7 +585,6 @@ export default function Home() {
           </div>
         )}
 
-        {/* ── Transformations ───────────────────────────────────────────────── */}
         {transforms && transforms.length > 0 && (
           <div className="mt-4">
             <h3 className="text-xl font-display font-semibold border-b border-border/50 pb-2 mb-4">Transformations (変身)</h3>
@@ -625,7 +592,7 @@ export default function Home() {
               {transforms.map(t => (
                 <div key={t.id} className="bg-card border border-purple-700/40 rounded-lg p-4 bg-washi shadow-[0_0_15px_rgba(128,0,255,0.1)]">
                   <p className="font-bold text-purple-300 text-lg font-display">{t.name}</p>
-                  <p className="text-xs text-muted-foreground mt-1">Lv{t.level} | {t.durationSeconds}s duration | {t.cooldownSeconds}s cooldown</p>
+                  <p className="text-xs text-muted-foreground mt-1">Lv{t.level} | {t.durationSeconds}s | {t.cooldownSeconds}s cd</p>
                   <div className="grid grid-cols-2 gap-2 mt-2 text-xs">
                     <span className="text-red-400">+{t.attackPercent}% ATK</span>
                     <span className="text-blue-400">+{t.defensePercent}% DEF</span>

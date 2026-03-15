@@ -2,6 +2,7 @@ import { Router } from "express";
 import { storage } from "../storage";
 import { getPlayerTeamStats } from "../lib/player-stats";
 import { api } from "@shared/routes";
+import { statUpgradeCost, totalUpgradeCost } from "@shared/stat-cost";
 
 export const playerRouter = Router();
 
@@ -40,17 +41,17 @@ playerRouter.post("/mark-intro-seen", async (req: any, res) => {
   }
 });
 
-// POST /api/player/stats/upgrade
+// POST /api/player/stats/upgrade  (single stat, single increment)
 playerRouter.post("/stats/upgrade", async (req: any, res) => {
   const userId = req.user.claims.sub;
   const { stat } = req.body;
-  const valid = ["str","agi","vit","int","dex","luk"];
+  const valid = ["str", "agi", "vit", "int", "dex", "luk"];
   if (!valid.includes(stat)) return res.status(400).json({ message: "Invalid stat" });
   const user = await storage.getUser(userId);
   if (!user) return res.status(404).json({ message: "User not found" });
   const cur  = (user as any)[stat] || 1;
   if (cur >= 99) return res.status(400).json({ message: "Stat already at maximum" });
-  const cost = Math.floor(2 + cur * 0.5);
+  const cost = statUpgradeCost(cur);
   if (user.statPoints < cost) return res.status(400).json({ message: "Not enough stat points" });
   await storage.updateUser(userId, { [stat]: cur + 1, statPoints: user.statPoints - cost });
   res.json({ success: true, newValue: cur + 1, pointsUsed: cost });
@@ -60,28 +61,36 @@ playerRouter.post("/stats/upgrade", async (req: any, res) => {
 playerRouter.post("/stats/bulk-upgrade", async (req: any, res) => {
   const userId = req.user.claims.sub;
   const { upgrades } = req.body;
-  const valid = ["str","agi","vit","int","dex","luk"];
+  const valid = ["str", "agi", "vit", "int", "dex", "luk"];
   const user  = await storage.getUser(userId);
   if (!user) return res.status(404).json({ message: "User not found" });
+
   let totalCost = 0;
-  const updates: any = {};
+  const updates: Record<string, number> = {};
+
   for (const [stat, amount] of Object.entries(upgrades as Record<string, number>)) {
     if (!valid.includes(stat)) return res.status(400).json({ message: `Invalid stat: ${stat}` });
     const val = (user as any)[stat] || 1;
     if (val + amount > 99) return res.status(400).json({ message: `${stat} would exceed max` });
-    let cost = 0;
-    for (let i = 0; i < amount; i++) cost += Math.floor(2 + (val + i) * 0.5);
+    const cost = totalUpgradeCost(val, amount);
     totalCost += cost;
     updates[stat] = val + amount;
   }
-  if (user.statPoints < totalCost) return res.status(400).json({ message: "Not enough stat points" });
+
+  if (user.statPoints < totalCost) {
+    return res.status(400).json({
+      message: "Not enough stat points",
+      required: totalCost,
+      available: user.statPoints,
+    });
+  }
+
   updates.statPoints = user.statPoints - totalCost;
   await storage.updateUser(userId, updates);
   res.json({ success: true, pointsUsed: totalCost });
 });
 
 // POST /api/restart
-// Mounted separately in routes.ts because path is not under /api/player
 export async function restartHandler(req: any, res: any) {
   const userId = req.user.claims.sub;
   await (storage as any).restartGame(userId);
