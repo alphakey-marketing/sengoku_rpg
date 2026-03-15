@@ -16,7 +16,7 @@ import { supabase } from "../lib/supabase";
 import { queryClient } from "../lib/queryClient";
 import { api } from "@shared/routes";
 import type { Session } from "@supabase/supabase-js";
-import { IS_DEV_AUTH, getOrCreateDevUserId, resetDevUser } from "../lib/devAuth";
+import { IS_DEV_AUTH, getOrCreateDevUserId, resetDevUser } from "../lib/dev-auth";
 
 // ── Dev-mode auth hook ────────────────────────────────────────────────────────
 function useAuthDev() {
