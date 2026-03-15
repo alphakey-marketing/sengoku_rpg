@@ -188,8 +188,14 @@ function BattleGateOverlay({ scene, bgGradient, onResult }: BattleGateProps) {
     setPhase("fighting");
     setCombatLogs([]);
     try {
-      const data = await apiRequest("POST", api.battle.field.path, { locationId, repeatCount: 1 });
-      const logs: string[]  = data.logs ?? [];
+      // FIX (Bug 1 + Bug 2): apiRequest returns a raw Response; call .json() to
+      // parse the body. Without this, data was a Response object so data.logs
+      // was undefined (no combat log) and data.victory was always falsy
+      // (battle always showed as defeat). The flags POST below also depended on
+      // `victory` being a real boolean, so battle_won was always written as 0.
+      const res  = await apiRequest("POST", api.battle.field.path, { locationId, repeatCount: 1 });
+      const data = await res.json();
+      const logs: string[]   = data.logs ?? [];
       const victory: boolean = !!data.victory;
       setCombatLogs(logs);
       setWon(victory);
