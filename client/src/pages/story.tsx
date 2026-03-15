@@ -117,8 +117,18 @@ const FLAG_LABELS: Record<string, string> = {
   battle_lost:           "☠ Battle Lost",
 };
 
+// FIX: Chapter 1 previously routed to "/" which is gated by AuthGuard when
+// currentChapter === 0. The completion API write and the player refetch can
+// race, so AuthGuard sees currentChapter: 0 and immediately bounces back to
+// /story — creating an infinite redirect loop that makes the button appear
+// stuck. Routing Ch1 to "/story" (the chapter-select screen, which is always
+// exempt from the chapter-0 gate) eliminates the race entirely. The player
+// naturally sees Chapter 2 unlocked there once currentChapter has been
+// committed to the DB. All other chapters already route to gated destinations
+// that are only reachable after their respective chapters have been completed,
+// so they are unaffected.
 const CHAPTER_COMPLETE_DESTINATION: Record<number, { path: string; label: string }> = {
-  1: { path: "/",       label: "Enter the Dojo" },
+  1: { path: "/story",  label: "Enter the Dojo" },  // was "/" — see comment above
   2: { path: "/stable", label: "Visit War Council" },
   3: { path: "/gear",   label: "Open the Armoury" },
   4: { path: "/gacha",  label: "Visit the Shrine" },
@@ -301,7 +311,7 @@ export default function StoryPage() {
   const battleReady  = isBattleGate && isAtLastLine && !isTyping;
 
   const completionDest = CHAPTER_COMPLETE_DESTINATION[CHAPTER_ID]
-    ?? { path: "/", label: "Enter the Dojo" };
+    ?? { path: "/story", label: "Enter the Dojo" };
 
   // ── Shared completion logic ───────────────────────────────────────────────────────────────────────────
   const triggerCompletion = useCallback(async () => {
