@@ -12,9 +12,8 @@ function requireEnv(key: string): string {
       `❌ Missing required environment variable: ${key}\n` +
       `\n` +
       `📝 To fix this:\n` +
-      `   1. Copy .env.example to .env\n` +
-      `   2. Fill in all required values\n` +
-      `   3. Restart the server\n` +
+      `   1. Add the secret in Replit Secrets (or .env locally)\n` +
+      `   2. Restart the server\n` +
       `═══════════════════════════════════════\n\n`,
     );
   }
@@ -29,7 +28,9 @@ const IS_PRODUCTION = process.env.NODE_ENV === "production";
 
 export const env = {
   // ---- Database ----
-  DATABASE_URL: requireEnv("DATABASE_URL"),
+  // Renamed from DATABASE_URL to avoid Replit reserving that key for its own
+  // Neon DB, which blocks publishing when an external DB is in use.
+  SUPABASE_DB_URL: requireEnv("SUPABASE_DB_URL"),
 
   // ---- Supabase Auth ----
   SUPABASE_URL: requireEnv("SUPABASE_URL"),
@@ -44,6 +45,6 @@ export const env = {
 console.log(`\n✅ Environment validated successfully`);
 console.log(`   NODE_ENV: ${env.NODE_ENV}`);
 console.log(`   PORT: ${env.PORT}`);
-console.log(`   DATABASE: ${env.DATABASE_URL.split('@')[1] || 'configured'}`);
+console.log(`   DATABASE: ${env.SUPABASE_DB_URL.split('@')[1] || 'configured'}`);
 console.log(`   SUPABASE: ${env.SUPABASE_URL}`);
 console.log(``);
