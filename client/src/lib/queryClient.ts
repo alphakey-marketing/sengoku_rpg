@@ -1,5 +1,5 @@
 /**
- * client/src/lib/queryClient.ts
+ * queryClient.ts
  *
  * Handles auth headers for every outgoing API request.
  *
@@ -14,7 +14,7 @@
  */
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 import { supabase } from "./supabase";
-import { IS_DEV_AUTH, getOrCreateDevUserId } from "./devAuth";
+import { IS_DEV_AUTH, getOrCreateDevUserId } from "./dev-auth";
 
 /** Returns the correct auth headers depending on the active auth provider. */
 async function authHeaders(): Promise<Record<string, string>> {
@@ -72,11 +72,12 @@ export const getQueryFn: <T>(options: {
   on401: UnauthorizedBehavior;
 }) => QueryFunction<T> =
   ({ on401: unauthorizedBehavior }) =>
-  async ({ queryKey }) => {
+  async ({ queryKey, signal }) => {
     const extraHeaders = await authHeaders();
     const res = await fetch(queryKey.join("/") as string, {
       credentials: "include",
       headers: extraHeaders,
+      signal,
     });
 
     if (unauthorizedBehavior === "returnNull" && res.status === 401) {

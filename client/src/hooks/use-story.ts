@@ -1,15 +1,18 @@
 /**
- * client/src/hooks/use-story.ts
+ * use-story.ts
+ * Story-specific React Query hooks.
  *
- * Uses the shared apiRequest / getQueryFn from queryClient.ts so that
- * auth headers are injected correctly in BOTH supabase and dev modes.
- * The old private fetchWithAuth (Supabase-only) is removed — it was
- * bypassing the dev-mode `x-dev-user-id` header, causing 401s and
- * the resulting non-array response crashing ContextualTips.
+ * Uses getQueryFn from queryClient.ts so auth headers are injected
+ * correctly in both Supabase and dev modes.
+ *
+ * getQueryFn() returns a QueryFunction — it must be assigned directly
+ * to the queryFn option and NOT called immediately. Calling it inline
+ * bypassed React Query's cancellation signal and leaked an AbortController
+ * on every render.
  */
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { api } from "@shared/routes";
-import { apiRequest, getQueryFn } from "../lib/queryClient";
+import { getQueryFn } from "../lib/queryClient";
 
 export interface PlayerFlag {
   flagKey: string;
@@ -35,9 +38,8 @@ export interface StoryChapter {
 export function useStoryFlags() {
   return useQuery<PlayerFlag[]>({
     queryKey: [api.story.flags.path],
-    queryFn: getQueryFn<PlayerFlag[]>({ on401: "returnNull" })({ queryKey: [api.story.flags.path], meta: undefined, signal: new AbortController().signal }),
+    queryFn: getQueryFn<PlayerFlag[]>({ on401: "returnNull" }),
     staleTime: 30_000,
-    // Ensure we always fall back to an empty array, never undefined/null
     select: (data) => (Array.isArray(data) ? data : []),
   });
 }
@@ -45,7 +47,7 @@ export function useStoryFlags() {
 export function useStoryChapters() {
   return useQuery<StoryChapter[]>({
     queryKey: [api.story.chapters.path],
-    queryFn: getQueryFn<StoryChapter[]>({ on401: "returnNull" })({ queryKey: [api.story.chapters.path], meta: undefined, signal: new AbortController().signal }),
+    queryFn: getQueryFn<StoryChapter[]>({ on401: "returnNull" }),
     staleTime: 30_000,
     select: (data) => (Array.isArray(data) ? data : []),
   });
