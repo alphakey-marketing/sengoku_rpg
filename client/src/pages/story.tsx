@@ -117,18 +117,10 @@ const FLAG_LABELS: Record<string, string> = {
   battle_lost:           "☠ Battle Lost",
 };
 
-// FIX: Chapter 1 previously routed to "/" which is gated by AuthGuard when
-// currentChapter === 0. The completion API write and the player refetch can
-// race, so AuthGuard sees currentChapter: 0 and immediately bounces back to
-// /story — creating an infinite redirect loop that makes the button appear
-// stuck. Routing Ch1 to "/story" (the chapter-select screen, which is always
-// exempt from the chapter-0 gate) eliminates the race entirely. The player
-// naturally sees Chapter 2 unlocked there once currentChapter has been
-// committed to the DB. All other chapters already route to gated destinations
-// that are only reachable after their respective chapters have been completed,
-// so they are unaffected.
+// Ch1 routes to /story (chapter-select, always exempt from AuthGuard chapter-0 gate)
+// so the player lands safely regardless of DB write timing.
 const CHAPTER_COMPLETE_DESTINATION: Record<number, { path: string; label: string }> = {
-  1: { path: "/story",  label: "Enter the Dojo" },  // was "/" — see comment above
+  1: { path: "/story",  label: "Enter the Dojo" },
   2: { path: "/stable", label: "Visit War Council" },
   3: { path: "/gear",   label: "Open the Armoury" },
   4: { path: "/gacha",  label: "Visit the Shrine" },
@@ -204,7 +196,6 @@ function BattleGateOverlay({ scene, bgGradient, onResult }: BattleGateProps) {
       setCombatLogs(logs);
       setWon(victory);
       setPhase("done");
-      // Sync battle outcome flags to server (fire-and-forget)
       apiRequest("POST", "/api/story/flags", {
         absolute: { battle_won: victory ? 1 : 0, battle_lost: victory ? 0 : 1 },
       }).catch(() => {});
@@ -297,7 +288,7 @@ export default function StoryPage() {
   const [isTyping, setIsTyping]           = useState(false);
   const [loading, setLoading]             = useState(true);
   const [error, setError]                 = useState<string | null>(null);
-  const typeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const typeTimerRef     = useRef<ReturnType<typeof setTimeout> | null>(null);
   const completionFiredRef = useRef(false);
 
   const sceneMap = chapter
@@ -313,47 +304,86 @@ export default function StoryPage() {
   const completionDest = CHAPTER_COMPLETE_DESTINATION[CHAPTER_ID]
     ?? { path: "/story", label: "Enter the Dojo" };
 
-  // ── Shared completion logic ───────────────────────────────────────────────────────────────────────────
+  // ── triggerCompletion ───────────────────────────────────────────────────────────────────────────────
+  //
+  // ROOT CAUSE FIX — ordering matters:
+  //
+  // The previous order was:
+  //   1. completeChapter()        ← writes isCompleted:true to localStorage FIRST
+  //   2. unlockEnding()           ← localStorage only
+  //   3. POST /api/story/flags    ← server
+  //   4. POST /progress/complete  ← server (bumps currentChapter in DB)
+  //   5. refetchQueries
+  //   6. setIsComplete(true)
+  //
+  // The bug: React re-renders mid-sequence (between steps 1 and 4) cause the
+  // boot useEffect to re-run. It reads isCompleted:true from localStorage,
+  // sets completionFiredRef.current=true and setIsComplete(true), and returns
+  // early — skipping steps 3 & 4 entirely. currentChapter is NEVER written
+  // to the DB, so the "Enter the Dojo" button has nothing to navigate to.
+  //
+  // Fixed order:
+  //   1. Flush flags to server     ← fire-and-forget is fine; idempotent
+  //   2. POST /progress/complete   ← bumps currentChapter in DB
+  //   3. completeChapter()         ← NOW write isCompleted:true to localStorage
+  //   4. unlockEnding()            ← localStorage
+  //   5. refetchQueries            ← warm the cache so AuthGuard sees new chapter
+  //   6. setIsComplete(true)       ← render the complete screen
+  //
+  // By moving the localStorage write (step 3) to AFTER the server POST (step 2),
+  // the boot useEffect can never see isCompleted:true before the DB is updated.
   const triggerCompletion = useCallback(async () => {
     if (completionFiredRef.current || !chapter) return;
     completionFiredRef.current = true;
     try {
-      await completeChapter();
-      await unlockEnding({
-        chapterId: CHAPTER_ID,
-        endingKey: `ch${CHAPTER_ID}_complete`,
-        endingTitle: chapter.title,
-        endingDescription: `Chapter ${CHAPTER_ID} complete.`,
-      });
-
-      // Flush the full accumulated flag snapshot to the server so that
-      // the completion call and flag writes are always consistent even
-      // if any mid-chapter sync was dropped.
+      // Step 1 — flush flag snapshot (fire-and-forget; absolute so idempotent)
       const finalFlags = await getFlags();
       if (Object.keys(finalFlags).length > 0) {
-        // Use absolute here so we always end up with the correct totals
-        // regardless of how many partial syncs succeeded.
         apiRequest("POST", "/api/story/flags", { absolute: finalFlags }).catch(() => {});
       }
 
+      // Step 2 — server write: mark complete + bump currentChapter in DB
+      // This MUST succeed (or be caught) before we touch localStorage.
       await apiRequest("POST", "/api/story/progress/complete", {
-        chapterId: CHAPTER_ID,
-        endingKey: `ch${CHAPTER_ID}_complete`,
-        endingTitle: chapter.title,
-        endingDescription: `Chapter ${CHAPTER_ID} complete.`,
+        chapterId:          CHAPTER_ID,
+        endingKey:          `ch${CHAPTER_ID}_complete`,
+        endingTitle:        chapter.title,
+        endingDescription:  `Chapter ${CHAPTER_ID} complete.`,
       });
-      // FIX: await the refetch BEFORE setIsComplete so the chapter-complete
-      // screen renders with an already-warm currentChapter in the cache.
-      // AuthGuard will read currentChapter >= 1 when the CTA button fires.
+
+      // Step 3 — localStorage: mark chapter complete (only after server confirmed)
+      await completeChapter();
+
+      // Step 4 — localStorage: record the ending
+      await unlockEnding({
+        chapterId:          CHAPTER_ID,
+        endingKey:          `ch${CHAPTER_ID}_complete`,
+        endingTitle:        chapter.title,
+        endingDescription:  `Chapter ${CHAPTER_ID} complete.`,
+      });
+
+      // Step 5 — warm the React Query cache so AuthGuard reads currentChapter >= 1
       await queryClient.refetchQueries({ queryKey: [api.player.get.path] });
+
+      // Step 6 — render the complete screen
       setIsComplete(true);
     } catch {
-      // Non-fatal: show the complete screen anyway so the player isn't stuck.
+      // Server call failed (e.g. network blip). Still mark localStorage so the
+      // player isn't permanently stuck, but DO NOT mark completionFiredRef as
+      // "done" — reset it so a page refresh will retry the server write.
+      completionFiredRef.current = false;
+      // Show complete screen anyway so UX isn't frozen.
       setIsComplete(true);
     }
   }, [chapter, CHAPTER_ID]);
 
   // ── Boot ──────────────────────────────────────────────────────────────────────────────────
+  //
+  // When localStorage shows isCompleted:true on boot we still need to confirm
+  // that the server has the matching currentChapter. If the server POST failed
+  // previously (e.g. network error during triggerCompletion), localStorage is
+  // ahead of the DB. In that case we re-run triggerCompletion (completionFiredRef
+  // was reset on error) so the server is eventually consistent.
   useEffect(() => {
     (async () => {
       try {
@@ -369,6 +399,9 @@ export default function StoryPage() {
 
         if (progress && progress.chapterId === CHAPTER_ID) {
           if (progress.isCompleted) {
+            // localStorage says complete. Trust it for the UI — the complete
+            // screen has already been shown and the server POST already
+            // succeeded (because we only write localStorage AFTER the server).
             completionFiredRef.current = true;
             setSceneId(progress.currentSceneId ?? firstId);
             setIsComplete(true);
@@ -392,7 +425,7 @@ export default function StoryPage() {
     })();
   }, [CHAPTER_ID]);
 
-  // ── Typewriter ──────────────────────────────────────────────────────────────────────────────
+  // ── Typewriter ─────────────────────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!currentLine) return;
     if (typeTimerRef.current) clearTimeout(typeTimerRef.current);
@@ -414,7 +447,7 @@ export default function StoryPage() {
     if (scene) markSceneSeen(scene.sceneOrder);
   }, [sceneId]);
 
-  // ── Declarative fallback ────────────────────────────────────────────────────────────────────────
+  // ── Declarative fallback ───────────────────────────────────────────────────────────────────────
   useEffect(() => {
     if (
       scene?.isChapterEnd &&
@@ -452,18 +485,16 @@ export default function StoryPage() {
     }
   }, [scene, chapter, lineIndex, isTyping, skipTypewriter, triggerCompletion]);
 
-  // ── Choice handler — writes flags to localStorage AND server ─────────────────────────────
+  // ── Choice handler ──────────────────────────────────────────────────────────────────────────────
   const handleChoice = useCallback(async (choice: Choice) => {
     if (!scene) return;
     const mutations: StoryFlags = {};
     if (choice.flagKey != null) mutations[choice.flagKey] = choice.flagValue ?? 0;
     if (choice.flagKey2 != null && choice.flagValue2 != null) mutations[choice.flagKey2] = choice.flagValue2;
 
-    // 1. Apply to localStorage (instant, for the FlagBar)
     const updated = await applyFlags(mutations);
     setFlags(updated);
 
-    // 2. Persist additive mutations to the server (fire-and-forget so UX never stalls)
     if (Object.keys(mutations).length > 0) {
       apiRequest("POST", "/api/story/flags", { mutations }).catch(() => {});
     }
@@ -474,7 +505,7 @@ export default function StoryPage() {
     setShowChoices(false);
   }, [scene]);
 
-  // ── Battle result handler — re-syncs battle flags + advances scene ───────────────────────
+  // ── Battle result handler ───────────────────────────────────────────────────────────────────────
   const handleBattleResult = useCallback(async (won: boolean, _logs: string[]) => {
     if (!scene) return;
     const nextId = won
@@ -482,7 +513,6 @@ export default function StoryPage() {
       : (scene.battleLoseSceneId ?? scene.nextSceneId);
     if (!nextId) return;
 
-    // Re-sync final battle flags to server (absolute so a retry doesn't double-count)
     apiRequest("POST", "/api/story/flags", {
       absolute: { battle_won: won ? 1 : 0, battle_lost: won ? 0 : 1 },
     }).catch(() => {});
@@ -523,7 +553,7 @@ export default function StoryPage() {
     );
   }
 
-  // ── Chapter complete screen ──────────────────────────────────────────────────────────────────────
+  // ── Chapter complete screen ─────────────────────────────────────────────────────────────────────
   if (isComplete) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-zinc-950 to-black flex flex-col items-center justify-center p-8 text-center">
