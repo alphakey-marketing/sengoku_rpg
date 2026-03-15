@@ -1,0 +1,822 @@
+{
+  "chapter": {
+    "title": "The Monk's Fire",
+    "subtitle": "1554 — Religion is politics. Politics is war. War is religion.",
+    "chapterOrder": 4,
+    "isLocked": false
+  },
+  "scenes": [
+    {
+      "sceneRef": "S01",
+      "backgroundKey": "nagashima_supply_road_smoke",
+      "bgmKey": "bgm_war_drums_quiet",
+      "sceneOrder": 1,
+      "nextSceneRef": "S02",
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "Spring, 1554. The Ikko-ikki have been raiding Nobunaga's supply lines for three weeks. Not destroying them — testing them. Probing. The way a man checks ice before he crosses it.",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "The warrior monks of the Honganji answer to one man: Kennyo. Abbot. Strategist. A man who has never held a sword and has never needed to.",
+          "lineOrder": 2
+        },
+        {
+          "speakerName": "Mitsuhide",
+          "speakerSide": "left",
+          "portraitKey": "mitsuhide_calm",
+          "text": "Eleven raids in three weeks. No direct engagement. They hit, they retreat into the marshlands, and they vanish. We cannot pursue them into the Nagashima delta — the terrain swallows armies.",
+          "lineOrder": 3
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_cold",
+          "text": "They're not trying to win a battle. They're trying to tell me something.",
+          "lineOrder": 4
+        },
+        {
+          "speakerName": "Mitsuhide",
+          "speakerSide": "left",
+          "portraitKey": "mitsuhide_calm",
+          "text": "That they can bleed us indefinitely without risking a direct confrontation?",
+          "lineOrder": 5
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_cold",
+          "text": "That they've been waiting for someone like me. Someone big enough to be worth the fight.",
+          "lineOrder": 6
+        },
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "As if on cue, a monk arrives at the castle gate. Kennyo's seal. A request — polite, formal, precise — for an audience.",
+          "lineOrder": 7
+        },
+        {
+          "speakerName": "Mitsuhide",
+          "speakerSide": "left",
+          "portraitKey": "mitsuhide_calm",
+          "text": "He sent an envoy.",
+          "lineOrder": 8
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_cold",
+          "text": "He sent a message. The monk is just how it travels.",
+          "lineOrder": 9
+        }
+      ],
+      "choices": []
+    },
+    {
+      "sceneRef": "S02",
+      "backgroundKey": "gifu_castle_audience_chamber",
+      "bgmKey": "bgm_intrigue",
+      "sceneOrder": 2,
+      "nextSceneRef": null,
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "The monk is young. Educated. He stands very straight and his hands do not shake, which means Kennyo chose him specifically — a man who would not flinch. Everything about this meeting is being reported back.",
+          "lineOrder": 1
+        }
+      ],
+      "choices": [
+        {
+          "choiceText": "Receive him properly. Hear what Kennyo is offering before deciding whether to refuse it.",
+          "nextSceneRef": "S02A",
+          "flagKey": "political_power",
+          "flagValue": 1,
+          "flagKey2": null,
+          "flagValue2": null,
+          "choiceOrder": 1
+        },
+        {
+          "choiceText": "Receive him in the stables. In front of the grooms. Send him back with a gelding — let Kennyo read the metaphor.",
+          "nextSceneRef": "S02B",
+          "flagKey": "ruthlessness",
+          "flagValue": 1,
+          "flagKey2": "kennyo_hate",
+          "flagValue2": 2,
+          "choiceOrder": 2
+        },
+        {
+          "choiceText": "Don't receive him at all. Send the letter back with the seal unbroken.",
+          "nextSceneRef": "S02C",
+          "flagKey": "ruthlessness",
+          "flagValue": 1,
+          "flagKey2": "kennyo_hate",
+          "flagValue2": 1,
+          "choiceOrder": 3
+        }
+      ]
+    },
+    {
+      "sceneRef": "S02A",
+      "backgroundKey": "gifu_castle_audience_chamber",
+      "bgmKey": "bgm_intrigue",
+      "sceneOrder": 3,
+      "nextSceneRef": "S03",
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Monk Envoy",
+          "speakerSide": "left",
+          "portraitKey": "monk_envoy",
+          "text": "The Abbot Kennyo of the Honganji extends his respectful greetings. He wishes to propose a cessation of hostilities in exchange for Oda recognition of Honganji autonomy in the delta territories.",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_cold",
+          "text": "Tell the Abbot I don't negotiate the map of Japan with men who raid my supply lines as a prelude to conversation. When the raids stop, I will consider what he's worth talking to.",
+          "lineOrder": 2
+        },
+        {
+          "speakerName": "Monk Envoy",
+          "speakerSide": "left",
+          "portraitKey": "monk_envoy",
+          "text": "And if the raids do not stop?",
+          "lineOrder": 3
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_cold",
+          "text": "Then tell him I stop considering.",
+          "lineOrder": 4
+        },
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "The monk leaves. The raids stop for eleven days. Then they resume, slightly differently — which means Kennyo is now genuinely thinking, not just posturing. That is more alarming, not less.",
+          "lineOrder": 5
+        }
+      ],
+      "choices": []
+    },
+    {
+      "sceneRef": "S02B",
+      "backgroundKey": "gifu_castle_stables",
+      "bgmKey": "bgm_defiance",
+      "sceneOrder": 4,
+      "nextSceneRef": "S03",
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "The monk receives Nobunaga's message in a room that smells of horses, in front of six grooms who struggle not to laugh. He does not flinch once.",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Mitsuhide",
+          "speakerSide": "left",
+          "portraitKey": "mitsuhide_quiet",
+          "text": "Kennyo does not forgive humiliation, my lord. He is patient enough to wait years for a response to this.",
+          "lineOrder": 2
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_cold",
+          "text": "Then he'll have years to think about whether his monks can survive the wait.",
+          "lineOrder": 3
+        },
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "The raids double in frequency within a week. Kennyo is no longer testing. He is answering.",
+          "lineOrder": 4
+        }
+      ],
+      "choices": []
+    },
+    {
+      "sceneRef": "S02C",
+      "backgroundKey": "gifu_castle_gate",
+      "bgmKey": "bgm_tension_resolve",
+      "sceneOrder": 5,
+      "nextSceneRef": "S03",
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "The monk stands at the gate for two hours before a guard tells him no audience will be granted. He rides back with the letter across his saddle, seal unbroken.",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Mitsuhide",
+          "speakerSide": "left",
+          "portraitKey": "mitsuhide_calm",
+          "text": "He will interpret that as contempt.",
+          "lineOrder": 2
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_cold",
+          "text": "I'm not dismissing him. I'm making him wait.",
+          "lineOrder": 3
+        },
+        {
+          "speakerName": "Mitsuhide",
+          "speakerSide": "left",
+          "portraitKey": "mitsuhide_calm",
+          "text": "There is a difference.",
+          "lineOrder": 4
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_cold",
+          "text": "Yes. It's important that he knows that too.",
+          "lineOrder": 5
+        },
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "The raids intensify within days. Kennyo has read the silence correctly. He is no longer waiting for a reply.",
+          "lineOrder": 6
+        }
+      ],
+      "choices": []
+    },
+    {
+      "sceneRef": "S03",
+      "backgroundKey": "nagashima_village_burning",
+      "bgmKey": "bgm_tragedy_low",
+      "sceneOrder": 6,
+      "nextSceneRef": "S04",
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "Twelve days later. A supply village on the Nagashima road. Forty families. A small granary. A monastery school on its eastern edge where a monk named Gyokan has taught calligraphy and mathematics for thirty years.",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "The Ikko-ikki burn it in the night. The fire spreads. By morning, a third of the village is ash.",
+          "lineOrder": 2
+        },
+        {
+          "speakerName": "Scout",
+          "speakerSide": "left",
+          "portraitKey": "scout_panicked",
+          "text": "Twenty-two dead, my lord. Farmers. Two monks from the school.",
+          "lineOrder": 3
+        },
+        {
+          "speakerName": "Mitsuhide",
+          "speakerSide": "left",
+          "portraitKey": "mitsuhide_quiet",
+          "text": "My lord. The monastery school—",
+          "lineOrder": 4
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_cold",
+          "text": "What about it?",
+          "lineOrder": 5
+        },
+        {
+          "speakerName": "Mitsuhide",
+          "speakerSide": "left",
+          "portraitKey": "mitsuhide_quiet",
+          "text": "Nothing. We can discuss the response first.",
+          "lineOrder": 6
+        }
+      ],
+      "choices": []
+    },
+    {
+      "sceneRef": "S04",
+      "backgroundKey": "nagashima_village_ruins_dawn",
+      "bgmKey": "bgm_tragedy_low",
+      "sceneOrder": 7,
+      "nextSceneRef": null,
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "Twenty-two dead. Forty families displaced. The Nagashima road is effectively cut. Every lord in the region is watching to see what Nobunaga does next.",
+          "lineOrder": 1
+        }
+      ],
+      "choices": [
+        {
+          "choiceText": "Shelter the survivors in Gifu. Rebuild the village — visibly. Let the delta farmers see what Oda protection looks like.",
+          "nextSceneRef": "S04A",
+          "flagKey": "political_power",
+          "flagValue": 1,
+          "flagKey2": "nohime_trust",
+          "flagValue2": 1,
+          "choiceOrder": 1
+        },
+        {
+          "choiceText": "Move survivors east to a fortified settlement. Re-route the road so Kennyo loses his target.",
+          "nextSceneRef": "S04B",
+          "flagKey": "political_power",
+          "flagValue": 1,
+          "flagKey2": null,
+          "flagValue2": null,
+          "choiceOrder": 2
+        },
+        {
+          "choiceText": "Find the nearest Ikko-ikki outpost. Burn it. Send back the ashes.",
+          "nextSceneRef": "S04C",
+          "flagKey": "ruthlessness",
+          "flagValue": 2,
+          "flagKey2": "kennyo_hate",
+          "flagValue2": 2,
+          "choiceOrder": 3
+        }
+      ]
+    },
+    {
+      "sceneRef": "S04A",
+      "backgroundKey": "gifu_castle_outer_district",
+      "bgmKey": "bgm_quiet_resolve",
+      "sceneOrder": 8,
+      "nextSceneRef": "S05",
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "The survivors arrive at Gifu in wagons. Within three days, word has spread to every farming settlement in the Nagashima delta.",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Nohime",
+          "speakerSide": "left",
+          "portraitKey": "nohime_neutral",
+          "text": "This was expensive.",
+          "lineOrder": 2
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_cold",
+          "text": "It was an investment.",
+          "lineOrder": 3
+        },
+        {
+          "speakerName": "Nohime",
+          "speakerSide": "left",
+          "portraitKey": "nohime_neutral",
+          "text": "In what?",
+          "lineOrder": 4
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_cold",
+          "text": "In the next village that Kennyo considers burning.",
+          "lineOrder": 5
+        }
+      ],
+      "choices": []
+    },
+    {
+      "sceneRef": "S04B",
+      "backgroundKey": "fortified_settlement_east",
+      "bgmKey": "bgm_quiet_resolve",
+      "sceneOrder": 9,
+      "nextSceneRef": "S05",
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "Three days later, Ikko-ikki raiders arrive at the old village location and find ash and absence. They have nothing to raid.",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Mitsuhide",
+          "speakerSide": "left",
+          "portraitKey": "mitsuhide_calm",
+          "text": "It works tactically. But the farmers who were moved — some of them will blame you rather than Kennyo.",
+          "lineOrder": 2
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_cold",
+          "text": "Some of them will. The ones who understand what happened won't.",
+          "lineOrder": 3
+        }
+      ],
+      "choices": []
+    },
+    {
+      "sceneRef": "S04C",
+      "backgroundKey": "ikko_ikki_outpost_burning",
+      "bgmKey": "bgm_war_drums",
+      "sceneOrder": 10,
+      "nextSceneRef": "S05",
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "The outpost burns before dawn. Twenty monks evacuate in time. The supplies — three months of them — do not. You send back a single message: 'Now we are even.'",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Mitsuhide",
+          "speakerSide": "left",
+          "portraitKey": "mitsuhide_quiet",
+          "text": "There was a monk named Gyokan in that school. He taught there for thirty years.",
+          "lineOrder": 2
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_cold",
+          "text": "You knew him.",
+          "lineOrder": 3
+        },
+        {
+          "speakerName": "Mitsuhide",
+          "speakerSide": "left",
+          "portraitKey": "mitsuhide_quiet",
+          "text": "He taught me to write. When I was seven.",
+          "lineOrder": 4
+        },
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "A long silence. Mitsuhide bows and walks away before Nobunaga can speak. His back is perfectly straight.",
+          "lineOrder": 5
+        }
+      ],
+      "choices": []
+    },
+    {
+      "sceneRef": "S05",
+      "backgroundKey": "gifu_castle_corridor_night",
+      "bgmKey": "bgm_tragedy_low",
+      "sceneOrder": 11,
+      "nextSceneRef": "S06",
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "That evening. Nobunaga finds Mitsuhide in the map room, alone. He has not moved any markers. He has been standing in front of the map for what appears to have been an hour.",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_cold",
+          "text": "Mitsuhide.",
+          "lineOrder": 2
+        },
+        {
+          "speakerName": "Mitsuhide",
+          "speakerSide": "left",
+          "portraitKey": "mitsuhide_quiet",
+          "text": "The Ikko-ikki have three staging points in the delta. If we take the northern crossing first—",
+          "lineOrder": 3
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_cold",
+          "text": "Stop.",
+          "lineOrder": 4
+        },
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "The silence in the map room is the kind that has weight.",
+          "lineOrder": 5
+        }
+      ],
+      "choices": []
+    },
+    {
+      "sceneRef": "S06",
+      "backgroundKey": "gifu_castle_map_room_night",
+      "bgmKey": "bgm_tragedy_low",
+      "sceneOrder": 12,
+      "nextSceneRef": null,
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "Mitsuhide is at the edge of something. Not breaking — he does not break visibly. But something is under pressure that was not under pressure before.",
+          "lineOrder": 1
+        }
+      ],
+      "choices": [
+        {
+          "choiceText": "\"Grief is a private matter. We have a war in front of us. Mourn after.\"",
+          "nextSceneRef": "S06A",
+          "flagKey": "mitsuhide_loyalty",
+          "flagValue": -2,
+          "flagKey2": null,
+          "flagValue2": null,
+          "choiceOrder": 1
+        },
+        {
+          "choiceText": "\"I didn't know he was there. I should have known. I am sorry, Mitsuhide.\"",
+          "nextSceneRef": "S06B",
+          "flagKey": "mitsuhide_loyalty",
+          "flagValue": 2,
+          "flagKey2": null,
+          "flagValue2": null,
+          "choiceOrder": 2
+        },
+        {
+          "choiceText": "\"Sit down. Tell me about him. The campaign can wait one hour.\"",
+          "nextSceneRef": "S06C",
+          "flagKey": "mitsuhide_loyalty",
+          "flagValue": 2,
+          "flagKey2": "nohime_trust",
+          "flagValue2": 1,
+          "choiceOrder": 3
+        }
+      ]
+    },
+    {
+      "sceneRef": "S06A",
+      "backgroundKey": "gifu_castle_map_room_night",
+      "bgmKey": "bgm_war_drums_quiet",
+      "sceneOrder": 13,
+      "nextSceneRef": "S08_BATTLE",
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Mitsuhide",
+          "speakerSide": "left",
+          "portraitKey": "mitsuhide_quiet",
+          "text": "Yes, my lord.",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "He is brilliant for the rest of the evening. Every assessment is precise. But something behind his eyes has gone very, very quiet. The presence of a man who has begun, for the first time, to file things away.",
+          "lineOrder": 2
+        }
+      ],
+      "choices": []
+    },
+    {
+      "sceneRef": "S06B",
+      "backgroundKey": "gifu_castle_map_room_night",
+      "bgmKey": "bgm_quiet_resolve",
+      "sceneOrder": 14,
+      "nextSceneRef": "S08_BATTLE",
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_cold",
+          "text": "I mean it.",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Mitsuhide",
+          "speakerSide": "left",
+          "portraitKey": "mitsuhide_quiet",
+          "text": "He was a small man. Very thin. He smelled of ink. He said my brushwork was impatient.",
+          "lineOrder": 2
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_cold",
+          "text": "Was he right?",
+          "lineOrder": 3
+        },
+        {
+          "speakerName": "Mitsuhide",
+          "speakerSide": "left",
+          "portraitKey": "mitsuhide_calm",
+          "text": "About everything except that. My brushwork was precise. He just wanted an excuse to keep me working.",
+          "lineOrder": 4
+        },
+        {
+          "speakerName": "Mitsuhide",
+          "speakerSide": "left",
+          "portraitKey": "mitsuhide_calm",
+          "text": "Thank you, my lord.",
+          "lineOrder": 5
+        }
+      ],
+      "choices": []
+    },
+    {
+      "sceneRef": "S06C",
+      "backgroundKey": "gifu_castle_map_room_night",
+      "bgmKey": "bgm_quiet_resolve",
+      "sceneOrder": 15,
+      "nextSceneRef": "S08_BATTLE",
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_cold",
+          "text": "Sit down. One hour. Tell me about the man.",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "Mitsuhide sits. He talks for forty minutes without stopping — about a thin monk who smelled of ink, about mornings in a cold classroom, about a man who taught him that precision was the closest thing to virtue he had ever encountered.",
+          "lineOrder": 2
+        },
+        {
+          "speakerName": "Mitsuhide",
+          "speakerSide": "left",
+          "portraitKey": "mitsuhide_calm",
+          "text": "He would have said this war was inevitable. He used to say: men with power always mistake permission for righteousness.",
+          "lineOrder": 3
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_cold",
+          "text": "He wasn't wrong.",
+          "lineOrder": 4
+        },
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "Something in the room has shifted. The thing that was under pressure has been, for now, relieved.",
+          "lineOrder": 5
+        }
+      ],
+      "choices": []
+    },
+    {
+      "sceneRef": "S08_BATTLE",
+      "backgroundKey": "nagashima_delta_crossing_dawn",
+      "bgmKey": "bgm_war_drums",
+      "sceneOrder": 16,
+      "nextSceneRef": null,
+      "isBattleGate": true,
+      "battleEnemyKey": "ikko_ikki_nagashima_force",
+      "battleWinSceneRef": "S09_WIN",
+      "battleLoseSceneRef": "S09_LOSE",
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Mitsuhide",
+          "speakerSide": "left",
+          "portraitKey": "mitsuhide_calm",
+          "text": "They have chosen the ground well.",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_fierce",
+          "text": "They always do. We have to take this crossing anyway.",
+          "lineOrder": 2
+        }
+      ],
+      "choices": []
+    },
+    {
+      "sceneRef": "S09_WIN",
+      "backgroundKey": "nagashima_crossing_aftermath",
+      "bgmKey": "bgm_victory_somber",
+      "sceneOrder": 17,
+      "nextSceneRef": "S10",
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "The crossing falls by midday. The Ikko-ikki retreat into the marshlands — intact, orderly, taking their wounded. They were not broken. But the road is open.",
+          "lineOrder": 1
+        }
+      ],
+      "choices": []
+    },
+    {
+      "sceneRef": "S09_LOSE",
+      "backgroundKey": "nagashima_retreat_night",
+      "bgmKey": "bgm_defeat",
+      "sceneOrder": 18,
+      "nextSceneRef": "S10",
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "The assault fails. The marshland swallows the advance and spits it back out. You retreat in order — which is itself a skill — but the crossing holds for the monks.",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Mitsuhide",
+          "speakerSide": "left",
+          "portraitKey": "mitsuhide_grim",
+          "text": "Different season. Different approach. The crossing will fall. Just not today.",
+          "lineOrder": 2
+        }
+      ],
+      "choices": []
+    },
+    {
+      "sceneRef": "S10",
+      "backgroundKey": "gifu_castle_tower_night",
+      "bgmKey": "bgm_tension_resolve",
+      "sceneOrder": 19,
+      "nextSceneRef": null,
+      "isBattleGate": false,
+      "isChapterEnd": true,
+      "dialogueLines": [
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "A letter arrives from Kennyo. Formal. Precise. It does not mention the outpost or the crossing. It mentions only that the Honganji will endure.",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_cold",
+          "text": "He's patient. Good. Patient men telegraph their patience. I'll see him coming long before he arrives.",
+          "lineOrder": 2
+        },
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "Somewhere in Osaka, Kennyo folds his own copy of the letter. He does not smile. He begins the long game.",
+          "lineOrder": 3
+        }
+      ],
+      "choices": []
+    }
+  ]
+}

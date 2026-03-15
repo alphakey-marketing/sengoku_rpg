@@ -1,41 +1,64 @@
 /**
  * client/src/hooks/use-auth.ts
  *
- * Phase 5: Replit auth retired. This hook always uses Supabase.
+ * Supports two auth modes:
  *
- * Reads supabase.auth.getSession() on mount and subscribes to
- * onAuthStateChange for cross-tab / token-refresh sync.
+ *   supabase  — reads Supabase session; subscribes to onAuthStateChange.
+ *   dev       — UUID from localStorage; always treated as authenticated.
+ *               No loading delay, no Supabase calls.
  *
- * When a new session arrives (SIGNED_IN / TOKEN_REFRESHED) all
- * React-Query caches are invalidated so game queries that fired
- * before the token was ready automatically re-fetch with auth.
- *
- * Returned shape:
- *   user            — mapped User | null
- *   isLoading       — true until the first getSession() resolves
- *   isAuthenticated — true when a live session exists
- *   logout()        — calls supabase.auth.signOut() then redirects to /
- *   session         — raw Supabase Session | null
+ * Both modes return the same shape:
+ *   user, isLoading, isAuthenticated, logout(), session
  */
 import { useEffect, useState } from "react";
 import type { User } from "@shared/models/auth";
 import { supabase } from "../lib/supabase";
 import { queryClient } from "../lib/queryClient";
+import { api } from "@shared/routes";
 import type { Session } from "@supabase/supabase-js";
+import { IS_DEV_AUTH, getOrCreateDevUserId, resetDevUser } from "../lib/devAuth";
 
-export function useAuth() {
+// ── Dev-mode auth hook ────────────────────────────────────────────────────────
+function useAuthDev() {
+  const devUserId = getOrCreateDevUserId();
+
+  const user: User = {
+    id:              devUserId,
+    email:           `${devUserId}@dev.local`,
+    firstName:       "Dev",
+    lastName:        "Player",
+    profileImageUrl: null,
+    createdAt:       null,
+    updatedAt:       null,
+  };
+
+  function logout() {
+    resetDevUser();           // wipe localStorage UUID
+    queryClient.clear();
+    window.location.href = "/";
+  }
+
+  return {
+    user,
+    isLoading:       false,   // never loading — UUID is always synchronous
+    isAuthenticated: true,    // always authenticated in dev mode
+    logout,
+    isLoggingOut:    false,
+    session:         null,
+  };
+}
+
+// ── Supabase auth hook ────────────────────────────────────────────────────────
+function useAuthSupabase() {
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Seed state from localStorage on mount
     supabase.auth.getSession().then(({ data }) => {
       setSession(data.session);
       setIsLoading(false);
-      // If a session was already present (returning user / page refresh)
-      // invalidate so any queries that ran before this resolves retry.
       if (data.session) {
-        queryClient.invalidateQueries();
+        queryClient.invalidateQueries({ queryKey: [api.player.get.path] });
       }
     });
 
@@ -44,9 +67,8 @@ export function useAuth() {
     } = supabase.auth.onAuthStateChange((event, newSession) => {
       setSession(newSession);
       setIsLoading(false);
-      // On fresh sign-in or token refresh, clear stale 401 query cache
       if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED") {
-        queryClient.invalidateQueries();
+        queryClient.invalidateQueries({ queryKey: [api.player.get.path] });
       }
     });
 
@@ -61,26 +83,18 @@ export function useAuth() {
 
   const user: User | null = session?.user
     ? {
-        id: session.user.id,
+        id:    session.user.id,
         email: session.user.email ?? null,
         firstName:
           (session.user.user_metadata?.["full_name"] as string | undefined)
-            ?.split(" ")
-            .at(0) ?? null,
+            ?.split(" ").at(0) ?? null,
         lastName:
           (session.user.user_metadata?.["full_name"] as string | undefined)
-            ?.split(" ")
-            .slice(1)
-            .join(" ") || null,
+            ?.split(" ").slice(1).join(" ") || null,
         profileImageUrl:
-          (session.user.user_metadata?.["avatar_url"] as string | undefined) ??
-          null,
-        createdAt: session.user.created_at
-          ? new Date(session.user.created_at)
-          : null,
-        updatedAt: session.user.updated_at
-          ? new Date(session.user.updated_at)
-          : null,
+          (session.user.user_metadata?.["avatar_url"] as string | undefined) ?? null,
+        createdAt:  session.user.created_at  ? new Date(session.user.created_at)  : null,
+        updatedAt:  session.user.updated_at  ? new Date(session.user.updated_at)  : null,
       }
     : null;
 
@@ -92,4 +106,9 @@ export function useAuth() {
     isLoggingOut: false,
     session,
   };
+}
+
+// ── Unified export ────────────────────────────────────────────────────────────
+export function useAuth() {
+  return IS_DEV_AUTH ? useAuthDev() : useAuthSupabase();
 }

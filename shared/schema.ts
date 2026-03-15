@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, integer, boolean, timestamp, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, boolean, timestamp, jsonb, index } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -10,10 +10,57 @@ function serial(name: string) {
   return integer(name).generatedAlwaysAsIdentity();
 }
 
+// ── A2 / A3: Narrative flag-gate condition ──────────────────────────────────
+//
+// Grammar: "<flagKey><op><value>"   op ∈ { >=, >, <=, <, ==, != }
+// Examples: "loyalty_hanzo>=3"  "ruthlessness<=1"  "chapter_choice_A==1"
+
+export type CompanionUnlockCondition = string;
+
+export function parseUnlockCondition(
+  condition: string,
+): { flagKey: string; op: string; threshold: number } | null {
+  const match = condition.match(/^([A-Za-z0-9_]+)(>=|<=|==|!=|>|<)(-?\d+)$/);
+  if (!match) return null;
+  return { flagKey: match[1], op: match[2], threshold: Number(match[3]) };
+}
+
+export function evalUnlockCondition(
+  condition: string,
+  flagValues: Record<string, number>,
+): boolean {
+  const parsed = parseUnlockCondition(condition);
+  if (!parsed) return true;
+  const current = flagValues[parsed.flagKey] ?? 0;
+  switch (parsed.op) {
+    case ">=": return current >= parsed.threshold;
+    case ">":  return current >  parsed.threshold;
+    case "<=": return current <= parsed.threshold;
+    case "<":  return current <  parsed.threshold;
+    case "==": return current === parsed.threshold;
+    case "!=": return current !== parsed.threshold;
+    default:   return true;
+  }
+}
+
+export function unlockConditionHint(
+  condition: string,
+  flagValues: Record<string, number>,
+): string {
+  const parsed = parseUnlockCondition(condition);
+  if (!parsed) return "Story requirement not met";
+  const current = flagValues[parsed.flagKey] ?? 0;
+  const { flagKey, op, threshold } = parsed;
+  const label = flagKey.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+  return `${label} ${op} ${threshold} (currently ${current})`;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Core game tables
+// ─────────────────────────────────────────────────────────────────────────────
+
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  // Phase 3: Supabase auth UUID — populated on first Supabase sign-in.
-  // Null while AUTH_PROVIDER=replit; used as the lookup key for Supabase path.
   authUserId: varchar("auth_user_id").unique(),
   email: varchar("email").unique(),
   firstName: varchar("first_name"),
@@ -21,19 +68,24 @@ export const users = pgTable("users", {
   profileImageUrl: varchar("profile_image_url"),
   level: integer("level").notNull().default(1),
   experience: integer("experience").notNull().default(0),
-  gold: integer("gold").notNull().default(0),
+  // FIX 1: raise starting gold so new players can buy starter gear
+  gold: integer("gold").notNull().default(500),
   rice: integer("rice").notNull().default(100),
-  hp: integer("hp").notNull().default(100),
-  maxHp: integer("max_hp").notNull().default(100),
-  attack: integer("attack").notNull().default(10),
-  defense: integer("defense").notNull().default(10),
+  // FIX 1: raise starting hp so a fresh player survives at least one full round
+  hp: integer("hp").notNull().default(200),
+  maxHp: integer("max_hp").notNull().default(200),
+  // FIX 1: raise base attack/defense to be competitive with location-1 enemies
+  attack: integer("attack").notNull().default(30),
+  defense: integer("defense").notNull().default(20),
   speed: integer("speed").notNull().default(10),
-  str: integer("str").notNull().default(1),
-  agi: integer("agi").notNull().default(1),
-  vit: integer("vit").notNull().default(1),
-  int: integer("int").notNull().default(1),
-  dex: integer("dex").notNull().default(1),
-  luk: integer("luk").notNull().default(1),
+  // FIX 1: raise all six base stats from 1 → 10 so statusATK/flee/hit
+  // formulas produce meaningful values from turn 1
+  str: integer("str").notNull().default(10),
+  agi: integer("agi").notNull().default(10),
+  vit: integer("vit").notNull().default(10),
+  int: integer("int").notNull().default(10),
+  dex: integer("dex").notNull().default(10),
+  luk: integer("luk").notNull().default(10),
   stamina: integer("stamina").notNull().default(100),
   maxStamina: integer("max_stamina").notNull().default(100),
   currentLocationId: integer("current_location_id").notNull().default(1),
@@ -52,6 +104,12 @@ export const users = pgTable("users", {
   permDefenseBonus: integer("perm_defense_bonus").notNull().default(0),
   permSpeedBonus: integer("perm_speed_bonus").notNull().default(0),
   permHpBonus: integer("perm_hp_bonus").notNull().default(0),
+  // ── Onboarding ────────────────────────────────────────────────────────
+  currentChapter: integer("current_chapter").notNull().default(0),
+  hasSeenIntro: boolean("has_seen_intro").notNull().default(false),
+  titleSuffix: varchar("title_suffix", { length: 64 }),
+  // ── C2: active display title ──────────────────────────────────────────
+  activeTitleId: integer("active_title_id"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -75,8 +133,11 @@ export const companions = pgTable("companions", {
   skill: text("skill"),
   isInParty: boolean("is_in_party").notNull().default(false),
   isSpecial: boolean("is_special").notNull().default(false),
+  flagUnlockCondition: text("flag_unlock_condition"),
   createdAt: timestamp("created_at").defaultNow(),
-});
+}, (t) => ([
+  index("companions_user_id_idx").on(t.userId),
+]));
 
 export const equipment = pgTable("equipment", {
   id: serial("id").primaryKey(),
@@ -102,8 +163,16 @@ export const equipment = pgTable("equipment", {
   equippedToId: integer("equipped_to_id"),
   equippedToType: text("equipped_to_type"),
   cardSlots: integer("card_slots").notNull().default(0),
+  storyFlagRequirement: text("story_flag_requirement"),
   createdAt: timestamp("created_at").defaultNow(),
-});
+}, (t) => ([
+  index("equipment_user_id_idx").on(t.userId),
+]));
+
+export const insertEquipmentSchema = createInsertSchema(equipment).omit({ id: true });
+export type Equipment       = typeof equipment.$inferSelect;
+export type InsertEquipment = typeof equipment.$inferInsert;
+export type EquipmentFlagLock = { isLocked: boolean; lockReason: string | null };
 
 export const cards = pgTable("cards", {
   id: serial("id").primaryKey(),
@@ -115,7 +184,10 @@ export const cards = pgTable("cards", {
   rarity: text("rarity").notNull(),
   equipmentId: integer("equipment_id"),
   createdAt: timestamp("created_at").defaultNow(),
-});
+}, (t) => ([
+  index("cards_user_id_idx").on(t.userId),
+  index("cards_equipment_id_idx").on(t.equipmentId),
+]));
 
 export const pets = pgTable("pets", {
   id: serial("id").primaryKey(),
@@ -134,7 +206,9 @@ export const pets = pgTable("pets", {
   skill: text("skill"),
   isActive: boolean("is_active").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow(),
-});
+}, (t) => ([
+  index("pets_user_id_idx").on(t.userId),
+]));
 
 export const horses = pgTable("horses", {
   id: serial("id").primaryKey(),
@@ -148,7 +222,9 @@ export const horses = pgTable("horses", {
   skill: text("skill"),
   isActive: boolean("is_active").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow(),
-});
+}, (t) => ([
+  index("horses_user_id_idx").on(t.userId),
+]));
 
 export const transformations = pgTable("transformations", {
   id: serial("id").primaryKey(),
@@ -165,7 +241,9 @@ export const transformations = pgTable("transformations", {
   cooldownSeconds: integer("cooldown_seconds").notNull().default(60),
   durationSeconds: integer("duration_seconds").notNull().default(30),
   createdAt: timestamp("created_at").defaultNow(),
-});
+}, (t) => ([
+  index("transformations_user_id_idx").on(t.userId),
+]));
 
 export const campaignEvents = pgTable("campaign_events", {
   id: serial("id").primaryKey(),
@@ -174,7 +252,9 @@ export const campaignEvents = pgTable("campaign_events", {
   choice: text("choice"),
   isTriggered: boolean("is_triggered").notNull().default(false),
   completedAt: timestamp("completed_at"),
-});
+}, (t) => ([
+  index("campaign_events_user_id_idx").on(t.userId),
+]));
 
 export const userQuests = pgTable("user_quests", {
   id: serial("id").primaryKey(),
@@ -183,7 +263,186 @@ export const userQuests = pgTable("user_quests", {
   progress: integer("progress").notNull().default(0),
   isClaimed: boolean("is_claimed").notNull().default(false),
   lastUpdated: timestamp("last_updated").defaultNow(),
+}, (t) => ([
+  index("user_quests_user_id_idx").on(t.userId),
+]));
+
+// ── Story Engine Tables ───────────────────────────────────────────────────────
+export const storyChapters = pgTable("story_chapters", {
+  id: serial("id").primaryKey(),
+  title: text("title").notNull(),
+  subtitle: text("subtitle"),
+  chapterOrder: integer("chapter_order").notNull().default(0),
+  isLocked: boolean("is_locked").notNull().default(false),
+  firstSceneId: integer("first_scene_id"),
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
-// =============================================================
-// V
+export const storyScenes = pgTable("story_scenes", {
+  id: serial("id").primaryKey(),
+  chapterId: integer("chapter_id").notNull(),
+  backgroundKey: text("background_key").notNull().default("default"),
+  bgmKey: text("bgm_key").notNull().default("bgm_default"),
+  sceneOrder: integer("scene_order").notNull().default(0),
+  nextSceneId: integer("next_scene_id"),
+  isBattleGate: boolean("is_battle_gate").notNull().default(false),
+  battleEnemyKey: text("battle_enemy_key"),
+  battleWinSceneId: integer("battle_win_scene_id"),
+  battleLoseSceneId: integer("battle_lose_scene_id"),
+  isChapterEnd: boolean("is_chapter_end").notNull().default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const dialogueLines = pgTable("dialogue_lines", {
+  id: serial("id").primaryKey(),
+  sceneId: integer("scene_id").notNull(),
+  speakerName: text("speaker_name").notNull().default("Narrator"),
+  speakerSide: text("speaker_side").notNull().default("none"),
+  portraitKey: text("portrait_key"),
+  text: text("text").notNull(),
+  lineOrder: integer("line_order").notNull().default(0),
+});
+
+export const storyChoices = pgTable("story_choices", {
+  id: serial("id").primaryKey(),
+  sceneId: integer("scene_id").notNull(),
+  choiceText: text("choice_text").notNull(),
+  nextSceneId: integer("next_scene_id").notNull(),
+  flagKey: text("flag_key"),
+  flagValue: integer("flag_value"),
+  flagKey2: text("flag_key2"),
+  flagValue2: integer("flag_value2"),
+  choiceOrder: integer("choice_order").notNull().default(0),
+});
+
+export const playerStoryProgress = pgTable("player_story_progress", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull(),
+  chapterId: integer("chapter_id").notNull(),
+  currentSceneId: integer("current_scene_id"),
+  isCompleted: boolean("is_completed").notNull().default(false),
+  startedAt: timestamp("started_at").defaultNow(),
+  completedAt: timestamp("completed_at"),
+}, (t) => ([
+  index("player_story_progress_user_id_idx").on(t.userId),
+]));
+
+export const playerFlags = pgTable("player_flags", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull(),
+  flagKey: text("flag_key").notNull(),
+  flagValue: integer("flag_value").notNull().default(0),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (t) => ([
+  index("player_flags_user_id_idx").on(t.userId),
+]));
+
+export const storyEndings = pgTable("story_endings", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull(),
+  chapterId: integer("chapter_id").notNull(),
+  endingKey: text("ending_key").notNull(),
+  endingTitle: text("ending_title").notNull(),
+  endingDescription: text("ending_description"),
+  unlockedAt: timestamp("unlocked_at").defaultNow(),
+});
+
+// ── B3: Campaign Map — Held Provinces ────────────────────────────────────────
+export const heldProvinces = pgTable("held_provinces", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull(),
+  locationId: integer("location_id").notNull(),
+  bossDefeated: boolean("boss_defeated").notNull().default(false),
+  heldAt: timestamp("held_at").notNull().defaultNow(),
+}, (t) => ([
+  index("held_provinces_user_id_idx").on(t.userId),
+]));
+
+export const insertHeldProvinceSchema = createInsertSchema(heldProvinces).omit({ id: true });
+export type HeldProvince       = typeof heldProvinces.$inferSelect;
+export type InsertHeldProvince = typeof heldProvinces.$inferInsert;
+
+// ── C1: Chronicle Wall ────────────────────────────────────────────────────────
+export const chronicleEntries = pgTable("chronicle_entries", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull(),
+  entryKey: text("entry_key").notNull(),
+  headline: text("headline").notNull(),
+  detail: text("detail"),
+  flagSnapshot: jsonb("flag_snapshot").notNull().default(sql`'{}'::jsonb`),
+  chapterNumber: integer("chapter_number").notNull().default(0),
+  recordedAt: timestamp("recorded_at").notNull().defaultNow(),
+}, (t) => ([
+  index("chronicle_entries_user_id_idx").on(t.userId),
+]));
+
+export const insertChronicleEntrySchema = createInsertSchema(chronicleEntries).omit({ id: true });
+export type ChronicleEntry       = typeof chronicleEntries.$inferSelect;
+export type InsertChronicleEntry = typeof chronicleEntries.$inferInsert;
+
+// ── C2: Player Titles ─────────────────────────────────────────────────────────
+export const playerTitles = pgTable("player_titles", {
+  id: serial("id").primaryKey(),
+  titleKey: text("title_key").notNull().unique(),
+  displayName: text("display_name").notNull(),
+  description: text("description"),
+  earnCondition: text("earn_condition"),
+  rarity: text("rarity").notNull().default("common"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertPlayerTitleSchema = createInsertSchema(playerTitles).omit({ id: true });
+export type PlayerTitle       = typeof playerTitles.$inferSelect;
+export type InsertPlayerTitle = typeof playerTitles.$inferInsert;
+
+export const playerEarnedTitles = pgTable("player_earned_titles", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull(),
+  titleId: integer("title_id").notNull(),
+  earnedAt: timestamp("earned_at").notNull().defaultNow(),
+}, (t) => ([
+  index("player_earned_titles_user_id_idx").on(t.userId),
+]));
+
+export const insertPlayerEarnedTitleSchema = createInsertSchema(playerEarnedTitles).omit({ id: true });
+export type PlayerEarnedTitle       = typeof playerEarnedTitles.$inferSelect;
+export type InsertPlayerEarnedTitle = typeof playerEarnedTitles.$inferInsert;
+
+// ── Drizzle relations ─────────────────────────────────────────────────────────
+export const storyChaptersRelations = relations(storyChapters, ({ many }) => ({
+  scenes: many(storyScenes),
+}));
+
+export const storyScenesRelations = relations(storyScenes, ({ one, many }) => ({
+  chapter: one(storyChapters, {
+    fields: [storyScenes.chapterId],
+    references: [storyChapters.id],
+  }),
+  dialogueLines: many(dialogueLines),
+  choices: many(storyChoices),
+}));
+
+export const dialogueLinesRelations = relations(dialogueLines, ({ one }) => ({
+  scene: one(storyScenes, {
+    fields: [dialogueLines.sceneId],
+    references: [storyScenes.id],
+  }),
+}));
+
+export const storyChoicesRelations = relations(storyChoices, ({ one }) => ({
+  scene: one(storyScenes, {
+    fields: [storyChoices.sceneId],
+    references: [storyScenes.id],
+  }),
+}));
+
+export const playerTitlesRelations = relations(playerTitles, ({ many }) => ({
+  earnedBy: many(playerEarnedTitles),
+}));
+
+export const playerEarnedTitlesRelations = relations(playerEarnedTitles, ({ one }) => ({
+  title: one(playerTitles, {
+    fields: [playerEarnedTitles.titleId],
+    references: [playerTitles.id],
+  }),
+}));

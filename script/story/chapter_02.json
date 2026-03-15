@@ -1,0 +1,801 @@
+{
+  "chapter": {
+    "title": "The Alliance of Wolves",
+    "subtitle": "1552 — Allies are enemies who haven't decided yet.",
+    "chapterOrder": 2,
+    "isLocked": false
+  },
+  "scenes": [
+    {
+      "sceneRef": "S01",
+      "backgroundKey": "owari_road_morning",
+      "bgmKey": "bgm_journey",
+      "sceneOrder": 1,
+      "nextSceneRef": "S02",
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "Spring, 1552. Word of Okehazama has spread. Yoshimoto is dead and the road to the capital stands unguarded. Every lord in the country is recalculating.",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "Three men send letters within the same week. Tokugawa Ieyasu of Mikawa — practical, patient, calculating. Shibata Katsuie — Nobunaga's own general, old guard, slightly suspicious of the new direction. And Matsudaira Nobuyasu — a boy lord with a large army and an absent father who recently pledged loyalty to Nobunaga and may or may not mean it.",
+          "lineOrder": 2
+        },
+        {
+          "speakerName": "Mitsuhide",
+          "speakerSide": "left",
+          "portraitKey": "mitsuhide_calm",
+          "text": "Three alliance requests in a week. After Okehazama they all want to be on your side before you decide what side means.",
+          "lineOrder": 3
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_cold",
+          "text": "Which one is real?",
+          "lineOrder": 4
+        },
+        {
+          "speakerName": "Mitsuhide",
+          "speakerSide": "left",
+          "portraitKey": "mitsuhide_calm",
+          "text": "Ieyasu. He has been preparing for this letter since before Okehazama. The other two are opportunists.",
+          "lineOrder": 5
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_cold",
+          "text": "Opportunists are honest, at least. They want something and they say so with their timing.",
+          "lineOrder": 6
+        }
+      ],
+      "choices": []
+    },
+    {
+      "sceneRef": "S02",
+      "backgroundKey": "mikawa_border_meeting",
+      "bgmKey": "bgm_tense_court",
+      "sceneOrder": 2,
+      "nextSceneRef": "S03",
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "The Kiyosu conference. Ieyasu arrives exactly on time, which means he left Okazaki at the precise moment required to arrive neither early nor late. This is a demonstration.",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Ieyasu",
+          "speakerSide": "left",
+          "portraitKey": "ieyasu_young",
+          "text": "Lord Nobunaga. I have proposed an alliance for the same reason you have agreed to consider one: we are both surrounded by men who will move against us individually, and who will hesitate if we are together.",
+          "lineOrder": 2
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_cold",
+          "text": "Clean. No flattery.",
+          "lineOrder": 3
+        },
+        {
+          "speakerName": "Ieyasu",
+          "speakerSide": "left",
+          "portraitKey": "ieyasu_young",
+          "text": "Flattery takes time. I respect yours too much to spend it on that.",
+          "lineOrder": 4
+        }
+      ],
+      "choices": []
+    },
+    {
+      "sceneRef": "S03",
+      "backgroundKey": "kiyosu_conference_hall",
+      "bgmKey": "bgm_intrigue",
+      "sceneOrder": 3,
+      "nextSceneRef": null,
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "Ieyasu presents three terms. Equal standing in joint military operations. No obligation to answer a call to war the other did not agree to. And a clause that neither party negotiates separately with Shingen or Kenshin without prior notice.",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "It is a well-drafted alliance. The question is what Nobunaga adds or removes.",
+          "lineOrder": 2
+        }
+      ],
+      "choices": [
+        {
+          "choiceText": "Accept all three terms as written. Ieyasu earned the respect of an unedited agreement.",
+          "nextSceneRef": "S03A",
+          "flagKey": "ieyasu_trust",
+          "flagValue": 2,
+          "flagKey2": "political_power",
+          "flagValue2": 1,
+          "choiceOrder": 1
+        },
+        {
+          "choiceText": "Accept the first two terms. Remove the Shingen clause — Nobunaga doesn't pre-notify anyone of anything.",
+          "nextSceneRef": "S03B",
+          "flagKey": "ieyasu_trust",
+          "flagValue": 1,
+          "flagKey2": "ruthlessness",
+          "flagValue2": 1,
+          "choiceOrder": 2
+        },
+        {
+          "choiceText": "Accept everything but add a fourth term: Mikawa grain routes operate under Oda customs inspection.",
+          "nextSceneRef": "S03C",
+          "flagKey": "political_power",
+          "flagValue": 2,
+          "flagKey2": "ieyasu_trust",
+          "flagValue2": -1,
+          "choiceOrder": 3
+        }
+      ]
+    },
+    {
+      "sceneRef": "S03A",
+      "backgroundKey": "kiyosu_conference_hall",
+      "bgmKey": "bgm_quiet_resolve",
+      "sceneOrder": 4,
+      "nextSceneRef": "S04",
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Ieyasu",
+          "speakerSide": "left",
+          "portraitKey": "ieyasu_young",
+          "text": "Agreed.",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "They sign the Kiyosu Alliance. It will hold, with minor amendments, for the next twenty-two years. It is the most durable alliance in Sengoku history, sealed in under four minutes.",
+          "lineOrder": 2
+        },
+        {
+          "speakerName": "Mitsuhide",
+          "speakerSide": "left",
+          "portraitKey": "mitsuhide_calm",
+          "text": "That was the fastest diplomatic negotiation I have ever witnessed.",
+          "lineOrder": 3
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_cold",
+          "text": "He drafted it well. Improving it would have been vanity.",
+          "lineOrder": 4
+        }
+      ],
+      "choices": []
+    },
+    {
+      "sceneRef": "S03B",
+      "backgroundKey": "kiyosu_conference_hall",
+      "bgmKey": "bgm_intrigue",
+      "sceneOrder": 5,
+      "nextSceneRef": "S04",
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Ieyasu",
+          "speakerSide": "left",
+          "portraitKey": "ieyasu_young",
+          "text": "The Shingen clause was the most important one.",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_cold",
+          "text": "Which is why I won't be bound by it. If I'm talking to Shingen, you'll know because the world will change. Not because I told you first.",
+          "lineOrder": 2
+        },
+        {
+          "speakerName": "Ieyasu",
+          "speakerSide": "left",
+          "portraitKey": "ieyasu_young",
+          "text": "...",
+          "lineOrder": 3
+        },
+        {
+          "speakerName": "Ieyasu",
+          "speakerSide": "left",
+          "portraitKey": "ieyasu_young",
+          "text": "Agreed. Under protest.",
+          "lineOrder": 4
+        },
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "The alliance is signed. Ieyasu files the amendment under a mental category labeled 'watch carefully.' He will revisit it twice in the next decade and both times conclude it was the right call.",
+          "lineOrder": 5
+        }
+      ],
+      "choices": []
+    },
+    {
+      "sceneRef": "S03C",
+      "backgroundKey": "kiyosu_conference_hall",
+      "bgmKey": "bgm_tense_court",
+      "sceneOrder": 6,
+      "nextSceneRef": "S04",
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Ieyasu",
+          "speakerSide": "left",
+          "portraitKey": "ieyasu_young",
+          "text": "You are asking me to submit my trade routes to Oda oversight.",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_cold",
+          "text": "I'm asking for inspection rights. The grain still moves, the revenue stays in Mikawa, I know what passes through.",
+          "lineOrder": 2
+        },
+        {
+          "speakerName": "Ieyasu",
+          "speakerSide": "left",
+          "portraitKey": "ieyasu_young",
+          "text": "...",
+          "lineOrder": 3
+        },
+        {
+          "speakerName": "Ieyasu",
+          "speakerSide": "left",
+          "portraitKey": "ieyasu_young",
+          "text": "Three seasons.",
+          "lineOrder": 4
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_cold",
+          "text": "Five.",
+          "lineOrder": 5
+        },
+        {
+          "speakerName": "Ieyasu",
+          "speakerSide": "left",
+          "portraitKey": "ieyasu_young",
+          "text": "Four and a renegotiation clause.",
+          "lineOrder": 6
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_smirk",
+          "text": "Done.",
+          "lineOrder": 7
+        }
+      ],
+      "choices": []
+    },
+    {
+      "sceneRef": "S04",
+      "backgroundKey": "gifu_castle_map_room_day",
+      "bgmKey": "bgm_intrigue",
+      "sceneOrder": 7,
+      "nextSceneRef": null,
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "Back at Gifu. The other two letters still sit on the table. Shibata Katsuie, Nobunaga's own general, has written demanding a formal military council with authority over campaign decisions. It is, depending on how you read it, a request for inclusion or a challenge to authority.",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Mitsuhide",
+          "speakerSide": "left",
+          "portraitKey": "mitsuhide_calm",
+          "text": "Katsuie is loyal. He's also deeply uncomfortable with how quickly things are moving. He's asking to feel like he has a place in it.",
+          "lineOrder": 2
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_cold",
+          "text": "Does he?",
+          "lineOrder": 3
+        },
+        {
+          "speakerName": "Mitsuhide",
+          "speakerSide": "left",
+          "portraitKey": "mitsuhide_calm",
+          "text": "He has held the north wall of every campaign you have run. Yes. He does.",
+          "lineOrder": 4
+        }
+      ],
+      "choices": [
+        {
+          "choiceText": "Grant him the council seat with real authority over northern campaign planning. He earned it.",
+          "nextSceneRef": "S04A",
+          "flagKey": "political_power",
+          "flagValue": 1,
+          "flagKey2": "katsuie_loyalty",
+          "flagValue2": 2,
+          "choiceOrder": 1
+        },
+        {
+          "choiceText": "Create an advisory council with a seat for Katsuie. Advisory only — final decisions remain yours.",
+          "nextSceneRef": "S04B",
+          "flagKey": "katsuie_loyalty",
+          "flagValue": 1,
+          "flagKey2": "political_power",
+          "flagValue2": 1,
+          "choiceOrder": 2
+        },
+        {
+          "choiceText": "Write back: his place is on the field, not in councils. That has always been his strength and Nobunaga respects it.",
+          "nextSceneRef": "S04C",
+          "flagKey": "katsuie_loyalty",
+          "flagValue": -1,
+          "flagKey2": "ruthlessness",
+          "flagValue2": 1,
+          "choiceOrder": 3
+        }
+      ]
+    },
+    {
+      "sceneRef": "S04A",
+      "backgroundKey": "gifu_castle_map_room_day",
+      "bgmKey": "bgm_quiet_resolve",
+      "sceneOrder": 8,
+      "nextSceneRef": "S05",
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "Katsuie receives the appointment by return messenger. He is in Gifu within three days. He does not say thank you. He presents a campaign plan for the northern border instead, which is how Katsuie says thank you.",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Mitsuhide",
+          "speakerSide": "left",
+          "portraitKey": "mitsuhide_calm",
+          "text": "The plan is good.",
+          "lineOrder": 2
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_cold",
+          "text": "Of course it is. That's why I gave him the seat.",
+          "lineOrder": 3
+        }
+      ],
+      "choices": []
+    },
+    {
+      "sceneRef": "S04B",
+      "backgroundKey": "gifu_castle_map_room_day",
+      "bgmKey": "bgm_intrigue",
+      "sceneOrder": 9,
+      "nextSceneRef": "S05",
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "Katsuie is not fully satisfied but he is not dissatisfied enough to act on it. He will show his value in the field and wait to see if the advisory council becomes real authority over time.",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Mitsuhide",
+          "speakerSide": "left",
+          "portraitKey": "mitsuhide_calm",
+          "text": "He'll accept it for now. But he will revisit it.",
+          "lineOrder": 2
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_cold",
+          "text": "By the time he does, the campaign will be far enough along that revisiting it costs more than accepting it.",
+          "lineOrder": 3
+        }
+      ],
+      "choices": []
+    },
+    {
+      "sceneRef": "S04C",
+      "backgroundKey": "gifu_castle_map_room_day",
+      "bgmKey": "bgm_war_drums_quiet",
+      "sceneOrder": 10,
+      "nextSceneRef": "S05",
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "Katsuie receives the letter. He reads it twice. He does not reply. He arrives at the next campaign briefing early, takes his usual position at the northern side of the map, and does not mention the letter. He files it somewhere cold.",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Mitsuhide",
+          "speakerSide": "left",
+          "portraitKey": "mitsuhide_quiet",
+          "text": "He won't say anything. But he will remember.",
+          "lineOrder": 2
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_cold",
+          "text": "That's his right.",
+          "lineOrder": 3
+        }
+      ],
+      "choices": []
+    },
+    {
+      "sceneRef": "S05",
+      "backgroundKey": "owari_border_crossroads",
+      "bgmKey": "bgm_war_drums",
+      "sceneOrder": 11,
+      "nextSceneRef": null,
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "Three weeks later. The third letter writer — Matsudaira Nobuyasu — has not waited for a reply. He has moved his army to the Owari border and is demanding formal recognition of his territory in exchange for continued loyalty.",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Mitsuhide",
+          "speakerSide": "left",
+          "portraitKey": "mitsuhide_calm",
+          "text": "He interpreted your silence as weakness. He is seventeen and his advisors are poor.",
+          "lineOrder": 2
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_cold",
+          "text": "His advisors should have told him what Yoshimoto's advisors learned.",
+          "lineOrder": 3
+        }
+      ],
+      "choices": [
+        {
+          "choiceText": "March to meet him. Not to fight — to stand in front of him personally with enough men that the number is the message.",
+          "nextSceneRef": "S05A",
+          "flagKey": "ruthlessness",
+          "flagValue": 1,
+          "flagKey2": "political_power",
+          "flagValue2": 1,
+          "choiceOrder": 1
+        },
+        {
+          "choiceText": "Send Ieyasu. Let the new alliance do its first work. Nobuyasu is Mikawa-adjacent — Ieyasu will read the situation correctly.",
+          "nextSceneRef": "S05B",
+          "flagKey": "ieyasu_trust",
+          "flagValue": 1,
+          "flagKey2": "political_power",
+          "flagValue2": 1,
+          "choiceOrder": 2
+        },
+        {
+          "choiceText": "Ignore him for fourteen days. Let him sit with his army on the border and count the cost.",
+          "nextSceneRef": "S05C",
+          "flagKey": "ruthlessness",
+          "flagValue": 1,
+          "flagKey2": null,
+          "flagValue2": null,
+          "choiceOrder": 3
+        }
+      ]
+    },
+    {
+      "sceneRef": "S05A",
+      "backgroundKey": "owari_border_plain_morning",
+      "bgmKey": "bgm_war_drums_quiet",
+      "sceneOrder": 12,
+      "nextSceneRef": "S06",
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "Nobunaga arrives at the border with four thousand men and no siege equipment, which communicates exactly the right thing: this is not a war. It is a correction.",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Nobuyasu",
+          "speakerSide": "left",
+          "portraitKey": "nobuyasu_young",
+          "text": "I — I was simply requesting — the recognition of —",
+          "lineOrder": 2
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_cold",
+          "text": "Go home, Nobuyasu. Write a proper letter. I will read it. This was not a proper letter.",
+          "lineOrder": 3
+        },
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "Nobuyasu goes home. He writes a proper letter. It is granted. He becomes, on the whole, a reliable minor ally for the next six years.",
+          "lineOrder": 4
+        }
+      ],
+      "choices": []
+    },
+    {
+      "sceneRef": "S05B",
+      "backgroundKey": "mikawa_road_afternoon",
+      "bgmKey": "bgm_quiet_resolve",
+      "sceneOrder": 13,
+      "nextSceneRef": "S06",
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "Ieyasu arrives at the border two days later. He has a private conversation with Nobuyasu that no one is permitted to record. Nobuyasu's army is home within a week.",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Ieyasu",
+          "speakerSide": "left",
+          "portraitKey": "ieyasu_young",
+          "text": "He is young. He will not make this mistake twice.",
+          "lineOrder": 2
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_cold",
+          "text": "What did you say to him?",
+          "lineOrder": 3
+        },
+        {
+          "speakerName": "Ieyasu",
+          "speakerSide": "left",
+          "portraitKey": "ieyasu_young",
+          "text": "I told him what Yoshimoto's advisors learned.",
+          "lineOrder": 4
+        }
+      ],
+      "choices": []
+    },
+    {
+      "sceneRef": "S05C",
+      "backgroundKey": "owari_border_crossroads",
+      "bgmKey": "bgm_war_drums_quiet",
+      "sceneOrder": 14,
+      "nextSceneRef": "S06",
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "Nobuyasu's army sits at the border for eleven days, consuming fourteen days of their own supplies. On the twelfth day he sends a letter of withdrawal and apology. Nobunaga replies with a formal acceptance and a polite note about supply logistics.",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Mitsuhide",
+          "speakerSide": "left",
+          "portraitKey": "mitsuhide_calm",
+          "text": "You did not even need to move.",
+          "lineOrder": 2
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_cold",
+          "text": "Moving would have made it about me. Waiting made it about him.",
+          "lineOrder": 3
+        }
+      ],
+      "choices": []
+    },
+    {
+      "sceneRef": "S06",
+      "backgroundKey": "owari_castle_night",
+      "bgmKey": "bgm_ominous",
+      "sceneOrder": 15,
+      "nextSceneRef": "S07_BATTLE",
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "That night, a different letter. No seal. Unsigned. Three words in precise calligraphy: 'The sword remembers.'",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Mitsuhide",
+          "speakerSide": "left",
+          "portraitKey": "mitsuhide_quiet",
+          "text": "The blade. Whoever destroyed it — or whoever didn't — this is something acknowledging its existence.",
+          "lineOrder": 2
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_cold",
+          "text": "Someone is watching very closely.",
+          "lineOrder": 3
+        }
+      ],
+      "choices": []
+    },
+    {
+      "sceneRef": "S07_BATTLE",
+      "backgroundKey": "mino_border_skirmish_dusk",
+      "bgmKey": "bgm_war_drums",
+      "sceneOrder": 16,
+      "nextSceneRef": null,
+      "isBattleGate": true,
+      "battleEnemyKey": "mino_border_raiders",
+      "battleWinSceneRef": "S08_WIN",
+      "battleLoseSceneRef": "S08_LOSE",
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Scout",
+          "speakerSide": "left",
+          "portraitKey": "scout_panicked",
+          "text": "Raiders from Mino, my lord. Border crossings. Taking the northern road settlements.",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_fierce",
+          "text": "The road stays open. Handle it.",
+          "lineOrder": 2
+        }
+      ],
+      "choices": []
+    },
+    {
+      "sceneRef": "S08_WIN",
+      "backgroundKey": "mino_border_morning_clear",
+      "bgmKey": "bgm_victory_somber",
+      "sceneOrder": 17,
+      "nextSceneRef": "S09",
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "The raiders are repelled. The road holds. Word spreads that Oda's northern roads are not easy pickings. This costs a future enemy three months of planning.",
+          "lineOrder": 1
+        }
+      ],
+      "choices": []
+    },
+    {
+      "sceneRef": "S08_LOSE",
+      "backgroundKey": "northern_road_settlement_burned",
+      "bgmKey": "bgm_defeat",
+      "sceneOrder": 18,
+      "nextSceneRef": "S09",
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "The road is cut for six days. Two settlements are damaged. The cost is real but not fatal. Katsuie arrives to hold the northern wall and the road reopens.",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Katsuie",
+          "speakerSide": "left",
+          "portraitKey": "katsuie_grim",
+          "text": "The north is my concern, my lord. Tell me earlier next time.",
+          "lineOrder": 2
+        }
+      ],
+      "choices": []
+    },
+    {
+      "sceneRef": "S09",
+      "backgroundKey": "gifu_castle_tower_night",
+      "bgmKey": "bgm_tension_resolve",
+      "sceneOrder": 19,
+      "nextSceneRef": null,
+      "isBattleGate": false,
+      "isChapterEnd": true,
+      "dialogueLines": [
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "That night, Nobunaga puts the unsigned letter on the table in front of Mitsuhide. 'The sword remembers.'",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Mitsuhide",
+          "speakerSide": "left",
+          "portraitKey": "mitsuhide_calm",
+          "text": "I'll begin looking into who sent it.",
+          "lineOrder": 2
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_cold",
+          "text": "Don't. Not yet. Whoever sent it wanted a reaction. We give them nothing and watch who next moves.",
+          "lineOrder": 3
+        },
+        {
+          "speakerName": "Mitsuhide",
+          "speakerSide": "left",
+          "portraitKey": "mitsuhide_calm",
+          "text": "Patience.",
+          "lineOrder": 4
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_cold",
+          "text": "It's what separates us from Yoshimoto.",
+          "lineOrder": 5
+        }
+      ],
+      "choices": []
+    }
+  ]
+}

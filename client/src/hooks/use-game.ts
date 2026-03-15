@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, buildUrl } from "@shared/routes";
 import { useToast } from "./use-toast";
 import { supabase } from "../lib/supabase";
+import { IS_DEV_AUTH, getOrCreateDevUserId } from "../lib/devAuth";
 
 export interface PlayerData {
   id: string;
@@ -48,6 +49,8 @@ export interface Companion {
   skill: string | null;
   isInParty: boolean;
   isSpecial: boolean;
+  isLocked: boolean;
+  lockReason: string | null;
 }
 
 export interface Equipment {
@@ -196,15 +199,33 @@ export interface GachaResult {
   companion: Companion;
 }
 
-/** Attach the current Supabase Bearer token to every game API request. */
+/**
+ * Attaches the correct auth header to every game API request.
+ *
+ * dev mode  → x-dev-user-id: <uuid from localStorage>
+ * supabase  → Authorization: Bearer <token>
+ *
+ * Previously this function only handled the Supabase path, which caused every
+ * request to arrive at the server without a recognised auth header when
+ * VITE_AUTH_PROVIDER=dev, producing a 401 on all /api/* routes.
+ */
 async function fetchWithAuth(url: string, options: RequestInit = {}) {
-  const { data } = await supabase.auth.getSession();
-  const token = data.session?.access_token;
-  const headers: Record<string, string> = {
-    ...(options.headers as Record<string, string> | undefined),
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-  };
-  return fetch(url, { credentials: "include", ...options, headers });
+  const existingHeaders = (options.headers as Record<string, string> | undefined) ?? {};
+
+  let authHeader: Record<string, string>;
+  if (IS_DEV_AUTH) {
+    authHeader = { "x-dev-user-id": getOrCreateDevUserId() };
+  } else {
+    const { data } = await supabase.auth.getSession();
+    const token = data.session?.access_token;
+    authHeader = token ? { Authorization: `Bearer ${token}` } : {};
+  }
+
+  return fetch(url, {
+    credentials: "include",
+    ...options,
+    headers: { ...existingHeaders, ...authHeader },
+  });
 }
 
 export function usePlayer() {
@@ -216,8 +237,6 @@ export function usePlayer() {
       if (!res.ok) throw new Error("Failed to fetch player data");
       return res.json();
     },
-    // Retry once after 800 ms — handles the race where the query fires
-    // just before fetchWithAuth resolves the Supabase session token.
     retry: 1,
     retryDelay: 800,
   });
@@ -513,7 +532,7 @@ export function useCombineHorses() {
           : `You obtained a same rarity horse: ${data.newHorse.name}`,
       });
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({
         title: "Combination Failed",
         description: error.message,

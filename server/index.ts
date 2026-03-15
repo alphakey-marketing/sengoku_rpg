@@ -2,8 +2,11 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
-import "./env"; // validate all env vars at startup — fail fast on missing config
+import "./env";
 import { pool } from "./db";
+import { runMigrations } from "./migrate";
+import { seedStoryChapters } from "./seed-story-chapters";
+import { syncTitleCatalogue } from "./lib/titles";
 
 const app = express();
 const httpServer = createServer(app);
@@ -31,11 +34,10 @@ export function log(message: string, source = "express") {
     second: "2-digit",
     hour12: true,
   });
-
   console.log(`${formattedTime} [${source}] ${message}`);
 }
 
-// Health check endpoint — used by Docker HEALTHCHECK and uptime monitors
+// Health check endpoint
 app.get("/api/health", async (_req, res) => {
   try {
     await pool.query("SELECT 1");
@@ -72,7 +74,6 @@ app.use((req, res, next) => {
       if (capturedJsonResponse) {
         logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
       }
-
       log(logLine);
     }
   });
@@ -81,23 +82,26 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  // 1. Apply any missing DDL before any request handler runs.
+  await runMigrations();
+
+  // 2. Seed story chapters from script/story/*.json (idempotent).
+  await seedStoryChapters();
+
+  // 3. Seed static data that depends on the schema being up to date.
+  await syncTitleCatalogue();
+
+  // 4. Register API routes and start the HTTP server.
   await registerRoutes(httpServer, app);
 
   app.use((err: any, _req: Request, res: Response, next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
-
     console.error("Internal Server Error:", err);
-
-    if (res.headersSent) {
-      return next(err);
-    }
-
+    if (res.headersSent) return next(err);
     return res.status(status).json({ message });
   });
 
-  // Only setup vite in development and after all other routes are registered
-  // so the catch-all route doesn't interfere with the other routes
   if (process.env.NODE_ENV === "production") {
     serveStatic(app);
   } else {
@@ -107,13 +111,7 @@ app.use((req, res, next) => {
 
   const port = parseInt(process.env.PORT || "5000", 10);
   httpServer.listen(
-    {
-      port,
-      host: "0.0.0.0",
-      reusePort: true,
-    },
-    () => {
-      log(`serving on port ${port}`);
-    },
+    { port, host: "0.0.0.0", reusePort: true },
+    () => { log(`serving on port ${port}`); },
   );
 })();

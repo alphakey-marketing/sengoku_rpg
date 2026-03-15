@@ -61,7 +61,6 @@ const StoryChapterSchema = z.object({
   chapterOrder: z.number(),
   firstSceneId: z.number().nullable(),
   isLocked: z.boolean(),
-  // Player-specific fields (populated per authenticated user)
   isUnlocked: z.boolean(),
   isCompleted: z.boolean(),
   currentSceneId: z.number().nullable(),
@@ -78,6 +77,25 @@ const UnlockedEndingSchema = z.object({
   endingDescription: z.string(),
   unlockedAt: z.string(),
 });
+
+// ── B3: Campaign Map ──────────────────────────────────────────────────────────
+//
+// HeldProvinceSchema is the shape returned by both:
+//   GET  /api/map/provinces        → array of HeldProvinceSchema
+//   POST /api/map/provinces/:id/hold → single HeldProvinceSchema
+//
+// Fields mirror the heldProvinces table exactly, with heldAt serialised as an
+// ISO-8601 string (JSON serialisation of timestamp columns).
+
+export const HeldProvinceSchema = z.object({
+  id: z.number(),
+  userId: z.string(),
+  locationId: z.number(),
+  bossDefeated: z.boolean(),
+  heldAt: z.string(), // ISO-8601 timestamp string
+});
+
+export type HeldProvinceDTO = z.infer<typeof HeldProvinceSchema>;
 
 export const api = {
   player: {
@@ -103,7 +121,7 @@ export const api = {
       path: '/api/companions/party' as const,
       input: z.object({ companionIds: z.array(z.number()) }),
       responses: { 200: z.array(z.any()), 400: errorSchemas.validation, 401: errorSchemas.unauthorized },
-    }
+    },
   },
   equipment: {
     list: {
@@ -191,9 +209,28 @@ export const api = {
       input: z.object({ locationId: z.number() }),
       responses: { 200: BattleResultSchema, 400: errorSchemas.validation, 401: errorSchemas.unauthorized },
     },
+    ninja: {
+      method: 'POST' as const,
+      path: '/api/battle/ninja' as const,
+      input: z.object({ ninjaStats: z.any() }),
+      responses: { 200: BattleResultSchema, 400: errorSchemas.validation, 401: errorSchemas.unauthorized },
+    },
     boss: {
       method: 'POST' as const,
       path: '/api/battle/boss' as const,
+      input: z.object({ locationId: z.number() }),
+      responses: { 200: BattleResultSchema, 400: errorSchemas.validation, 401: errorSchemas.unauthorized },
+    },
+    campaign: {
+      method: 'POST' as const,
+      path: '/api/battle/campaign' as const,
+      input: z.object({ locationId: z.number() }),
+      responses: { 200: BattleResultSchema, 400: errorSchemas.validation, 401: errorSchemas.unauthorized },
+    },
+    // `special` is the key used by routes.ts; `specialBoss` kept as alias for client code
+    special: {
+      method: 'POST' as const,
+      path: '/api/battle/special-boss' as const,
       input: z.object({ locationId: z.number() }),
       responses: { 200: BattleResultSchema, 400: errorSchemas.validation, 401: errorSchemas.unauthorized },
     },
@@ -215,7 +252,7 @@ export const api = {
       method: 'POST' as const,
       path: '/api/gacha/pull-equipment' as const,
       responses: { 200: z.any(), 400: errorSchemas.validation, 401: errorSchemas.unauthorized },
-    }
+    },
   },
   campaign: {
     events: {
@@ -228,7 +265,7 @@ export const api = {
       path: '/api/campaign/events/trigger' as const,
       input: z.object({ eventKey: z.string(), choice: z.string().optional() }),
       responses: { 200: z.any(), 400: errorSchemas.validation, 401: errorSchemas.unauthorized },
-    }
+    },
   },
   restart: {
     method: 'POST' as const,
@@ -245,7 +282,7 @@ export const api = {
       method: 'POST' as const,
       path: '/api/quests/:key/claim' as const,
       responses: { 200: z.any(), 401: errorSchemas.unauthorized },
-    }
+    },
   },
   stats: {
     upgrade: {
@@ -259,14 +296,13 @@ export const api = {
       path: '/api/player/stats/bulk-upgrade' as const,
       input: z.object({ upgrades: z.record(z.string(), z.number()) }),
       responses: { 200: z.any(), 400: errorSchemas.validation, 401: errorSchemas.unauthorized },
-    }
+    },
   },
 
   // =============================================================
   // VN STORY ENGINE ROUTES
   // =============================================================
   story: {
-    // List all chapters with player-specific unlock/progress status
     chapters: {
       method: 'GET' as const,
       path: '/api/story/chapters' as const,
@@ -275,7 +311,6 @@ export const api = {
         401: errorSchemas.unauthorized,
       },
     },
-    // Get a single scene with all dialogue lines and choices
     scene: {
       method: 'GET' as const,
       path: '/api/story/scene/:sceneId' as const,
@@ -285,13 +320,11 @@ export const api = {
         404: errorSchemas.notFound,
       },
     },
-    // Submit a player choice: saves flag(s), returns next scene ID
     submitChoice: {
       method: 'POST' as const,
       path: '/api/story/choice' as const,
       input: z.object({
         choiceId: z.number(),
-        // For battle-gate scenes, pass battle result here
         battleResult: z.enum(['win', 'lose']).optional(),
       }),
       responses: {
@@ -304,7 +337,6 @@ export const api = {
         404: errorSchemas.notFound,
       },
     },
-    // Get all flags for the current player (useful for debug + ending preview)
     flags: {
       method: 'GET' as const,
       path: '/api/story/flags' as const,
@@ -313,7 +345,6 @@ export const api = {
         401: errorSchemas.unauthorized,
       },
     },
-    // Get all endings unlocked by the current player
     endings: {
       method: 'GET' as const,
       path: '/api/story/endings' as const,
@@ -322,7 +353,6 @@ export const api = {
         401: errorSchemas.unauthorized,
       },
     },
-    // Mark a chapter as complete; server evaluates flags and unlocks ending if conditions met
     completeChapter: {
       method: 'POST' as const,
       path: '/api/story/complete-chapter' as const,
@@ -338,7 +368,6 @@ export const api = {
         401: errorSchemas.unauthorized,
       },
     },
-    // Update the player's current scene within a chapter (auto-save progress)
     saveProgress: {
       method: 'POST' as const,
       path: '/api/story/progress' as const,
@@ -349,6 +378,51 @@ export const api = {
       responses: {
         200: z.object({ success: z.boolean() }),
         401: errorSchemas.unauthorized,
+      },
+    },
+  },
+
+  // =============================================================
+  // B3: CAMPAIGN MAP
+  // =============================================================
+  map: {
+    // GET /api/map/provinces
+    // Returns every province this player has ever conquered (held).
+    // The client uses this array to decorate the campaign map with
+    // crown badges and "held since" timestamps.
+    provinces: {
+      method: 'GET' as const,
+      path: '/api/map/provinces' as const,
+      responses: {
+        200: z.array(HeldProvinceSchema),
+        401: errorSchemas.unauthorized,
+      },
+    },
+
+    // POST /api/map/provinces/:id/hold
+    // Called by the server (internally from campaign/special-boss
+    // victory handlers) OR directly by the client after a confirmed
+    // victory to mark a province as held / refresh its heldAt date.
+    //
+    // :id  — the integer locationId (mirrors LOCATIONS[].id in map.tsx)
+    //
+    // Body: { bossDefeated?: boolean }  (defaults true)
+    //
+    // Behaviour:
+    //   • If a row for (userId, locationId) already exists → update heldAt
+    //     and set bossDefeated = true.
+    //   • If no row exists → insert a new one.
+    // Returns the upserted HeldProvinceSchema row.
+    holdProvince: {
+      method: 'POST' as const,
+      path: '/api/map/provinces/:id/hold' as const,
+      input: z.object({
+        bossDefeated: z.boolean().optional().default(true),
+      }),
+      responses: {
+        200: HeldProvinceSchema,
+        401: errorSchemas.unauthorized,
+        400: errorSchemas.validation,
       },
     },
   },

@@ -23,41 +23,55 @@ import StoryPage from "@/pages/story";
 function Router() {
   return (
     <Switch>
-      {/* Public routes — no auth required */}
+      {/* ── Public routes — no auth required ───────────────────────────── */}
       <Route path="/landing" component={LandingPage} />
       <Route path="/login" component={LoginPage} />
       <Route path="/auth/callback" component={AuthCallback} />
 
-      {/* Protected routes — <AuthGuard> redirects to /login if not signed in */}
+      {/* ── Protected routes ────────────────────────────────────────────── */}
+      {/*
+        Every protected route passes its path to <AuthGuard> so the guard
+        can exempt /story/* from the "new player → redirect to /story" logic
+        and avoid an infinite redirect loop.
+      */}
+
+      {/* Story is ALWAYS the first destination for new players (chapter 0) */}
+      <Route path="/story">
+        <AuthGuard routePath="/story"><StoryPage /></AuthGuard>
+      </Route>
+
+      {/* Deep-link to a specific chapter, e.g. /story/2 */}
+      <Route path="/story/:chapterId">
+        <AuthGuard routePath="/story/:chapterId"><StoryPage /></AuthGuard>
+      </Route>
+
+      {/* All other routes unlock progressively via currentChapter */}
       <Route path="/">
-        <AuthGuard><Home /></AuthGuard>
+        <AuthGuard routePath="/"><Home /></AuthGuard>
       </Route>
       <Route path="/party">
-        <AuthGuard><Party /></AuthGuard>
+        <AuthGuard routePath="/party"><Party /></AuthGuard>
       </Route>
       <Route path="/equipment">
-        <AuthGuard><EquipmentPage /></AuthGuard>
+        <AuthGuard routePath="/equipment"><EquipmentPage /></AuthGuard>
       </Route>
       <Route path="/gear">
-        <AuthGuard><GearPage /></AuthGuard>
+        <AuthGuard routePath="/gear"><GearPage /></AuthGuard>
       </Route>
       <Route path="/pets">
-        <AuthGuard><PetsPage /></AuthGuard>
+        <AuthGuard routePath="/pets"><PetsPage /></AuthGuard>
       </Route>
       <Route path="/gacha">
-        <AuthGuard><GachaPage /></AuthGuard>
+        <AuthGuard routePath="/gacha"><GachaPage /></AuthGuard>
       </Route>
       <Route path="/map">
-        <AuthGuard><MapPage /></AuthGuard>
+        <AuthGuard routePath="/map"><MapPage /></AuthGuard>
       </Route>
       <Route path="/stable">
-        <AuthGuard><StablePage /></AuthGuard>
+        <AuthGuard routePath="/stable"><StablePage /></AuthGuard>
       </Route>
       <Route path="/quests">
-        <AuthGuard><QuestsPage /></AuthGuard>
-      </Route>
-      <Route path="/story">
-        <AuthGuard><StoryPage /></AuthGuard>
+        <AuthGuard routePath="/quests"><QuestsPage /></AuthGuard>
       </Route>
 
       <Route component={NotFound} />

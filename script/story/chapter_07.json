@@ -1,0 +1,604 @@
+{
+  "chapter": {
+    "title": "The Price of Heaven",
+    "subtitle": "1560 — Kyoto does not want you. It needs you. These are not the same thing.",
+    "chapterOrder": 7,
+    "isLocked": false
+  },
+  "scenes": [
+    {
+      "sceneRef": "S01",
+      "backgroundKey": "kyoto_approach_road_autumn",
+      "bgmKey": "bgm_journey",
+      "sceneOrder": 1,
+      "nextSceneRef": "S02",
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "1560. The Ashikaga Shogunate is a fiction sustained by the willingness of everyone involved to pretend it isn't. The current shogun, Yoshiaki, is the last of the line. He has sent three letters to Nobunaga.",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "The first two were pleas. The third was something closer to a demand, which means the man has either found his courage or lost his judgment. Nobunaga is traveling to Kyoto to determine which.",
+          "lineOrder": 2
+        },
+        {
+          "speakerName": "Mitsuhide",
+          "speakerSide": "left",
+          "portraitKey": "mitsuhide_calm",
+          "text": "If you put Yoshiaki on the shogunal seat, every lord in Japan who hasn't committed to you yet will assume you're reaching for the same seat.",
+          "lineOrder": 3
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_cold",
+          "text": "They'll assume that regardless.",
+          "lineOrder": 4
+        },
+        {
+          "speakerName": "Mitsuhide",
+          "speakerSide": "left",
+          "portraitKey": "mitsuhide_calm",
+          "text": "Yes. Which means the question is what you actually want from this.",
+          "lineOrder": 5
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_cold",
+          "text": "A legitimate reason to be in Kyoto.",
+          "lineOrder": 6
+        }
+      ],
+      "choices": []
+    },
+    {
+      "sceneRef": "S02",
+      "backgroundKey": "kyoto_shogunal_palace",
+      "bgmKey": "bgm_tense_court",
+      "sceneOrder": 2,
+      "nextSceneRef": "S03",
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "The shogunal palace is beautiful and slightly decayed — the way a man looks beautiful and slightly decayed when he has stopped eating properly but still insists on his dignity. Yoshiaki receives Nobunaga in the audience hall.",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Yoshiaki",
+          "speakerSide": "left",
+          "portraitKey": "yoshiaki_desperate",
+          "text": "Lord Nobunaga. My gratitude for answering at last. The Ashikaga name requires a protector with the force to hold Japan together. I am proposing an alliance that would benefit both —",
+          "lineOrder": 2
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_cold",
+          "text": "You want me to march an army through Kyoto on your behalf. Tell me what you actually want, not what you think I'll agree to.",
+          "lineOrder": 3
+        },
+        {
+          "speakerName": "Yoshiaki",
+          "speakerSide": "left",
+          "portraitKey": "yoshiaki_desperate",
+          "text": "I want to survive, my lord.",
+          "lineOrder": 4
+        }
+      ],
+      "choices": []
+    },
+    {
+      "sceneRef": "S03",
+      "backgroundKey": "kyoto_shogunal_private_room",
+      "bgmKey": "bgm_intrigue",
+      "sceneOrder": 3,
+      "nextSceneRef": null,
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "The honest answer changes the room. Yoshiaki is not a fool. He is a man who knows exactly how much leverage he doesn't have and has decided that honesty costs less than pretense.",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "Nobunaga has three options for what kind of relationship he builds with the last shogun.",
+          "lineOrder": 2
+        }
+      ],
+      "choices": [
+        {
+          "choiceText": "Restore Yoshiaki fully. Make him the symbol that holds the traditional lords together while Nobunaga holds the actual power behind him.",
+          "nextSceneRef": "S03A",
+          "flagKey": "political_power",
+          "flagValue": 2,
+          "flagKey2": null,
+          "flagValue2": null,
+          "choiceOrder": 1
+        },
+        {
+          "choiceText": "Use Yoshiaki, but make his limitations clear from the start. He is a puppet and both men will know it.",
+          "nextSceneRef": "S03B",
+          "flagKey": "ruthlessness",
+          "flagValue": 1,
+          "flagKey2": "political_power",
+          "flagValue2": 1,
+          "choiceOrder": 2
+        },
+        {
+          "choiceText": "Decline. Nobunaga does not need the Ashikaga name. He needs only the roads and the markets to build something that outlasts every shogunate.",
+          "nextSceneRef": "S03C",
+          "flagKey": "ruthlessness",
+          "flagValue": 2,
+          "flagKey2": null,
+          "flagValue2": null,
+          "choiceOrder": 3
+        }
+      ]
+    },
+    {
+      "sceneRef": "S03A",
+      "backgroundKey": "kyoto_shogunal_palace",
+      "bgmKey": "bgm_quiet_resolve",
+      "sceneOrder": 4,
+      "nextSceneRef": "S05",
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "Yoshiaki is restored. The proclamation is read in every province. The traditional lords, who would never submit to Nobunaga directly, find themselves, through elaborate courtesy, submitting to the Shogun — who is in every practical sense submitting to Nobunaga.",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Mitsuhide",
+          "speakerSide": "left",
+          "portraitKey": "mitsuhide_calm",
+          "text": "A fiction that works is not a fiction. It is simply a convenient truth.",
+          "lineOrder": 2
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_smirk",
+          "text": "Now you understand politics.",
+          "lineOrder": 3
+        }
+      ],
+      "choices": []
+    },
+    {
+      "sceneRef": "S03B",
+      "backgroundKey": "kyoto_shogunal_private_room",
+      "bgmKey": "bgm_tense_court",
+      "sceneOrder": 5,
+      "nextSceneRef": "S05",
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_cold",
+          "text": "You will carry the Ashikaga name and you will carry it with dignity. But every order will come through me. Every appointment. Every command.",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Yoshiaki",
+          "speakerSide": "left",
+          "portraitKey": "yoshiaki_desperate",
+          "text": "You are asking me to be your—",
+          "lineOrder": 2
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_cold",
+          "text": "I am asking you to survive. I thought that was what you wanted.",
+          "lineOrder": 3
+        },
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "Yoshiaki is silent for a long time. He knows what the alternative is. There is no alternative.",
+          "lineOrder": 4
+        },
+        {
+          "speakerName": "Yoshiaki",
+          "speakerSide": "left",
+          "portraitKey": "yoshiaki_desperate",
+          "text": "Yes. It is.",
+          "lineOrder": 5
+        }
+      ],
+      "choices": []
+    },
+    {
+      "sceneRef": "S03C",
+      "backgroundKey": "kyoto_approach_road_afternoon",
+      "bgmKey": "bgm_defiance",
+      "sceneOrder": 6,
+      "nextSceneRef": "S05",
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "Nobunaga declines the audience and rides back toward Gifu before sundown. Word travels the way that silences always do — faster than any message.",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Mitsuhide",
+          "speakerSide": "left",
+          "portraitKey": "mitsuhide_calm",
+          "text": "The traditional lords will read this as contempt.",
+          "lineOrder": 2
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_cold",
+          "text": "They can read it any way they like. When I take Kyoto, they'll have a choice: submit or leave. The Ashikaga name won't change that.",
+          "lineOrder": 3
+        }
+      ],
+      "choices": []
+    },
+    {
+      "sceneRef": "S05",
+      "backgroundKey": "kyoto_street_market_afternoon",
+      "bgmKey": "bgm_quiet_resolve",
+      "sceneOrder": 7,
+      "nextSceneRef": "S06",
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "Before leaving Kyoto or having left it, Nobunaga walks the street market without his guard. One of those moments of obscurity that great men sometimes allow themselves — a reminder of what they are building and for whom.",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Merchant",
+          "speakerSide": "left",
+          "portraitKey": "merchant_kyoto",
+          "text": "The roads from Owari are open again, they say. First time in fifteen years a cart got through without being taxed three times over.",
+          "lineOrder": 2
+        },
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "The man does not know who he is speaking to. He is speaking to a samurai in plain clothes who has stopped to look at fabric.",
+          "lineOrder": 3
+        },
+        {
+          "speakerName": "Merchant",
+          "speakerSide": "left",
+          "portraitKey": "merchant_kyoto",
+          "text": "Word is Oda did it. Mad bastard, by all accounts. But the roads are open. Don't care what he's called as long as the roads stay open.",
+          "lineOrder": 4
+        }
+      ],
+      "choices": []
+    },
+    {
+      "sceneRef": "S06",
+      "backgroundKey": "kyoto_street_market_afternoon",
+      "bgmKey": "bgm_quiet_resolve",
+      "sceneOrder": 8,
+      "nextSceneRef": null,
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "This is the first time someone has spoken about the roads without speaking about fear or power or obligation. The merchant just wants to move his goods.",
+          "lineOrder": 1
+        }
+      ],
+      "choices": [
+        {
+          "choiceText": "Buy the fabric. Walk on without identifying himself.",
+          "nextSceneRef": "S06A",
+          "flagKey": "political_power",
+          "flagValue": 1,
+          "flagKey2": null,
+          "flagValue2": null,
+          "choiceOrder": 1
+        },
+        {
+          "choiceText": "Tell the merchant who he is. See what an honest man says when he knows.",
+          "nextSceneRef": "S06B",
+          "flagKey": "nohime_trust",
+          "flagValue": 1,
+          "flagKey2": null,
+          "flagValue2": null,
+          "choiceOrder": 2
+        },
+        {
+          "choiceText": "Say nothing. Walk on. File what the merchant said somewhere useful.",
+          "nextSceneRef": "S06C",
+          "flagKey": "ruthlessness",
+          "flagValue": -1,
+          "flagKey2": "political_power",
+          "flagValue2": 1,
+          "choiceOrder": 3
+        }
+      ]
+    },
+    {
+      "sceneRef": "S06A",
+      "backgroundKey": "kyoto_street_market_afternoon",
+      "bgmKey": "bgm_quiet_resolve",
+      "sceneOrder": 9,
+      "nextSceneRef": "S07",
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "He buys two lengths of blue silk. The merchant never knows who he sold to. Nohime wears the fabric for the new year and does not ask where it came from, which means she already knows.",
+          "lineOrder": 1
+        }
+      ],
+      "choices": []
+    },
+    {
+      "sceneRef": "S06B",
+      "backgroundKey": "kyoto_street_market_afternoon",
+      "bgmKey": "bgm_quiet_resolve",
+      "sceneOrder": 10,
+      "nextSceneRef": "S07",
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_cold",
+          "text": "I'm Oda Nobunaga.",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Merchant",
+          "speakerSide": "left",
+          "portraitKey": "merchant_kyoto",
+          "text": "...",
+          "lineOrder": 2
+        },
+        {
+          "speakerName": "Merchant",
+          "speakerSide": "left",
+          "portraitKey": "merchant_kyoto",
+          "text": "Keep the roads open, my lord. That's all I ask.",
+          "lineOrder": 3
+        },
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "Nobunaga looks at the man for a long time. He has been told he is terrifying, brilliant, mad, a fool, divine, and monstrous. This is the first time someone has asked him only to keep the roads open. It is the most useful thing anyone has asked him for in years.",
+          "lineOrder": 4
+        }
+      ],
+      "choices": []
+    },
+    {
+      "sceneRef": "S06C",
+      "backgroundKey": "kyoto_road_evening",
+      "bgmKey": "bgm_journey",
+      "sceneOrder": 11,
+      "nextSceneRef": "S07",
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "He walks on without speaking. But what the merchant said is not gone. It has been filed under a category that already has a name: the reason.",
+          "lineOrder": 1
+        }
+      ],
+      "choices": []
+    },
+    {
+      "sceneRef": "S07",
+      "backgroundKey": "gifu_castle_tower_night",
+      "bgmKey": "bgm_tension_resolve",
+      "sceneOrder": 12,
+      "nextSceneRef": null,
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "The road back to Gifu. Mitsuhide rides beside him in the late afternoon light. Neither of them speaks for a long time.",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Mitsuhide",
+          "speakerSide": "left",
+          "portraitKey": "mitsuhide_calm",
+          "text": "Did you find what you were looking for?",
+          "lineOrder": 2
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_cold",
+          "text": "No. But I found something I didn't know I was looking for.",
+          "lineOrder": 3
+        },
+        {
+          "speakerName": "Mitsuhide",
+          "speakerSide": "left",
+          "portraitKey": "mitsuhide_calm",
+          "text": "Those are usually the more useful findings.",
+          "lineOrder": 4
+        }
+      ],
+      "choices": []
+    },
+    {
+      "sceneRef": "S08_BATTLE",
+      "backgroundKey": "kyoto_gate_outer_wall",
+      "bgmKey": "bgm_war_drums",
+      "sceneOrder": 13,
+      "nextSceneRef": null,
+      "isBattleGate": true,
+      "battleEnemyKey": "kyoto_rebel_garrison",
+      "battleWinSceneRef": "S09_WIN",
+      "battleLoseSceneRef": "S09_LOSE",
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "On the road back, a displaced rebel garrison has taken position at the Kyoto gate road. Yoshiaki's enemies moving quickly, a test of resolve.",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_fierce",
+          "text": "The roads open. Whatever it takes.",
+          "lineOrder": 2
+        }
+      ],
+      "choices": []
+    },
+    {
+      "sceneRef": "S09_WIN",
+      "backgroundKey": "kyoto_road_evening_clear",
+      "bgmKey": "bgm_victory_somber",
+      "sceneOrder": 14,
+      "nextSceneRef": "S10",
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "The garrison breaks. The road opens. Word of the engagement reaches Kyoto before sundown.",
+          "lineOrder": 1
+        }
+      ],
+      "choices": []
+    },
+    {
+      "sceneRef": "S09_LOSE",
+      "backgroundKey": "kyoto_retreat_rainy",
+      "bgmKey": "bgm_defeat",
+      "sceneOrder": 15,
+      "nextSceneRef": "S10",
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "The garrison holds the road. You fall back, reorganize, and send for reinforcements. The road will open. It simply takes another day.",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Mitsuhide",
+          "speakerSide": "left",
+          "portraitKey": "mitsuhide_grim",
+          "text": "Not every door opens the first time you push it.",
+          "lineOrder": 2
+        }
+      ],
+      "choices": []
+    },
+    {
+      "sceneRef": "S10",
+      "backgroundKey": "gifu_castle_tower_night",
+      "bgmKey": "bgm_tension_resolve",
+      "sceneOrder": 16,
+      "nextSceneRef": null,
+      "isBattleGate": false,
+      "isChapterEnd": true,
+      "dialogueLines": [
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "Back at Gifu, that night. The tower. Nohime is there with the fabric.",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Nohime",
+          "speakerSide": "left",
+          "portraitKey": "nohime_neutral",
+          "text": "You look different.",
+          "lineOrder": 2
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_cold",
+          "text": "Kenshin asked me what I wanted. I answered him poorly. I think I have a better answer now.",
+          "lineOrder": 3
+        },
+        {
+          "speakerName": "Nohime",
+          "speakerSide": "left",
+          "portraitKey": "nohime_neutral",
+          "text": "Which is?",
+          "lineOrder": 4
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_cold",
+          "text": "The roads. Open. For everyone. That's the whole answer.",
+          "lineOrder": 5
+        },
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "Nohime looks at the blue silk in her hands. Then at him. She does not say anything, which means she believes him, which is rarer and worth more than any alliance.",
+          "lineOrder": 6
+        }
+      ],
+      "choices": []
+    }
+  ]
+}
