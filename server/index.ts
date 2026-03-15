@@ -5,6 +5,7 @@ import { createServer } from "http";
 import "./env";
 import { pool } from "./db";
 import { runMigrations } from "./migrate";
+import { seedStoryChapters } from "./seed-story-chapters";
 import { syncTitleCatalogue } from "./lib/titles";
 
 const app = express();
@@ -84,10 +85,13 @@ app.use((req, res, next) => {
   // 1. Apply any missing DDL before any request handler runs.
   await runMigrations();
 
-  // 2. Seed static data that depends on the schema being up to date.
+  // 2. Seed story chapters from script/story/*.json (idempotent).
+  await seedStoryChapters();
+
+  // 3. Seed static data that depends on the schema being up to date.
   await syncTitleCatalogue();
 
-  // 3. Register API routes and start the HTTP server.
+  // 4. Register API routes and start the HTTP server.
   await registerRoutes(httpServer, app);
 
   app.use((err: any, _req: Request, res: Response, next: NextFunction) => {
