@@ -17,7 +17,7 @@ import {
 } from "@/lib/story-engine";
 import { usePlayer } from "@/hooks/use-game";
 
-// ─── Types ───────────────────────────────────────────────────────────────────
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 interface DialogueLine {
   id: number;
@@ -119,15 +119,6 @@ const FLAG_LABELS: Record<string, string> = {
 };
 
 // ─── Completion destinations ──────────────────────────────────────────────────
-//
-// DESIGN: Ch1 now routes to "/" (the Dojo / Home screen).
-//
-// Previously it routed to "/story" — which is always exempt from AuthGuard's
-// chapter-gate, so the player never exercised the gate and the DB write was
-// never validated. Routing to "/" forces AuthGuard to confirm currentChapter >= 1
-// before rendering Home, which is the correct validation checkpoint.
-//
-// /story (no param) is now a chapter-select hub, not a replay of Ch1.
 const CHAPTER_COMPLETE_DESTINATION: Record<number, { path: string; label: string }> = {
   1: { path: "/",       label: "Enter the Dojo" },
   2: { path: "/stable", label: "Visit War Council" },
@@ -138,18 +129,19 @@ const CHAPTER_COMPLETE_DESTINATION: Record<number, { path: string; label: string
   7: { path: "/map",    label: "Open Campaign Map" },
 };
 
-// ─── Chapter catalogue (static until Phase 5 API) ────────────────────────────
+// ─── Chapter catalogue ────────────────────────────────────────────────────────
 //
-// Only Ch1 is authored in story-engine.ts. Ch2-7 are stubs so the hub renders
-// proper "Coming Soon" cards rather than crashing.
+// UAT: all chapters are available:true so the hub shows them as clickable.
+// StoryPlayer handles the "not yet authored" case gracefully with a Coming Soon
+// screen instead of crashing.
 const CHAPTER_CATALOGUE = [
-  { id: 1, title: "The Fool of Owari",      subtitle: "1551 — The land mocks you. Let it.",        available: true  },
-  { id: 2, title: "The Wolf of Mino",        subtitle: "1554 — Alliances are chains. Pick yours.",  available: false },
-  { id: 3, title: "Blades of Kyoto",         subtitle: "1559 — The capital reeks of ambition.",     available: false },
-  { id: 4, title: "The Shrine at Azuchi",    subtitle: "1576 — Gods and generals keep score.",      available: false },
-  { id: 5, title: "Spirit Beasts of Kai",    subtitle: "1572 — Nature does not negotiate.",         available: false },
-  { id: 6, title: "The War Council",         subtitle: "1577 — Trust is a calculated risk.",        available: false },
-  { id: 7, title: "Flames Over Honnō-ji",   subtitle: "1582 — Every age ends the same way.",       available: false },
+  { id: 1, title: "The Fool of Owari",      subtitle: "1551 — The land mocks you. Let it.",        available: true },
+  { id: 2, title: "The Wolf of Mino",        subtitle: "1554 — Alliances are chains. Pick yours.",  available: true },
+  { id: 3, title: "Blades of Kyoto",         subtitle: "1559 — The capital reeks of ambition.",     available: true },
+  { id: 4, title: "The Shrine at Azuchi",    subtitle: "1576 — Gods and generals keep score.",      available: true },
+  { id: 5, title: "Spirit Beasts of Kai",    subtitle: "1572 — Nature does not negotiate.",         available: true },
+  { id: 6, title: "The War Council",         subtitle: "1577 — Trust is a calculated risk.",        available: true },
+  { id: 7, title: "Flames Over Honnō-ji",   subtitle: "1582 — Every age ends the same way.",       available: true },
 ];
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
@@ -295,11 +287,6 @@ function BattleGateOverlay({ scene, bgGradient, onResult }: BattleGateProps) {
 }
 
 // ─── ChapterSelectHub ─────────────────────────────────────────────────────────
-//
-// Shown when the player visits /story without a chapterId param AND
-// currentChapter >= 1. New players (currentChapter = 0) never reach this
-// component — AuthGuard redirects them to /story which kicks off Ch1 inline
-// via the StoryPlayer below.
 
 interface ChapterSelectHubProps {
   currentChapter: number;
@@ -311,7 +298,6 @@ function ChapterSelectHub({ currentChapter, onSelectChapter }: ChapterSelectHubP
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-stone-950 via-zinc-900 to-black flex flex-col">
-      {/* Header */}
       <div className="flex items-center justify-between px-5 py-3 bg-black/40 backdrop-blur-sm border-b border-white/5">
         <button
           onClick={() => navigate("/")}
@@ -323,7 +309,6 @@ function ChapterSelectHub({ currentChapter, onSelectChapter }: ChapterSelectHubP
         <div className="w-16" />
       </div>
 
-      {/* Title */}
       <div className="px-6 pt-8 pb-4">
         <p className="text-amber-400 text-xs tracking-widest uppercase mb-2">Sengoku Chronicles</p>
         <h1 className="text-2xl font-bold text-white mb-1">Story Chapters</h1>
@@ -332,18 +317,10 @@ function ChapterSelectHub({ currentChapter, onSelectChapter }: ChapterSelectHubP
         </p>
       </div>
 
-      {/* Chapter cards */}
       <div className="flex-1 px-5 pb-8 space-y-3 overflow-y-auto">
         {CHAPTER_CATALOGUE.map((ch) => {
-          const isUnlocked  = ch.available && ch.id <= currentChapter;
-          const isNext      = ch.available && ch.id === currentChapter + 1 && ch.id === 1;
           const isCompleted = ch.id < currentChapter;
-          const isLocked    = !isUnlocked && !isNext;
-
-          // For Ch1 specifically: even if currentChapter < 1, it's always
-          // available to start (new player flow). AuthGuard ensures we only
-          // reach here when authenticated, so ch1 is never locked.
-          const canPlay = ch.available && (ch.id === 1 || ch.id <= currentChapter);
+          const canPlay     = ch.available && (ch.id === 1 || ch.id <= currentChapter);
 
           return (
             <div
@@ -352,10 +329,9 @@ function ChapterSelectHub({ currentChapter, onSelectChapter }: ChapterSelectHubP
               className={`relative rounded-lg border p-4 transition-all ${
                 canPlay
                   ? "border-amber-700/40 bg-amber-900/10 hover:bg-amber-900/20 cursor-pointer"
-                  : "border-white/5 bg-white/3 cursor-not-allowed opacity-50"
+                  : "border-white/5 bg-white/[0.03] cursor-not-allowed opacity-50"
               }`}
             >
-              {/* Status badge */}
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-center gap-3">
                   <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold border flex-shrink-0 ${
@@ -378,11 +354,7 @@ function ChapterSelectHub({ currentChapter, onSelectChapter }: ChapterSelectHubP
                 </div>
 
                 <div className="flex-shrink-0 text-right">
-                  {!ch.available ? (
-                    <span className="text-xs text-stone-600 border border-stone-800 px-2 py-0.5 rounded-full">
-                      Coming Soon
-                    </span>
-                  ) : isCompleted ? (
+                  {isCompleted ? (
                     <span className="text-xs text-amber-500 border border-amber-700/40 px-2 py-0.5 rounded-full">
                       Completed
                     </span>
@@ -398,7 +370,6 @@ function ChapterSelectHub({ currentChapter, onSelectChapter }: ChapterSelectHubP
                 </div>
               </div>
 
-              {/* Destination unlock hint */}
               {canPlay && CHAPTER_COMPLETE_DESTINATION[ch.id] && (
                 <p className="text-[10px] text-stone-500 mt-2 pl-12">
                   Completes → unlocks {CHAPTER_COMPLETE_DESTINATION[ch.id].label}
@@ -413,8 +384,6 @@ function ChapterSelectHub({ currentChapter, onSelectChapter }: ChapterSelectHubP
 }
 
 // ─── StoryPlayer ──────────────────────────────────────────────────────────────
-//
-// The actual visual-novel engine. Receives a confirmed chapterId (always >= 1).
 
 interface StoryPlayerProps {
   chapterId: number;
@@ -434,6 +403,8 @@ function StoryPlayer({ chapterId }: StoryPlayerProps) {
   const [isTyping, setIsTyping]           = useState(false);
   const [loading, setLoading]             = useState(true);
   const [error, setError]                 = useState<string | null>(null);
+  // Distinct from a hard error: chapter exists in catalogue but has no authored content yet.
+  const [comingSoon, setComingSoon]       = useState(false);
   const typeTimerRef       = useRef<ReturnType<typeof setTimeout> | null>(null);
   const completionFiredRef = useRef(false);
 
@@ -450,15 +421,10 @@ function StoryPlayer({ chapterId }: StoryPlayerProps) {
   const completionDest = CHAPTER_COMPLETE_DESTINATION[CHAPTER_ID]
     ?? { path: "/story", label: "Return to Chronicles" };
 
-  // ── triggerCompletion ────────────────────────────────────────────────────
-  //
-  // Fixed ordering (see previous commit comment for full explanation):
-  //   1. Flush flags to server      (fire-and-forget; idempotent)
-  //   2. POST /progress/complete    (bumps currentChapter in DB) ← MUST be first
-  //   3. completeChapter()          (write isCompleted:true to localStorage)
-  //   4. unlockEnding()             (localStorage)
-  //   5. refetchQueries             (warm cache so AuthGuard sees new chapter)
-  //   6. setIsComplete(true)        (render complete screen)
+  // Find the chapter title from the catalogue for the Coming Soon screen.
+  const catalogueEntry = CHAPTER_CATALOGUE.find((c) => c.id === CHAPTER_ID);
+
+  // ── triggerCompletion ──────────────────────────────────────────────────────
   const triggerCompletion = useCallback(async () => {
     if (completionFiredRef.current || !chapter) return;
     completionFiredRef.current = true;
@@ -467,14 +433,12 @@ function StoryPlayer({ chapterId }: StoryPlayerProps) {
       if (Object.keys(finalFlags).length > 0) {
         apiRequest("POST", "/api/story/flags", { absolute: finalFlags }).catch(() => {});
       }
-
       await apiRequest("POST", "/api/story/progress/complete", {
         chapterId:         CHAPTER_ID,
         endingKey:         `ch${CHAPTER_ID}_complete`,
         endingTitle:       chapter.title,
         endingDescription: `Chapter ${CHAPTER_ID} complete.`,
       });
-
       await completeChapter();
       await unlockEnding({
         chapterId:         CHAPTER_ID,
@@ -482,7 +446,6 @@ function StoryPlayer({ chapterId }: StoryPlayerProps) {
         endingTitle:       chapter.title,
         endingDescription: `Chapter ${CHAPTER_ID} complete.`,
       });
-
       await queryClient.refetchQueries({ queryKey: [api.player.get.path] });
       setIsComplete(true);
     } catch {
@@ -496,6 +459,8 @@ function StoryPlayer({ chapterId }: StoryPlayerProps) {
     (async () => {
       try {
         setLoading(true);
+        setComingSoon(false);
+        setError(null);
         const [chapterData, savedFlags, progress] = await Promise.all([
           fetchChapter(CHAPTER_ID),
           getFlags(),
@@ -522,8 +487,16 @@ function StoryPlayer({ chapterId }: StoryPlayerProps) {
           setSceneId(firstId);
           setFlags(await getFlags());
         }
-      } catch {
-        setError("Failed to load chapter. Please refresh.");
+      } catch (err: any) {
+        // fetchChapter throws "Chapter N not yet available" for unwritten chapters.
+        // Detect this by checking for "not yet available" in the message and
+        // render a polished Coming Soon screen instead of a generic error.
+        const msg: string = err?.message ?? String(err);
+        if (msg.toLowerCase().includes("not yet available") || msg.toLowerCase().includes("not available")) {
+          setComingSoon(true);
+        } else {
+          setError("Failed to load chapter. Please refresh.");
+        }
       } finally {
         setLoading(false);
       }
@@ -595,14 +568,11 @@ function StoryPlayer({ chapterId }: StoryPlayerProps) {
     const mutations: StoryFlags = {};
     if (choice.flagKey != null) mutations[choice.flagKey] = choice.flagValue ?? 0;
     if (choice.flagKey2 != null && choice.flagValue2 != null) mutations[choice.flagKey2] = choice.flagValue2;
-
     const updated = await applyFlags(mutations);
     setFlags(updated);
-
     if (Object.keys(mutations).length > 0) {
       apiRequest("POST", "/api/story/flags", { mutations }).catch(() => {});
     }
-
     await advanceScene(choice.nextSceneId);
     setSceneId(choice.nextSceneId);
     setLineIndex(0);
@@ -615,11 +585,9 @@ function StoryPlayer({ chapterId }: StoryPlayerProps) {
       ? (scene.battleWinSceneId ?? scene.nextSceneId)
       : (scene.battleLoseSceneId ?? scene.nextSceneId);
     if (!nextId) return;
-
     apiRequest("POST", "/api/story/flags", {
       absolute: { battle_won: won ? 1 : 0, battle_lost: won ? 0 : 1 },
     }).catch(() => {});
-
     setFlags(await getFlags());
     await advanceScene(nextId);
     setSceneId(nextId);
@@ -640,7 +608,7 @@ function StoryPlayer({ chapterId }: StoryPlayerProps) {
     setFlags({});
   }, [chapter, CHAPTER_ID]);
 
-  // ── Loading / error ────────────────────────────────────────────────────────
+  // ── Loading ────────────────────────────────────────────────────────────────
   if (loading) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
@@ -648,6 +616,36 @@ function StoryPlayer({ chapterId }: StoryPlayerProps) {
       </div>
     );
   }
+
+  // ── Coming Soon (unwritten chapter) ───────────────────────────────────────
+  if (comingSoon) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-stone-950 via-zinc-900 to-black flex flex-col items-center justify-center p-8 text-center">
+        <div className="max-w-md">
+          <p className="text-amber-400 text-xs tracking-widest uppercase mb-4">Coming Soon</p>
+          <h1 className="text-2xl font-bold text-white mb-2">
+            Chapter {CHAPTER_ID}{catalogueEntry ? `: ${catalogueEntry.title}` : ""}
+          </h1>
+          {catalogueEntry && (
+            <p className="text-stone-400 italic mb-6">{catalogueEntry.subtitle}</p>
+          )}
+          <div className="mb-8 p-4 bg-white/5 rounded border border-white/10">
+            <p className="text-stone-400 text-sm">
+              This chapter is still being written. The Sengoku chronicle continues — check back soon.
+            </p>
+          </div>
+          <button
+            onClick={() => navigate("/story")}
+            className="px-5 py-2 bg-stone-800 hover:bg-stone-700 text-white rounded text-sm transition"
+          >
+            ← Back to Chronicles
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Hard error ─────────────────────────────────────────────────────────────
   if (error || !chapter) {
     return (
       <div className="min-h-screen bg-black flex flex-col items-center justify-center gap-4 p-6 text-center">
@@ -823,37 +821,16 @@ function StoryPlayer({ chapterId }: StoryPlayerProps) {
 }
 
 // ─── Main page ────────────────────────────────────────────────────────────────
-//
-// Routing logic:
-//
-//   /story          → no chapterId param
-//     currentChapter = 0  → new player: start Ch1 directly (same as before)
-//     currentChapter >= 1 → returning player: show ChapterSelectHub
-//
-//   /story/1        → play Ch1 directly (StoryPlayer)
-//   /story/2+       → play that chapter (StoryPlayer; throws if not authored yet)
-//
-// Why not redirect new players to /story/1?
-//   AuthGuard exempts /story/* from the chapter-0 gate, so doing
-//   navigate("/story/1") inside the guard would be a no-op loop. Instead we
-//   just render StoryPlayer inline for chapter 1 when currentChapter is 0,
-//   which is indistinguishable from the old behaviour.
 
 export default function StoryPage() {
   const params = useParams<{ chapterId?: string }>();
   const [, navigate] = useLocation();
 
-  // Read the player's current chapter from the server cache so we know
-  // whether to show the hub or go straight into Ch1.
   const { data: player, isLoading: playerLoading } = usePlayer();
   const currentChapter = player?.currentChapter ?? 0;
 
-  const hasChapterParam = !!params.chapterId;
+  const hasChapterParam    = !!params.chapterId;
   const chapterIdFromParam = params.chapterId ? parseInt(params.chapterId, 10) : null;
-
-  // Show hub when the player has a chapter param — let StoryPlayer handle it.
-  // Show hub when no param AND player has progressed past ch0.
-  // Show Ch1 inline when no param AND player is new (ch0).
 
   if (playerLoading) {
     return (
@@ -863,12 +840,10 @@ export default function StoryPage() {
     );
   }
 
-  // Direct chapter link (e.g. /story/1, /story/2)
   if (hasChapterParam && chapterIdFromParam) {
     return <StoryPlayer chapterId={chapterIdFromParam} />;
   }
 
-  // Returning player: show chapter-select hub
   if (currentChapter >= 1) {
     return (
       <ChapterSelectHub
@@ -878,7 +853,5 @@ export default function StoryPage() {
     );
   }
 
-  // New player (currentChapter = 0): start Ch1 directly, same as legacy behaviour.
-  // AuthGuard has already redirected them to /story, so we just begin Ch1 inline.
   return <StoryPlayer chapterId={1} />;
 }
