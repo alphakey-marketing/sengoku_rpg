@@ -10,11 +10,8 @@ packages = ["psmisc"]
 localPort = 3000
 externalPort = 80
 
-[[ports]]
-localPort = 5000
-
 [env]
-PORT = "5000"
+PORT = "3000"
 
 [deployment]
 deploymentTarget = "autoscale"
@@ -41,7 +38,7 @@ author = "agent"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "npm run dev"
-waitForPort = 5000
+waitForPort = 3000
 
 [agent]
 integrations = ["javascript_log_in_with_replit:2.0.0", "javascript_database:1.0.0"]
