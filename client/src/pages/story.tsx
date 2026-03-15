@@ -194,9 +194,10 @@ function BattleGateOverlay({ scene, bgGradient, onResult }: BattleGateProps) {
       setCombatLogs(logs);
       setWon(victory);
       setPhase("done");
-      await apiRequest("POST", "/api/story/flags", {
+      // Sync battle outcome flags to server (fire-and-forget)
+      apiRequest("POST", "/api/story/flags", {
         absolute: { battle_won: victory ? 1 : 0, battle_lost: victory ? 0 : 1 },
-      });
+      }).catch(() => {});
     } catch (err: any) {
       const msg = err?.message ?? String(err);
       setCombatLogs([`Error: ${msg}`]);
@@ -314,6 +315,17 @@ export default function StoryPage() {
         endingTitle: chapter.title,
         endingDescription: `Chapter ${CHAPTER_ID} complete.`,
       });
+
+      // Flush the full accumulated flag snapshot to the server so that
+      // the completion call and flag writes are always consistent even
+      // if any mid-chapter sync was dropped.
+      const finalFlags = await getFlags();
+      if (Object.keys(finalFlags).length > 0) {
+        // Use absolute here so we always end up with the correct totals
+        // regardless of how many partial syncs succeeded.
+        apiRequest("POST", "/api/story/flags", { absolute: finalFlags }).catch(() => {});
+      }
+
       await apiRequest("POST", "/api/story/progress/complete", {
         chapterId: CHAPTER_ID,
         endingKey: `ch${CHAPTER_ID}_complete`,
@@ -324,7 +336,6 @@ export default function StoryPage() {
       // screen renders with an already-warm currentChapter in the cache.
       // AuthGuard will read currentChapter >= 1 when the CTA button fires.
       await queryClient.refetchQueries({ queryKey: [api.player.get.path] });
-      // Cache is now warm — safe to show the complete screen.
       setIsComplete(true);
     } catch {
       // Non-fatal: show the complete screen anyway so the player isn't stuck.
@@ -431,25 +442,41 @@ export default function StoryPage() {
     }
   }, [scene, chapter, lineIndex, isTyping, skipTypewriter, triggerCompletion]);
 
+  // ── Choice handler — writes flags to localStorage AND server ─────────────────────────────
   const handleChoice = useCallback(async (choice: Choice) => {
     if (!scene) return;
     const mutations: StoryFlags = {};
     if (choice.flagKey != null) mutations[choice.flagKey] = choice.flagValue ?? 0;
     if (choice.flagKey2 != null && choice.flagValue2 != null) mutations[choice.flagKey2] = choice.flagValue2;
+
+    // 1. Apply to localStorage (instant, for the FlagBar)
     const updated = await applyFlags(mutations);
     setFlags(updated);
+
+    // 2. Persist additive mutations to the server (fire-and-forget so UX never stalls)
+    if (Object.keys(mutations).length > 0) {
+      apiRequest("POST", "/api/story/flags", { mutations }).catch(() => {});
+    }
+
     await advanceScene(choice.nextSceneId);
     setSceneId(choice.nextSceneId);
     setLineIndex(0);
     setShowChoices(false);
   }, [scene]);
 
+  // ── Battle result handler — re-syncs battle flags + advances scene ───────────────────────
   const handleBattleResult = useCallback(async (won: boolean, _logs: string[]) => {
     if (!scene) return;
     const nextId = won
       ? (scene.battleWinSceneId ?? scene.nextSceneId)
       : (scene.battleLoseSceneId ?? scene.nextSceneId);
     if (!nextId) return;
+
+    // Re-sync final battle flags to server (absolute so a retry doesn't double-count)
+    apiRequest("POST", "/api/story/flags", {
+      absolute: { battle_won: won ? 1 : 0, battle_lost: won ? 0 : 1 },
+    }).catch(() => {});
+
     setFlags(await getFlags());
     await advanceScene(nextId);
     setSceneId(nextId);
