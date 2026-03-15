@@ -25,7 +25,11 @@ export function StoryProgressBanner({ flags, chapters }: Props) {
   if (safeChapters.length === 0) return null;
 
   const completed     = safeChapters.filter(c => c.isCompleted);
+  // The chapter the player should go to next:
+  //   - first unlocked + incomplete chapter, OR
+  //   - fall back to "/story" (chapter 1) if nothing found
   const current       = safeChapters.find(c => c.isUnlocked && !c.isCompleted);
+  const continueHref  = current ? `/story/${current.id}` : "/story";
   const totalChapters = safeChapters.length;
   const percent       = totalChapters > 0 ? Math.round((completed.length / totalChapters) * 100) : 0;
 
@@ -49,7 +53,7 @@ export function StoryProgressBanner({ flags, chapters }: Props) {
             <p className="text-xs text-zinc-400">{completed.length} of {totalChapters} chapters complete</p>
           </div>
         </div>
-        <Link href="/story">
+        <Link href={continueHref}>
           <button className="flex items-center gap-1 text-xs text-accent font-bold hover:underline">
             {current ? "Continue" : "View"}
             <ChevronRight size={14} />
@@ -68,22 +72,23 @@ export function StoryProgressBanner({ flags, chapters }: Props) {
           />
         </div>
 
-        {/* Chapter pills */}
+        {/* Chapter pills — clicking a completed or active chapter navigates directly */}
         <div className="flex flex-wrap gap-2">
           {safeChapters.slice(0, 6).map(ch => (
-            <div
-              key={ch.id}
-              className={`px-3 py-1 rounded-full text-xs font-bold border transition-colors ${
-                ch.isCompleted
-                  ? "bg-accent/10 border-accent/30 text-accent"
-                  : ch.isUnlocked
-                  ? "bg-primary/10 border-primary/30 text-primary animate-pulse"
-                  : "bg-zinc-800/50 border-zinc-700/30 text-zinc-500"
-              }`}
-            >
-              {ch.isUnlocked ? null : <Lock size={9} className="inline mr-1" />}
-              {ch.title}
-            </div>
+            <Link key={ch.id} href={ch.isUnlocked ? `/story/${ch.id}` : "#"}>
+              <div
+                className={`px-3 py-1 rounded-full text-xs font-bold border transition-colors ${
+                  ch.isCompleted
+                    ? "bg-accent/10 border-accent/30 text-accent cursor-pointer hover:bg-accent/20"
+                    : ch.isUnlocked
+                    ? "bg-primary/10 border-primary/30 text-primary animate-pulse cursor-pointer"
+                    : "bg-zinc-800/50 border-zinc-700/30 text-zinc-500 cursor-default"
+                }`}
+              >
+                {ch.isUnlocked ? null : <Lock size={9} className="inline mr-1" />}
+                {ch.title}
+              </div>
+            </Link>
           ))}
           {safeChapters.length > 6 && (
             <div className="px-3 py-1 rounded-full text-xs font-bold border bg-zinc-800/50 border-zinc-700/30 text-zinc-500">

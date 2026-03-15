@@ -31,13 +31,18 @@ function Router() {
       {/* ── Protected routes ────────────────────────────────────────────── */}
       {/*
         Every protected route passes its path to <AuthGuard> so the guard
-        can exempt /story from the "new player → redirect to /story" logic
+        can exempt /story/* from the "new player → redirect to /story" logic
         and avoid an infinite redirect loop.
       */}
 
       {/* Story is ALWAYS the first destination for new players (chapter 0) */}
       <Route path="/story">
         <AuthGuard routePath="/story"><StoryPage /></AuthGuard>
+      </Route>
+
+      {/* Deep-link to a specific chapter, e.g. /story/2 */}
+      <Route path="/story/:chapterId">
+        <AuthGuard routePath="/story/:chapterId"><StoryPage /></AuthGuard>
       </Route>
 
       {/* All other routes unlock progressively via currentChapter */}
