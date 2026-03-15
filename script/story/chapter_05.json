@@ -1,0 +1,719 @@
+{
+  "chapter": {
+    "title": "The Mountain and the Mirror",
+    "subtitle": "1556 — Kenshin sees you. The question is whether you can see yourself.",
+    "chapterOrder": 5,
+    "isLocked": false
+  },
+  "scenes": [
+    {
+      "sceneRef": "S01",
+      "backgroundKey": "mountain_road_north_mist",
+      "bgmKey": "bgm_journey",
+      "sceneOrder": 1,
+      "nextSceneRef": "S02",
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "1556. The letter from Kenshin arrives. Not a declaration of war — an invitation. A mountain inn on the border road. Two parties. No armies.",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Mitsuhide",
+          "speakerSide": "left",
+          "portraitKey": "mitsuhide_calm",
+          "text": "He has never requested a meeting before. Every lord he's summoned to a border conference has emerged having agreed to something.",
+          "lineOrder": 2
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_cold",
+          "text": "Then I'll be the first one who doesn't.",
+          "lineOrder": 3
+        },
+        {
+          "speakerName": "Nohime",
+          "speakerSide": "left",
+          "portraitKey": "nohime_neutral",
+          "text": "He calls himself the God of War. He means it literally. He prays before every battle and has never lost one.",
+          "lineOrder": 4
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_smirk",
+          "text": "A god who has never lost is a god who hasn't fought me yet.",
+          "lineOrder": 5
+        }
+      ],
+      "choices": []
+    },
+    {
+      "sceneRef": "S02",
+      "backgroundKey": "mountain_inn_exterior",
+      "bgmKey": "bgm_tense_court",
+      "sceneOrder": 2,
+      "nextSceneRef": null,
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "The mountain inn. Kenshin is already seated when Nobunaga arrives. This is deliberate — he wanted to be seen waiting without appearing to wait.",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Kenshin",
+          "speakerSide": "left",
+          "portraitKey": "kenshin_portrait",
+          "text": "The Fool of Owari. You look nothing like your reputation.",
+          "lineOrder": 2
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_cold",
+          "text": "Neither do you. I expected robes. You wear armor to a diplomatic meeting.",
+          "lineOrder": 3
+        },
+        {
+          "speakerName": "Kenshin",
+          "speakerSide": "left",
+          "portraitKey": "kenshin_portrait",
+          "text": "I am always at war. Even in peace I am at war. That is not a boast — it is simply what I am.",
+          "lineOrder": 4
+        },
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "He pours tea for both of them. He is watching everything. Nobunaga recognizes the style — it is how he himself enters a room.",
+          "lineOrder": 5
+        }
+      ],
+      "choices": []
+    },
+    {
+      "sceneRef": "S03",
+      "backgroundKey": "mountain_inn_interior",
+      "bgmKey": "bgm_intrigue",
+      "sceneOrder": 3,
+      "nextSceneRef": null,
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Kenshin",
+          "speakerSide": "left",
+          "portraitKey": "kenshin_portrait",
+          "text": "I have been watching you for three years. You fight like a man who doesn't believe in the rules of war.",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_cold",
+          "text": "I believe in results. The rules are other men's habit.",
+          "lineOrder": 2
+        },
+        {
+          "speakerName": "Kenshin",
+          "speakerSide": "left",
+          "portraitKey": "kenshin_portrait",
+          "text": "I want to ask you something, and I want an honest answer. Not a political one.",
+          "lineOrder": 3
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_cold",
+          "text": "Ask.",
+          "lineOrder": 4
+        },
+        {
+          "speakerName": "Kenshin",
+          "speakerSide": "left",
+          "portraitKey": "kenshin_portrait",
+          "text": "What do you actually want? Not the strategy. Not Tenka fubu. What do you, Oda Nobunaga, actually want from all of this?",
+          "lineOrder": 5
+        }
+      ],
+      "choices": [
+        {
+          "choiceText": "\"To be the last war Japan needs. One unification so complete no one needs to fight again.\"",
+          "nextSceneRef": "S03A",
+          "flagKey": "political_power",
+          "flagValue": 1,
+          "flagKey2": null,
+          "flagValue2": null,
+          "choiceOrder": 1
+        },
+        {
+          "choiceText": "\"To prove that the rules of this country were written by men who couldn't win without them.\"",
+          "nextSceneRef": "S03B",
+          "flagKey": "ruthlessness",
+          "flagValue": 1,
+          "flagKey2": null,
+          "flagValue2": null,
+          "choiceOrder": 2
+        },
+        {
+          "choiceText": "\"I don't know yet. I'm working on it.\"",
+          "nextSceneRef": "S03C",
+          "flagKey": "nohime_trust",
+          "flagValue": 1,
+          "flagKey2": null,
+          "flagValue2": null,
+          "choiceOrder": 3
+        }
+      ]
+    },
+    {
+      "sceneRef": "S03A",
+      "backgroundKey": "mountain_inn_interior",
+      "bgmKey": "bgm_intrigue",
+      "sceneOrder": 4,
+      "nextSceneRef": "S04",
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Kenshin",
+          "speakerSide": "left",
+          "portraitKey": "kenshin_portrait",
+          "text": "A noble answer. A political one.",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_cold",
+          "text": "They are the same answer.",
+          "lineOrder": 2
+        },
+        {
+          "speakerName": "Kenshin",
+          "speakerSide": "left",
+          "portraitKey": "kenshin_portrait",
+          "text": "If they were the same answer, you would not have needed to say both. But I will grant that it is at least true in part. I give you three years before I decide whether you are worth stopping.",
+          "lineOrder": 3
+        }
+      ],
+      "choices": []
+    },
+    {
+      "sceneRef": "S03B",
+      "backgroundKey": "mountain_inn_interior",
+      "bgmKey": "bgm_intrigue",
+      "sceneOrder": 5,
+      "nextSceneRef": "S04",
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Kenshin",
+          "speakerSide": "left",
+          "portraitKey": "kenshin_portrait",
+          "text": "An honest answer. Also a dangerous one to say aloud.",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_cold",
+          "text": "You asked for honesty.",
+          "lineOrder": 2
+        },
+        {
+          "speakerName": "Kenshin",
+          "speakerSide": "left",
+          "portraitKey": "kenshin_portrait",
+          "text": "I did. And I respect it more than the polished version. A man who knows what he wants is predictable. Predictability has its uses — for both of us. I give you three years.",
+          "lineOrder": 3
+        }
+      ],
+      "choices": []
+    },
+    {
+      "sceneRef": "S03C",
+      "backgroundKey": "mountain_inn_interior",
+      "bgmKey": "bgm_intrigue",
+      "sceneOrder": 6,
+      "nextSceneRef": "S04",
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "A long pause. Kenshin sets down his tea.",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Kenshin",
+          "speakerSide": "left",
+          "portraitKey": "kenshin_portrait",
+          "text": "...That is the first thing you've said that I believe completely.",
+          "lineOrder": 2
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_cold",
+          "text": "Good. I'd hate to have you believe the wrong thing.",
+          "lineOrder": 3
+        },
+        {
+          "speakerName": "Kenshin",
+          "speakerSide": "left",
+          "portraitKey": "kenshin_portrait",
+          "text": "A man who does not know what he wants is more dangerous than one who does. I give you three years — and I will be watching to see what answer you find.",
+          "lineOrder": 4
+        }
+      ],
+      "choices": []
+    },
+    {
+      "sceneRef": "S04",
+      "backgroundKey": "mountain_inn_interior",
+      "bgmKey": "bgm_intrigue",
+      "sceneOrder": 7,
+      "nextSceneRef": null,
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Kenshin",
+          "speakerSide": "left",
+          "portraitKey": "kenshin_portrait",
+          "text": "Your general. Mitsuhide. He is the most capable man in your service and you treat him like a tool.",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_cold",
+          "text": "He is a general. That is his function.",
+          "lineOrder": 2
+        },
+        {
+          "speakerName": "Kenshin",
+          "speakerSide": "left",
+          "portraitKey": "kenshin_portrait",
+          "text": "Tools break when they are used past their tolerance. Men break differently. I have seen three lords lose their greatest general to exactly this mistake. I mention it because I am curious whether you are smart enough to hear it.",
+          "lineOrder": 3
+        }
+      ],
+      "choices": [
+        {
+          "choiceText": "\"Noted. Mitsuhide is more than a tool — I know that.\"",
+          "nextSceneRef": "S04A",
+          "flagKey": "mitsuhide_loyalty",
+          "flagValue": 1,
+          "flagKey2": null,
+          "flagValue2": null,
+          "choiceOrder": 1
+        },
+        {
+          "choiceText": "\"I appreciate the counsel. But I know my own house.\"",
+          "nextSceneRef": "S04B",
+          "flagKey": "ruthlessness",
+          "flagValue": 1,
+          "flagKey2": null,
+          "flagValue2": null,
+          "choiceOrder": 2
+        }
+      ]
+    },
+    {
+      "sceneRef": "S04A",
+      "backgroundKey": "mountain_inn_interior",
+      "bgmKey": "bgm_quiet_resolve",
+      "sceneOrder": 8,
+      "nextSceneRef": "S05",
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Kenshin",
+          "speakerSide": "left",
+          "portraitKey": "kenshin_portrait",
+          "text": "Whether you know it and whether you act on it are two different things. I will file that answer under 'promising.'",
+          "lineOrder": 1
+        }
+      ],
+      "choices": []
+    },
+    {
+      "sceneRef": "S04B",
+      "backgroundKey": "mountain_inn_interior",
+      "bgmKey": "bgm_intrigue",
+      "sceneOrder": 9,
+      "nextSceneRef": "S05",
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Kenshin",
+          "speakerSide": "left",
+          "portraitKey": "kenshin_portrait",
+          "text": "Men who know their own house rarely need to say so. I will file that under 'noted but unresolved.'",
+          "lineOrder": 1
+        }
+      ],
+      "choices": []
+    },
+    {
+      "sceneRef": "S05",
+      "backgroundKey": "mountain_inn_interior_dusk",
+      "bgmKey": "bgm_intrigue",
+      "sceneOrder": 10,
+      "nextSceneRef": null,
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Kenshin",
+          "speakerSide": "left",
+          "portraitKey": "kenshin_portrait",
+          "text": "One more question. The blade. The one your men found at Nagashino.",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_cold",
+          "text": "You know about that.",
+          "lineOrder": 2
+        },
+        {
+          "speakerName": "Kenshin",
+          "speakerSide": "left",
+          "portraitKey": "kenshin_portrait",
+          "text": "I know about everything in this country that carries weight. Do you still have it?",
+          "lineOrder": 3
+        }
+      ],
+      "choices": [
+        {
+          "choiceText": "\"Yes. It is mine.\"",
+          "nextSceneRef": "S05A",
+          "flagKey": "supernatural_affinity",
+          "flagValue": 1,
+          "flagKey2": null,
+          "flagValue2": null,
+          "choiceOrder": 1
+        },
+        {
+          "choiceText": "\"It was destroyed. It had no strategic value.\"",
+          "nextSceneRef": "S05B",
+          "flagKey": "supernatural_affinity",
+          "flagValue": -1,
+          "flagKey2": null,
+          "flagValue2": null,
+          "choiceOrder": 2
+        },
+        {
+          "choiceText": "(Say nothing — meet his gaze and wait)",
+          "nextSceneRef": "S05C",
+          "flagKey": "supernatural_affinity",
+          "flagValue": 1,
+          "flagKey2": "ruthlessness",
+          "flagValue2": 1,
+          "choiceOrder": 3
+        }
+      ]
+    },
+    {
+      "sceneRef": "S05A",
+      "backgroundKey": "mountain_inn_interior_dusk",
+      "bgmKey": "bgm_ominous",
+      "sceneOrder": 11,
+      "nextSceneRef": "S06",
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Kenshin",
+          "speakerSide": "left",
+          "portraitKey": "kenshin_portrait",
+          "text": "Then be careful. Things that choose their bearers are not neutral tools. They have an agenda of their own.",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_cold",
+          "text": "I know. We've discussed it.",
+          "lineOrder": 2
+        },
+        {
+          "speakerName": "Kenshin",
+          "speakerSide": "left",
+          "portraitKey": "kenshin_portrait",
+          "text": "...",
+          "lineOrder": 3
+        },
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "For the first time in the conversation, Kenshin looks surprised. He files this under a category that does not yet have a name.",
+          "lineOrder": 4
+        }
+      ],
+      "choices": []
+    },
+    {
+      "sceneRef": "S05B",
+      "backgroundKey": "mountain_inn_interior_dusk",
+      "bgmKey": "bgm_quiet_resolve",
+      "sceneOrder": 12,
+      "nextSceneRef": "S06",
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Kenshin",
+          "speakerSide": "left",
+          "portraitKey": "kenshin_portrait",
+          "text": "A rational response. Perhaps the correct one. The gods of this country prefer to remain unchallenged.",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_cold",
+          "text": "Then they should have chosen a quieter era.",
+          "lineOrder": 2
+        }
+      ],
+      "choices": []
+    },
+    {
+      "sceneRef": "S05C",
+      "backgroundKey": "mountain_inn_interior_dusk",
+      "bgmKey": "bgm_ominous",
+      "sceneOrder": 13,
+      "nextSceneRef": "S06",
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "Nobunaga says nothing. He holds Kenshin's gaze for a long time. Kenshin, who does not look away from anything, holds his gaze back.",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Kenshin",
+          "speakerSide": "left",
+          "portraitKey": "kenshin_portrait",
+          "text": "I see. The answer is in the silence. That is, in its way, the most alarming answer available.",
+          "lineOrder": 2
+        }
+      ],
+      "choices": []
+    },
+    {
+      "sceneRef": "S06",
+      "backgroundKey": "mountain_inn_exterior_night",
+      "bgmKey": "bgm_tension_resolve",
+      "sceneOrder": 14,
+      "nextSceneRef": null,
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Kenshin",
+          "speakerSide": "left",
+          "portraitKey": "kenshin_portrait",
+          "text": "I have one final thing to offer. Not a threat. An observation.",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Kenshin",
+          "speakerSide": "left",
+          "portraitKey": "kenshin_portrait",
+          "text": "You are building something real. The roads. The markets. The idea that Japan could be one thing. These are correct ideas and you are the first person in two hundred years who has meant them when saying them.",
+          "lineOrder": 2
+        },
+        {
+          "speakerName": "Kenshin",
+          "speakerSide": "left",
+          "portraitKey": "kenshin_portrait",
+          "text": "The question is whether the man building it can survive long enough for the thing to outlast him. That is the only question that matters. I have not yet decided whether the answer is yes.",
+          "lineOrder": 3
+        },
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "He leaves. The mountain is dark. Nobunaga stands at the inn's edge for a long time with Kenshin's words, which are neither threat nor comfort but something rarer: an honest assessment.",
+          "lineOrder": 4
+        }
+      ],
+      "choices": []
+    },
+    {
+      "sceneRef": "S07",
+      "backgroundKey": "gifu_castle_garden_evening",
+      "bgmKey": "bgm_intrigue",
+      "sceneOrder": 15,
+      "nextSceneRef": null,
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Nohime",
+          "speakerSide": "left",
+          "portraitKey": "nohime_neutral",
+          "text": "Well?",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_cold",
+          "text": "He's patient, intelligent, and genuinely unconcerned with whether I like him.",
+          "lineOrder": 2
+        },
+        {
+          "speakerName": "Nohime",
+          "speakerSide": "left",
+          "portraitKey": "nohime_neutral",
+          "text": "So he's like you.",
+          "lineOrder": 3
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_cold",
+          "text": "He's like the version of me that had a religion to hold him still. Which makes him either more dangerous or less, depending on whether the religion holds.",
+          "lineOrder": 4
+        }
+      ],
+      "choices": [
+        {
+          "choiceText": "\"He'll hold. His god is the only thing he won't question.\"",
+          "nextSceneRef": "S07A",
+          "flagKey": "political_power",
+          "flagValue": 1,
+          "flagKey2": null,
+          "flagValue2": null,
+          "choiceOrder": 1
+        },
+        {
+          "choiceText": "\"The religion is the weakness. Find what cracks it and you find what breaks him.\"",
+          "nextSceneRef": "S07B",
+          "flagKey": "ruthlessness",
+          "flagValue": 1,
+          "flagKey2": null,
+          "flagValue2": null,
+          "choiceOrder": 2
+        }
+      ]
+    },
+    {
+      "sceneRef": "S07A",
+      "backgroundKey": "gifu_castle_garden_evening",
+      "bgmKey": "bgm_quiet_resolve",
+      "sceneOrder": 16,
+      "nextSceneRef": "S08",
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Nohime",
+          "speakerSide": "left",
+          "portraitKey": "nohime_neutral",
+          "text": "Which makes him consistent, at minimum. There are worse things in an enemy than consistency.",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_cold",
+          "text": "Exactly. I can plan around a man who won't change his nature. It's the ones who surprise you that cost.",
+          "lineOrder": 2
+        }
+      ],
+      "choices": []
+    },
+    {
+      "sceneRef": "S07B",
+      "backgroundKey": "gifu_castle_garden_evening",
+      "bgmKey": "bgm_intrigue",
+      "sceneOrder": 17,
+      "nextSceneRef": "S08",
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Nohime",
+          "speakerSide": "left",
+          "portraitKey": "nohime_neutral",
+          "text": "I'll look into what cracks it.",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "She says it neutrally, which means she will do it and do it well and file the result where it can be used without sentiment.",
+          "lineOrder": 2
+        }
+      ],
+      "choices": []
+    },
+    {
+      "sceneRef": "S08",
+      "backgroundKey": "gifu_castle_tower_night",
+      "bgmKey": "bgm_tension_resolve",
+      "sceneOrder": 18,
+      "nextSceneRef": null,
+      "isBattleGate": false,
+      "isChapterEnd": true,
+      "dialogueLines": [
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "That night, Nobunaga stands at the tower. Below, Gifu lights up the dark the way a fire lights up a room — from the inside out.",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "He named this place after the mountain from which Zhou conquered all under heaven. Tenka fubu. All under heaven, by force.",
+          "lineOrder": 2
+        },
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "He said it like a vow. He is still deciding whether he meant it as a vow or a direction. Kenshin's question is still in the room with him: what do you actually want?",
+          "lineOrder": 3
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_cold",
+          "text": "I'm working on it.",
+          "lineOrder": 4
+        }
+      ],
+      "choices": []
+    }
+  ]
+}
