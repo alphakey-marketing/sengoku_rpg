@@ -1,15 +1,26 @@
 /**
  * client/src/lib/queryClient.ts
  *
- * Phase 5: Replit cookie auth retired.
- * Every outgoing API request attaches `Authorization: Bearer <token>`
- * from the active Supabase session.
+ * Handles auth headers for every outgoing API request.
+ *
+ * Two modes, controlled by VITE_AUTH_PROVIDER env var:
+ *
+ *   supabase (default / production)
+ *     — attaches `Authorization: Bearer <token>` from the active Supabase session.
+ *
+ *   dev (local development)
+ *     — attaches `x-dev-user-id: <uuid>` from localStorage.
+ *       No Supabase session required — the server auto-creates the user row.
  */
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 import { supabase } from "./supabase";
+import { IS_DEV_AUTH, getOrCreateDevUserId } from "./devAuth";
 
-/** Returns Authorization header with the current Supabase Bearer token. */
+/** Returns the correct auth headers depending on the active auth provider. */
 async function authHeaders(): Promise<Record<string, string>> {
+  if (IS_DEV_AUTH) {
+    return { "x-dev-user-id": getOrCreateDevUserId() };
+  }
   const { data } = await supabase.auth.getSession();
   const token = data.session?.access_token;
   return token ? { Authorization: `Bearer ${token}` } : {};
@@ -22,7 +33,6 @@ async function authHeaders(): Promise<Record<string, string>> {
  */
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
-    // clone() gives us a second readable stream; the original is untouched.
     const text = (await res.clone().text()) || res.statusText;
     throw new Error(`${res.status}: ${text}`);
   }
@@ -31,7 +41,7 @@ async function throwIfResNotOk(res: Response) {
 /**
  * Authenticated fetch wrapper.
  * Returns the parsed JSON body directly so callers never need to call
- * .json() themselves — and can never accidentally double-read the stream.
+ * .json() themselves.
  */
 export async function apiRequest(
   method: string,
@@ -50,7 +60,6 @@ export async function apiRequest(
   });
 
   await throwIfResNotOk(res);
-  // Parse and return JSON. Falls back gracefully for empty 204 responses.
   const contentType = res.headers.get("content-type") ?? "";
   if (contentType.includes("application/json")) {
     return res.json();
@@ -81,8 +90,6 @@ export const getQueryFn: <T>(options: {
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      // returnNull instead of throw — prevents black screen crash on 401
-      // AuthGuard will redirect to /login when session is absent
       queryFn: getQueryFn({ on401: "returnNull" }),
       refetchInterval: false,
       refetchOnWindowFocus: false,
