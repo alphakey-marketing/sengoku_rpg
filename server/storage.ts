@@ -6,7 +6,55 @@ import {
   type UserQuest, type Card, type InsertCard
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and } from "drizzle-orm";
+import { eq, and, inArray } from "drizzle-orm";
+
+// ── Single source of truth for quest definitions ──────────────────────────────
+export const QUEST_DEFINITIONS: Record<string, { goal: number; rewardType: string; amount: number }> = {
+  daily_skirmish:       { goal: 5,  rewardType: "rice", amount: 50  },
+  daily_boss:           { goal: 1,  rewardType: "rice", amount: 30  },
+  daily_gacha:          { goal: 3,  rewardType: "rice", amount: 40  },
+  daily_skirmish_elite: { goal: 10, rewardType: "rice", amount: 100 },
+  daily_gacha_elite:    { goal: 5,  rewardType: "rice", amount: 80  },
+};
+
+const QUEST_POOL = Object.entries(QUEST_DEFINITIONS).map(([key, def]) => ({ key, ...def }));
+
+// ── Base equipment catalogue (seeded once per user on first login) ────────────
+const BASE_ITEMS: Omit<InsertEquipment, "userId">[] = [
+  { name: "Knife",           type: "Weapon",        weaponType: "dagger", rarity: "white", level: 1,  attackBonus: 17, isEquipped: false },
+  { name: "Cutter",          type: "Weapon",        weaponType: "dagger", rarity: "white", level: 1,  attackBonus: 28, isEquipped: false },
+  { name: "Main Gauche",     type: "Weapon",        weaponType: "dagger", rarity: "white", level: 1,  attackBonus: 43, isEquipped: false },
+  { name: "Sword",           type: "Weapon",        weaponType: "sword",  rarity: "white", level: 2,  attackBonus: 25, isEquipped: false },
+  { name: "Falchion",        type: "Weapon",        weaponType: "sword",  rarity: "white", level: 2,  attackBonus: 39, isEquipped: false },
+  { name: "Blade",           type: "Weapon",        weaponType: "sword",  rarity: "white", level: 2,  attackBonus: 53, isEquipped: false },
+  { name: "Spear",           type: "Weapon",        weaponType: "spear",  rarity: "white", level: 2,  attackBonus: 37, isEquipped: false },
+  { name: "Bow",             type: "Weapon",        weaponType: "bow",    rarity: "white", level: 1,  attackBonus: 15, isEquipped: false },
+  { name: "Composite Bow",   type: "Weapon",        weaponType: "bow",    rarity: "white", level: 1,  attackBonus: 29, isEquipped: false },
+  { name: "Great Bow",       type: "Weapon",        weaponType: "bow",    rarity: "white", level: 10, attackBonus: 43, isEquipped: false },
+  { name: "Rod",             type: "Weapon",        weaponType: "staff",  rarity: "white", level: 1,  attackBonus: 15, matkBonus: 15, isEquipped: false },
+  { name: "Wand",            type: "Weapon",        weaponType: "staff",  rarity: "white", level: 1,  attackBonus: 34, matkBonus: 15, isEquipped: false },
+  { name: "Cotton Shirt",    type: "Armor",         rarity: "white", level: 1,  defenseBonus: 1, isEquipped: false },
+  { name: "Jacket",          type: "Armor",         rarity: "white", level: 1,  defenseBonus: 2, isEquipped: false },
+  { name: "Adventurer Suit", type: "Armor",         rarity: "white", level: 1,  defenseBonus: 3, isEquipped: false },
+  { name: "Mantle",          type: "Armor",         rarity: "white", level: 1,  defenseBonus: 4, isEquipped: false },
+  { name: "Coat",            type: "Armor",         rarity: "white", level: 14, defenseBonus: 5, isEquipped: false },
+  { name: "Padded Armor",    type: "Armor",         rarity: "white", level: 14, defenseBonus: 6, isEquipped: false },
+  { name: "Guard",           type: "Shield",        rarity: "white", level: 1,  defenseBonus: 3, isEquipped: false },
+  { name: "Buckler",         type: "Shield",        rarity: "white", level: 14, defenseBonus: 4, isEquipped: false },
+  { name: "Hood",            type: "Garment",       rarity: "white", level: 1,  defenseBonus: 1, isEquipped: false },
+  { name: "Muffler",         type: "Garment",       rarity: "white", level: 14, defenseBonus: 2, isEquipped: false },
+  { name: "Sandals",         type: "Footgear",      rarity: "white", level: 1,  defenseBonus: 1, isEquipped: false },
+  { name: "Shoes",           type: "Footgear",      rarity: "white", level: 14, defenseBonus: 2, isEquipped: false },
+  { name: "Novice Armlet",   type: "Accessory",     rarity: "white", level: 1,  hpBonus: 10, isEquipped: false },
+  { name: "Ring",            type: "Accessory",     rarity: "white", level: 20, isEquipped: false },
+  { name: "Brooch",          type: "Accessory",     rarity: "white", level: 20, isEquipped: false },
+  { name: "Rosary",          type: "Accessory",     rarity: "white", level: 20, isEquipped: false },
+  { name: "Bandana",         type: "HeadgearUpper", rarity: "white", level: 1,  defenseBonus: 1, isEquipped: false },
+  { name: "Cap",             type: "HeadgearUpper", rarity: "white", level: 14, defenseBonus: 3, isEquipped: false },
+  { name: "Ribbon",          type: "HeadgearUpper", rarity: "white", level: 1,  defenseBonus: 1, mdefBonus: 3, isEquipped: false },
+  { name: "Glasses",         type: "HeadgearMiddle",rarity: "white", level: 1,  isEquipped: false },
+  { name: "Flu Mask",        type: "HeadgearLower", rarity: "white", level: 1,  isEquipped: false },
+];
 
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
@@ -48,6 +96,7 @@ export interface IStorage {
   claimQuest(userId: string, questKey: string): Promise<{ success: boolean; reward?: string }>;
   recycleEquipment(userId: string): Promise<{ count: number; stonesGained: number }>;
 
+  // Called once on first login — seeds base equipment for the user.
   syncBaseEquipment(userId: string): Promise<void>;
 }
 
@@ -66,63 +115,58 @@ export class DatabaseStorage implements IStorage {
   }
 
   /**
-   * Upsert a user row on first and subsequent Supabase logins.
+   * Upsert a user on Supabase login.
    *
-   * Strategy:
-   *   1. Try INSERT. Conflict on `id` (PK) OR `auth_user_id` (unique) is
-   *      handled by updating the profile columns so the row is always
-   *      returned with .returning().
-   *   2. Because Postgres only allows one ON CONFLICT target per statement
-   *      we run two sequential upserts:
-   *        a) conflict on auth_user_id  (returning user whose PK ≠ Supabase UUID)
-   *        b) conflict on id (PK)       (new user whose id = Supabase UUID)
-   *      Whichever upsert finds/creates the row wins; we re-fetch by authUserId
-   *      to guarantee we always return the canonical row.
+   * Single-pass strategy:
+   *   - Conflict on `auth_user_id` (unique) — always the stable Supabase identity.
+   *   - If the row does not yet exist it is inserted.
+   *   - Any genuine DB error (network, schema mismatch) is allowed to propagate
+   *     so callers can see and handle it.
+   *
+   * After upsert, syncBaseEquipment is called if this is the user's first login
+   * (i.e. no equipment exists yet), keeping the sync out of the hot read path.
    */
   async upsertUser(userData: UpsertUser): Promise<User> {
     const profileSet = {
-      email: userData.email,
-      firstName: userData.firstName,
-      lastName: userData.lastName,
+      email:           userData.email,
+      firstName:       userData.firstName,
+      lastName:        userData.lastName,
       profileImageUrl: userData.profileImageUrl,
-      updatedAt: new Date(),
+      updatedAt:       new Date(),
     };
 
-    // Pass 1: conflict on authUserId — covers returning users
+    // Single upsert keyed on the Supabase auth UUID (authUserId)
     await db
       .insert(users)
       .values(userData)
       .onConflictDoUpdate({
         target: users.authUserId,
         set: profileSet,
-      })
-      .returning()
-      .catch(() => {
-        // May throw if id PK conflicts first; handled in pass 2
       });
 
-    // Pass 2: conflict on id (PK) — covers brand-new users whose UUID is the PK
-    await db
-      .insert(users)
-      .values(userData)
-      .onConflictDoUpdate({
-        target: users.id,
-        set: { ...profileSet, authUserId: userData.authUserId },
-      })
-      .returning()
-      .catch(() => {
-        // Ignore — row already exists from pass 1
-      });
+    // Re-fetch the canonical row
+    const user =
+      (await this.getUserByAuthId(userData.authUserId!)) ??
+      (await this.getUser(userData.id!));
 
-    // Always re-fetch by authUserId to get the definitive row
-    const existing = await this.getUserByAuthId(userData.authUserId!);
-    if (existing) return existing;
+    if (!user) {
+      throw new Error(
+        `upsertUser: could not find or create user for authUserId=${userData.authUserId}`
+      );
+    }
 
-    // Absolute fallback: fetch by id
-    const byId = await this.getUser(userData.id!);
-    if (byId) return byId;
+    // Seed base equipment exactly once — on first login
+    const existingEquipment = await db
+      .select({ id: equipment.id })
+      .from(equipment)
+      .where(eq(equipment.userId, user.id))
+      .limit(1);
 
-    throw new Error(`upsertUser: could not find or create user for authUserId=${userData.authUserId}`);
+    if (existingEquipment.length === 0) {
+      await this.syncBaseEquipment(user.id);
+    }
+
+    return user;
   }
 
   async updateUser(id: string, updates: Partial<User>): Promise<User> {
@@ -152,18 +196,31 @@ export class DatabaseStorage implements IStorage {
     await db.delete(companions).where(eq(companions.id, id));
   }
 
+  /**
+   * Fetches all equipment for a user with their associated cards.
+   * Uses 2 queries total (equipment + cards) instead of N+1.
+   * syncBaseEquipment is NOT called here — it runs once in upsertUser.
+   */
   async getEquipment(userId: string): Promise<(Equipment & { cards: Card[] })[]> {
-    await this.syncBaseEquipment(userId);
     const items = await db.select().from(equipment).where(eq(equipment.userId, userId));
-    const equipmentWithCards = await Promise.all(items.map(async (item) => {
-      try {
-        const itemCards = await db.select().from(cards).where(eq(cards.equipmentId, item.id));
-        return { ...item, cards: itemCards };
-      } catch (e) {
-        return { ...item, cards: [] };
+    if (items.length === 0) return [];
+
+    // Single query for all cards belonging to this user's equipment
+    const equipmentIds = items.map(i => i.id);
+    const allCards = await db
+      .select()
+      .from(cards)
+      .where(inArray(cards.equipmentId, equipmentIds));
+
+    // Group cards by equipmentId in memory
+    const cardMap = allCards.reduce<Record<number, Card[]>>((acc, card) => {
+      if (card.equipmentId != null) {
+        (acc[card.equipmentId] ??= []).push(card);
       }
-    }));
-    return equipmentWithCards;
+      return acc;
+    }, {});
+
+    return items.map(item => ({ ...item, cards: cardMap[item.id] ?? [] }));
   }
 
   async createEquipment(equip: InsertEquipment): Promise<Equipment> {
@@ -284,36 +341,45 @@ export class DatabaseStorage implements IStorage {
     return event;
   }
 
+  /**
+   * Returns today's quests for a user.
+   * If no quests exist or they are from a previous day, rotates them inside
+   * a single transaction to prevent partial-rotation corruption.
+   */
   async getQuests(userId: string): Promise<UserQuest[]> {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+
     const quests = await db.select().from(userQuests).where(eq(userQuests.userId, userId));
-    const isOutdated = quests.length === 0 || quests.some(q => {
-      const lu = q.lastUpdated ? new Date(q.lastUpdated) : new Date(0);
-      return lu < today;
-    });
-    if (isOutdated) {
-      const QUEST_POOL = [
-        { key: 'daily_skirmish', goal: 5, rewardType: 'rice', amount: 50 },
-        { key: 'daily_boss', goal: 1, rewardType: 'rice', amount: 30 },
-        { key: 'daily_gacha', goal: 3, rewardType: 'rice', amount: 40 },
-        { key: 'daily_skirmish_elite', goal: 10, rewardType: 'rice', amount: 100 },
-        { key: 'daily_gacha_elite', goal: 5, rewardType: 'rice', amount: 80 }
-      ];
-      const selected = [...QUEST_POOL].sort(() => 0.5 - Math.random()).slice(0, 3);
-      await db.delete(userQuests).where(eq(userQuests.userId, userId));
-      for (const q of selected) {
-        await db.insert(userQuests).values({
+
+    const isOutdated =
+      quests.length === 0 ||
+      quests.some(q => {
+        const lu = q.lastUpdated ? new Date(q.lastUpdated) : new Date(0);
+        return lu < today;
+      });
+
+    if (!isOutdated) return quests;
+
+    // Atomic rotation inside a transaction
+    const selected = [...QUEST_POOL]
+      .sort(() => 0.5 - Math.random())
+      .slice(0, 3);
+
+    await db.transaction(async (tx) => {
+      await tx.delete(userQuests).where(eq(userQuests.userId, userId));
+      await tx.insert(userQuests).values(
+        selected.map(q => ({
           userId,
-          questKey: q.key,
-          progress: 0,
-          isClaimed: false,
-          lastUpdated: new Date()
-        });
-      }
-      return await db.select().from(userQuests).where(eq(userQuests.userId, userId));
-    }
-    return quests;
+          questKey:    q.key,
+          progress:    0,
+          isClaimed:   false,
+          lastUpdated: new Date(),
+        }))
+      );
+    });
+
+    return await db.select().from(userQuests).where(eq(userQuests.userId, userId));
   }
 
   async updateQuestProgress(userId: string, questKey: string, increment: number): Promise<void> {
@@ -328,68 +394,37 @@ export class DatabaseStorage implements IStorage {
 
   async claimQuest(userId: string, questKey: string): Promise<{ success: boolean; reward?: string }> {
     const quests = await this.getQuests(userId);
-    const quest = quests.find(q => q.questKey === questKey);
-    const user = await this.getUser(userId);
+    const quest  = quests.find(q => q.questKey === questKey);
+    const user   = await this.getUser(userId);
+
     if (!quest || !user || quest.isClaimed) return { success: false };
-    const QUEST_DEFS_LOOKUP: Record<string, { goal: number, rewardType: string, amount: number }> = {
-      'daily_skirmish': { goal: 5, rewardType: 'rice', amount: 50 },
-      'daily_boss': { goal: 1, rewardType: 'rice', amount: 30 },
-      'daily_gacha': { goal: 3, rewardType: 'rice', amount: 40 },
-      'daily_skirmish_elite': { goal: 10, rewardType: 'rice', amount: 100 },
-      'daily_gacha_elite': { goal: 5, rewardType: 'rice', amount: 80 }
-    };
-    const def = QUEST_DEFS_LOOKUP[questKey];
+
+    // Use the single QUEST_DEFINITIONS source of truth
+    const def = QUEST_DEFINITIONS[questKey];
     if (!def || quest.progress < def.goal) return { success: false };
+
     await db.transaction(async (tx) => {
       await tx.update(userQuests).set({ isClaimed: true }).where(eq(userQuests.id, quest.id));
       const update: any = {};
       update[def.rewardType] = (user as any)[def.rewardType] + def.amount;
       await tx.update(users).set(update).where(eq(users.id, userId));
     });
+
     return { success: true, reward: `${def.amount} ${def.rewardType}` };
   }
 
+  /**
+   * Seeds the base equipment catalogue for a user.
+   * Called ONCE during upsertUser (first login) — never on reads.
+   * Still idempotent: skips items the user already owns by name.
+   */
   async syncBaseEquipment(userId: string): Promise<void> {
-    const existing = await db.select().from(equipment).where(eq(equipment.userId, userId));
+    const existing     = await db.select({ name: equipment.name }).from(equipment).where(eq(equipment.userId, userId));
     const existingNames = new Set(existing.map(e => e.name));
+    const toInsert      = BASE_ITEMS
+      .filter(item => !existingNames.has(item.name))
+      .map(item => ({ ...item, userId }));
 
-    const BASE_ITEMS: InsertEquipment[] = [
-      { userId, name: "Knife", type: "Weapon", weaponType: "dagger", rarity: "white", level: 1, attackBonus: 17, isEquipped: false },
-      { userId, name: "Cutter", type: "Weapon", weaponType: "dagger", rarity: "white", level: 1, attackBonus: 28, isEquipped: false },
-      { userId, name: "Main Gauche", type: "Weapon", weaponType: "dagger", rarity: "white", level: 1, attackBonus: 43, isEquipped: false },
-      { userId, name: "Sword", type: "Weapon", weaponType: "sword", rarity: "white", level: 2, attackBonus: 25, isEquipped: false },
-      { userId, name: "Falchion", type: "Weapon", weaponType: "sword", rarity: "white", level: 2, attackBonus: 39, isEquipped: false },
-      { userId, name: "Blade", type: "Weapon", weaponType: "sword", rarity: "white", level: 2, attackBonus: 53, isEquipped: false },
-      { userId, name: "Spear", type: "Weapon", weaponType: "spear", rarity: "white", level: 2, attackBonus: 37, isEquipped: false },
-      { userId, name: "Bow", type: "Weapon", weaponType: "bow", rarity: "white", level: 1, attackBonus: 15, isEquipped: false },
-      { userId, name: "Composite Bow", type: "Weapon", weaponType: "bow", rarity: "white", level: 1, attackBonus: 29, isEquipped: false },
-      { userId, name: "Great Bow", type: "Weapon", weaponType: "bow", rarity: "white", level: 10, attackBonus: 43, isEquipped: false },
-      { userId, name: "Rod", type: "Weapon", weaponType: "staff", rarity: "white", level: 1, attackBonus: 15, matkBonus: 15, isEquipped: false },
-      { userId, name: "Wand", type: "Weapon", weaponType: "staff", rarity: "white", level: 1, attackBonus: 34, matkBonus: 15, isEquipped: false },
-      { userId, name: "Cotton Shirt", type: "Armor", rarity: "white", level: 1, defenseBonus: 1, isEquipped: false },
-      { userId, name: "Jacket", type: "Armor", rarity: "white", level: 1, defenseBonus: 2, isEquipped: false },
-      { userId, name: "Adventurer Suit", type: "Armor", rarity: "white", level: 1, defenseBonus: 3, isEquipped: false },
-      { userId, name: "Mantle", type: "Armor", rarity: "white", level: 1, defenseBonus: 4, isEquipped: false },
-      { userId, name: "Coat", type: "Armor", rarity: "white", level: 14, defenseBonus: 5, isEquipped: false },
-      { userId, name: "Padded Armor", type: "Armor", rarity: "white", level: 14, defenseBonus: 6, isEquipped: false },
-      { userId, name: "Guard", type: "Shield", rarity: "white", level: 1, defenseBonus: 3, isEquipped: false },
-      { userId, name: "Buckler", type: "Shield", rarity: "white", level: 14, defenseBonus: 4, isEquipped: false },
-      { userId, name: "Hood", type: "Garment", rarity: "white", level: 1, defenseBonus: 1, isEquipped: false },
-      { userId, name: "Muffler", type: "Garment", rarity: "white", level: 14, defenseBonus: 2, isEquipped: false },
-      { userId, name: "Sandals", type: "Footgear", rarity: "white", level: 1, defenseBonus: 1, isEquipped: false },
-      { userId, name: "Shoes", type: "Footgear", rarity: "white", level: 14, defenseBonus: 2, isEquipped: false },
-      { userId, name: "Novice Armlet", type: "Accessory", rarity: "white", level: 1, hpBonus: 10, isEquipped: false },
-      { userId, name: "Ring", type: "Accessory", rarity: "white", level: 20, isEquipped: false },
-      { userId, name: "Brooch", type: "Accessory", rarity: "white", level: 20, isEquipped: false },
-      { userId, name: "Rosary", type: "Accessory", rarity: "white", level: 20, isEquipped: false },
-      { userId, name: "Bandana", type: "HeadgearUpper", rarity: "white", level: 1, defenseBonus: 1, isEquipped: false },
-      { userId, name: "Cap", type: "HeadgearUpper", rarity: "white", level: 14, defenseBonus: 3, isEquipped: false },
-      { userId, name: "Ribbon", type: "HeadgearUpper", rarity: "white", level: 1, defenseBonus: 1, mdefBonus: 3, isEquipped: false },
-      { userId, name: "Glasses", type: "HeadgearMiddle", rarity: "white", level: 1, isEquipped: false },
-      { userId, name: "Flu Mask", type: "HeadgearLower", rarity: "white", level: 1, isEquipped: false },
-    ];
-
-    const toInsert = BASE_ITEMS.filter(item => !existingNames.has(item.name));
     if (toInsert.length > 0) {
       await db.insert(equipment).values(toInsert);
     }

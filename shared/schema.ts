@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, integer, boolean, timestamp, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, boolean, timestamp, jsonb, index } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -104,7 +104,6 @@ export const users = pgTable("users", {
   hasSeenIntro: boolean("has_seen_intro").notNull().default(false),
   titleSuffix: varchar("title_suffix", { length: 64 }),
   // ── C2: active display title ──────────────────────────────────────────
-  // FK to player_titles.id — null means no title equipped
   activeTitleId: integer("active_title_id"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -131,7 +130,9 @@ export const companions = pgTable("companions", {
   isSpecial: boolean("is_special").notNull().default(false),
   flagUnlockCondition: text("flag_unlock_condition"),
   createdAt: timestamp("created_at").defaultNow(),
-});
+}, (t) => ([
+  index("companions_user_id_idx").on(t.userId),
+]));
 
 export const equipment = pgTable("equipment", {
   id: serial("id").primaryKey(),
@@ -159,7 +160,9 @@ export const equipment = pgTable("equipment", {
   cardSlots: integer("card_slots").notNull().default(0),
   storyFlagRequirement: text("story_flag_requirement"),
   createdAt: timestamp("created_at").defaultNow(),
-});
+}, (t) => ([
+  index("equipment_user_id_idx").on(t.userId),
+]));
 
 export const insertEquipmentSchema = createInsertSchema(equipment).omit({ id: true });
 export type Equipment       = typeof equipment.$inferSelect;
@@ -176,7 +179,10 @@ export const cards = pgTable("cards", {
   rarity: text("rarity").notNull(),
   equipmentId: integer("equipment_id"),
   createdAt: timestamp("created_at").defaultNow(),
-});
+}, (t) => ([
+  index("cards_user_id_idx").on(t.userId),
+  index("cards_equipment_id_idx").on(t.equipmentId),
+]));
 
 export const pets = pgTable("pets", {
   id: serial("id").primaryKey(),
@@ -195,7 +201,9 @@ export const pets = pgTable("pets", {
   skill: text("skill"),
   isActive: boolean("is_active").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow(),
-});
+}, (t) => ([
+  index("pets_user_id_idx").on(t.userId),
+]));
 
 export const horses = pgTable("horses", {
   id: serial("id").primaryKey(),
@@ -209,7 +217,9 @@ export const horses = pgTable("horses", {
   skill: text("skill"),
   isActive: boolean("is_active").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow(),
-});
+}, (t) => ([
+  index("horses_user_id_idx").on(t.userId),
+]));
 
 export const transformations = pgTable("transformations", {
   id: serial("id").primaryKey(),
@@ -226,7 +236,9 @@ export const transformations = pgTable("transformations", {
   cooldownSeconds: integer("cooldown_seconds").notNull().default(60),
   durationSeconds: integer("duration_seconds").notNull().default(30),
   createdAt: timestamp("created_at").defaultNow(),
-});
+}, (t) => ([
+  index("transformations_user_id_idx").on(t.userId),
+]));
 
 export const campaignEvents = pgTable("campaign_events", {
   id: serial("id").primaryKey(),
@@ -235,7 +247,9 @@ export const campaignEvents = pgTable("campaign_events", {
   choice: text("choice"),
   isTriggered: boolean("is_triggered").notNull().default(false),
   completedAt: timestamp("completed_at"),
-});
+}, (t) => ([
+  index("campaign_events_user_id_idx").on(t.userId),
+]));
 
 export const userQuests = pgTable("user_quests", {
   id: serial("id").primaryKey(),
@@ -244,7 +258,9 @@ export const userQuests = pgTable("user_quests", {
   progress: integer("progress").notNull().default(0),
   isClaimed: boolean("is_claimed").notNull().default(false),
   lastUpdated: timestamp("last_updated").defaultNow(),
-});
+}, (t) => ([
+  index("user_quests_user_id_idx").on(t.userId),
+]));
 
 // ── Story Engine Tables ───────────────────────────────────────────────────────
 export const storyChapters = pgTable("story_chapters", {
@@ -302,7 +318,9 @@ export const playerStoryProgress = pgTable("player_story_progress", {
   isCompleted: boolean("is_completed").notNull().default(false),
   startedAt: timestamp("started_at").defaultNow(),
   completedAt: timestamp("completed_at"),
-});
+}, (t) => ([
+  index("player_story_progress_user_id_idx").on(t.userId),
+]));
 
 export const playerFlags = pgTable("player_flags", {
   id: serial("id").primaryKey(),
@@ -310,7 +328,9 @@ export const playerFlags = pgTable("player_flags", {
   flagKey: text("flag_key").notNull(),
   flagValue: integer("flag_value").notNull().default(0),
   updatedAt: timestamp("updated_at").defaultNow(),
-});
+}, (t) => ([
+  index("player_flags_user_id_idx").on(t.userId),
+]));
 
 export const storyEndings = pgTable("story_endings", {
   id: serial("id").primaryKey(),
@@ -329,64 +349,39 @@ export const heldProvinces = pgTable("held_provinces", {
   locationId: integer("location_id").notNull(),
   bossDefeated: boolean("boss_defeated").notNull().default(false),
   heldAt: timestamp("held_at").notNull().defaultNow(),
-});
+}, (t) => ([
+  index("held_provinces_user_id_idx").on(t.userId),
+]));
 
 export const insertHeldProvinceSchema = createInsertSchema(heldProvinces).omit({ id: true });
 export type HeldProvince       = typeof heldProvinces.$inferSelect;
 export type InsertHeldProvince = typeof heldProvinces.$inferInsert;
 
 // ── C1: Chronicle Wall ────────────────────────────────────────────────────────
-//
-// One row per story milestone per player.
-// entryKey is a stable slug (e.g. "chapter_1_complete", "chose_mercy_owari").
-// Idempotent: the server skips writes when entryKey already exists.
-//
-// flagSnapshot stores the full player_flags map at the moment the entry was
-// written — a point-in-time record of story state for that milestone.
-// Schema: { [flagKey: string]: number }
-
 export const chronicleEntries = pgTable("chronicle_entries", {
   id: serial("id").primaryKey(),
   userId: varchar("user_id").notNull(),
-  // Stable slug — unique per player
   entryKey: text("entry_key").notNull(),
-  // Short display headline, e.g. "The Siege of Nagashino"
   headline: text("headline").notNull(),
-  // Optional long-form narrative detail paragraph
   detail: text("detail"),
-  // Full flag map snapshot at time of writing
   flagSnapshot: jsonb("flag_snapshot").notNull().default(sql`'{}'::jsonb`),
-  // Chapter number for grouping in the UI
   chapterNumber: integer("chapter_number").notNull().default(0),
   recordedAt: timestamp("recorded_at").notNull().defaultNow(),
-});
+}, (t) => ([
+  index("chronicle_entries_user_id_idx").on(t.userId),
+]));
 
 export const insertChronicleEntrySchema = createInsertSchema(chronicleEntries).omit({ id: true });
 export type ChronicleEntry       = typeof chronicleEntries.$inferSelect;
 export type InsertChronicleEntry = typeof chronicleEntries.$inferInsert;
 
 // ── C2: Player Titles ─────────────────────────────────────────────────────────
-//
-// player_titles     — static catalogue (seeded, not per-user)
-// player_earned_titles — join table: which titles each player has earned
-// users.activeTitleId  — FK to player_titles.id
-//
-// Each title has an optional earnCondition using the same flag-gate grammar
-// ("flagKey>=value") so the evaluateTitles() server function can auto-award
-// them after every chapter completion.
-
 export const playerTitles = pgTable("player_titles", {
   id: serial("id").primaryKey(),
-  // Stable slug, e.g. "demon_king", "merciful_lord", "shadow_tactician"
   titleKey: text("title_key").notNull().unique(),
-  // Display string shown in the UI, e.g. "Demon King"
   displayName: text("display_name").notNull(),
-  // Flavour text shown in the title picker
   description: text("description"),
-  // Optional: auto-award when this condition is met (same grammar as A2/A3)
-  // Null means the title is only granted via direct grantTitle() calls.
   earnCondition: text("earn_condition"),
-  // Cosmetic rarity tier: "common" | "rare" | "epic" | "legendary"
   rarity: text("rarity").notNull().default("common"),
   createdAt: timestamp("created_at").defaultNow(),
 });
@@ -400,7 +395,9 @@ export const playerEarnedTitles = pgTable("player_earned_titles", {
   userId: varchar("user_id").notNull(),
   titleId: integer("title_id").notNull(),
   earnedAt: timestamp("earned_at").notNull().defaultNow(),
-});
+}, (t) => ([
+  index("player_earned_titles_user_id_idx").on(t.userId),
+]));
 
 export const insertPlayerEarnedTitleSchema = createInsertSchema(playerEarnedTitles).omit({ id: true });
 export type PlayerEarnedTitle       = typeof playerEarnedTitles.$inferSelect;
