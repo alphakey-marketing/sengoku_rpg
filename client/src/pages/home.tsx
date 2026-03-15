@@ -108,12 +108,13 @@ export default function Home() {
   const [pendingUpgrades, setPendingUpgrades] = useState<Record<string, number>>({});
 
   const stagedInfo = useMemo(() => {
-    const basePoints = teamStatus?.player?.statPoints ?? player?.statPoints ?? 0;
+    // FIX: use only player.statPoints (GET /api/player) as the source of truth.
+    // teamStatus.player.statPoints is a combat snapshot that can be stale
+    // immediately after an upgrade while React Query is still refetching.
+    const basePoints = player?.statPoints ?? 0;
     let cost = 0;
     for (const [key, amount] of Object.entries(pendingUpgrades)) {
       const stat = THEMATIC_STATS.find(s => s.key === key);
-      // Read the current value from teamStatus using both the thematic key
-      // and the db column key as fallbacks, then compute the incremental cost.
       const currentVal =
         (teamStatus?.player as any)?.[key]
         ?? (teamStatus?.player as any)?.[stat?.dbKey ?? key]
@@ -129,9 +130,9 @@ export default function Home() {
       ?? (teamStatus?.player as any)?.[dbKey]
       ?? 1;
     const staged  = pendingUpgrades[statKey] || 0;
-    const nextVal = currentVal + staged;          // value AFTER staged increments
+    const nextVal = currentVal + staged;
     if (nextVal >= 99) return;
-    const cost = statUpgradeCost(nextVal);        // cost of the NEXT increment
+    const cost = statUpgradeCost(nextVal);
     if (stagedInfo.pointsLeft < cost) {
       toast({
         title: "Not enough stat points",
@@ -145,11 +146,20 @@ export default function Home() {
 
   const handleUnstageUpgrade = (statKey: string) => {
     if (!pendingUpgrades[statKey]) return;
-    setPendingUpgrades(prev => ({ ...prev, [statKey]: Math.max(0, prev[statKey] - 1) }));
+    setPendingUpgrades(prev => {
+      const next = { ...prev };
+      if (next[statKey] <= 1) {
+        // FIX: delete the key entirely instead of leaving { key: 0 },
+        // which could cause a stale-currentVal miscalculation in stagedInfo.
+        delete next[statKey];
+      } else {
+        next[statKey] -= 1;
+      }
+      return next;
+    });
   };
 
   const handleConfirmUpgrades = async () => {
-    // Remap thematic keys → DB column keys for the upgrade API
     const dbMapped: Record<string, number> = {};
     for (const [key, amt] of Object.entries(pendingUpgrades)) {
       const stat = THEMATIC_STATS.find(s => s.key === key);
@@ -417,7 +427,7 @@ export default function Home() {
                   ?? 1;
                 const staged   = pendingUpgrades[stat.key] || 0;
                 const nextVal  = currentVal + staged;
-                const cost     = statUpgradeCost(nextVal);   // cost of the NEXT step
+                const cost     = statUpgradeCost(nextVal);
                 const canAfford = stagedInfo.pointsLeft >= cost;
                 const isMax    = nextVal >= 99;
                 const bonusPct = (teamStatus?.player as any)?.[stat.bonusPctKey] ?? 0;
