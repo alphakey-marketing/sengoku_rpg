@@ -1,0 +1,385 @@
+{
+  "chapter": {
+    "title": "Honnoji",
+    "subtitle": "1582 — Every ending was always this one.",
+    "chapterOrder": 8,
+    "isLocked": false
+  },
+  "scenes": [
+    {
+      "sceneRef": "S01",
+      "backgroundKey": "honnoji_temple_night_arrival",
+      "bgmKey": "bgm_ominous",
+      "sceneOrder": 1,
+      "nextSceneRef": "S02",
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "June, 1582. Honnoji temple in Kyoto. Nobunaga travels with a small escort — thirty men. He is resting here before the western campaign, which he expects to resolve Japan inside of two years.",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "The temple is quiet. The city is asleep. Mitsuhide is in the west, commanding the advance force. He is three days away.",
+          "lineOrder": 2
+        },
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "Except that he is not.",
+          "lineOrder": 3
+        }
+      ],
+      "choices": []
+    },
+    {
+      "sceneRef": "S02",
+      "backgroundKey": "honnoji_temple_courtyard_torches",
+      "bgmKey": "bgm_war_drums",
+      "sceneOrder": 2,
+      "nextSceneRef": "S03",
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Ranmaru",
+          "speakerSide": "left",
+          "portraitKey": "ranmaru_panicked",
+          "text": "My lord — torches. The outer wall. Thousands of them.",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_cold",
+          "text": "Whose banner?",
+          "lineOrder": 2
+        },
+        {
+          "speakerName": "Ranmaru",
+          "speakerSide": "left",
+          "portraitKey": "ranmaru_panicked",
+          "text": "...",
+          "lineOrder": 3
+        },
+        {
+          "speakerName": "Ranmaru",
+          "speakerSide": "left",
+          "portraitKey": "ranmaru_panicked",
+          "text": "Akechi, my lord.",
+          "lineOrder": 4
+        },
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "Akechi Mitsuhide. His most capable general. His longest-serving advisor. The man he asked, in the map room years ago, to tell him if he was treating people as tools.",
+          "lineOrder": 5
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_cold",
+          "text": "Is this the realm, then. … It cannot be helped.",
+          "lineOrder": 6
+        }
+      ],
+      "choices": []
+    },
+    {
+      "sceneRef": "S03",
+      "backgroundKey": "honnoji_inner_hall_smoke",
+      "bgmKey": "bgm_war_drums",
+      "sceneOrder": 3,
+      "nextSceneRef": null,
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "The temple walls are breached. There are perhaps twenty defenders left. The fire has reached the east wing.",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "This is the moment. The last true choice of the lord of Owari.",
+          "lineOrder": 2
+        }
+      ],
+      "choices": [
+        {
+          "choiceText": "Fight. Hold the inner hall as long as possible. Let them come to you and make them pay for every inch.",
+          "nextSceneRef": "S04_BATTLE",
+          "flagKey": "ruthlessness",
+          "flagValue": 1,
+          "flagKey2": null,
+          "flagValue2": null,
+          "choiceOrder": 1
+        },
+        {
+          "choiceText": "Send Ranmaru out with a message. One name. One destination. The future has to survive even if you don't.",
+          "nextSceneRef": "S03A",
+          "flagKey": "political_power",
+          "flagValue": 2,
+          "flagKey2": null,
+          "flagValue2": null,
+          "choiceOrder": 2
+        },
+        {
+          "choiceText": "Write the final order. Three lines. The markets stay open. The roads stay open. Japan does not stop.",
+          "nextSceneRef": "S03B",
+          "flagKey": "nohime_trust",
+          "flagValue": 1,
+          "flagKey2": "political_power",
+          "flagValue2": 1,
+          "choiceOrder": 3
+        }
+      ]
+    },
+    {
+      "sceneRef": "S03A",
+      "backgroundKey": "honnoji_inner_hall_smoke",
+      "bgmKey": "bgm_tragedy_low",
+      "sceneOrder": 4,
+      "nextSceneRef": "S04_BATTLE",
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "Nobunaga writes a single name on a strip of cloth and presses it into Ranmaru's hand. The boy is fifteen and trying very hard not to shake.",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_cold",
+          "text": "Go. Don't look back. The work continues.",
+          "lineOrder": 2
+        },
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "Ranmaru goes. The name on the cloth is Toyotomi Hideyoshi. In twelve days, Hideyoshi will turn his army around and destroy Mitsuhide at Yamazaki. The work continues. Nobunaga was right about that.",
+          "lineOrder": 3
+        }
+      ],
+      "choices": []
+    },
+    {
+      "sceneRef": "S03B",
+      "backgroundKey": "honnoji_inner_hall_desk",
+      "bgmKey": "bgm_tragedy_low",
+      "sceneOrder": 5,
+      "nextSceneRef": "S04_BATTLE",
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "He finds a brush in the burning room. Three lines.",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_cold",
+          "text": "The markets stay open. The roads stay open. Japan does not stop.",
+          "lineOrder": 2
+        },
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "He seals it and throws it through the window into the garden, wrapped around a stone, where a servant finds it in the morning. It is preserved. Historians argue for four hundred years about what he meant. He meant exactly what he wrote.",
+          "lineOrder": 3
+        }
+      ],
+      "choices": []
+    },
+    {
+      "sceneRef": "S04_BATTLE",
+      "backgroundKey": "honnoji_burning_inner_hall",
+      "bgmKey": "bgm_war_drums",
+      "sceneOrder": 6,
+      "nextSceneRef": null,
+      "isBattleGate": true,
+      "battleEnemyKey": "akechi_vanguard_honnoji",
+      "battleWinSceneRef": "S05_WIN",
+      "battleLoseSceneRef": "S05_LOSE",
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "The inner hall. Thirty against ten thousand. The fire is everywhere. This is the last thing that can be held.",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_fierce",
+          "text": "Come, then.",
+          "lineOrder": 2
+        }
+      ],
+      "choices": []
+    },
+    {
+      "sceneRef": "S05_WIN",
+      "backgroundKey": "honnoji_dawn_aftermath",
+      "bgmKey": "bgm_victory_somber",
+      "sceneOrder": 7,
+      "nextSceneRef": "S06",
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "Against everything, the inner hall holds until dawn. Mitsuhide's forces, seeing Nobunaga alive, falter. The coup collapses. History does not remember this version because history runs on probability, not will.",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "But in this version, Nobunaga walks out of Honnoji at dawn. He is bleeding. He looks at the sky for a long time. Then he begins making plans for the western campaign. He does not stop.",
+          "lineOrder": 2
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_cold",
+          "text": "The roads are still open.",
+          "lineOrder": 3
+        }
+      ],
+      "choices": []
+    },
+    {
+      "sceneRef": "S05_LOSE",
+      "backgroundKey": "honnoji_burning_final",
+      "bgmKey": "bgm_defeat",
+      "sceneOrder": 8,
+      "nextSceneRef": "S06",
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "The hall falls. The fire is everywhere. Nobunaga retreats to the inner sanctum, wounded, alone. He can hear the army outside. He knows exactly what this is.",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "He thinks of the merchant in Kyoto who only wanted the roads open. He thinks of Nohime with the blue silk. He thinks of Mitsuhide in the map room, in the lamp light, that first year.",
+          "lineOrder": 2
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_cold",
+          "text": "The work continues.",
+          "lineOrder": 3
+        },
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "He is right about that. In twelve days, Toyotomi Hideyoshi turns his army around and destroys Mitsuhide at Yamazaki. The markets stay open. The roads stay open. Japan does not stop.",
+          "lineOrder": 4
+        }
+      ],
+      "choices": []
+    },
+    {
+      "sceneRef": "S06",
+      "backgroundKey": "japan_map_painted_scroll",
+      "bgmKey": "bgm_ending_theme",
+      "sceneOrder": 9,
+      "nextSceneRef": null,
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "History writes many things about Oda Nobunaga. That he was a monster. That he was a visionary. That he burned temples and opened markets and understood gunpowder at a time when everyone else was still thinking about swords.",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "All of these things are true. None of them are the whole answer.",
+          "lineOrder": 2
+        },
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "The whole answer is this: he was a man who decided, one way or another, what Japan was worth. And then he spent himself entirely on the answer.",
+          "lineOrder": 3
+        }
+      ],
+      "choices": []
+    },
+    {
+      "sceneRef": "S07_END",
+      "backgroundKey": "owari_province_dawn",
+      "bgmKey": "bgm_ending_theme",
+      "sceneOrder": 10,
+      "nextSceneRef": null,
+      "isBattleGate": false,
+      "isChapterEnd": true,
+      "dialogueLines": [
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "Your choices shaped the man. The loyalties you built or burned, the cruelties you chose or refused, the questions you answered or deferred — these are the record.",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "Owari Province, 1551. The clan lords whisper that the young heir is a fool. The road forward is lit only as far as the next step. It has always been enough.",
+          "lineOrder": 2
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_smirk",
+          "text": "Let them whisper.",
+          "lineOrder": 3
+        }
+      ],
+      "choices": []
+    }
+  ]
+}
