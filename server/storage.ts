@@ -66,6 +66,8 @@ export interface IStorage {
   createCompanion(companion: InsertCompanion): Promise<Companion>;
   updateCompanion(id: number, updates: Partial<Companion>): Promise<Companion>;
   deleteCompanion(id: number): Promise<void>;
+  /** Set isInParty=true for companions whose id is in companionIds, false for all others. */
+  updateParty(userId: string, companionIds: number[]): Promise<void>;
 
   getEquipment(userId: string): Promise<(Equipment & { cards: Card[] })[]>;
   createEquipment(equip: InsertEquipment): Promise<Equipment>;
@@ -194,6 +196,35 @@ export class DatabaseStorage implements IStorage {
 
   async deleteCompanion(id: number): Promise<void> {
     await db.delete(companions).where(eq(companions.id, id));
+  }
+
+  /**
+   * Atomically updates the party roster for a user.
+   * Step 1: clear isInParty for ALL of this user's companions.
+   * Step 2: set isInParty = true for the supplied IDs (if any).
+   * Passing an empty array simply clears the whole party.
+   */
+  async updateParty(userId: string, companionIds: number[]): Promise<void> {
+    await db.transaction(async (tx) => {
+      // Clear entire party
+      await tx
+        .update(companions)
+        .set({ isInParty: false })
+        .where(eq(companions.userId, userId));
+
+      // Set the new party members (skip if list is empty)
+      if (companionIds.length > 0) {
+        await tx
+          .update(companions)
+          .set({ isInParty: true })
+          .where(
+            and(
+              eq(companions.userId, userId),
+              inArray(companions.id, companionIds)
+            )
+          );
+      }
+    });
   }
 
   /**
