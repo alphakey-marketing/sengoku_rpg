@@ -1,7 +1,7 @@
 {
   "chapter": {
     "title": "The Alliance of Wolves",
-    "subtitle": "1552 \u2014 Allies are enemies who haven't decided yet.",
+    "subtitle": "1552 — Allies are enemies who haven't decided yet.",
     "chapterOrder": 2,
     "isLocked": false
   },
@@ -26,7 +26,7 @@
           "speakerName": "Narrator",
           "speakerSide": "none",
           "portraitKey": null,
-          "text": "Three men send letters within the same week. Tokugawa Ieyasu of Mikawa \u2014 practical, patient, calculating. Shibata Katsuie \u2014 Nobunaga's own general, old guard, slightly suspicious of the new direction. And Matsudaira Nobuyasu \u2014 a boy lord with a large army and an absent father who recently pledged loyalty to Nobunaga and may or may not mean it.",
+          "text": "Three men send letters within the same week. Tokugawa Ieyasu of Mikawa — practical, patient, calculating. Shibata Katsuie — Nobunaga's own general, old guard, slightly suspicious of the new direction. And Matsudaira Nobuyasu — a boy lord with a large army and an absent father who recently pledged loyalty to Nobunaga and may or may not mean it.",
           "lineOrder": 2
         },
         {
@@ -135,7 +135,7 @@
           "choiceOrder": 1
         },
         {
-          "choiceText": "Accept the first two terms. Remove the Shingen clause \u2014 Nobunaga doesn't pre-notify anyone of anything.",
+          "choiceText": "Accept the first two terms. Remove the Shingen clause — Nobunaga doesn't pre-notify anyone of anything.",
           "nextSceneRef": "S03B",
           "flagKey": "ieyasu_trust",
           "flagValue": 1,
@@ -162,6 +162,9 @@
       "nextSceneRef": "S04",
       "isBattleGate": false,
       "isChapterEnd": false,
+      "flagWrites": [
+        { "flagKey": "bond_strength", "flagValue": 1 }
+      ],
       "dialogueLines": [
         {
           "speakerName": "Ieyasu",
@@ -351,7 +354,7 @@
           "choiceOrder": 1
         },
         {
-          "choiceText": "Create an advisory council with a seat for Katsuie. Advisory only \u2014 final decisions remain yours.",
+          "choiceText": "Create an advisory council with a seat for Katsuie. Advisory only — final decisions remain yours.",
           "nextSceneRef": "S04B",
           "flagKey": "katsuie_loyalty",
           "flagValue": 1,
@@ -482,7 +485,7 @@
           "speakerName": "Narrator",
           "speakerSide": "none",
           "portraitKey": null,
-          "text": "Three weeks later. The third letter writer \u2014 Matsudaira Nobuyasu \u2014 has not waited for a reply. He has moved his army to the Owari border and is demanding formal recognition of his territory in exchange for continued loyalty.",
+          "text": "Three weeks later. The third letter writer — Matsudaira Nobuyasu — has not waited for a reply. He has moved his army to the Owari border and is demanding formal recognition of his territory in exchange for continued loyalty.",
           "lineOrder": 1
         },
         {
@@ -502,7 +505,7 @@
       ],
       "choices": [
         {
-          "choiceText": "March to meet him. Not to fight \u2014 to stand in front of him personally with enough men that the number is the message.",
+          "choiceText": "March to meet him. Not to fight — to stand in front of him personally with enough men that the number is the message.",
           "nextSceneRef": "S05A",
           "flagKey": "ruthlessness",
           "flagValue": 1,
@@ -511,7 +514,7 @@
           "choiceOrder": 1
         },
         {
-          "choiceText": "Send Ieyasu. Let the new alliance do its first work. Nobuyasu is Mikawa-adjacent \u2014 Ieyasu will read the situation correctly.",
+          "choiceText": "Send Ieyasu. Let the new alliance do its first work. Nobuyasu is Mikawa-adjacent — Ieyasu will read the situation correctly.",
           "nextSceneRef": "S05B",
           "flagKey": "ieyasu_trust",
           "flagValue": 1,
@@ -538,6 +541,9 @@
       "nextSceneRef": "S06",
       "isBattleGate": false,
       "isChapterEnd": false,
+      "flagWrites": [
+        { "flagKey": "road_command", "flagValue": 1 }
+      ],
       "dialogueLines": [
         {
           "speakerName": "Narrator",
@@ -547,25 +553,32 @@
           "lineOrder": 1
         },
         {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "He is mounted. Nobuyasu's captains can see the horse from three hundred yards — a good animal, calm under the noise of four thousand men, which says something about the rider. A lord who keeps a horse like that has been somewhere horses are tested. The number of men is the message. But the horse is a sentence in the same letter.",
+          "lineOrder": 2
+        },
+        {
           "speakerName": "Nobuyasu",
           "speakerSide": "left",
           "portraitKey": "nobuyasu_young",
-          "text": "I \u2014 I was simply requesting \u2014 the recognition of \u2014",
-          "lineOrder": 2
+          "text": "I — I was simply requesting — the recognition of —",
+          "lineOrder": 3
         },
         {
           "speakerName": "Nobunaga",
           "speakerSide": "right",
           "portraitKey": "nobunaga_cold",
           "text": "Go home, Nobuyasu. Write a proper letter. I will read it. This was not a proper letter.",
-          "lineOrder": 3
+          "lineOrder": 4
         },
         {
           "speakerName": "Narrator",
           "speakerSide": "none",
           "portraitKey": null,
           "text": "Nobuyasu goes home. He writes a proper letter. It is granted. He becomes, on the whole, a reliable minor ally for the next six years.",
-          "lineOrder": 4
+          "lineOrder": 5
         }
       ],
       "choices": []
@@ -648,7 +661,7 @@
       "backgroundKey": "owari_castle_night",
       "bgmKey": "bgm_ominous",
       "sceneOrder": 15,
-      "nextSceneRef": "S07_BATTLE",
+      "nextSceneRef": null,
       "isBattleGate": false,
       "isChapterEnd": false,
       "dialogueLines": [
@@ -663,7 +676,7 @@
           "speakerName": "Mitsuhide",
           "speakerSide": "left",
           "portraitKey": "mitsuhide_quiet",
-          "text": "The blade. Whoever destroyed it \u2014 or whoever didn't \u2014 this is something acknowledging its existence.",
+          "text": "The blade. Whoever destroyed it — or whoever didn't — this is something acknowledging its existence.",
           "lineOrder": 2
         },
         {
@@ -671,6 +684,98 @@
           "speakerSide": "right",
           "portraitKey": "nobunaga_cold",
           "text": "Someone is watching very closely.",
+          "lineOrder": 3
+        },
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "A second item arrives with the letter, wrapped in plain cloth. A short sword — old, well-kept, no maker's mark. Whoever sent it knew enough to send something a warlord might actually carry.",
+          "lineOrder": 4
+        }
+      ],
+      "choices": [
+        {
+          "choiceText": "Keep it. A weapon offered by someone watching this closely is worth understanding.",
+          "nextSceneRef": "S06_KEEP",
+          "flagKey": "weapon_legacy",
+          "flagValue": 1,
+          "flagKey2": null,
+          "flagValue2": null,
+          "choiceOrder": 1
+        },
+        {
+          "choiceText": "Burn it with the letter. Accept nothing from an unknown hand.",
+          "nextSceneRef": "S06_BURN",
+          "flagKey": "ruthlessness",
+          "flagValue": 1,
+          "flagKey2": null,
+          "flagValue2": null,
+          "choiceOrder": 2
+        }
+      ]
+    },
+    {
+      "sceneRef": "S06_KEEP",
+      "backgroundKey": "owari_castle_night",
+      "bgmKey": "bgm_ominous",
+      "sceneOrder": 16,
+      "nextSceneRef": "S07_BATTLE",
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Mitsuhide",
+          "speakerSide": "left",
+          "portraitKey": "mitsuhide_quiet",
+          "text": "I'll begin looking into who sent it.",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_cold",
+          "text": "Don't. Not yet. Whoever sent it wanted a reaction. We give them nothing and watch who next moves.",
+          "lineOrder": 2
+        },
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "He sets the sword on the table beside the letter. They sit there together in the lamplight — a message and a weapon, both from the same unknown place. He does not touch either again that night. But he does not move them either.",
+          "lineOrder": 3
+        }
+      ],
+      "choices": []
+    },
+    {
+      "sceneRef": "S06_BURN",
+      "backgroundKey": "owari_castle_night",
+      "bgmKey": "bgm_tension_resolve",
+      "sceneOrder": 17,
+      "nextSceneRef": "S07_BATTLE",
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Mitsuhide",
+          "speakerSide": "left",
+          "portraitKey": "mitsuhide_quiet",
+          "text": "I'll begin looking into who sent it.",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_cold",
+          "text": "Don't. Not yet. Whoever sent it wanted a reaction. We give them nothing.",
+          "lineOrder": 2
+        },
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "The sword goes into the lamp flame point-first. The cloth catches first, then the hilt wrapping. The blade itself does not burn, of course — it sits in the ash afterward, still perfectly formed. He has a guard dispose of it in the river before dawn. He does not watch it go.",
           "lineOrder": 3
         }
       ],
@@ -680,7 +785,7 @@
       "sceneRef": "S07_BATTLE",
       "backgroundKey": "mino_border_skirmish_dusk",
       "bgmKey": "bgm_war_drums",
-      "sceneOrder": 16,
+      "sceneOrder": 18,
       "nextSceneRef": null,
       "isBattleGate": true,
       "battleEnemyKey": "mino_border_raiders",
@@ -709,7 +814,7 @@
       "sceneRef": "S08_WIN",
       "backgroundKey": "mino_border_morning_clear",
       "bgmKey": "bgm_victory_somber",
-      "sceneOrder": 17,
+      "sceneOrder": 19,
       "nextSceneRef": "S09_WIN",
       "isBattleGate": false,
       "isChapterEnd": false,
@@ -749,7 +854,7 @@
       "sceneRef": "S08_LOSE",
       "backgroundKey": "northern_road_settlement_burned",
       "bgmKey": "bgm_defeat",
-      "sceneOrder": 18,
+      "sceneOrder": 20,
       "nextSceneRef": "S09_LOSE",
       "isBattleGate": false,
       "isChapterEnd": false,
@@ -796,7 +901,7 @@
       "sceneRef": "S09_WIN",
       "backgroundKey": "gifu_castle_tower_night",
       "bgmKey": "bgm_tension_resolve",
-      "sceneOrder": 19,
+      "sceneOrder": 21,
       "nextSceneRef": null,
       "isBattleGate": false,
       "isChapterEnd": true,
@@ -843,7 +948,7 @@
       "sceneRef": "S09_LOSE",
       "backgroundKey": "gifu_castle_tower_night",
       "bgmKey": "bgm_defeat",
-      "sceneOrder": 20,
+      "sceneOrder": 22,
       "nextSceneRef": null,
       "isBattleGate": false,
       "isChapterEnd": true,
@@ -901,7 +1006,7 @@
           "speakerName": "Narrator",
           "speakerSide": "none",
           "portraitKey": null,
-          "text": "Mitsuhide says nothing. He has learned that some things said aloud by Nobunaga are not for response \u2014 they are for the record. This is one of them.",
+          "text": "Mitsuhide says nothing. He has learned that some things said aloud by Nobunaga are not for response — they are for the record. This is one of them.",
           "lineOrder": 8
         }
       ],
