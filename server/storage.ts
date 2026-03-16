@@ -1,14 +1,16 @@
 import {
   users, companions, equipment, pets, horses, transformations, campaignEvents, userQuests, cards,
+  playerStoryGrants, storyGrants,
   type User, type UpsertUser, type InsertCompanion, type InsertEquipment,
   type Companion, type Equipment, type Pet, type Horse, type Transformation,
   type InsertPet, type InsertHorse, type InsertTransformation, type CampaignEvent,
-  type UserQuest, type Card, type InsertCard
+  type UserQuest, type Card, type InsertCard,
+  type PlayerStoryGrant, type InsertPlayerStoryGrant,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, inArray } from "drizzle-orm";
 
-// ── Single source of truth for starting stats ────────────────────────────────
+// ── Single source of truth for starting stats ─────────────────────────────────────────
 // These MUST mirror the defaults in schema.ts and migration 0003.
 // Used by restartGame() so a Seppuku reset lands on the same values
 // as a brand-new account.
@@ -33,7 +35,7 @@ export const STARTING_STATS = {
   statPoints: 48,
 } as const;
 
-// ── Single source of truth for quest definitions ──────────────────────────────
+// ── Single source of truth for quest definitions ─────────────────────────────────────────
 export const QUEST_DEFINITIONS: Record<string, { goal: number; rewardType: string; amount: number }> = {
   daily_skirmish:       { goal: 5,  rewardType: "rice", amount: 50  },
   daily_boss:           { goal: 1,  rewardType: "rice", amount: 30  },
@@ -44,7 +46,7 @@ export const QUEST_DEFINITIONS: Record<string, { goal: number; rewardType: strin
 
 const QUEST_POOL = Object.entries(QUEST_DEFINITIONS).map(([key, def]) => ({ key, ...def }));
 
-// ── Base equipment catalogue (seeded once per user on first login) ────────────
+// ── Base equipment catalogue (seeded once per user on first login) ──────────────────
 const BASE_ITEMS: Omit<InsertEquipment, "userId">[] = [
   { name: "Knife",           type: "Weapon",        weaponType: "dagger", rarity: "white", level: 1,  attackBonus: 17, isEquipped: false },
   { name: "Cutter",          type: "Weapon",        weaponType: "dagger", rarity: "white", level: 1,  attackBonus: 28, isEquipped: false },
@@ -80,6 +82,38 @@ const BASE_ITEMS: Omit<InsertEquipment, "userId">[] = [
   { name: "Glasses",         type: "HeadgearMiddle",rarity: "white", level: 1,  isEquipped: false },
   { name: "Flu Mask",        type: "HeadgearLower", rarity: "white", level: 1,  isEquipped: false },
 ];
+
+// ──────────────────────────────────────────────────────────────────────────────────
+// Story-grant view type (Part 6/10)
+// ──────────────────────────────────────────────────────────────────────────────────
+//
+// Shared between IStorage and the REST layer so callers don’t need to import
+// from grant-evaluator.ts directly.
+
+export interface StorageGrantView {
+  /** Auto-increment PK from player_story_grants */
+  id:               number;
+  /** Stable key from story_grants catalogue */
+  grantKey:         string;
+  /** Human-readable label (from story_grants) */
+  displayName:      string;
+  /** Flavour sentence shown in the Chronicle Wall and reward popup */
+  flavourText:      string | null;
+  /** "companion" | "equipment" | "pet" | "horse" */
+  grantCategory:    string;
+  /** Rarity from the payload: "uncommon" | "rare" | "epic" | "legendary" */
+  rarity:           string;
+  /** DB id of the game-table row that was created when this grant was issued */
+  gameRowId:        number | null;
+  /** True when a newer tier has superseded this grant (upgrade chain) */
+  isSuperseded:     boolean;
+  /** chapterOrder at which the grant was awarded */
+  awardedAtChapter: number;
+  /** Wall-clock timestamp of the award */
+  awardedAt:        Date;
+}
+
+// ── IStorage interface ───────────────────────────────────────────────────────────────────
 
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
@@ -123,7 +157,31 @@ export interface IStorage {
   recycleEquipment(userId: string): Promise<{ count: number; stonesGained: number }>;
 
   syncBaseEquipment(userId: string): Promise<void>;
+
+  // ── Story grant helpers (Part 6/10) ──────────────────────────────────────────────
+  //
+  // getPlayerGrants  — read-only list of all grants issued to a player,
+  //                    joined with catalogue displayName / flavourText / rarity.
+  //                    Used by GET /api/story/grants and the Chronicle Wall.
+  //
+  // awardGrant       — low-level write helper for external callers that need to
+  //                    issue a grant outside the normal evaluateGrants() path
+  //                    (e.g. admin tools, test harnesses, special events).
+  //                    Idempotent: silently returns the existing row if the
+  //                    grant has already been issued.
+
+  getPlayerGrants(userId: string): Promise<StorageGrantView[]>;
+
+  awardGrant(
+    userId:      string,
+    grantKey:    string,
+    gameRowId:   number | null,
+    chapterNum:  number,
+    flagSnapshot: Record<string, number>,
+  ): Promise<{ granted: boolean; row: PlayerStoryGrant }>;
 }
+
+// ── DatabaseStorage ─────────────────────────────────────────────────────────────────────
 
 export class DatabaseStorage implements IStorage {
   async getUser(id: string): Promise<User | undefined> {
@@ -485,6 +543,142 @@ export class DatabaseStorage implements IStorage {
       }).where(eq(users.id, userId));
     });
     await this.syncBaseEquipment(userId);
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────────────
+  // Story grant helpers (Part 6/10)
+  // ──────────────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Return all story grants issued to a player, enriched with catalogue
+   * display metadata (displayName, flavourText, rarity) via a single JOIN.
+   *
+   * Design note: this is intentionally the ONLY method in storage.ts that
+   * performs a JOIN.  It is acceptable here because the join is read-only,
+   * always keyed by a unique index (user_id), and the result set is small
+   * (max ~26 rows per player for the full Ch3–8 run).  All writes still go
+   * through single-table helpers.
+   */
+  async getPlayerGrants(userId: string): Promise<StorageGrantView[]> {
+    const rows = await db
+      .select({
+        id:               playerStoryGrants.id,
+        grantKey:         playerStoryGrants.grantKey,
+        displayName:      storyGrants.displayName,
+        flavourText:      storyGrants.flavourText,
+        grantCategory:    playerStoryGrants.grantCategory,
+        grantPayload:     storyGrants.grantPayload,
+        gameRowId:        playerStoryGrants.gameRowId,
+        isSuperseded:     playerStoryGrants.isSuperseded,
+        awardedAtChapter: playerStoryGrants.awardedAtChapter,
+        awardedAt:        playerStoryGrants.awardedAt,
+      })
+      .from(playerStoryGrants)
+      .innerJoin(
+        storyGrants,
+        eq(playerStoryGrants.grantKey, storyGrants.grantKey),
+      )
+      .where(eq(playerStoryGrants.userId, userId));
+
+    return rows.map((r) => ({
+      id:               r.id,
+      grantKey:         r.grantKey,
+      displayName:      r.displayName,
+      flavourText:      r.flavourText ?? null,
+      grantCategory:    r.grantCategory,
+      // Extract rarity from the JSONB payload — all four payload shapes
+      // have a top-level `rarity` string field.
+      rarity:           (r.grantPayload as { rarity?: string })?.rarity ?? "common",
+      gameRowId:        r.gameRowId,
+      isSuperseded:     r.isSuperseded,
+      awardedAtChapter: r.awardedAtChapter,
+      awardedAt:        r.awardedAt,
+    }));
+  }
+
+  /**
+   * Low-level grant issuance helper.
+   *
+   * Inserts a player_story_grants row and marks the base grant as superseded
+   * when the catalogue row has an `upgradeOf` key pointing to a previously
+   * issued grant.
+   *
+   * Idempotent: if the grantKey is already owned by this user, returns
+   * { granted: false, row: existingRow } without writing anything.
+   *
+   * This method does NOT create the companion / equipment / pet / horse row.
+   * That is the caller’s responsibility (or use evaluateGrants() which handles
+   * the full flow end-to-end).
+   */
+  async awardGrant(
+    userId:      string,
+    grantKey:    string,
+    gameRowId:   number | null,
+    chapterNum:  number,
+    flagSnapshot: Record<string, number>,
+  ): Promise<{ granted: boolean; row: PlayerStoryGrant }> {
+    // Idempotency check — single indexed read.
+    const [existing] = await db
+      .select()
+      .from(playerStoryGrants)
+      .where(
+        and(
+          eq(playerStoryGrants.userId, userId),
+          eq(playerStoryGrants.grantKey, grantKey),
+        ),
+      )
+      .limit(1);
+
+    if (existing) {
+      return { granted: false, row: existing };
+    }
+
+    // Resolve grantCategory from the catalogue so the caller doesn’t need
+    // to pass it explicitly — it’s a static property of the grant definition.
+    const [catalogueRow] = await db
+      .select({
+        grantCategory: storyGrants.grantCategory,
+        upgradeOf:     storyGrants.upgradeOf,
+      })
+      .from(storyGrants)
+      .where(eq(storyGrants.grantKey, grantKey))
+      .limit(1);
+
+    if (!catalogueRow) {
+      throw new Error(
+        `awardGrant: grantKey "${grantKey}" not found in story_grants catalogue. ` +
+        `Run seedStoryGrants() first.`,
+      );
+    }
+
+    // Insert the player award row.
+    const [inserted] = await db
+      .insert(playerStoryGrants)
+      .values({
+        userId,
+        grantKey,
+        gameRowId,
+        grantCategory:    catalogueRow.grantCategory,
+        isSuperseded:     false,
+        awardedAtChapter: chapterNum,
+        flagSnapshot:     flagSnapshot as unknown as Record<string, unknown>,
+      })
+      .returning();
+
+    // Mark the base grant as superseded if this is a tier upgrade.
+    if (catalogueRow.upgradeOf) {
+      await db
+        .update(playerStoryGrants)
+        .set({ isSuperseded: true })
+        .where(
+          and(
+            eq(playerStoryGrants.userId, userId),
+            eq(playerStoryGrants.grantKey, catalogueRow.upgradeOf),
+          ),
+        );
+    }
+
+    return { granted: true, row: inserted };
   }
 }
 
