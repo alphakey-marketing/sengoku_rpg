@@ -6,6 +6,10 @@
  * Part 9/10: triggerCompletion now captures grants[] from the
  * /progress/complete response and shows GrantRewardPopup before
  * the static isComplete screen.
+ *
+ * gap-fix: invalidate /api/story/grants after chapter complete so
+ * GrantSkillBadge pills appear immediately on inventory panels
+ * without waiting for the 5-minute staleTime to expire.
  */
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useLocation } from "wouter";
@@ -75,6 +79,10 @@ export function StoryPlayer({ chapterId }: StoryPlayerProps) {
   // Part 9 change: reads response.grants from /progress/complete and holds
   // them in pendingGrants state.  The GrantRewardPopup is shown while
   // pendingGrants.length > 0; it calls onDismiss → setIsComplete(true).
+  //
+  // gap-fix: after chapter complete, also invalidate the grants query so
+  // the inventory panels (party/pets/stable/equipment) show new badges
+  // immediately — no staleTime wait, no hard refresh required.
   const triggerCompletion = useCallback(async () => {
     if (completionFiredRef.current || !chapter) return;
     completionFiredRef.current = true;
@@ -97,6 +105,10 @@ export function StoryPlayer({ chapterId }: StoryPlayerProps) {
         endingDescription: `Chapter ${chapterId} complete.`,
       });
       await queryClient.refetchQueries({ queryKey: [api.player.get.path] });
+
+      // gap-fix: invalidate grants cache so inventory badge pills appear
+      // immediately on the Companions / Pets / Stable / Equipment panels.
+      queryClient.invalidateQueries({ queryKey: [api.story.grants.path] });
 
       // Part 9: show reward popup if any grants were issued, otherwise
       // fall straight through to the completion screen.

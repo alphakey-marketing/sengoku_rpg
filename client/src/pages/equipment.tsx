@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useEquipment, useEquip, useUnequip, useCompanions, usePlayer, useRecycleEquipment, useUpgradeEquipment, useEndowEquipment } from "@/hooks/use-game";
+import { useEquipment, useEquip, useUnequip, useCompanions, usePlayer, useRecycleEquipment, useUpgradeEquipment, useEndowEquipment, usePlayerGrants } from "@/hooks/use-game";
 import { MainLayout } from "@/components/layout/main-layout";
 import { Button } from "@/components/ui/button";
 import { Sword, Shield, Crosshair, Zap, Sparkles, ArrowUp, Trash2, Hammer, Gem, Heart } from "lucide-react";
@@ -13,6 +13,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { resolveGrantSkillLabel } from "@/hooks/use-game";
 
 export default function EquipmentPage() {
   const { toast } = useToast();
@@ -24,6 +31,9 @@ export default function EquipmentPage() {
   const { mutate: recycleItem, isPending: recyclePending } = useRecycleEquipment();
   const { mutate: upgradeItem, isPending: upgradePending } = useUpgradeEquipment();
   const { mutate: endowItem, isPending: endowPending } = useEndowEquipment();
+
+  // gap-fix: load equipment story grants for badge display
+  const { equipmentGrants } = usePlayerGrants();
 
   const [selectedEqId, setSelectedEqId] = useState<number | null>(null);
   const [endowDialogOpen, setEndowDialogOpen] = useState(false);
@@ -182,6 +192,10 @@ export default function EquipmentPage() {
             {sortedEquipment.map((item) => {
               const TypeIcon = getTypeIcon(item.type);
               const equippedTo = getEquippedName(item);
+              // gap-fix: find a story grant linked to this equipment row
+              const itemGrant = equipmentGrants.find(
+                (g) => !g.isSuperseded && g.gameRowId === item.id
+              );
               return (
                 <div
                   key={item.id}
@@ -206,6 +220,23 @@ export default function EquipmentPage() {
                       )}
                     </div>
                   </div>
+
+                  {/* gap-fix: story grant passive badge — shown below item name when a grant is linked */}
+                  {itemGrant && (
+                    <TooltipProvider delayDuration={200}>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div className="mb-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-900/30 border border-amber-700/40 text-amber-400 text-[10px] font-semibold cursor-default w-fit">
+                            <span>✦</span>
+                            <span>{resolveGrantSkillLabel(itemGrant)}</span>
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent side="top" className="max-w-xs text-xs">
+                          {itemGrant.flavourText ?? itemGrant.displayName}
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  )}
 
                   <div className="flex gap-3 mb-2 text-sm font-medium flex-wrap">
                     {item.attackBonus > 0 && (

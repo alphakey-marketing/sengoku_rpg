@@ -9,7 +9,8 @@ export const errorSchemas = {
 
 const BattleResultSchema = z.object({
   victory: z.boolean(),
-  experienceGained: z.number(),
+  // NOTE: server returns `expGained` (not `experienceGained`) — fixed gap-fix
+  expGained: z.number(),
   goldGained: z.number(),
   riceGained: z.number().optional(),
   equipmentDropped: z.array(z.any()).optional(),
@@ -76,6 +77,23 @@ const UnlockedEndingSchema = z.object({
   endingTitle: z.string(),
   endingDescription: z.string(),
   unlockedAt: z.string(),
+});
+
+/**
+ * PlayerGrantView — shape returned by GET /api/story/grants
+ * (Part 5/10 server route; gap-fix: registered in api object)
+ */
+const PlayerGrantViewSchema = z.object({
+  id: z.number(),
+  grantKey: z.string(),
+  displayName: z.string(),
+  flavourText: z.string().nullable(),
+  grantCategory: z.string(),
+  rarity: z.string(),
+  gameRowId: z.number().nullable(),
+  isSuperseded: z.boolean(),
+  awardedAtChapter: z.number(),
+  awardedAt: z.string(),
 });
 
 // ── B3: Campaign Map ──────────────────────────────────────────────────────────
@@ -353,16 +371,26 @@ export const api = {
         401: errorSchemas.unauthorized,
       },
     },
+    /**
+     * completeChapter — fixed gap-fix:
+     * Path was '/api/story/complete-chapter' (stale) but the actual server
+     * route registered in story-routes.ts (Part 5/10) is
+     * POST /api/story/progress/complete.
+     * Updated path + response shape to match the real implementation.
+     */
     completeChapter: {
       method: 'POST' as const,
-      path: '/api/story/complete-chapter' as const,
+      path: '/api/story/progress/complete' as const,
       input: z.object({
         chapterId: z.number(),
+        endingKey: z.string(),
+        endingTitle: z.string(),
+        endingDescription: z.string(),
       }),
       responses: {
         200: z.object({
-          nextChapterId: z.number().nullable(),
-          endingUnlocked: UnlockedEndingSchema.nullable(),
+          success: z.boolean(),
+          grants: z.array(PlayerGrantViewSchema),
         }),
         400: errorSchemas.validation,
         401: errorSchemas.unauthorized,
@@ -377,6 +405,20 @@ export const api = {
       }),
       responses: {
         200: z.object({ success: z.boolean() }),
+        401: errorSchemas.unauthorized,
+      },
+    },
+    /**
+     * grants — NEW (gap-fix):
+     * GET /api/story/grants was added in Part 5/10 but was never registered
+     * in the api object.  Added here so api.story.grants.path can be used
+     * as the TanStack Query key for type-safe cache invalidation.
+     */
+    grants: {
+      method: 'GET' as const,
+      path: '/api/story/grants' as const,
+      responses: {
+        200: z.array(PlayerGrantViewSchema),
         401: errorSchemas.unauthorized,
       },
     },
