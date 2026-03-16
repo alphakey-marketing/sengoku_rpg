@@ -1,22 +1,24 @@
 /**
  * story-routes.ts
- * ─────────────────────────────────────────────────────────────────────────────────
+ * ──────────────────────────────────────────────────────────────────────────────────
  * All REST endpoints for the VN story engine.
  *
  * Mount in server/routes.ts with:
  *   app.use("/api/story", isAuthenticated, storyRouter);
  *
  * Endpoints
- * ─────────────────────────────────────────────────────────────────────────────────
+ * ──────────────────────────────────────────────────────────────────────────────────
  *  GET  /api/story/chapters             → list all chapters with per-user isUnlocked / isCompleted
  *  GET  /api/story/chapters/:id         → full chapter with scenes + dialogue + choices
- *  GET  /api/story/progress             → player’s progress for all chapters
+ *  GET  /api/story/progress             → player's progress for all chapters
  *  POST /api/story/progress             → upsert progress (start / advance scene)
  *  POST /api/story/progress/complete    → mark chapter complete + write ending + bump currentChapter
+ *                                          + evaluate and award story grants  (← NEW Part 5/10)
  *  GET  /api/story/flags                → all player flags as Record<string,number>
  *  POST /api/story/flags                → additive mutations OR absolute overrides
  *  GET  /api/story/endings              → all unlocked endings
  *  POST /api/story/battle-result        → write battle outcome flags + return nextSceneId
+ *  GET  /api/story/grants               → all story grants issued to the player  (← NEW Part 5/10)
  */
 
 import { Router, type Request, type Response } from "express";
@@ -32,10 +34,11 @@ import {
 } from "@shared/schema";
 import { eq, and, asc, sql } from "drizzle-orm";
 import { storage } from "./storage";
+import { evaluateGrants, getPlayerGrants } from "./lib/grant-evaluator";
 
 export const storyRouter = Router();
 
-// ─── Auth helper ────────────────────────────────────────────────────────────────────
+// ── Auth helper ───────────────────────────────────────────────────────────────────────
 
 function requireAuth(req: Request, res: Response): string | null {
   const userId = (req as any).user?.claims?.sub;
@@ -46,7 +49,7 @@ function requireAuth(req: Request, res: Response): string | null {
   return userId as string;
 }
 
-// ─── Shared flag helpers ────────────────────────────────────────────────────────────
+// ── Shared flag helpers ───────────────────────────────────────────────────────────
 
 /** Read all flags for a user, returning a map keyed by flagKey. */
 async function getFlagMap(userId: string): Promise<Map<string, PlayerFlag>> {
@@ -120,11 +123,11 @@ async function writeFlags(
   return { record: flagRecord(flagMap), map: flagMap };
 }
 
-// ─── ConditionalVariant evaluator ────────────────────────────────────────────────────────
+// ── ConditionalVariant evaluator ────────────────────────────────────────────────────────────
 
 /**
- * Returns true if the variant’s condition passes against the given flag values.
- * Operator strings match the seeder’s JsonConditionalVariantCondition interface.
+ * Returns true if the variant's condition passes against the given flag values.
+ * Operator strings match the seeder's JsonConditionalVariantCondition interface.
  */
 function evalConditionalVariant(
   variant: ConditionalVariant,
@@ -144,7 +147,7 @@ function evalConditionalVariant(
 }
 
 /**
- * Given a battle outcome and the scene’s conditionalVariants array,
+ * Given a battle outcome and the scene's conditionalVariants array,
  * returns the sceneId of the first matching variant, or null if none match.
  *
  * Resolution order: array order (first match wins).
@@ -163,7 +166,7 @@ function resolveConditionalVariant(
   return null;
 }
 
-// ─── Chapter list ──────────────────────────────────────────────────────────────────────
+// ── Chapter list ────────────────────────────────────────────────────────────────────────────
 
 storyRouter.get("/chapters", async (req: Request, res: Response) => {
   try {
@@ -209,7 +212,7 @@ storyRouter.get("/chapters", async (req: Request, res: Response) => {
   }
 });
 
-// ─── Full chapter (scenes + dialogue + choices) ─────────────────────────────────────────
+// ── Full chapter (scenes + dialogue + choices) ───────────────────────────────────────────
 
 storyRouter.get("/chapters/:id", async (req: Request, res: Response) => {
   try {
@@ -270,7 +273,7 @@ storyRouter.get("/chapters/:id", async (req: Request, res: Response) => {
   }
 });
 
-// ─── Player progress ──────────────────────────────────────────────────────────────────
+// ── Player progress ──────────────────────────────────────────────────────────────────────
 
 storyRouter.get("/progress", async (req: Request, res: Response) => {
   const userId = requireAuth(req, res);
@@ -332,6 +335,26 @@ storyRouter.post("/progress", async (req: Request, res: Response) => {
   }
 });
 
+// ──────────────────────────────────────────────────────────────────────────────────
+// POST /api/story/progress/complete
+// ──────────────────────────────────────────────────────────────────────────────────
+//
+// EXECUTION ORDER (Part 5/10 addition):
+//
+//  1. Mark playerStoryProgress row as isCompleted = true
+//  2. Upsert storyEndings row (idempotent)
+//  3. Bump users.currentChapter if this chapter advances the high-water mark
+//  4. Read the live post-battle flag map (flags were written by /battle-result
+//     before this call; this is a single DB read, not a re-write)
+//  5. Resolve chapterOrder (needed by evaluateGrants — it indexes by order,
+//     not by chapterId, matching the chapterTrigger column in story_grants)
+//  6. evaluateGrants(userId, chapterOrder, flags) — may be empty
+//  7. Return { success: true, grants: IssuedGrant[] }
+//
+// The response shape is backward-compatible: consumers that don't inspect
+// `grants` continue working unchanged.  The client reward popup (Part 9)
+// reads `grants` from this response.
+
 storyRouter.post("/progress/complete", async (req: Request, res: Response) => {
   const userId = requireAuth(req, res);
   if (!userId) return;
@@ -347,11 +370,13 @@ storyRouter.post("/progress/complete", async (req: Request, res: Response) => {
       return res.status(400).json({ error: "chapterId must be a valid integer" });
     }
 
+    // Step 1: mark chapter complete
     await db
       .update(playerStoryProgress)
       .set({ isCompleted: true, completedAt: new Date() })
       .where(and(eq(playerStoryProgress.userId, userId), eq(playerStoryProgress.chapterId, chapterId)));
 
+    // Step 2: upsert ending (idempotent)
     const [existing] = await db
       .select()
       .from(storyEndings)
@@ -367,6 +392,7 @@ storyRouter.post("/progress/complete", async (req: Request, res: Response) => {
       });
     }
 
+    // Step 3: bump currentChapter high-water mark
     const player = await storage.getUser(userId);
     if (player) {
       const newChapter = Math.max(player.currentChapter ?? 0, chapterId);
@@ -375,14 +401,46 @@ storyRouter.post("/progress/complete", async (req: Request, res: Response) => {
       }
     }
 
-    res.json({ success: true });
+    // Step 4: read live flags (written by /battle-result before this call)
+    // We read from DB here rather than having the client send flags, so there
+    // is no opportunity for client-side flag manipulation.
+    const flagMap   = await getFlagMap(userId);
+    const flags     = flagRecord(flagMap);
+
+    // Step 5: resolve chapterOrder so evaluateGrants can index the catalogue
+    // correctly (story_grants.chapter_trigger stores chapterOrder, not the
+    // internal DB id, so chapters can be reordered without breaking grants).
+    const [chapterRow] = await db
+      .select({ chapterOrder: storyChapters.chapterOrder })
+      .from(storyChapters)
+      .where(eq(storyChapters.id, chapterId));
+
+    const chapterOrder = chapterRow?.chapterOrder ?? chapterId;
+
+    // Step 6: evaluate and award grants
+    // evaluateGrants is fully idempotent — re-completing a chapter never
+    // double-awards.  An empty array means no grants qualified this run.
+    const grants = await evaluateGrants(userId, chapterOrder, flags);
+
+    if (grants.length > 0) {
+      console.log(
+        `[story] POST /progress/complete → ${grants.length} grant(s) issued for ` +
+        `userId=${userId} chapter=${chapterOrder}: ` +
+        grants.map((g) => g.grantKey).join(", "),
+      );
+    }
+
+    // Step 7: respond
+    // `grants` is [] when no grants qualified — the client reward popup
+    // suppresses itself when the array is empty.
+    res.json({ success: true, grants });
   } catch (e) {
     console.error("[story] POST /progress/complete", e);
     res.status(500).json({ error: "Failed to complete chapter" });
   }
 });
 
-// ─── Player flags ────────────────────────────────────────────────────────────────────
+// ── Player flags ───────────────────────────────────────────────────────────────────────
 
 storyRouter.get("/flags", async (req: Request, res: Response) => {
   const userId = requireAuth(req, res);
@@ -413,7 +471,7 @@ storyRouter.post("/flags", async (req: Request, res: Response) => {
   }
 });
 
-// ─── Unlocked endings ─────────────────────────────────────────────────────────────────
+// ── Unlocked endings ──────────────────────────────────────────────────────────────────────
 
 storyRouter.get("/endings", async (req: Request, res: Response) => {
   const userId = requireAuth(req, res);
@@ -427,13 +485,13 @@ storyRouter.get("/endings", async (req: Request, res: Response) => {
   }
 });
 
-// ─── Battle-result ───────────────────────────────────────────────────────────────────
+// ── Battle-result ────────────────────────────────────────────────────────────────────────
 //
 // Resolves win/lose scene routing AND writes battle outcome flags.
 //
 // Resolution order for nextSceneId:
 //   1. First conditionalVariant whose outcome matches AND whose condition
-//      passes against the player’s POST-write flags
+//      passes against the player's POST-write flags
 //   2. battleWinSceneId / battleLoseSceneId  (scalar fallback)
 //   3. nextSceneId  (final fallback)
 
@@ -482,5 +540,39 @@ storyRouter.post("/battle-result", async (req: Request, res: Response) => {
   } catch (e) {
     console.error("[story] POST /battle-result", e);
     res.status(500).json({ error: "Failed to process battle result" });
+  }
+});
+
+// ──────────────────────────────────────────────────────────────────────────────────
+// GET /api/story/grants  (NEW — Part 5/10)
+// ──────────────────────────────────────────────────────────────────────────────────
+//
+// Returns all story grants that have been issued to the authenticated player,
+// joined with catalogue metadata (displayName, flavourText, rarity).
+//
+// Response shape (array of PlayerGrantView):
+//   [
+//     {
+//       id, grantKey, displayName, flavourText,
+//       grantCategory, rarity, gameRowId,
+//       isSuperseded, awardedAtChapter, awardedAt
+//     },
+//     ...
+//   ]
+//
+// The client inventory panels (Part 10) filter this list by grantCategory
+// to build the Companions / Equipment / Pets / Stable badge displays.
+// isSuperseded grants are included so the Chronicle Wall can show the
+// upgrade progression, but the main inventory views filter them out.
+
+storyRouter.get("/grants", async (req: Request, res: Response) => {
+  const userId = requireAuth(req, res);
+  if (!userId) return;
+  try {
+    const grants = await getPlayerGrants(userId);
+    res.json(grants);
+  } catch (e) {
+    console.error("[story] GET /grants", e);
+    res.status(500).json({ error: "Failed to fetch story grants" });
   }
 });
