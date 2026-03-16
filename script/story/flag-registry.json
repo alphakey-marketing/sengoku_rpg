@@ -86,15 +86,15 @@
       "flagKey": "katsuie_loyalty",
       "defaultValue": 0,
       "label": "Katsuie Loyalty",
-      "description": "Tracks Katsuie's accumulated loyalty from Ch2 council and road scenes. Affects Ch2 chapter-end dialogue register. Reserved for future chapters.",
-      "writtenByChapters": [2]
+      "description": "Tracks Katsuie's accumulated loyalty from Ch2 council and road scenes, and the Ch4 sword acknowledgment (S10A, S10B). Affects Ch2 chapter-end dialogue register. Reserved for future chapters.",
+      "writtenByChapters": [2, 4]
     },
     {
       "flagKey": "bond_strength",
       "defaultValue": 0,
       "label": "Bond Strength",
-      "description": "Companion mechanic flag. Incremented when the player treats companions with deliberate care — welcoming Mitsuhide warmly (Ch1), accepting Ieyasu's full terms (Ch2), riding in silence with Nohime (Ch3), sending Mitsuhide to negotiate (Ch3), Ranmaru present at Honnoji (Ch7), S02_LOYAL fires (Ch8). Max 6 before Ch5 addition. Threshold ≥3 unlocks deeper narrator beats in Ch6 S01; ≥4 unlocks Ch8 S04_BATTLE and S05_WIN companion codas.",
-      "writtenByChapters": [1, 2, 3, 5, 7, 8],
+      "description": "Companion mechanic flag. Incremented when the player treats companions with deliberate care — welcoming Mitsuhide warmly (Ch1), accepting Ieyasu's full terms (Ch2), riding in silence with Nohime (Ch3), sending Mitsuhide to negotiate (Ch3), apologising to Mitsuhide for Gyokan (Ch4 S06B), listening to Mitsuhide's grief (Ch4 S06C), Ranmaru present at Honnoji (Ch7), S02_LOYAL fires (Ch8). Max 8 before Ch5 addition. Threshold ≥3 unlocks deeper narrator beats in Ch6 S01; ≥4 unlocks Ch8 S04_BATTLE and S05_WIN companion codas.",
+      "writtenByChapters": [1, 2, 3, 4, 5, 7, 8],
       "hidden": false,
       "conditionalScenesTriggered": [
         { "chapter": 6, "sceneRef": "S01", "condition": { "flagKey": "bond_strength", "operator": "gte", "value": 3 }, "effect": "dialogueLine_variant" },
@@ -106,7 +106,7 @@
       "flagKey": "weapon_legacy",
       "defaultValue": 0,
       "label": "Weapon Legacy",
-      "description": "Equipment mechanic flag. Incremented each time Nobunaga accepts or keeps a significant weapon: blade retrieved (Ch1 S06A), mystery gift accepted (Ch2 S06 micro-beat), Katsuie's weapon received (Ch4), reforged Nagashino blade accepted (Ch5 S18A). Max 4. Threshold ≥2 unlocks Kenshin's 'you carry things' line in Ch5 S04; ≥3 arms the named-weapon narrator beat in Ch8 S03B. weapon_legacy=0 on any Ch8 path triggers the 'travels light' alternative.",
+      "description": "Equipment mechanic flag. Incremented each time Nobunaga accepts or keeps a significant weapon: blade retrieved (Ch1 S06A), mystery gift accepted (Ch2 S06 micro-beat), Katsuie's weapon received (Ch4 S10A), reforged Nagashino blade accepted (Ch5 S18A). Max 4. Threshold ≥2 unlocks Kenshin's 'you carry things' line in Ch5 S04; ≥3 arms the named-weapon narrator beat in Ch8 S03B. weapon_legacy=0 on any Ch8 path triggers the 'travels light' alternative.",
       "writtenByChapters": [1, 2, 4, 5],
       "hidden": false,
       "conditionalScenesTriggered": [
