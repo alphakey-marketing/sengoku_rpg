@@ -5,6 +5,11 @@
  * on every server startup. Idempotent — skips any chapter already present.
  *
  * Called from server/index.ts between runMigrations() and route registration.
+ *
+ * FILE NAMING CONTRACT
+ * --------------------
+ * Only files matching `chapter_*.json` are processed. Other JSON files in the
+ * same directory (e.g. flag-registry.json) are intentionally ignored.
  */
 
 import { readFile, readdir } from "fs/promises";
@@ -77,6 +82,18 @@ interface JsonChapterFile {
   scenes: JsonScene[];
 }
 
+/** Type-guard: returns true if the parsed JSON looks like a valid chapter file. */
+function isValidChapterFile(data: unknown): data is JsonChapterFile {
+  if (typeof data !== "object" || data === null) return false;
+  const d = data as Record<string, unknown>;
+  return (
+    typeof d.chapter === "object" &&
+    d.chapter !== null &&
+    typeof (d.chapter as Record<string, unknown>).title === "string" &&
+    Array.isArray(d.scenes)
+  );
+}
+
 // ─── Core seed logic ──────────────────────────────────────────────────────────────
 
 async function buildRefMap(
@@ -109,7 +126,6 @@ async function resolveForwardRefs(
   for (const s of scenes) {
     const sceneId = refMap.get(s.sceneRef)!;
 
-    // Resolve conditionalVariants: replace sceneRef strings with integer sceneIds.
     let resolvedVariants: ConditionalVariant[] | null = null;
     if (s.conditionalVariants && s.conditionalVariants.length > 0) {
       resolvedVariants = s.conditionalVariants
@@ -187,7 +203,26 @@ async function insertChoices(
 
 async function seedOneChapter(filePath: string): Promise<void> {
   const raw  = await readFile(filePath, "utf-8");
-  const data: JsonChapterFile = JSON.parse(raw);
+
+  let data: unknown;
+  try {
+    data = JSON.parse(raw);
+  } catch (parseErr) {
+    console.warn(`[seed-story] ⚠️  Skipping "${filePath}" — invalid JSON: ${parseErr}`);
+    return;
+  }
+
+  // Guard: skip files that don't match the expected chapter shape.
+  // This prevents flag-registry.json and any other auxiliary JSON from
+  // crashing the seeder with a "Cannot read properties of undefined" error.
+  if (!isValidChapterFile(data)) {
+    console.warn(
+      `[seed-story] ⚠️  Skipping "${filePath}" — does not match JsonChapterFile shape ` +
+      `(expected { chapter: { title, ... }, scenes: [...] }).`,
+    );
+    return;
+  }
+
   const { chapter, scenes } = data;
 
   const existing = await db
@@ -240,7 +275,9 @@ export async function seedStoryChapters(): Promise<void> {
   try {
     const entries = await readdir(storyDir);
     files = entries
-      .filter((f) => f.endsWith(".json"))
+      // FIX: only process chapter_*.json — excludes flag-registry.json and
+      // any other auxiliary JSON files that live in the same directory.
+      .filter((f) => /^chapter_.*\.json$/.test(f))
       .sort()
       .map((f) => join(storyDir, f));
   } catch {
