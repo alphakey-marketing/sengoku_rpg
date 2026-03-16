@@ -2,6 +2,10 @@
  * StoryPlayer.tsx
  * Core scene renderer: typewriter dialogue, portrait display,
  * choice branching, battle-gate hand-off, and chapter completion.
+ *
+ * Part 9/10: triggerCompletion now captures grants[] from the
+ * /progress/complete response and shows GrantRewardPopup before
+ * the static isComplete screen.
  */
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useLocation } from "wouter";
@@ -27,6 +31,7 @@ import { BG_MAP, CHAPTER_COMPLETE_DESTINATION, CHAPTER_CATALOGUE } from "@/lib/s
 import { Portrait } from "./Portrait";
 import { FlagBar }  from "./FlagBar";
 import { BattleGateOverlay } from "./BattleGateOverlay";
+import { GrantRewardPopup, type IssuedGrant } from "./GrantRewardPopup";
 
 export interface StoryPlayerProps {
   chapterId: number;
@@ -47,6 +52,9 @@ export function StoryPlayer({ chapterId }: StoryPlayerProps) {
   const [error, setError]                 = useState<string | null>(null);
   const [comingSoon, setComingSoon]       = useState(false);
   const [advanceError, setAdvanceError]   = useState<string | null>(null);
+  // Part 9: pending grants from /progress/complete — non-empty triggers popup
+  const [pendingGrants, setPendingGrants] = useState<IssuedGrant[]>([]);
+
   const typeTimerRef       = useRef<ReturnType<typeof setTimeout> | null>(null);
   const completionFiredRef = useRef(false);
 
@@ -64,6 +72,9 @@ export function StoryPlayer({ chapterId }: StoryPlayerProps) {
   const catalogueEntry = CHAPTER_CATALOGUE.find((c) => c.id === chapterId);
 
   // ── triggerCompletion ──────────────────────────────────────────────────────
+  // Part 9 change: reads response.grants from /progress/complete and holds
+  // them in pendingGrants state.  The GrantRewardPopup is shown while
+  // pendingGrants.length > 0; it calls onDismiss → setIsComplete(true).
   const triggerCompletion = useCallback(async () => {
     if (completionFiredRef.current || !chapter) return;
     completionFiredRef.current = true;
@@ -72,7 +83,7 @@ export function StoryPlayer({ chapterId }: StoryPlayerProps) {
       if (Object.keys(finalFlags).length > 0) {
         apiRequest("POST", "/api/story/flags", { absolute: finalFlags }).catch(() => {});
       }
-      await apiRequest("POST", "/api/story/progress/complete", {
+      const response = await apiRequest("POST", "/api/story/progress/complete", {
         chapterId,
         endingKey:         `ch${chapterId}_complete`,
         endingTitle:       chapter.title,
@@ -86,7 +97,16 @@ export function StoryPlayer({ chapterId }: StoryPlayerProps) {
         endingDescription: `Chapter ${chapterId} complete.`,
       });
       await queryClient.refetchQueries({ queryKey: [api.player.get.path] });
-      setIsComplete(true);
+
+      // Part 9: show reward popup if any grants were issued, otherwise
+      // fall straight through to the completion screen.
+      const grants: IssuedGrant[] = Array.isArray(response?.grants) ? response.grants : [];
+      if (grants.length > 0) {
+        setPendingGrants(grants);
+        // isComplete stays false until popup is dismissed
+      } else {
+        setIsComplete(true);
+      }
     } catch {
       completionFiredRef.current = false;
       setIsComplete(true);
@@ -264,6 +284,7 @@ export function StoryPlayer({ chapterId }: StoryPlayerProps) {
     setShowChoices(false);
     setIsComplete(false);
     setFlags({});
+    setPendingGrants([]);
   }, [chapter, chapterId]);
 
   // ── Loading ────────────────────────────────────────────────────────────────
@@ -307,6 +328,20 @@ export function StoryPlayer({ chapterId }: StoryPlayerProps) {
           ← Back to Chronicles
         </button>
       </div>
+    );
+  }
+
+  // Part 9: show reward popup while grants are pending
+  // Rendered BEFORE the isComplete screen so the player sees grants first.
+  if (pendingGrants.length > 0) {
+    return (
+      <GrantRewardPopup
+        grants={pendingGrants}
+        onDismiss={() => {
+          setPendingGrants([]);
+          setIsComplete(true);
+        }}
+      />
     );
   }
 
