@@ -112,7 +112,8 @@
       "backgroundKey": "mino_garden_autumn",
       "bgmKey": "bgm_quiet_resolve",
       "sceneOrder": 3,
-      "nextSceneRef": "S04",
+      "nextSceneRef": null,
+      "routingMode": "choices",
       "isBattleGate": false,
       "isChapterEnd": false,
       "dialogueLines": [
@@ -334,6 +335,7 @@
       "bgmKey": "bgm_tragedy_low",
       "sceneOrder": 8,
       "nextSceneRef": null,
+      "routingMode": "choices",
       "isBattleGate": false,
       "isChapterEnd": false,
       "dialogueLines": [
@@ -442,6 +444,7 @@
       "bgmKey": "bgm_war_drums",
       "sceneOrder": 11,
       "nextSceneRef": null,
+      "routingMode": "choices",
       "isBattleGate": false,
       "isChapterEnd": false,
       "dialogueLines": [

@@ -87,6 +87,7 @@
       "bgmKey": "bgm_intrigue",
       "sceneOrder": 2,
       "nextSceneRef": null,
+      "routingMode": "choices",
       "isBattleGate": false,
       "isChapterEnd": false,
       "dialogueLines": [
@@ -329,6 +330,7 @@
       "bgmKey": "bgm_tragedy_low",
       "sceneOrder": 7,
       "nextSceneRef": null,
+      "routingMode": "choices",
       "isBattleGate": false,
       "isChapterEnd": false,
       "dialogueLines": [
@@ -567,6 +569,7 @@
       "bgmKey": "bgm_tragedy_low",
       "sceneOrder": 12,
       "nextSceneRef": null,
+      "routingMode": "choices",
       "isBattleGate": false,
       "isChapterEnd": false,
       "dialogueLines": [
@@ -762,7 +765,7 @@
       "backgroundKey": "nagashima_crossing_aftermath",
       "bgmKey": "bgm_victory_somber",
       "sceneOrder": 17,
-      "nextSceneRef": "S_KATSUIE_GIFT",
+      "nextSceneRef": "S10",
       "isBattleGate": false,
       "isChapterEnd": false,
       "dialogueLines": [
@@ -808,8 +811,10 @@
       "sceneRef": "S09_WIN_COLD",
       "backgroundKey": "nagashima_crossing_aftermath",
       "bgmKey": "bgm_victory_somber",
-      "sceneOrder": 18,
-      "nextSceneRef": "S_KATSUIE_GIFT",
+      "sceneOrder": 17,
+      "isConditionalVariant": true,
+      "conditionalVariantOf": "S09_WIN",
+      "nextSceneRef": "S10",
       "isBattleGate": false,
       "isChapterEnd": false,
       "flagCondition": {
@@ -843,11 +848,12 @@
       "choices": []
     },
     {
-      "sceneRef": "S_KATSUIE_GIFT",
+      "sceneRef": "S10",
       "backgroundKey": "gifu_castle_map_room_day",
       "bgmKey": "bgm_quiet_resolve",
       "sceneOrder": 19,
       "nextSceneRef": null,
+      "routingMode": "choices",
       "isBattleGate": false,
       "isChapterEnd": false,
       "dialogueLines": [
@@ -876,7 +882,7 @@
       "choices": [
         {
           "choiceText": "Accept it. Send back a reply: 'As it always will.'",
-          "nextSceneRef": "S_KATSUIE_GIFT_KEEP",
+          "nextSceneRef": "S10A",
           "flagKey": "weapon_legacy",
           "flagValue": 1,
           "flagKey2": "katsuie_loyalty",
@@ -885,7 +891,7 @@
         },
         {
           "choiceText": "Return it with a note: a general's blade belongs in the field, not on a lord's table.",
-          "nextSceneRef": "S_KATSUIE_GIFT_RETURN",
+          "nextSceneRef": "S10B",
           "flagKey": "katsuie_loyalty",
           "flagValue": 1,
           "flagKey2": null,
@@ -895,11 +901,11 @@
       ]
     },
     {
-      "sceneRef": "S_KATSUIE_GIFT_KEEP",
+      "sceneRef": "S10A",
       "backgroundKey": "gifu_castle_map_room_day",
       "bgmKey": "bgm_quiet_resolve",
       "sceneOrder": 20,
-      "nextSceneRef": "S10_WIN",
+      "nextSceneRef": "S11_WIN",
       "isBattleGate": false,
       "isChapterEnd": false,
       "dialogueLines": [
@@ -914,11 +920,11 @@
       "choices": []
     },
     {
-      "sceneRef": "S_KATSUIE_GIFT_RETURN",
+      "sceneRef": "S10B",
       "backgroundKey": "gifu_castle_map_room_day",
       "bgmKey": "bgm_quiet_resolve",
       "sceneOrder": 21,
-      "nextSceneRef": "S10_WIN",
+      "nextSceneRef": "S11_WIN",
       "isBattleGate": false,
       "isChapterEnd": false,
       "dialogueLines": [
@@ -937,7 +943,7 @@
       "backgroundKey": "nagashima_retreat_night",
       "bgmKey": "bgm_defeat",
       "sceneOrder": 22,
-      "nextSceneRef": "S10_LOSE",
+      "nextSceneRef": "S11_LOSE",
       "isBattleGate": false,
       "isChapterEnd": false,
       "dialogueLines": [
@@ -969,8 +975,10 @@
       "sceneRef": "S09_LOSE_COLD",
       "backgroundKey": "nagashima_retreat_night",
       "bgmKey": "bgm_defeat",
-      "sceneOrder": 23,
-      "nextSceneRef": "S10_LOSE",
+      "sceneOrder": 22,
+      "isConditionalVariant": true,
+      "conditionalVariantOf": "S09_LOSE",
+      "nextSceneRef": "S11_LOSE",
       "isBattleGate": false,
       "isChapterEnd": false,
       "flagCondition": {
@@ -1011,7 +1019,7 @@
       "choices": []
     },
     {
-      "sceneRef": "S10_WIN",
+      "sceneRef": "S11_WIN",
       "backgroundKey": "gifu_castle_tower_night",
       "bgmKey": "bgm_tension_resolve",
       "sceneOrder": 24,
@@ -1044,7 +1052,7 @@
       "choices": []
     },
     {
-      "sceneRef": "S10_LOSE",
+      "sceneRef": "S11_LOSE",
       "backgroundKey": "gifu_castle_tower_night",
       "bgmKey": "bgm_defeat",
       "sceneOrder": 25,
