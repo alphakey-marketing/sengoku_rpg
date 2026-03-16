@@ -37,6 +37,39 @@ export interface UnlockedEnding {
   unlockedAt: string;
 }
 
+// ─── Flag condition + write types ─────────────────────────────────────────────
+
+/**
+ * FlagCondition — evaluated against the current StoryFlags before displaying
+ * a scene. If the condition is false the scene is skipped in favour of the
+ * next candidate (or the no-condition fallback).
+ *
+ * operator semantics:
+ *   eq   → flags[flagKey] === value
+ *   neq  → flags[flagKey] !== value
+ *   gt   → flags[flagKey] >   value
+ *   gte  → flags[flagKey] >=  value
+ *   lt   → flags[flagKey] <   value
+ *   lte  → flags[flagKey] <=  value
+ *
+ * Missing flags default to 0 (same as applyFlags / getFlag).
+ */
+export interface FlagCondition {
+  flagKey: string;
+  operator: "eq" | "neq" | "gt" | "gte" | "lt" | "lte";
+  value: number;
+}
+
+/**
+ * FlagWrite — applied automatically when a scene is entered.
+ * The value is ADDITIVE (same semantics as applyFlags), not a hard set.
+ * Use positive values to increment, negative to decrement.
+ */
+export interface FlagWrite {
+  flagKey: string;
+  flagValue: number;
+}
+
 // ─── Storage keys ─────────────────────────────────────────────────────────────
 
 const KEYS = {
@@ -99,6 +132,19 @@ export interface Scene {
   isChapterEnd: boolean;
   dialogueLines: DialogueLine[];
   choices: Choice[];
+  /**
+   * Optional flag condition evaluated before this scene is shown.
+   * If the condition is false, the engine falls through to the next
+   * candidate scene (see resolveConditionalScene).
+   * Scenes with no flagCondition are always eligible.
+   */
+  flagCondition?: FlagCondition | null;
+  /**
+   * Flag mutations applied automatically when this scene is entered.
+   * Applied additively via applySceneFlagWrites() before the first
+   * dialogue line renders.
+   */
+  flagWrites?: FlagWrite[] | null;
 }
 
 export interface ChapterData {
@@ -218,6 +264,82 @@ export async function getFlags(): Promise<StoryFlags> {
 export async function getFlag(key: string): Promise<number> {
   const flags = read<StoryFlags>(KEYS.flags, {});
   return flags[key] ?? 0;
+}
+
+// ─── Flag condition evaluation ────────────────────────────────────────────────
+
+/**
+ * Evaluates a single FlagCondition against a StoryFlags snapshot.
+ * Returns true if the condition passes (scene is eligible to show).
+ * A null / undefined condition is always true.
+ */
+export function evaluateFlagCondition(
+  condition: FlagCondition | null | undefined,
+  flags: StoryFlags,
+): boolean {
+  if (!condition) return true;
+  const actual = flags[condition.flagKey] ?? 0;
+  switch (condition.operator) {
+    case "eq":  return actual === condition.value;
+    case "neq": return actual !== condition.value;
+    case "gt":  return actual >   condition.value;
+    case "gte": return actual >=  condition.value;
+    case "lt":  return actual <   condition.value;
+    case "lte": return actual <=  condition.value;
+    default:    return true;
+  }
+}
+
+/**
+ * Given an array of candidate scenes that share the same logical "slot"
+ * (e.g. [S09_WIN, S09_WIN_COLD] — all routed to from S08_BATTLE's
+ * battleWinSceneId), picks the FIRST scene whose flagCondition passes.
+ *
+ * Convention:
+ *   - Put the most-specific scene first (the one with the flagCondition).
+ *   - Put the unconditional fallback scene last (no flagCondition).
+ *
+ * Usage in the story page:
+ *
+ *   const targetScene = resolveConditionalScene(
+ *     chapter.scenes.filter(s => s.id === battleWinSceneId || s.sceneRef === "S09_WIN_COLD"),
+ *     await getFlags(),
+ *   );
+ *
+ * If no candidate passes and there is no unconditional fallback, returns null.
+ */
+export function resolveConditionalScene(
+  candidates: Scene[],
+  flags: StoryFlags,
+): Scene | null {
+  // Scenes WITH a condition are evaluated in order; first pass wins.
+  for (const scene of candidates) {
+    if (scene.flagCondition && evaluateFlagCondition(scene.flagCondition, flags)) {
+      return scene;
+    }
+  }
+  // Fallback: first scene with no condition.
+  return candidates.find((s) => !s.flagCondition) ?? null;
+}
+
+// ─── Scene-level flag writes ──────────────────────────────────────────────────
+
+/**
+ * Applies a scene's flagWrites to localStorage and returns the updated
+ * StoryFlags. Call this immediately before rendering the scene's first
+ * dialogue line (so later scenes in the same chapter see the written flags).
+ *
+ * If the scene has no flagWrites (or an empty array), this is a no-op.
+ */
+export async function applySceneFlagWrites(scene: Scene): Promise<StoryFlags> {
+  if (!scene.flagWrites || scene.flagWrites.length === 0) {
+    return getFlags();
+  }
+  const mutations: Partial<StoryFlags> = {};
+  for (const fw of scene.flagWrites) {
+    mutations[fw.flagKey] = fw.flagValue;
+  }
+  return applyFlags(mutations);
 }
 
 // ─── Seen scenes ──────────────────────────────────────────────────────────────

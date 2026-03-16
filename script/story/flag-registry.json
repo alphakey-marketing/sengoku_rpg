@@ -1,0 +1,90 @@
+{
+  "_comment": "Canonical flag registry. Every flagKey used across all chapters must appear here. This is the source of truth for QA, narrative design, and any future server-side flag persistence. flagValue in scenes is ADDITIVE — never a hard set.",
+  "flags": [
+    {
+      "flagKey": "ruthlessness",
+      "defaultValue": 0,
+      "label": "Ruthless",
+      "description": "Incremented by choices that favour force, intimidation, or immediate cost over diplomacy. High values shift Mitsuhide grief scenes and Ch8 endings.",
+      "writtenByChapters": [1, 2, 3, 4]
+    },
+    {
+      "flagKey": "political_power",
+      "defaultValue": 0,
+      "label": "Political",
+      "description": "Incremented by choices that favour leverage, patience, and institutional power over direct action. Affects Ch6 Nohime council scenes.",
+      "writtenByChapters": [1, 2, 3, 4]
+    },
+    {
+      "flagKey": "mitsuhide_loyalty",
+      "defaultValue": 0,
+      "label": "Mitsuhide Loyalty",
+      "description": "Tracks Mitsuhide's accumulated loyalty delta. Negative values unlock cold-path variants in Ch4 (S09_WIN_COLD, S09_LOSE_COLD). Critical threshold for Ch8 Honnoji branching.",
+      "writtenByChapters": [2, 4],
+      "conditionalScenesTriggered": [
+        { "chapter": 4, "sceneRef": "S09_WIN_COLD",  "condition": { "flagKey": "mitsuhide_loyalty", "operator": "lte", "value": 0 } },
+        { "chapter": 4, "sceneRef": "S09_LOSE_COLD", "condition": { "flagKey": "mitsuhide_loyalty", "operator": "lte", "value": 0 } }
+      ]
+    },
+    {
+      "flagKey": "supernatural_affinity",
+      "defaultValue": 0,
+      "label": "Supernatural",
+      "description": "Incremented by choices that engage with omen, ritual, or fate over material strategy. Affects Ch5 Kenshin mirror scene variants.",
+      "writtenByChapters": [1]
+    },
+    {
+      "flagKey": "battle_won",
+      "defaultValue": 0,
+      "label": "Battle Won",
+      "description": "Cumulative battle win counter across all chapters. Not currently used for branching but tracked for end-of-game stats.",
+      "writtenByChapters": [1, 2, 3, 4]
+    },
+    {
+      "flagKey": "battle_lost",
+      "defaultValue": 0,
+      "label": "Battle Lost",
+      "description": "Cumulative battle loss counter across all chapters.",
+      "writtenByChapters": [1, 2, 3, 4]
+    },
+    {
+      "flagKey": "nohime_trust",
+      "defaultValue": 0,
+      "label": "Nohime Trust",
+      "description": "Tracks accumulated trust with Nohime. Affects Ch6 Nohime gambit scene depth and available choices. High values unlock the Ch6 private council variant.",
+      "writtenByChapters": [3, 4]
+    },
+    {
+      "flagKey": "kennyo_hate",
+      "defaultValue": 0,
+      "label": "Kennyo Enmity",
+      "description": "Tracks escalation of the Nobunaga/Kennyo conflict. High values compress Ch4 diplomatic options and expand the violence path in Ch7.",
+      "writtenByChapters": [4]
+    },
+    {
+      "flagKey": "nohime_witnessed_win",
+      "defaultValue": 0,
+      "label": "Nohime Witnessed Victory",
+      "description": "Set to 1 when Nohime is present during a battle win in Ch3 (S07B_WIN). Used by the Ch3 chapter-end scene narrator beat comparing Yoshitatsu's speed to Nobunaga's. Not displayed in FlagBar during normal play.",
+      "writtenByChapters": [3],
+      "flagWrites": true,
+      "hidden": true
+    },
+    {
+      "flagKey": "nohime_witnessed_loss",
+      "defaultValue": 0,
+      "label": "Nohime Witnessed Defeat",
+      "description": "Set to 1 when Nohime rides beside Nobunaga during a Ch3 retreat (S07B_LOSE). Informs the emotional register of Ch3 chapter-end and is available for future Ch6 scene callbacks.",
+      "writtenByChapters": [3],
+      "flagWrites": true,
+      "hidden": true
+    },
+    {
+      "flagKey": "katsuie_loyalty",
+      "defaultValue": 0,
+      "label": "Katsuie Loyalty",
+      "description": "Tracks Katsuie's accumulated loyalty from Ch2 council and road scenes. Affects Ch2 chapter-end dialogue register. Reserved for future chapters.",
+      "writtenByChapters": [2]
+    }
+  ]
+}

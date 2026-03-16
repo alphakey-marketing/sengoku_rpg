@@ -119,6 +119,8 @@ export const PORTRAIT_COLOURS: Record<string, string> = {
   yoshiaki_desperate:  "bg-purple-950 border-purple-600",
   lord_fujita:         "bg-stone-800 border-stone-500",
   merchant_kyoto:      "bg-amber-900 border-amber-700",
+  dosan_old:           "bg-stone-700 border-stone-500",
+  dosan_approving:     "bg-stone-600 border-amber-600",
 };
 
 /** Maps a portraitKey to the 1-2 character initials shown inside the portrait. */
@@ -130,18 +132,22 @@ export const PORTRAIT_INITIALS: Record<string, string> = {
   monk_fearful:        "Mo", monk_envoy:          "Mo", scout_panicked:      "Sc",
   kenshin_portrait:    "K",  messenger_formal:    "Me",
   nohime_neutral:      "No", yoshiaki_desperate:  "Y",  lord_fujita:         "F",  merchant_kyoto:      "Me",
+  dosan_old:           "D",  dosan_approving:     "D",
 };
 
 /** Maps a flagKey to a human-readable label shown in the FlagBar. */
 export const FLAG_LABELS: Record<string, string> = {
-  ruthlessness:          "⚔ Ruthless",
-  political_power:       "⚖ Political",
-  mitsuhide_loyalty:     "⚔ Mitsuhide",
-  supernatural_affinity: "❆ Supernatural",
-  battle_won:            "⚡ Battle Won",
-  battle_lost:           "☠ Battle Lost",
-  nohime_trust:          "♥ Nohime",
-  kennyo_hate:           "☯ Kennyo",
+  ruthlessness:           "⚔ Ruthless",
+  political_power:        "⚖ Political",
+  mitsuhide_loyalty:      "⚔ Mitsuhide",
+  supernatural_affinity:  "❆ Supernatural",
+  battle_won:             "⚡ Battle Won",
+  battle_lost:            "☠ Battle Lost",
+  nohime_trust:           "♥ Nohime",
+  kennyo_hate:            "☯ Kennyo",
+  // Ch3 witness flags — used by resolveConditionalScene, not shown in FlagBar
+  nohime_witnessed_win:   "👁 Witnessed Victory",
+  nohime_witnessed_loss:  "👁 Witnessed Defeat",
 };
 
 /** Where to navigate after each chapter completes. */
