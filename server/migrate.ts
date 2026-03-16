@@ -152,6 +152,64 @@ const MIGRATIONS: string[] = [
   // first_scene_id is written by seed-story-chapters.ts after inserting scenes
   // but the column may not exist on DBs created before this schema addition.
   `ALTER TABLE story_chapters ADD COLUMN IF NOT EXISTS first_scene_id      INTEGER`,
+
+  // ── STORY GRANT SYSTEM (Part 4/10) ───────────────────────────────────────
+  //
+  // story_grants   : the seeded catalogue (one row per grant definition).
+  // player_story_grants : per-user issued grants (one row per award event).
+  //
+  // Both tables are created with IF NOT EXISTS so this is safe on any DB
+  // regardless of whether these tables already exist.
+  //
+  // Index naming convention: <table_short>_<column(s)>_idx
+  // Matches the Drizzle index() calls in schema.ts so the names are consistent
+  // whether the table was created by Drizzle push or by this migration runner.
+
+  `
+  CREATE TABLE IF NOT EXISTS story_grants (
+    id              INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    grant_key       TEXT      NOT NULL UNIQUE,
+    display_name    TEXT      NOT NULL,
+    flavour_text    TEXT,
+    chapter_trigger INTEGER   NOT NULL,
+    flag_condition  TEXT,
+    grant_category  TEXT      NOT NULL,
+    grant_payload   JSONB     NOT NULL,
+    upgrade_of      TEXT,
+    created_at      TIMESTAMP DEFAULT NOW()
+  )`,
+
+  `CREATE INDEX IF NOT EXISTS story_grants_chapter_trigger_idx
+     ON story_grants (chapter_trigger)`,
+
+  `CREATE INDEX IF NOT EXISTS story_grants_grant_key_idx
+     ON story_grants (grant_key)`,
+
+  `
+  CREATE TABLE IF NOT EXISTS player_story_grants (
+    id                INTEGER   GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    user_id           VARCHAR   NOT NULL,
+    grant_key         TEXT      NOT NULL,
+    game_row_id       INTEGER,
+    grant_category    TEXT      NOT NULL,
+    is_superseded     BOOLEAN   NOT NULL DEFAULT FALSE,
+    awarded_at_chapter INTEGER  NOT NULL,
+    flag_snapshot     JSONB     NOT NULL DEFAULT '{}'::jsonb,
+    awarded_at        TIMESTAMP NOT NULL DEFAULT NOW()
+  )`,
+
+  `CREATE INDEX IF NOT EXISTS player_story_grants_user_id_idx
+     ON player_story_grants (user_id)`,
+
+  `CREATE INDEX IF NOT EXISTS player_story_grants_user_grant_idx
+     ON player_story_grants (user_id, grant_key)`,
+
+  // ── STORY GRANT SYSTEM: equipment.passive_description column ─────────────
+  //
+  // Added to the equipment table in schema.ts (Part 1/10) to store the
+  // human-readable passive/special effect description for story-granted items.
+  // Nullable TEXT; existing equipment rows default to NULL (no passive).
+  `ALTER TABLE equipment ADD COLUMN IF NOT EXISTS passive_description TEXT`,
 ];
 
 export async function runMigrations(): Promise<void> {
