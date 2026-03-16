@@ -74,6 +74,232 @@ export interface ConditionalVariant {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Story Grant System
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// A StoryGrant is a catalogue entry that describes a reward that can be issued
+// to a player when specific narrative flags are satisfied at chapter completion.
+//
+// Flow:
+//   1. Each grant record lives in `story_grants` (seeded, not per-user).
+//   2. When a chapter completes, the server evaluates all grants whose
+//      `chapterTrigger` matches the completed chapter.
+//   3. For each qualifying grant, `evalUnlockCondition` is run against the
+//      player's live flag map.
+//   4. Passing grants are written to `player_story_grants` and the appropriate
+//      game table row is inserted (companion / equipment / pet / horse).
+//
+// Grant categories map 1-to-1 onto existing game tables:
+//   "companion"  → companions table
+//   "equipment"  → equipment table
+//   "pet"        → pets table
+//   "horse"      → horses table
+//
+// `grantPayload` is a JSONB column whose shape is determined by `grantCategory`.
+// See the StoryGrantPayload discriminated union below for exact shapes.
+//
+// `upgradeOf` is an optional grantKey: if set, this grant supersedes (upgrades)
+// a previously issued grant with that key.  The UI should show the upgraded
+// version and mark the base version as superseded.
+
+// ── Discriminated payload shapes ────────────────────────────────────────────
+
+export interface CompanionGrantPayload {
+  category: "companion";
+  name: string;
+  type: string;
+  rarity: string;
+  hp: number;
+  maxHp: number;
+  attack: number;
+  defense: number;
+  speed: number;
+  dex: number;
+  agi: number;
+  /** Skill key string — resolved to human-readable description on the client */
+  skill: string;
+  isSpecial: boolean;
+  /** If set, the companion is only added to the party when this flag condition passes */
+  flagUnlockCondition: string | null;
+}
+
+export interface EquipmentGrantPayload {
+  category: "equipment";
+  name: string;
+  type: string;
+  rarity: string;
+  weaponType: string | null;
+  attackBonus: number;
+  defenseBonus: number;
+  speedBonus: number;
+  hpBonus: number;
+  mdefBonus: number;
+  fleeBonus: number;
+  matkBonus: number;
+  critChance: number;
+  critDamage: number;
+  cardSlots: number;
+  /** Human-readable description of the passive/special effect */
+  passiveDescription: string | null;
+  /** Flag condition that must pass for the item to appear as usable in the UI */
+  storyFlagRequirement: string | null;
+}
+
+export interface PetGrantPayload {
+  category: "pet";
+  name: string;
+  type: string;
+  rarity: string;
+  hp: number;
+  maxHp: number;
+  attack: number;
+  defense: number;
+  speed: number;
+  /** Skill key string */
+  skill: string;
+}
+
+export interface HorseGrantPayload {
+  category: "horse";
+  name: string;
+  rarity: string;
+  speedBonus: number;
+  attackBonus: number;
+  defenseBonus: number;
+  /** Skill key string */
+  skill: string;
+}
+
+export type StoryGrantPayload =
+  | CompanionGrantPayload
+  | EquipmentGrantPayload
+  | PetGrantPayload
+  | HorseGrantPayload;
+
+// ── story_grants: the catalogue (seeded, not per-user) ───────────────────────
+
+export const storyGrants = pgTable("story_grants", {
+  id: serial("id").primaryKey(),
+
+  /** Stable, unique identifier referenced by seed data and grant logic */
+  grantKey: text("grant_key").notNull().unique(),
+
+  /** Human-readable label shown in the chapter-end reward screen */
+  displayName: text("display_name").notNull(),
+
+  /** Short flavour line shown beneath the item name in the reward popup */
+  flavourText: text("flavour_text"),
+
+  /** Which chapter completion triggers evaluation of this grant */
+  chapterTrigger: integer("chapter_trigger").notNull(),
+
+  /**
+   * Flag condition string (parsed by evalUnlockCondition).
+   * If null the grant is unconditional — awarded to every player who
+   * reaches the chapter-end scene.
+   *
+   * Compound conditions (AND of two flags) are expressed as two separate
+   * grants that both create the same game row, with the second having
+   * `upgradeOf` set to the first.  This keeps the condition grammar simple
+   * and the evaluation logic stateless.
+   *
+   * Examples:
+   *   "nohime_trust>=3"
+   *   "mitsuhide_loyalty>=2"
+   *   "ruthlessness>=4"
+   */
+  flagCondition: text("flag_condition"),
+
+  /**
+   * One of: "companion" | "equipment" | "pet" | "horse"
+   * Determines which game table receives the row on grant.
+   */
+  grantCategory: text("grant_category").notNull(),
+
+  /**
+   * JSONB payload whose shape is typed by StoryGrantPayload.
+   * Validated at seed-time; treated as opaque at runtime.
+   */
+  grantPayload: jsonb("grant_payload").notNull().$type<StoryGrantPayload>(),
+
+  /**
+   * Optional: grantKey of the base grant this one supersedes.
+   * Used to implement the Nohime / Mitsuhide "tier upgrade" pattern.
+   * When this grant is awarded, the player_story_grants row for `upgradeOf`
+   * is marked isSuperseded = true.
+   */
+  upgradeOf: text("upgrade_of"),
+
+  createdAt: timestamp("created_at").defaultNow(),
+}, (t) => ([
+  index("story_grants_chapter_trigger_idx").on(t.chapterTrigger),
+  index("story_grants_grant_key_idx").on(t.grantKey),
+]));
+
+export const insertStoryGrantSchema = createInsertSchema(storyGrants).omit({ id: true });
+export type StoryGrant       = typeof storyGrants.$inferSelect;
+export type InsertStoryGrant = typeof storyGrants.$inferInsert;
+
+// ── player_story_grants: per-user issued grants ──────────────────────────────
+
+export const playerStoryGrants = pgTable("player_story_grants", {
+  id: serial("id").primaryKey(),
+
+  userId: varchar("user_id").notNull(),
+
+  /** FK to story_grants.grant_key (not id) so it survives re-seeds */
+  grantKey: text("grant_key").notNull(),
+
+  /**
+   * FK to the actual game table row that was created.
+   * Null only for cosmetic-only grants that write no game row.
+   */
+  gameRowId: integer("game_row_id"),
+
+  /**
+   * The category of the game row ("companion" | "equipment" | "pet" | "horse").
+   * Redundant with story_grants.grant_category but stored here so the client
+   * can navigate to the right UI panel without a JOIN.
+   */
+  grantCategory: text("grant_category").notNull(),
+
+  /**
+   * True when a newer `upgradeOf` grant has been awarded that supersedes
+   * this one.  The base grant row is kept so the chronicle / history UI
+   * can show the progression.
+   */
+  isSuperseded: boolean("is_superseded").notNull().default(false),
+
+  /** The chapter during which this grant was awarded */
+  awardedAtChapter: integer("awarded_at_chapter").notNull(),
+
+  /** Snapshot of the flag values at the moment of award (for debugging/chronicle) */
+  flagSnapshot: jsonb("flag_snapshot").notNull().default(sql`'{}'::jsonb`),
+
+  awardedAt: timestamp("awarded_at").notNull().defaultNow(),
+}, (t) => ([
+  index("player_story_grants_user_id_idx").on(t.userId),
+  index("player_story_grants_user_grant_idx").on(t.userId, t.grantKey),
+]));
+
+export const insertPlayerStoryGrantSchema = createInsertSchema(playerStoryGrants).omit({ id: true });
+export type PlayerStoryGrant       = typeof playerStoryGrants.$inferSelect;
+export type InsertPlayerStoryGrant = typeof playerStoryGrants.$inferInsert;
+
+// ── Drizzle relations for grant tables ──────────────────────────────────────
+
+export const storyGrantsRelations = relations(storyGrants, ({ many }) => ({
+  playerGrants: many(playerStoryGrants),
+}));
+
+export const playerStoryGrantsRelations = relations(playerStoryGrants, ({ one }) => ({
+  grant: one(storyGrants, {
+    fields: [playerStoryGrants.grantKey],
+    references: [storyGrants.grantKey],
+  }),
+}));
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Core game tables
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -182,6 +408,8 @@ export const equipment = pgTable("equipment", {
   equippedToType: text("equipped_to_type"),
   cardSlots: integer("card_slots").notNull().default(0),
   storyFlagRequirement: text("story_flag_requirement"),
+  // ── Passive description for story-granted equipment ───────────────────
+  passiveDescription: text("passive_description"),
   createdAt: timestamp("created_at").defaultNow(),
 }, (t) => ([
   index("equipment_user_id_idx").on(t.userId),
