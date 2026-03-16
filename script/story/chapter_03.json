@@ -1,7 +1,7 @@
 {
   "chapter": {
     "title": "The Mino Gambit",
-    "subtitle": "1554 — Saito Dosan looked at you and saw what he made. You saw what you would become.",
+    "subtitle": "1554 \u2014 Saito Dosan looked at you and saw what he made. You saw what you would become.",
     "chapterOrder": 3,
     "isLocked": false
   },
@@ -19,14 +19,14 @@
           "speakerName": "Narrator",
           "speakerSide": "none",
           "portraitKey": null,
-          "text": "Autumn, 1554. The road to Mino. Nobunaga married Dosan's daughter — Nohime — two years ago. The marriage was political. The relationship became something more complicated, which neither of them discusses.",
+          "text": "Autumn, 1554. The road to Mino. Nobunaga married Dosan's daughter \u2014 Nohime \u2014 two years ago. The marriage was political. The relationship became something more complicated, which neither of them discusses.",
           "lineOrder": 1
         },
         {
           "speakerName": "Narrator",
           "speakerSide": "none",
           "portraitKey": null,
-          "text": "Dosan himself is dying. Not of illness — of his own son. Yoshitatsu has turned against his father and the Saito clan is splitting down the middle. Dosan has asked Nobunaga to come. Not as an ally. As the man who married his daughter.",
+          "text": "Dosan himself is dying. Not of illness \u2014 of his own son. Yoshitatsu has turned against his father and the Saito clan is splitting down the middle. Dosan has asked Nobunaga to come. Not as an ally. As the man who married his daughter.",
           "lineOrder": 2
         },
         {
@@ -80,7 +80,7 @@
           "speakerName": "Narrator",
           "speakerSide": "none",
           "portraitKey": null,
-          "text": "Saito Dosan is not what Nobunaga expected. He is a small man now — thinner than his portraits, sitting in a garden, watching the autumn leaves with the particular patience of someone who has stopped being in a hurry.",
+          "text": "Saito Dosan is not what Nobunaga expected. He is a small man now \u2014 thinner than his portraits, sitting in a garden, watching the autumn leaves with the particular patience of someone who has stopped being in a hurry.",
           "lineOrder": 1
         },
         {
@@ -268,7 +268,7 @@
           "speakerName": "Dosan",
           "speakerSide": "left",
           "portraitKey": "dosan_approving",
-          "text": "That is why I gave it to you. I didn't give it to Yoshitatsu. He wanted the thing — the power, the land, the name. You — you want what the thing could become. That's different.",
+          "text": "That is why I gave it to you. I didn't give it to Yoshitatsu. He wanted the thing \u2014 the power, the land, the name. You \u2014 you want what the thing could become. That's different.",
           "lineOrder": 2
         },
         {
@@ -282,7 +282,7 @@
           "speakerName": "Dosan",
           "speakerSide": "left",
           "portraitKey": "dosan_approving",
-          "text": "I gave it to both of you. She knows what it's worth. You know what it could be worth. Together—",
+          "text": "I gave it to both of you. She knows what it's worth. You know what it could be worth. Together\u2014",
           "lineOrder": 4
         },
         {
@@ -465,7 +465,7 @@
       ],
       "choices": [
         {
-          "choiceText": "Ride directly at the blocking force. Not to engage — to pass through at a walk. Force them to make the first move or stand aside.",
+          "choiceText": "Ride directly at the blocking force. Not to engage \u2014 to pass through at a walk. Force them to make the first move or stand aside.",
           "nextSceneRef": "S06A",
           "flagKey": "ruthlessness",
           "flagValue": 2,
@@ -483,7 +483,7 @@
           "choiceOrder": 2
         },
         {
-          "choiceText": "Send Mitsuhide ahead to negotiate passage formally. Yoshitatsu gets his incident in writing — which becomes evidence later.",
+          "choiceText": "Send Mitsuhide ahead to negotiate passage formally. Yoshitatsu gets his incident in writing \u2014 which becomes evidence later.",
           "nextSceneRef": "S06C",
           "flagKey": "mitsuhide_loyalty",
           "flagValue": 1,
@@ -524,7 +524,7 @@
       "backgroundKey": "mountain_pass_hidden",
       "bgmKey": "bgm_journey",
       "sceneOrder": 13,
-      "nextSceneRef": "S08",
+      "nextSceneRef": "S08_WIN",
       "isBattleGate": false,
       "isChapterEnd": false,
       "dialogueLines": [
@@ -557,7 +557,7 @@
       "backgroundKey": "mino_border_negotiation",
       "bgmKey": "bgm_intrigue",
       "sceneOrder": 14,
-      "nextSceneRef": "S08",
+      "nextSceneRef": "S08_WIN",
       "isBattleGate": false,
       "isChapterEnd": false,
       "dialogueLines": [
@@ -619,15 +619,21 @@
       "backgroundKey": "mino_border_pass_clear",
       "bgmKey": "bgm_victory_somber",
       "sceneOrder": 16,
-      "nextSceneRef": "S08",
+      "nextSceneRef": "S08_WIN",
       "isBattleGate": false,
       "isChapterEnd": false,
+      "flagWrites": [
+        {
+          "flagKey": "nohime_witnessed_win",
+          "flagValue": 1
+        }
+      ],
       "dialogueLines": [
         {
           "speakerName": "Narrator",
           "speakerSide": "none",
           "portraitKey": null,
-          "text": "The captain is disarmed. His men disperse. The road is open. Nobunaga does not take prisoners and does not pursue — he lets the survivors carry the story back to Yoshitatsu themselves.",
+          "text": "The captain is disarmed. His men disperse. The road is open. Nobunaga does not take prisoners and does not pursue \u2014 he lets the survivors carry the story back to Yoshitatsu themselves.",
           "lineOrder": 1
         },
         {
@@ -643,6 +649,13 @@
           "portraitKey": "nobunaga_cold",
           "text": "Witnesses are more useful than prisoners. Yoshitatsu will hear the exact version I want him to hear.",
           "lineOrder": 3
+        },
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "Nohime has not spoken. She watched from the road \u2014 the whole of it, without looking away. She had known he would ride at them. She had known it from the moment he chose to.",
+          "lineOrder": 4
         }
       ],
       "choices": []
@@ -652,9 +665,15 @@
       "backgroundKey": "mino_border_retreat",
       "bgmKey": "bgm_defeat",
       "sceneOrder": 17,
-      "nextSceneRef": "S08",
+      "nextSceneRef": "S08_LOSE",
       "isBattleGate": false,
       "isChapterEnd": false,
+      "flagWrites": [
+        {
+          "flagKey": "nohime_witnessed_loss",
+          "flagValue": 1
+        }
+      ],
       "dialogueLines": [
         {
           "speakerName": "Narrator",
@@ -676,12 +695,19 @@
           "portraitKey": "nobunaga_cold",
           "text": "Yoshitatsu gets this story. Fine. We get Mino. That story is better.",
           "lineOrder": 3
+        },
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "Nohime rides beside him on the mountain pass. She does not look away from the road ahead. She does not offer comfort. She does not speak. She rides beside him in silence, which is how she says she will not speak of this.",
+          "lineOrder": 4
         }
       ],
       "choices": []
     },
     {
-      "sceneRef": "S08",
+      "sceneRef": "S08_WIN",
       "backgroundKey": "gifu_castle_tower_night",
       "bgmKey": "bgm_tension_resolve",
       "sceneOrder": 18,
@@ -704,10 +730,71 @@
           "lineOrder": 2
         },
         {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "A beat. She is comparing speeds \u2014 Yoshitatsu burning through his inheritance, Nobunaga opening a pass at a walk with two hundred men and no sword drawn. Two kinds of fast.",
+          "lineOrder": 3
+        },
+        {
           "speakerName": "Nobunaga",
           "speakerSide": "right",
           "portraitKey": "nobunaga_cold",
           "text": "Good. Fast men make fast mistakes. We wait until he makes the kind we can use.",
+          "lineOrder": 4
+        },
+        {
+          "speakerName": "Nohime",
+          "speakerSide": "left",
+          "portraitKey": "nohime_neutral",
+          "text": "And if he doesn't make them fast enough?",
+          "lineOrder": 5
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_cold",
+          "text": "Then we help him make them.",
+          "lineOrder": 6
+        },
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "Somewhere in Mino, a new lord burns what his father built. The old man's voice is still in the autumn garden, steady and dry: 'I wish I had ten more years to watch.' He would have liked what he saw.",
+          "lineOrder": 7
+        }
+      ],
+      "choices": []
+    },
+    {
+      "sceneRef": "S08_LOSE",
+      "backgroundKey": "gifu_castle_tower_night",
+      "bgmKey": "bgm_defeat",
+      "sceneOrder": 19,
+      "nextSceneRef": null,
+      "isBattleGate": false,
+      "isChapterEnd": true,
+      "dialogueLines": [
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "Gifu, two weeks later. Saito Dosan is dead. Yoshitatsu has claimed Mino and begun executing the old guard.",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Nohime",
+          "speakerSide": "left",
+          "portraitKey": "nohime_neutral",
+          "text": "He's moving faster than expected.",
+          "lineOrder": 2
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_cold",
+          "text": "Good. Fast men make fast mistakes.",
           "lineOrder": 3
         },
         {
@@ -721,14 +808,14 @@
           "speakerName": "Nobunaga",
           "speakerSide": "right",
           "portraitKey": "nobunaga_cold",
-          "text": "Then we help him make them.",
+          "text": "Then I'll be faster. I know the pass now. I know how it feels to lose it. That is not wasted.",
           "lineOrder": 5
         },
         {
           "speakerName": "Narrator",
           "speakerSide": "none",
           "portraitKey": null,
-          "text": "Somewhere in Mino, a new lord burns what his father built. The old man's voice is still in the autumn garden, steady and dry: 'I wish I had ten more years to watch.' He would have liked what he saw.",
+          "text": "Somewhere in Mino, a new lord burns what his father built. The old man's voice is still in the autumn garden, steady and dry: 'I wish I had ten more years to watch.' He will still get what he asked for. It will just take longer now.",
           "lineOrder": 6
         }
       ],

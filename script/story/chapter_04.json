@@ -1,7 +1,7 @@
 {
   "chapter": {
     "title": "The Monk's Fire",
-    "subtitle": "1554 — Religion is politics. Politics is war. War is religion.",
+    "subtitle": "1554 \u2014 Religion is politics. Politics is war. War is religion.",
     "chapterOrder": 4,
     "isLocked": false
   },
@@ -19,7 +19,7 @@
           "speakerName": "Narrator",
           "speakerSide": "none",
           "portraitKey": null,
-          "text": "Spring, 1554. The Ikko-ikki have been raiding Nobunaga's supply lines for three weeks. Not destroying them — testing them. Probing. The way a man checks ice before he crosses it.",
+          "text": "Spring, 1554. The Ikko-ikki have been raiding Nobunaga's supply lines for three weeks. Not destroying them \u2014 testing them. Probing. The way a man checks ice before he crosses it.",
           "lineOrder": 1
         },
         {
@@ -33,7 +33,7 @@
           "speakerName": "Mitsuhide",
           "speakerSide": "left",
           "portraitKey": "mitsuhide_calm",
-          "text": "Eleven raids in three weeks. No direct engagement. They hit, they retreat into the marshlands, and they vanish. We cannot pursue them into the Nagashima delta — the terrain swallows armies.",
+          "text": "Eleven raids in three weeks. No direct engagement. They hit, they retreat into the marshlands, and they vanish. We cannot pursue them into the Nagashima delta \u2014 the terrain swallows armies.",
           "lineOrder": 3
         },
         {
@@ -61,7 +61,7 @@
           "speakerName": "Narrator",
           "speakerSide": "none",
           "portraitKey": null,
-          "text": "As if on cue, a monk arrives at the castle gate. Kennyo's seal. A request — polite, formal, precise — for an audience.",
+          "text": "As if on cue, a monk arrives at the castle gate. Kennyo's seal. A request \u2014 polite, formal, precise \u2014 for an audience.",
           "lineOrder": 7
         },
         {
@@ -94,7 +94,7 @@
           "speakerName": "Narrator",
           "speakerSide": "none",
           "portraitKey": null,
-          "text": "The monk is young. Educated. He stands very straight and his hands do not shake, which means Kennyo chose him specifically — a man who would not flinch. Everything about this meeting is being reported back.",
+          "text": "The monk is young. Educated. He stands very straight and his hands do not shake, which means Kennyo chose him specifically \u2014 a man who would not flinch. Everything about this meeting is being reported back.",
           "lineOrder": 1
         }
       ],
@@ -109,7 +109,7 @@
           "choiceOrder": 1
         },
         {
-          "choiceText": "Receive him in the stables. In front of the grooms. Send him back with a gelding — let Kennyo read the metaphor.",
+          "choiceText": "Receive him in the stables. In front of the grooms. Send him back with a gelding \u2014 let Kennyo read the metaphor.",
           "nextSceneRef": "S02B",
           "flagKey": "ruthlessness",
           "flagValue": 1,
@@ -169,7 +169,7 @@
           "speakerName": "Narrator",
           "speakerSide": "none",
           "portraitKey": null,
-          "text": "The monk leaves. The raids stop for eleven days. Then they resume, slightly differently — which means Kennyo is now genuinely thinking, not just posturing. That is more alarming, not less.",
+          "text": "The monk leaves. The raids stop for eleven days. Then they resume, slightly differently \u2014 which means Kennyo is now genuinely thinking, not just posturing. That is more alarming, not less.",
           "lineOrder": 5
         }
       ],
@@ -303,7 +303,7 @@
           "speakerName": "Mitsuhide",
           "speakerSide": "left",
           "portraitKey": "mitsuhide_quiet",
-          "text": "My lord. The monastery school—",
+          "text": "My lord. The monastery school\u2014",
           "lineOrder": 4
         },
         {
@@ -342,7 +342,7 @@
       ],
       "choices": [
         {
-          "choiceText": "Shelter the survivors in Gifu. Rebuild the village — visibly. Let the delta farmers see what Oda protection looks like.",
+          "choiceText": "Shelter the survivors in Gifu. Rebuild the village \u2014 visibly. Let the delta farmers see what Oda protection looks like.",
           "nextSceneRef": "S04A",
           "flagKey": "political_power",
           "flagValue": 1,
@@ -437,7 +437,7 @@
           "speakerName": "Mitsuhide",
           "speakerSide": "left",
           "portraitKey": "mitsuhide_calm",
-          "text": "It works tactically. But the farmers who were moved — some of them will blame you rather than Kennyo.",
+          "text": "It works tactically. But the farmers who were moved \u2014 some of them will blame you rather than Kennyo.",
           "lineOrder": 2
         },
         {
@@ -463,7 +463,7 @@
           "speakerName": "Narrator",
           "speakerSide": "none",
           "portraitKey": null,
-          "text": "The outpost burns before dawn. Twenty monks evacuate in time. The supplies — three months of them — do not. You send back a single message: 'Now we are even.'",
+          "text": "The outpost burns before dawn. Twenty monks evacuate in time. The supplies \u2014 three months of them \u2014 do not. You send back a single message: 'Now we are even.'",
           "lineOrder": 1
         },
         {
@@ -524,7 +524,7 @@
           "speakerName": "Mitsuhide",
           "speakerSide": "left",
           "portraitKey": "mitsuhide_quiet",
-          "text": "The Ikko-ikki have three staging points in the delta. If we take the northern crossing first—",
+          "text": "The Ikko-ikki have three staging points in the delta. If we take the northern crossing first\u2014",
           "lineOrder": 3
         },
         {
@@ -557,7 +557,7 @@
           "speakerName": "Narrator",
           "speakerSide": "none",
           "portraitKey": null,
-          "text": "Mitsuhide is at the edge of something. Not breaking — he does not break visibly. But something is under pressure that was not under pressure before.",
+          "text": "Mitsuhide is at the edge of something. Not breaking \u2014 he does not break visibly. But something is under pressure that was not under pressure before.",
           "lineOrder": 1
         }
       ],
@@ -684,7 +684,7 @@
           "speakerName": "Narrator",
           "speakerSide": "none",
           "portraitKey": null,
-          "text": "Mitsuhide sits. He talks for forty minutes without stopping — about a thin monk who smelled of ink, about mornings in a cold classroom, about a man who taught him that precision was the closest thing to virtue he had ever encountered.",
+          "text": "Mitsuhide sits. He talks for forty minutes without stopping \u2014 about a thin monk who smelled of ink, about mornings in a cold classroom, about a man who taught him that precision was the closest thing to virtue he had ever encountered.",
           "lineOrder": 2
         },
         {
@@ -745,7 +745,7 @@
       "backgroundKey": "nagashima_crossing_aftermath",
       "bgmKey": "bgm_victory_somber",
       "sceneOrder": 17,
-      "nextSceneRef": "S10",
+      "nextSceneRef": "S10_WIN",
       "isBattleGate": false,
       "isChapterEnd": false,
       "dialogueLines": [
@@ -753,8 +753,74 @@
           "speakerName": "Narrator",
           "speakerSide": "none",
           "portraitKey": null,
-          "text": "The crossing falls by midday. The Ikko-ikki retreat into the marshlands — intact, orderly, taking their wounded. They were not broken. But the road is open.",
+          "text": "The crossing falls by midday. The Ikko-ikki retreat into the marshlands \u2014 intact, orderly, taking their wounded. They were not broken. But the road is open.",
           "lineOrder": 1
+        },
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "Mitsuhide surveys the crossing without speaking. Then, quietly, to no one in particular:",
+          "lineOrder": 2
+        },
+        {
+          "speakerName": "Mitsuhide",
+          "speakerSide": "left",
+          "portraitKey": "mitsuhide_calm",
+          "text": "Gyokan would have said the road being open is its own kind of text. Something written in the right medium, for the right reader.",
+          "lineOrder": 3
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_cold",
+          "text": "He taught you well.",
+          "lineOrder": 4
+        },
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "Mitsuhide says nothing further. He goes back to work. The pressure that was in the room before the battle is, for now, somewhere else.",
+          "lineOrder": 5
+        }
+      ],
+      "choices": []
+    },
+    {
+      "sceneRef": "S09_WIN_COLD",
+      "backgroundKey": "nagashima_crossing_aftermath",
+      "bgmKey": "bgm_victory_somber",
+      "sceneOrder": 18,
+      "nextSceneRef": "S10_WIN",
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "flagCondition": {
+        "flagKey": "mitsuhide_loyalty",
+        "operator": "lte",
+        "value": 0
+      },
+      "dialogueLines": [
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "The crossing falls by midday. The Ikko-ikki retreat intact. The road is open.",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "Mitsuhide is already at the next marker on the map before Nobunaga reaches the bank. There is no pause. There is no ceremony. The work continues.",
+          "lineOrder": 2
+        },
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "The silence between them is not the silence of men who have understood each other. It is the silence of men who have stopped trying.",
+          "lineOrder": 3
         }
       ],
       "choices": []
@@ -763,8 +829,8 @@
       "sceneRef": "S09_LOSE",
       "backgroundKey": "nagashima_retreat_night",
       "bgmKey": "bgm_defeat",
-      "sceneOrder": 18,
-      "nextSceneRef": "S10",
+      "sceneOrder": 19,
+      "nextSceneRef": "S10_LOSE",
       "isBattleGate": false,
       "isChapterEnd": false,
       "dialogueLines": [
@@ -772,7 +838,7 @@
           "speakerName": "Narrator",
           "speakerSide": "none",
           "portraitKey": null,
-          "text": "The assault fails. The marshland swallows the advance and spits it back out. You retreat in order — which is itself a skill — but the crossing holds for the monks.",
+          "text": "The assault fails. The marshland swallows the advance and spits it back out. You retreat in order \u2014 which is itself a skill \u2014 but the crossing holds for the monks.",
           "lineOrder": 1
         },
         {
@@ -781,15 +847,67 @@
           "portraitKey": "mitsuhide_grim",
           "text": "Different season. Different approach. The crossing will fall. Just not today.",
           "lineOrder": 2
+        },
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "He says it standing beside Nobunaga at the retreat line. Not to the map. To him. The difference is not small.",
+          "lineOrder": 3
         }
       ],
       "choices": []
     },
     {
-      "sceneRef": "S10",
+      "sceneRef": "S09_LOSE_COLD",
+      "backgroundKey": "nagashima_retreat_night",
+      "bgmKey": "bgm_defeat",
+      "sceneOrder": 20,
+      "nextSceneRef": "S10_LOSE",
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "flagCondition": {
+        "flagKey": "mitsuhide_loyalty",
+        "operator": "lte",
+        "value": 0
+      },
+      "dialogueLines": [
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "The assault fails. You retreat in order. The crossing holds for the monks.",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "Mitsuhide states the tactical position to the assembled captains. His voice is precise. He does not look at Nobunaga while he speaks.",
+          "lineOrder": 2
+        },
+        {
+          "speakerName": "Mitsuhide",
+          "speakerSide": "left",
+          "portraitKey": "mitsuhide_grim",
+          "text": "Different season. Different approach. The crossing will fall.",
+          "lineOrder": 3
+        },
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "He says it to the room. Not to his lord. That is the thing that has changed, and only Nobunaga is close enough to notice.",
+          "lineOrder": 4
+        }
+      ],
+      "choices": []
+    },
+    {
+      "sceneRef": "S10_WIN",
       "backgroundKey": "gifu_castle_tower_night",
       "bgmKey": "bgm_tension_resolve",
-      "sceneOrder": 19,
+      "sceneOrder": 21,
       "nextSceneRef": null,
       "isBattleGate": false,
       "isChapterEnd": true,
@@ -814,6 +932,46 @@
           "portraitKey": null,
           "text": "Somewhere in Osaka, Kennyo folds his own copy of the letter. He does not smile. He begins the long game.",
           "lineOrder": 3
+        }
+      ],
+      "choices": []
+    },
+    {
+      "sceneRef": "S10_LOSE",
+      "backgroundKey": "gifu_castle_tower_night",
+      "bgmKey": "bgm_defeat",
+      "sceneOrder": 22,
+      "nextSceneRef": null,
+      "isBattleGate": false,
+      "isChapterEnd": true,
+      "dialogueLines": [
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "A letter arrives from Kennyo. Formal. Precise. It mentions, in passing, that the Nagashima crossing remains open to Honganji pilgrims. It does not need to say anything else.",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_cold",
+          "text": "He's patient. And now he knows I know it.",
+          "lineOrder": 2
+        },
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "Somewhere in Osaka, Kennyo reads a report from the delta. He permits himself one moment of satisfaction. Then he begins the next stage of the long game, which is now measurably longer than it was this morning.",
+          "lineOrder": 3
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_cold",
+          "text": "The crossing falls next time. I have seen the ground now. That was worth the cost of today.",
+          "lineOrder": 4
         }
       ],
       "choices": []
