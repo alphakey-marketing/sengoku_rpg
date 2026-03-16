@@ -1,9 +1,10 @@
 import { db } from "./db";
-import { playerFlags } from "@shared/schema";
-import { eq } from "drizzle-orm";
+import { playerFlags, playerStoryGrants, horses } from "@shared/schema";
+import { eq, and } from "drizzle-orm";
 import { EnemyStats, TeamStats } from "../client/src/hooks/use-game";
+import { getSkillDescription } from "@shared/skill-descriptions";
 
-// ─── Types ──────────────────────────────────────────────────────────────────────────
+// ── Types ───────────────────────────────────────────────────────────────────────────
 
 export type WeaponType =
   | "dagger"
@@ -63,9 +64,11 @@ export interface CombatUnit {
   // the damage formula no longer reads it (it was always 0 and silently
   // swallowed future endowment mechanics).
   endowmentPoints?: number;
+  /** Story-grant skill key attached to this unit, if any (Part 8/10) */
+  grantSkillKey?: string;
 }
 
-// ─── Weapon helpers ───────────────────────────────────────────────────────────────
+// ── Weapon helpers ────────────────────────────────────────────────────────────────────
 
 export function isMeleeWeapon(type: WeaponType | undefined): boolean {
   if (!type) return true;
@@ -77,7 +80,7 @@ export function isRangedWeapon(type: WeaponType | undefined): boolean {
   return ["bow","gun","instrument","whip"].includes(type);
 }
 
-// ─── Hit / damage formulas ──────────────────────────────────────────────────────────
+// ── Hit / damage formulas ──────────────────────────────────────────────────────────────
 
 export function calculateHitChance(attacker: CombatUnit, defender: CombatUnit): number {
   const hit   = attacker.hit  ?? 0;
@@ -141,7 +144,116 @@ export function calculateDamage(attacker: CombatUnit, defender: CombatUnit, isCr
   return Math.max(1, damage);
 }
 
-// ─── A1: Flag-modified battle stats (continuous, story-driven) ────────────────────
+// ──────────────────────────────────────────────────────────────────────────────────
+// Story-grant skill stat reader  (Part 8/10)
+// ──────────────────────────────────────────────────────────────────────────────────
+//
+// resolveGrantSkills() is called once per combat by the caller (routes.ts)
+// BEFORE runTurnBasedCombat().  It performs two DB reads and returns a
+// GrantSkillContext that is passed through to the turn loop.
+//
+// Why two separate reads instead of one JOIN?
+// ─────────────────────────────────────────────────
+//  • Horse speed: player_story_grants WHERE grant_category = 'horse' is a
+//    single-row read (each player has at most one active horse at a time).
+//    We then look up the horse row to get its speed stat directly — clean
+//    and avoids a three-table join.
+//
+//  • Companion skills: player_story_grants WHERE grant_category = 'companion'
+//    returns at most 2 rows (the max party size for the Ch3–8 arc) and the
+//    skill key is stored in grantKey which maps directly to skill-descriptions.ts.
+//
+// The horse speed bonus is baked into the player unit’s aspd before the turn
+// order sort; all other skills are applied as on_enter / counter effects
+// during the turn loop.
+
+export interface GrantSkillContext {
+  /** Additional aspd to add to the player unit (from horse speed stat) */
+  horseAspdBonus: number;
+  /** Set of active skill keys from non-superseded companion grants */
+  companionSkillKeys: Set<string>;
+  /** Set of active skill keys from non-superseded pet grants */
+  petSkillKeys: Set<string>;
+  /** Log lines generated during skill resolution (shown in pre-combat narration) */
+  preLog: string[];
+}
+
+/**
+ * Reads story-grant skill context from the DB for a given user.
+ *
+ * Designed to be called once per combat session, not per-turn, so the cost
+ * is two indexed reads (not in the hot path).
+ *
+ * Returns sensible zero-value defaults if the player has no active grants,
+ * so callers never need to null-check.
+ */
+export async function resolveGrantSkills(userId: string): Promise<GrantSkillContext> {
+  const ctx: GrantSkillContext = {
+    horseAspdBonus:    0,
+    companionSkillKeys: new Set(),
+    petSkillKeys:       new Set(),
+    preLog:             [],
+  };
+
+  // Read all non-superseded grants for this player in one pass.
+  const grants = await db
+    .select({
+      grantKey:      playerStoryGrants.grantKey,
+      grantCategory: playerStoryGrants.grantCategory,
+      gameRowId:     playerStoryGrants.gameRowId,
+      isSuperseded:  playerStoryGrants.isSuperseded,
+    })
+    .from(playerStoryGrants)
+    .where(
+      and(
+        eq(playerStoryGrants.userId, userId),
+        eq(playerStoryGrants.isSuperseded, false),
+      ),
+    );
+
+  if (grants.length === 0) return ctx;
+
+  // ─ Horse: read speed stat and convert to aspd bonus ───────────────────────────
+  // aspd bonus = floor(horseSpeed / 2)  — a horse with speed 40 contributes
+  // +20 aspd, giving the player a meaningful but not game-breaking initiative edge.
+  const horseGrant = grants.find((g) => g.grantCategory === "horse" && g.gameRowId != null);
+  if (horseGrant?.gameRowId) {
+    const [horseRow] = await db
+      .select({ speed: horses.speed })
+      .from(horses)
+      .where(eq(horses.id, horseGrant.gameRowId))
+      .limit(1);
+    if (horseRow?.speed) {
+      ctx.horseAspdBonus = Math.floor(horseRow.speed / 2);
+      const skillDesc = getSkillDescription(horseGrant.grantKey);
+      if (ctx.horseAspdBonus > 0) {
+        ctx.preLog.push(
+          `[${skillDesc?.name ?? horseGrant.grantKey}] Your mount's speed adds +${ctx.horseAspdBonus} initiative.`,
+        );
+      }
+    }
+  }
+
+  // ─ Companion skills ──────────────────────────────────────────────────────────────
+  for (const g of grants.filter((g) => g.grantCategory === "companion")) {
+    const skillDesc = getSkillDescription(g.grantKey);
+    if (!skillDesc) continue; // key not yet registered — skip silently
+    ctx.companionSkillKeys.add(g.grantKey);
+    ctx.preLog.push(`[${skillDesc.name}] ${skillDesc.description}`);
+  }
+
+  // ─ Pet skills ──────────────────────────────────────────────────────────────────────
+  for (const g of grants.filter((g) => g.grantCategory === "pet")) {
+    const skillDesc = getSkillDescription(g.grantKey);
+    if (!skillDesc) continue;
+    ctx.petSkillKeys.add(g.grantKey);
+    ctx.preLog.push(`[${skillDesc.name}] ${skillDesc.description}`);
+  }
+
+  return ctx;
+}
+
+// ── A1: Flag-modified battle stats (continuous, story-driven) ────────────────────
 //
 // Each story flag applies a soft, incremental bonus that scales directly with
 // the raw flag value earned through Chapter choices — no hard thresholds.
@@ -202,13 +314,246 @@ export async function applyFlagModifiers(
   return modifierLog;
 }
 
-// ─── Turn-based combat resolver ───────────────────────────────────────────────────────
+// ──────────────────────────────────────────────────────────────────────────────────
+// Story-grant skill effects  (Part 8/10)
+// ──────────────────────────────────────────────────────────────────────────────────
+//
+// applyGrantSkillsOnEnter  — called once at the top of combat before Turn 1
+// applyGrantSkillsOnHit    — called after every successful hit by a player unit
+// applyGrantSkillsOnLowHp  — called after any hit that drops the player below 30%
+// applyGrantSkillsCounter  — called after any hit received by the player
+// applyGrantDebuffAuras    — called once at the top of combat (same timing as on_enter)
+//
+// Each function is pure: it mutates the passed units/enemies in place and
+// returns an array of log lines.  No DB I/O inside these functions — all
+// data was loaded once by resolveGrantSkills() before combat started.
 
-export function runTurnBasedCombat(playerTeam: TeamStats, enemies: EnemyStats[]) {
+/** on_enter: fired once at the start of combat before the first turn. */
+export function applyGrantSkillsOnEnter(
+  units:   CombatUnit[],
+  enemies: CombatUnit[],
+  ctx:     GrantSkillContext,
+  logs:    string[],
+): void {
+  const player = units.find((u) => u.isPlayer && u.id === "player");
+  if (!player) return;
+
+  // veteran_charge — player acts first regardless of aspd comparison
+  // Implemented by forcing a massive one-turn aspd boost that is zeroed
+  // after the opening sort.  We tag the unit so the turn loop knows to
+  // clear it after sort.
+  if (ctx.companionSkillKeys.has("veteran_charge")) {
+    (player as any)._veteranChargeActive = true;
+    player.aspd = (player.aspd ?? 0) + 9999;
+    logs.push(`[Veteran Charge] Your warhorse surges forward — you seize the initiative.`);
+  }
+
+  // the_work_continues — restore 5% max HP at combat start
+  if (ctx.companionSkillKeys.has("the_work_continues") || ctx.petSkillKeys.has("the_work_continues")) {
+    const heal = Math.floor(player.maxHp * 0.05);
+    player.hp  = Math.min(player.maxHp, player.hp + heal);
+    logs.push(`[The Work Continues] Dawn light steadies your resolve. Restored ${heal} HP.`);
+  }
+
+  // false_position (Nohime Intelligence) — taunt: redirect one incoming hit
+  // Implemented as a one-shot status effect on the companion unit.
+  if (ctx.companionSkillKeys.has("false_position")) {
+    const nohime = units.find((u) => u.grantSkillKey === "false_position");
+    if (nohime) {
+      nohime.statusEffects.push({ type: "taunt_one_hit", duration: 1 });
+      logs.push(`[False Position] Nohime steps forward to draw the enemy's eye.`);
+    }
+  }
+
+  // omen_sense — 20% chance to negate enemy first-strike
+  if (ctx.petSkillKeys.has("omen_sense") && Math.random() < 0.20) {
+    // Give all enemies a "stunned" status for the first attack only.
+    for (const e of enemies) {
+      e.statusEffects.push({ type: "Stun", duration: 1 });
+    }
+    logs.push(`[Omen Sense] Your fox spirit cries out — the ambush is foiled.`);
+  }
+}
+
+/** debuff_aura: applied once at combat start to enemy units. */
+export function applyGrantDebuffAuras(
+  enemies: CombatUnit[],
+  ctx:     GrantSkillContext,
+  logs:    string[],
+): void {
+  // court_presence — −6% enemy attack for 3 turns
+  // Implemented as a status effect the turn loop checks before attack calc.
+  if (ctx.petSkillKeys.has("court_presence")) {
+    for (const e of enemies) {
+      e.statusEffects.push({ type: "morale_break", duration: 3, value: 0.06 });
+    }
+    logs.push(`[Court Presence] The diplomatic crane unsettles enemy ranks — their attack falters.`);
+  }
+}
+
+/**
+ * on_hit: called after every successful hit landed by a player-side unit.
+ *
+ * @param attacker   The unit that just landed a hit
+ * @param target     The unit that was hit
+ * @param baseDamage The damage already applied
+ * @param prevMissed Whether the previous action by this unit was a miss
+ */
+export function applyGrantSkillsOnHit(
+  attacker:    CombatUnit,
+  target:      CombatUnit,
+  baseDamage:  number,
+  prevMissed:  boolean,
+  ctx:         GrantSkillContext,
+  logs:        string[],
+): number {
+  let extraDamage = 0;
+
+  // measured_strike (Mitsuhide) — +12% damage on the turn after a miss
+  if (
+    attacker.isPlayer &&
+    prevMissed &&
+    ctx.companionSkillKeys.has("measured_strike")
+  ) {
+    extraDamage = Math.floor(baseDamage * 0.12);
+    target.hp  -= extraDamage;
+    logs.push(`[Measured Strike] Mitsuhide finds the gap — +${extraDamage} bonus damage.`);
+  }
+
+  return extraDamage;
+}
+
+/**
+ * on_low_hp: called after any hit that leaves the player below 30% max HP.
+ *
+ * @param player     The player CombatUnit
+ * @param incomingDmg The damage that just triggered the low-HP state
+ */
+export function applyGrantSkillsOnLowHp(
+  player:      CombatUnit,
+  incomingDmg: number,
+  ctx:         GrantSkillContext,
+  logs:        string[],
+): void {
+  // last_counsel (Mitsuhide Resolved) — intercept next hit, absorb up to 40 dmg
+  // Implemented as a one-shot absorb status on the player.
+  if (
+    ctx.companionSkillKeys.has("last_counsel") &&
+    !(player as any)._lastCounselUsed
+  ) {
+    const absorb = Math.min(40, incomingDmg);
+    player.hp   += absorb;   // undo part of the damage already applied
+    (player as any)._lastCounselUsed = true;
+    logs.push(`[Last Counsel] Mitsuhide steps in front — absorbs ${absorb} damage.`);
+  }
+}
+
+/**
+ * counter: called after the player receives any hit.
+ *
+ * @param attacker  The enemy unit that just hit the player
+ * @param player    The player CombatUnit
+ * @param damage    The damage already applied to the player
+ */
+export function applyGrantSkillsCounter(
+  attacker: CombatUnit,
+  player:   CombatUnit,
+  damage:   number,
+  ctx:      GrantSkillContext,
+  logs:     string[],
+): number {
+  let mitigation = 0;
+
+  // counter_read (Nohime) — 8% incoming damage reduction while she is in party
+  if (ctx.companionSkillKeys.has("counter_read")) {
+    mitigation = Math.floor(damage * 0.08);
+    player.hp += mitigation;   // partial refund of already-applied damage
+    logs.push(`[Counter Read] Nohime reads the strike — mitigates ${mitigation} damage.`);
+  }
+
+  return mitigation;
+}
+
+/**
+ * passive_aura helper: returns the EXP multiplier from pet skills.
+ * Called after combat resolution to scale the XP reward.
+ *
+ * Returns 1.0 if no relevant pets are active (no bonus).
+ */
+export function getGrantExpMultiplier(ctx: GrantSkillContext): number {
+  let mult = 1.0;
+  // survivors_weight — +8% EXP from all combats
+  if (ctx.petSkillKeys.has("survivors_weight")) mult += 0.08;
+  return mult;
+}
+
+/**
+ * passive_stat helper: returns the additional dodge chance from pet skills.
+ * Called inside calculateHitChance() by the turn loop when the defender
+ * is the player.
+ *
+ * Returns 0.0 if no relevant pets are active.
+ */
+export function getGrantDodgeBonus(
+  unit: CombatUnit,
+  ctx:  GrantSkillContext,
+): number {
+  if (!unit.isPlayer) return 0;
+  let bonus = 0;
+  // nohimes_eye — +5% dex-derived dodge chance
+  if (ctx.petSkillKeys.has("nohimes_eye")) {
+    bonus += Math.floor((unit.dex ?? 1) * 0.05);
+  }
+  return bonus;
+}
+
+// ── Turn-based combat resolver ──────────────────────────────────────────────────────────
+//
+// CHANGES from original (Part 8/10):
+//
+//  1. Accepts optional GrantSkillContext (defaults to zero-value context if
+//     not supplied, so all existing callers continue to work without changes).
+//
+//  2. Horse aspd bonus baked into player unit during build step.
+//
+//  3. veteran_charge aspd inflation cleared after the opening turn sort.
+//
+//  4. applyGrantSkillsOnEnter + applyGrantDebuffAuras called before Turn 1.
+//
+//  5. morale_break status applied to enemy attack before each hit calculation.
+//
+//  6. nohimes_eye dodge bonus applied to enemy hit-chance check.
+//
+//  7. applyGrantSkillsOnHit called after each successful player hit.
+//
+//  8. applyGrantSkillsCounter called after each hit received by the player.
+//
+//  9. applyGrantSkillsOnLowHp called when player HP < 30% after a hit.
+//
+// 10. getGrantExpMultiplier applied to a "expMultiplier" field on the return
+//     value so the calling route can scale XP rewards.
+//
+// All original formulas, the flag-modifier system, and the existing
+// return shape are preserved verbatim.
+
+export function runTurnBasedCombat(
+  playerTeam: TeamStats,
+  enemies: EnemyStats[],
+  grantCtx?: GrantSkillContext,
+) {
+  // Fall back to a zero-value context if caller didn’t supply one — this
+  // keeps every existing call-site working with no code changes.
+  const ctx: GrantSkillContext = grantCtx ?? {
+    horseAspdBonus:    0,
+    companionSkillKeys: new Set(),
+    petSkillKeys:       new Set(),
+    preLog:             [],
+  };
+
   const logs: string[] = [];
   const units: CombatUnit[] = [];
 
-  // ── Build player unit ──────────────────────────────────────────────────────────────────
+  // ── Build player unit ────────────────────────────────────────────────────────────────────────
   const p     = playerTeam.player;
   const pAGI  = Number((p as any).agi  || 1);
   const pDEX  = Number((p as any).dex  || 1);
@@ -222,7 +567,8 @@ export function runTurnBasedCombat(playerTeam: TeamStats, enemies: EnemyStats[])
     maxHp:   Number(p.maxHp)  || 0,
     attack:  Number(p.attack) || 0,
     defense: Number(p.defense) || 0,
-    aspd:    100 + pAGI + Math.floor(pDEX / 4),
+    // Part 8: horse aspd bonus added here
+    aspd:    100 + pAGI + Math.floor(pDEX / 4) + ctx.horseAspdBonus,
     str:     Number((p as any).str  || 1),
     agi:     pAGI,
     vit:     Number((p as any).vit  || 1),
@@ -241,9 +587,6 @@ export function runTurnBasedCombat(playerTeam: TeamStats, enemies: EnemyStats[])
     critChance: Number((p as any).critChance) || 0,
     critDamage: Number((p as any).critDamage) || 0,
     isPlayer: true,
-    // M8 FIX: read sp/maxSp from the team stats object instead of hardcoding
-    // 100. player-stats.ts computes sp = floor(100*(1+0.01*INT)*(1+influenceBonus))
-    // so this now reflects the player's actual INT investment.
     stamina:    Number((p as any).sp    || (p as any).stamina    || 100),
     maxStamina: Number((p as any).maxSp || (p as any).maxStamina || 100),
     statusEffects: [],
@@ -251,7 +594,7 @@ export function runTurnBasedCombat(playerTeam: TeamStats, enemies: EnemyStats[])
     level: pLv,
   } as any);
 
-  // ── Build companion units ──────────────────────────────────────────────────────────────
+  // ── Build companion units ────────────────────────────────────────────────────────────────
   for (let i = 0; i < playerTeam.companions.length; i++) {
     const c    = playerTeam.companions[i];
     const cLv  = Number(c.level)  || 1;
@@ -287,13 +630,16 @@ export function runTurnBasedCombat(playerTeam: TeamStats, enemies: EnemyStats[])
       statusEffects: [],
       isGuarding: false,
       level: cLv,
+      // Part 8: tag companion with its grant skill key so on_enter can locate it
+      grantSkillKey: (c as any).grantSkillKey,
     } as any);
   }
 
-  // ── Build enemy units ────────────────────────────────────────────────────────────────
+  // ── Build enemy units ────────────────────────────────────────────────────────────────────
+  const enemyUnits: CombatUnit[] = [];
   for (let i = 0; i < enemies.length; i++) {
     const e = enemies[i];
-    units.push({
+    enemyUnits.push({
       id: `enemy-${i}`,
       name:    e.name,
       hp:      Number(e.hp)      || 0,
@@ -323,15 +669,40 @@ export function runTurnBasedCombat(playerTeam: TeamStats, enemies: EnemyStats[])
     } as any);
   }
 
-  // ── Turn loop ────────────────────────────────────────────────────────────────────────
+  units.push(...enemyUnits);
+
+  // ── Pre-combat: on_enter + debuff_aura effects ──────────────────────────────────────────
+  applyGrantSkillsOnEnter(units, enemyUnits, ctx, logs);
+  applyGrantDebuffAuras(enemyUnits, ctx, logs);
+
+  // seized_ground: +8 defense to player while any horse grant is active
+  if (ctx.companionSkillKeys.has("seized_ground") || ctx.horseAspdBonus > 0) {
+    const player = units.find((u) => u.id === "player");
+    if (player) {
+      player.defense  += 8;
+      player.hardDEF  = (player.hardDEF  ?? 0) + 8;
+      logs.push(`[Seized Ground] Your warhorse braces the line — +8 defense.`);
+    }
+  }
+
+  // ── Turn loop ────────────────────────────────────────────────────────────────────────────
   let turn = 0;
   const MAX_TURNS = 20;
+  // Track whether the previous player action was a miss (for measured_strike)
+  let playerLastMissed = false;
 
   while (turn < MAX_TURNS) {
     turn++;
     logs.push(`--- TURN ${turn} ---`);
 
     units.sort((a, b) => (b.aspd ?? 0) - (a.aspd ?? 0));
+
+    // veteran_charge: clear the artificial aspd inflation after the first sort
+    const player = units.find((u) => u.id === "player");
+    if (player && (player as any)._veteranChargeActive) {
+      player.aspd = (player.aspd ?? 0) - 9999;
+      (player as any)._veteranChargeActive = false;
+    }
 
     for (const unit of units) {
       if (unit.hp <= 0) continue;
@@ -352,16 +723,67 @@ export function runTurnBasedCombat(playerTeam: TeamStats, enemies: EnemyStats[])
 
         const targets = units.filter(u => u.isPlayer !== unit.isPlayer && u.hp > 0);
         if (targets.length === 0) break;
-        const target = targets[Math.floor(Math.random() * targets.length)];
+
+        // taunt_one_hit: redirect this attack to the taunting companion
+        let target = targets[Math.floor(Math.random() * targets.length)];
+        if (!unit.isPlayer) {
+          const taunter = targets.find(t => t.statusEffects.some(s => s.type === "taunt_one_hit"));
+          if (taunter) {
+            target = taunter;
+            const tidx = taunter.statusEffects.findIndex(s => s.type === "taunt_one_hit");
+            taunter.statusEffects.splice(tidx, 1);
+          }
+        }
+
+        // nohimes_eye: bonus flee for the player when they are the target
+        const effectiveFlee = target.flee ?? 0;
+        const nohimesEyeBonus = getGrantDodgeBonus(target, ctx);
+        const hitChance = Math.min(
+          95,
+          Math.max(
+            5,
+            calculateHitChance(unit, target) - nohimesEyeBonus,
+          ),
+        );
+
+        // morale_break: reduce enemy attack this turn
+        let attackMultiplier = 1.0;
+        if (!unit.isPlayer) {
+          const mb = unit.statusEffects.find(s => s.type === "morale_break" && s.duration > 0);
+          if (mb) {
+            attackMultiplier = 1 - (mb.value ?? 0.06);
+            mb.duration--;
+            if (mb.duration <= 0) {
+              unit.statusEffects.splice(unit.statusEffects.indexOf(mb), 1);
+            }
+          }
+        }
 
         const hitRoll = Math.random() * 100;
-        if (hitRoll > calculateHitChance(unit, target)) {
+        if (hitRoll > hitChance) {
           logs.push(`${unit.name} attacks ${target.name} but MISSES!`);
+          if (unit.id === "player") playerLastMissed = true;
         } else {
+          if (unit.id === "player") playerLastMissed = false;
+
           const isCrit   = (Math.random() * 100) < ((unit.critChance || 0) + 5);
-          const damage   = calculateDamage(unit, target, isCrit);
+          let   damage   = Math.floor(calculateDamage(unit, target, isCrit) * attackMultiplier);
           target.hp     -= damage;
           logs.push(`${unit.name} attacks ${target.name} for ${damage}${isCrit ? " (CRITICAL!)" : ""} damage.`);
+
+          // on_hit grant skills (player side only)
+          if (unit.isPlayer && target.hp > 0) {
+            applyGrantSkillsOnHit(unit, target, damage, playerLastMissed, ctx, logs);
+          }
+
+          // counter + on_low_hp grant skills (player receives a hit)
+          if (!unit.isPlayer && target.id === "player") {
+            applyGrantSkillsCounter(unit, target, damage, ctx, logs);
+            const hpPct = target.hp / target.maxHp;
+            if (hpPct < 0.30) {
+              applyGrantSkillsOnLowHp(target, damage, ctx, logs);
+            }
+          }
         }
 
         if (unit.name.toLowerCase().includes("ninja") && Math.random() < 0.3) {
@@ -388,14 +810,30 @@ export function runTurnBasedCombat(playerTeam: TeamStats, enemies: EnemyStats[])
 
     if (allEnemiesDead) {
       logs.push("Victory! All enemies defeated.");
-      return { victory: true, logs, turn };
+      return {
+        victory: true,
+        logs,
+        turn,
+        expMultiplier: getGrantExpMultiplier(ctx),
+      };
     }
     if (allPlayersDead) {
       logs.push("Defeat! Your team was wiped out.");
-      return { victory: false, logs, turn };
+      return {
+        victory: false,
+        logs,
+        turn,
+        expMultiplier: getGrantExpMultiplier(ctx),
+      };
     }
   }
 
   logs.push("Timeout! Battle exceeded 20 turns.");
-  return { victory: false, logs, turn, timeout: true };
+  return {
+    victory: false,
+    logs,
+    turn,
+    timeout: true,
+    expMultiplier: getGrantExpMultiplier(ctx),
+  };
 }
