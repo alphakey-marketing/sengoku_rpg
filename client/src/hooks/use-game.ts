@@ -19,6 +19,7 @@
  *   use-gacha.ts           useGachaPull, GachaResult
  *   use-transformations.ts useTransformations, useCampaignEvents,
  *                          useTriggerCampaignEvent
+ *   use-grants.ts          usePlayerGrants, PlayerGrant, GrantsByCategory  (Part 10)
  *
  * This file re-exports everything so all existing import sites continue to
  * work without any changes.
@@ -32,3 +33,4 @@ export * from "./use-horses";
 export * from "./use-battle";
 export * from "./use-gacha";
 export * from "./use-transformations";
+export * from "./use-grants";
