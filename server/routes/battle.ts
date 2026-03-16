@@ -11,17 +11,18 @@ export const battleRouter = Router();
 battleRouter.post("/field", async (req: any, res) => {
   try {
     const userId = req.user.claims.sub;
-    const user   = await storage.getUser(userId);
-    if (!user) return res.status(401).json({ message: "Unauthorized" });
+    // Load user once to gate the request; re-fetched inside the loop (M6 FIX)
+    const userInit = await storage.getUser(userId);
+    if (!userInit) return res.status(401).json({ message: "Unauthorized" });
 
     const locationId  = Number(req.body.locationId)  || 1;
     const repeatCount = Math.min(Math.max(1, Number(req.body.repeatCount) || 1), 10);
     const teamStats   = await getPlayerTeamStats(userId);
     if (!teamStats) return res.status(400).json({ message: "Team not found" });
 
-    let totalExp      = 0;
-    let totalGold     = 0;
-    let overallVictory = false;  // FIX B: use a proper boolean accumulator
+    let totalExp       = 0;
+    let totalGold      = 0;
+    let overallVictory = false;
     const allLogs: string[] = [];
     const dropped: any[]    = [];
     let ninjaEncounter: any = null;
@@ -47,7 +48,7 @@ battleRouter.post("/field", async (req: any, res) => {
         break;
       }
 
-      const enemy = generateEnemyStats("field", user.level, locationId);
+      const enemy = generateEnemyStats("field", userInit.level, locationId);
       if (i === 0 && req.body.enemyName) enemy.name = req.body.enemyName;
 
       const modLogs = await applyFlagModifiers(userId, teamStats, [enemy]);
@@ -55,20 +56,29 @@ battleRouter.post("/field", async (req: any, res) => {
       const result = runTurnBasedCombat(teamStats, [enemy]);
       allLogs.push(...(result.logs || []));
 
-      // FIX B: accumulate victory from the typed boolean, not string scanning
       if (result.victory) {
         overallVictory = true;
         await storage.updateQuestProgress(userId, "daily_skirmish",       1);
         await storage.updateQuestProgress(userId, "daily_skirmish_elite", 1);
-        const exp  = Math.floor(Math.random() * 50) + 30 + enemy.level * 5;
-        const gold = Math.floor(Math.random() * 20) + 10 + enemy.level * 2;
-        totalExp  += exp;
-        totalGold += gold;
 
-        let xp = user.experience + totalExp;
-        let lv = user.level, mhp = user.maxHp, sp = user.statPoints;
-        while (xp >= lv * 100) { xp -= lv * 100; lv++; mhp += 10; sp += 3; }
-        await storage.updateUser(userId, { experience: xp, level: lv, maxHp: mhp, statPoints: sp, gold: user.gold + totalGold });
+        const expGain  = Math.floor(Math.random() * 50) + 30 + enemy.level * 5;
+        const goldGain = Math.floor(Math.random() * 20) + 10 + enemy.level * 2;
+        totalExp  += expGain;
+        totalGold += goldGain;
+
+        // M6 FIX: re-fetch the latest user row before each level-up write so
+        // XP / gold / statPoints accumulate against the real current values
+        // rather than the snapshot taken before the repeat loop began.
+        const freshUser = await storage.getUser(userId);
+        if (freshUser) {
+          let xp = freshUser.experience + expGain;
+          let lv = freshUser.level, mhp = freshUser.maxHp, sp = freshUser.statPoints;
+          while (xp >= lv * 100) { xp -= lv * 100; lv++; mhp += 10; sp += 3; }
+          await storage.updateUser(userId, {
+            experience: xp, level: lv, maxHp: mhp, statPoints: sp,
+            gold: freshUser.gold + goldGain,
+          });
+        }
 
         if (Math.random() < 0.01) {
           try { dropped.push(await storage.createEquipment(generateEquipment(userId, locationId))); } catch {}
@@ -83,8 +93,6 @@ battleRouter.post("/field", async (req: any, res) => {
       equipmentDropped: dropped, ninjaEncounter,
     });
   } catch (err) {
-    // FIX A: surface real server errors as JSON so the client catch block
-    // can distinguish a network failure from a battle-server error.
     console.error("[battle/field] unhandled error:", err);
     res.status(500).json({ message: "Battle server error", error: String(err) });
   }
@@ -149,9 +157,9 @@ battleRouter.post("/campaign", async (req: any, res) => {
   const modLogs = await applyFlagModifiers(userId, team, [enemy]);
   const result  = runTurnBasedCombat(team, [enemy]);
   if (result.victory) {
-    const exp   = 100 + locationId * 50;
-    const gold  = 50  + locationId * 25;
-    const rice  = 10  + locationId * 5;
+    const exp     = 100 + locationId * 50;
+    const gold    = 50  + locationId * 25;
+    const rice    = 10  + locationId * 5;
     const eStones = 2 + Math.floor(Math.random() * 3);
     let xp = user.experience + exp, lv = user.level, mhp = user.maxHp, sp = user.statPoints, spd = user.speed;
     while (xp >= lv * 100) { xp -= lv * 100; lv++; mhp += 10; sp += 3; spd += 2; }
@@ -182,8 +190,8 @@ battleRouter.post("/special-boss", async (req: any, res) => {
   const modLogs = await applyFlagModifiers(userId, team, [enemy]);
   const result  = runTurnBasedCombat(team, [enemy]);
   if (result.victory) {
-    const exp   = 250 + locationId * 100;
-    const gold  = 150 + locationId * 75;
+    const exp     = 250 + locationId * 100;
+    const gold    = 150 + locationId * 75;
     const eStones = 5 + Math.floor(Math.random() * 6);
     let xp = user.experience + exp, lv = user.level, mhp = user.maxHp, sp = user.statPoints, spd = user.speed;
     while (xp >= lv * 100) { xp -= lv * 100; lv++; mhp += 10; sp += 3; spd += 2; }

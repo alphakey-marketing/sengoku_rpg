@@ -3,7 +3,7 @@ import { playerFlags } from "@shared/schema";
 import { eq } from "drizzle-orm";
 import { EnemyStats, TeamStats } from "../client/src/hooks/use-game";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+// ─── Types ──────────────────────────────────────────────────────────────────────────
 
 export type WeaponType =
   | "dagger"
@@ -52,14 +52,20 @@ export interface CombatUnit {
   critChance: number;
   critDamage: number;
   isPlayer: boolean;
+  // M10 NOTE: stamina / maxStamina kept in the interface for future skill-cost
+  // mechanics but are no longer hardcoded to 100; they read from the team
+  // stats object (sp / maxSp) which is INT-scaled by player-stats.ts.
   stamina?: number;
   maxStamina?: number;
   statusEffects: { type: string; duration: number; value?: number }[];
   isGuarding: boolean;
+  // M10 NOTE: endowmentPoints retained in the interface for future use;
+  // the damage formula no longer reads it (it was always 0 and silently
+  // swallowed future endowment mechanics).
   endowmentPoints?: number;
 }
 
-// ─── Weapon helpers ───────────────────────────────────────────────────────────
+// ─── Weapon helpers ───────────────────────────────────────────────────────────────
 
 export function isMeleeWeapon(type: WeaponType | undefined): boolean {
   if (!type) return true;
@@ -71,7 +77,7 @@ export function isRangedWeapon(type: WeaponType | undefined): boolean {
   return ["bow","gun","instrument","whip"].includes(type);
 }
 
-// ─── Hit / damage formulas ────────────────────────────────────────────────────
+// ─── Hit / damage formulas ──────────────────────────────────────────────────────────
 
 export function calculateHitChance(attacker: CombatUnit, defender: CombatUnit): number {
   const hit   = attacker.hit  ?? 0;
@@ -99,10 +105,10 @@ function getWeaponATKWithStatBonus(unit: CombatUnit): number {
 }
 
 function getWeaponRoll(attacker: CombatUnit): number {
-  const weaponATK    = getWeaponATKWithStatBonus(attacker);
-  const weaponLevel  = attacker.weaponLevel  ?? 1;
+  const weaponATK     = getWeaponATKWithStatBonus(attacker);
+  const weaponLevel   = attacker.weaponLevel  ?? 1;
   const varianceRange = 0.05 * weaponLevel * weaponATK;
-  const variance     = (Math.random() * 2 * varianceRange) - varianceRange;
+  const variance      = (Math.random() * 2 * varianceRange) - varianceRange;
   return Math.floor(weaponATK + variance + (attacker.refinementBonus ?? 0) + (attacker.bonusATK ?? 0));
 }
 
@@ -125,15 +131,17 @@ export function calculateDamage(attacker: CombatUnit, defender: CombatUnit, isCr
     damage = Math.floor(damage * (1.5 + (attacker.critDamage ?? 0) / 100));
   }
 
-  const endow = Math.min(0.35, ((defender as any).endowmentPoints ?? 0) * 0.5 / 100);
-  damage = Math.floor(damage * (1 - endow));
+  // M10 FIX: endowmentPoints block removed — it was always 0 (field never
+  // populated from teamStats) and silently masked future endowment mechanics.
+  // When endowment damage reduction is implemented it should be re-added here
+  // with a proper source value.
 
   if (defender.isGuarding) damage = Math.floor(damage * 0.7);
 
   return Math.max(1, damage);
 }
 
-// ─── A1: Flag-modified battle stats (continuous, story-driven) ────────────────
+// ─── A1: Flag-modified battle stats (continuous, story-driven) ────────────────────
 //
 // Each story flag applies a soft, incremental bonus that scales directly with
 // the raw flag value earned through Chapter choices — no hard thresholds.
@@ -167,13 +175,11 @@ export async function applyFlagModifiers(
   const loyalty        = flags.mitsuhide_loyalty     ?? 0;
   const loyaltyAmp     = 1 + Math.min(0.20, loyalty * 0.02);
 
-  // ── ruthlessness → narrative ATK log (bonuses already in team stats) ──────
   if (ruthlessness > 0) {
     const pct = Math.round(Math.min(50, ruthlessness * 5) * loyaltyAmp);
     modifierLog.push(`[Force +${pct}%] The blood of your past choices fuels your blade.`);
   }
 
-  // ── supernatural_affinity → spirit_debuff on every enemy ─────────────────
   if (supernatural >= 1) {
     for (const e of enemies) {
       if (!(e as any).statusEffects) (e as any).statusEffects = [];
@@ -183,14 +189,12 @@ export async function applyFlagModifiers(
     modifierLog.push(`[Spirit +${pct}% HP] Unseen forces unnerve the enemy — their armour falters.`);
   }
 
-  // ── political_power → reduce enemy count (1 fewer per 3 pts, min 1) ──────
   const trim = Math.min(enemies.length - 1, Math.floor(political / 3));
   if (trim > 0) {
     enemies.splice(enemies.length - trim, trim);
     modifierLog.push(`[Influence] Your name alone disbands ${trim} enemy unit${trim > 1 ? "s" : ""}.`);
   }
 
-  // ── mitsuhide_loyalty → narrative amplifier log ───────────────────────────
   if (loyalty > 0) {
     modifierLog.push(`[Mitsuhide] His unwavering loyalty amplifies your every advantage.`);
   }
@@ -198,13 +202,13 @@ export async function applyFlagModifiers(
   return modifierLog;
 }
 
-// ─── Turn-based combat resolver ───────────────────────────────────────────────
+// ─── Turn-based combat resolver ───────────────────────────────────────────────────────
 
 export function runTurnBasedCombat(playerTeam: TeamStats, enemies: EnemyStats[]) {
   const logs: string[] = [];
   const units: CombatUnit[] = [];
 
-  // ── Build player unit ────────────────────────────────────────────────────
+  // ── Build player unit ──────────────────────────────────────────────────────────────────
   const p     = playerTeam.player;
   const pAGI  = Number((p as any).agi  || 1);
   const pDEX  = Number((p as any).dex  || 1);
@@ -213,38 +217,41 @@ export function runTurnBasedCombat(playerTeam: TeamStats, enemies: EnemyStats[])
 
   units.push({
     id: "player",
-    name: p.name,
-    hp:     Number(p.hp)     || 0,
-    maxHp:  Number(p.maxHp)  || 0,
-    attack: Number(p.attack) || 0,
+    name:    p.name,
+    hp:      Number(p.hp)     || 0,
+    maxHp:   Number(p.maxHp)  || 0,
+    attack:  Number(p.attack) || 0,
     defense: Number(p.defense) || 0,
-    aspd:   100 + pAGI + Math.floor(pDEX / 4),
-    str:    Number((p as any).str  || 1),
-    agi:    pAGI,
-    vit:    Number((p as any).vit  || 1),
-    int:    Number((p as any).int  || 1),
-    dex:    pDEX,
-    luk:    pLUK,
-    hardDEF:       Number(p.defense) || 0,
-    softDEF:       0,
-    weaponATK:     Number((p as any).weaponATK  || p.attack) || 0,
-    weaponLevel:   Number((p as any).weaponLevel || 1),
-    weaponType:    (p as any).weaponType,
+    aspd:    100 + pAGI + Math.floor(pDEX / 4),
+    str:     Number((p as any).str  || 1),
+    agi:     pAGI,
+    vit:     Number((p as any).vit  || 1),
+    int:     Number((p as any).int  || 1),
+    dex:     pDEX,
+    luk:     pLUK,
+    hardDEF: Number(p.defense) || 0,
+    softDEF: Number((p as any).softDEF) || 0,
+    weaponATK:      Number((p as any).weaponATK  || p.attack) || 0,
+    weaponLevel:    Number((p as any).weaponLevel || 1),
+    weaponType:     (p as any).weaponType,
     refinementBonus: 0,
-    bonusATK:      Number((p as any).bonusATK || 0),
+    bonusATK:       Number((p as any).bonusATK || 0),
     hit:  175 + pLv + pDEX + Math.floor(pLUK / 3),
     flee: 100 + pLv + pAGI + Math.floor(pLUK / 5) + Math.floor(pLUK / 10),
     critChance: Number((p as any).critChance) || 0,
     critDamage: Number((p as any).critDamage) || 0,
     isPlayer: true,
-    stamina: 100, maxStamina: 100,
+    // M8 FIX: read sp/maxSp from the team stats object instead of hardcoding
+    // 100. player-stats.ts computes sp = floor(100*(1+0.01*INT)*(1+influenceBonus))
+    // so this now reflects the player's actual INT investment.
+    stamina:    Number((p as any).sp    || (p as any).stamina    || 100),
+    maxStamina: Number((p as any).maxSp || (p as any).maxStamina || 100),
     statusEffects: [],
     isGuarding: false,
-    endowmentPoints: Number((p as any).endowmentPoints) || 0,
     level: pLv,
   } as any);
 
-  // ── Build companion units ────────────────────────────────────────────────
+  // ── Build companion units ──────────────────────────────────────────────────────────────
   for (let i = 0; i < playerTeam.companions.length; i++) {
     const c    = playerTeam.companions[i];
     const cLv  = Number(c.level)  || 1;
@@ -267,9 +274,9 @@ export function runTurnBasedCombat(playerTeam: TeamStats, enemies: EnemyStats[])
       dex: cDEX,
       luk: cLUK,
       hardDEF:       Number(c.defense) || 0,
-      softDEF:       0,
+      softDEF:       Number((c as any).softDEF) || 0,
       weaponATK:     Number((c as any).weaponATK || c.attack) || 0,
-      weaponLevel:   1,
+      weaponLevel:   Number((c as any).weaponLevel || 1),
       refinementBonus: 0,
       bonusATK:      Number((c as any).bonusATK || 0),
       hit:  175 + cLv + cDEX + Math.floor(cLUK / 3),
@@ -279,12 +286,11 @@ export function runTurnBasedCombat(playerTeam: TeamStats, enemies: EnemyStats[])
       isPlayer: true,
       statusEffects: [],
       isGuarding: false,
-      endowmentPoints: Number((c as any).endowmentPoints) || 0,
       level: cLv,
     } as any);
   }
 
-  // ── Build enemy units ────────────────────────────────────────────────────
+  // ── Build enemy units ────────────────────────────────────────────────────────────────
   for (let i = 0; i < enemies.length; i++) {
     const e = enemies[i];
     units.push({
@@ -302,10 +308,10 @@ export function runTurnBasedCombat(playerTeam: TeamStats, enemies: EnemyStats[])
       int: (e as any).int,
       dex: (e as any).dex,
       luk: (e as any).luk,
-      hardDEF:       (e as any).hardDEF,
-      softDEF:       (e as any).softDEF ?? 0,
-      weaponATK:     (e as any).weaponATK ?? e.attack ?? 0,
-      weaponLevel:   (e as any).weaponLevel ?? 1,
+      hardDEF:     (e as any).hardDEF,
+      softDEF:     (e as any).softDEF ?? 0,
+      weaponATK:   (e as any).weaponATK ?? e.attack ?? 0,
+      weaponLevel: (e as any).weaponLevel ?? 1,
       hit:  (e as any).hit,
       flee: (e as any).flee,
       isPlayer: false,
@@ -317,7 +323,7 @@ export function runTurnBasedCombat(playerTeam: TeamStats, enemies: EnemyStats[])
     } as any);
   }
 
-  // ── Turn loop ────────────────────────────────────────────────────────────
+  // ── Turn loop ────────────────────────────────────────────────────────────────────────
   let turn = 0;
   const MAX_TURNS = 20;
 
