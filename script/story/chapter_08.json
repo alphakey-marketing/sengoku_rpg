@@ -1,7 +1,7 @@
 {
   "chapter": {
     "title": "Honnoji",
-    "subtitle": "1582 — Every ending was always this one.",
+    "subtitle": "1582 \u2014 Every ending was always this one.",
     "chapterOrder": 8,
     "isLocked": false
   },
@@ -19,7 +19,7 @@
           "speakerName": "Narrator",
           "speakerSide": "none",
           "portraitKey": null,
-          "text": "June, 1582. Honnoji temple in Kyoto. Nobunaga travels with a small escort — thirty men. He is resting here before the western campaign, which he expects to resolve Japan inside of two years.",
+          "text": "June, 1582. Honnoji temple in Kyoto. Nobunaga travels with a small escort \u2014 thirty men. He is resting here before the western campaign, which he expects to resolve Japan inside of two years.",
           "lineOrder": 1
         },
         {
@@ -40,19 +40,25 @@
       "choices": []
     },
     {
-      "sceneRef": "S02",
+      "_comment": "resolveConditionalScene candidates for the S02 slot, ordered: S02_LOYAL (mitsuhide_loyalty >= 2) → S02_COLD (mitsuhide_loyalty <= 0) → S02 (unconditional fallback). The unconditional fallback covers the mid-range player.",
+      "sceneRef": "S02_LOYAL",
       "backgroundKey": "honnoji_temple_courtyard_torches",
       "bgmKey": "bgm_war_drums",
       "sceneOrder": 2,
       "nextSceneRef": "S03",
       "isBattleGate": false,
       "isChapterEnd": false,
+      "flagCondition": {
+        "flagKey": "mitsuhide_loyalty",
+        "operator": "gte",
+        "value": 2
+      },
       "dialogueLines": [
         {
           "speakerName": "Ranmaru",
           "speakerSide": "left",
           "portraitKey": "ranmaru_panicked",
-          "text": "My lord — torches. The outer wall. Thousands of them.",
+          "text": "My lord \u2014 torches. The outer wall. Thousands of them.",
           "lineOrder": 1
         },
         {
@@ -87,7 +93,142 @@
           "speakerName": "Nobunaga",
           "speakerSide": "right",
           "portraitKey": "nobunaga_cold",
-          "text": "Is this the realm, then. … It cannot be helped.",
+          "text": "...Mitsuhide.",
+          "lineOrder": 6
+        },
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "He says only the name. It takes a moment \u2014 personal before tactical, weight before calculation. Then:",
+          "lineOrder": 7
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_cold",
+          "text": "Is this the realm, then. \u2026 It cannot be helped.",
+          "lineOrder": 8
+        }
+      ],
+      "choices": []
+    },
+    {
+      "sceneRef": "S02_COLD",
+      "backgroundKey": "honnoji_temple_courtyard_torches",
+      "bgmKey": "bgm_war_drums",
+      "sceneOrder": 3,
+      "nextSceneRef": "S03",
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "flagCondition": {
+        "flagKey": "mitsuhide_loyalty",
+        "operator": "lte",
+        "value": 0
+      },
+      "dialogueLines": [
+        {
+          "speakerName": "Ranmaru",
+          "speakerSide": "left",
+          "portraitKey": "ranmaru_panicked",
+          "text": "My lord \u2014 torches. The outer wall. Thousands of them.",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_cold",
+          "text": "Whose banner?",
+          "lineOrder": 2
+        },
+        {
+          "speakerName": "Ranmaru",
+          "speakerSide": "left",
+          "portraitKey": "ranmaru_panicked",
+          "text": "Akechi, my lord.",
+          "lineOrder": 3
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_cold",
+          "text": "How many?",
+          "lineOrder": 4
+        },
+        {
+          "speakerName": "Ranmaru",
+          "speakerSide": "left",
+          "portraitKey": "ranmaru_panicked",
+          "text": "Thirteen thousand, my lord.",
+          "lineOrder": 5
+        },
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "Nobunaga nods. No surprise at the name. No pause before the number. The tool reached its tolerance and broke, as tools do. He had known, somewhere, that it would come to this.",
+          "lineOrder": 6
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_cold",
+          "text": "It cannot be helped.",
+          "lineOrder": 7
+        }
+      ],
+      "choices": []
+    },
+    {
+      "sceneRef": "S02",
+      "backgroundKey": "honnoji_temple_courtyard_torches",
+      "bgmKey": "bgm_war_drums",
+      "sceneOrder": 4,
+      "nextSceneRef": "S03",
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "flagCondition": null,
+      "dialogueLines": [
+        {
+          "speakerName": "Ranmaru",
+          "speakerSide": "left",
+          "portraitKey": "ranmaru_panicked",
+          "text": "My lord \u2014 torches. The outer wall. Thousands of them.",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_cold",
+          "text": "Whose banner?",
+          "lineOrder": 2
+        },
+        {
+          "speakerName": "Ranmaru",
+          "speakerSide": "left",
+          "portraitKey": "ranmaru_panicked",
+          "text": "...",
+          "lineOrder": 3
+        },
+        {
+          "speakerName": "Ranmaru",
+          "speakerSide": "left",
+          "portraitKey": "ranmaru_panicked",
+          "text": "Akechi, my lord.",
+          "lineOrder": 4
+        },
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "Akechi Mitsuhide. His most capable general. His longest-serving advisor. The man he asked, in the map room years ago, to tell him if he was treating people as tools.",
+          "lineOrder": 5
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_cold",
+          "text": "Is this the realm, then. \u2026 It cannot be helped.",
           "lineOrder": 6
         }
       ],
@@ -97,7 +238,7 @@
       "sceneRef": "S03",
       "backgroundKey": "honnoji_inner_hall_smoke",
       "bgmKey": "bgm_war_drums",
-      "sceneOrder": 3,
+      "sceneOrder": 5,
       "nextSceneRef": null,
       "isBattleGate": false,
       "isChapterEnd": false,
@@ -128,7 +269,7 @@
           "choiceOrder": 1
         },
         {
-          "choiceText": "Send Ranmaru out with a message. One name. One destination. The future has to survive even if you don't.",
+          "choiceText": "Send Ranmaru out with a message. One name. One destination. The future has to survive even if you don\u2019t.",
           "nextSceneRef": "S03A",
           "flagKey": "political_power",
           "flagValue": 2,
@@ -151,7 +292,7 @@
       "sceneRef": "S03A",
       "backgroundKey": "honnoji_inner_hall_smoke",
       "bgmKey": "bgm_tragedy_low",
-      "sceneOrder": 4,
+      "sceneOrder": 6,
       "nextSceneRef": "S04_BATTLE",
       "isBattleGate": false,
       "isChapterEnd": false,
@@ -160,14 +301,14 @@
           "speakerName": "Narrator",
           "speakerSide": "none",
           "portraitKey": null,
-          "text": "Nobunaga writes a single name on a strip of cloth and presses it into Ranmaru's hand. The boy is fifteen and trying very hard not to shake.",
+          "text": "Nobunaga writes a single name on a strip of cloth and presses it into Ranmaru\u2019s hand. The boy is fifteen and trying very hard not to shake.",
           "lineOrder": 1
         },
         {
           "speakerName": "Nobunaga",
           "speakerSide": "right",
           "portraitKey": "nobunaga_cold",
-          "text": "Go. Don't look back. The work continues.",
+          "text": "Go. Don\u2019t look back. The work continues.",
           "lineOrder": 2
         },
         {
@@ -184,7 +325,7 @@
       "sceneRef": "S03B",
       "backgroundKey": "honnoji_inner_hall_desk",
       "bgmKey": "bgm_tragedy_low",
-      "sceneOrder": 5,
+      "sceneOrder": 7,
       "nextSceneRef": "S04_BATTLE",
       "isBattleGate": false,
       "isChapterEnd": false,
@@ -214,10 +355,11 @@
       "choices": []
     },
     {
+      "_comment": "S04_BATTLE carries three flagCondition-gated narrator lines in dialogueLines. The story page filters them before building the render queue — lines with a passing flagCondition are included, others are dropped. lineOrder values are non-colliding; the filtered set is sorted by lineOrder before rendering.",
       "sceneRef": "S04_BATTLE",
       "backgroundKey": "honnoji_burning_inner_hall",
       "bgmKey": "bgm_war_drums",
-      "sceneOrder": 6,
+      "sceneOrder": 8,
       "nextSceneRef": null,
       "isBattleGate": true,
       "battleEnemyKey": "akechi_vanguard_honnoji",
@@ -233,11 +375,50 @@
           "lineOrder": 1
         },
         {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "He has burned temples, drowned armies, made mercy a foreign word. He knows what the ledger says. He does not regret it.",
+          "lineOrder": 2,
+          "_note": "Conditional: ruthlessness >= 4",
+          "flagCondition": {
+            "flagKey": "ruthlessness",
+            "operator": "gte",
+            "value": 4
+          }
+        },
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "He built the structures \u2014 the alliances, the legitimacy, the Yoshiaki seal that bought a day on the Kyoto road. Some of it will survive him. That was always the point.",
+          "lineOrder": 3,
+          "_note": "Conditional: political_power >= 4",
+          "flagCondition": {
+            "flagKey": "political_power",
+            "operator": "gte",
+            "value": 4
+          }
+        },
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "The man outside was his best general and the one he asked the most of. He understands, in this room, exactly what that cost.",
+          "lineOrder": 4,
+          "_note": "Conditional: mitsuhide_loyalty >= 2",
+          "flagCondition": {
+            "flagKey": "mitsuhide_loyalty",
+            "operator": "gte",
+            "value": 2
+          }
+        },
+        {
           "speakerName": "Nobunaga",
           "speakerSide": "right",
           "portraitKey": "nobunaga_fierce",
           "text": "Come, then.",
-          "lineOrder": 2
+          "lineOrder": 5
         }
       ],
       "choices": []
@@ -246,7 +427,7 @@
       "sceneRef": "S05_WIN",
       "backgroundKey": "honnoji_dawn_aftermath",
       "bgmKey": "bgm_victory_somber",
-      "sceneOrder": 7,
+      "sceneOrder": 9,
       "nextSceneRef": "S06",
       "isBattleGate": false,
       "isChapterEnd": false,
@@ -255,7 +436,7 @@
           "speakerName": "Narrator",
           "speakerSide": "none",
           "portraitKey": null,
-          "text": "Against everything, the inner hall holds until dawn. Mitsuhide's forces, seeing Nobunaga alive, falter. The coup collapses. History does not remember this version because history runs on probability, not will.",
+          "text": "Against everything, the inner hall holds until dawn. Mitsuhide\u2019s forces, seeing Nobunaga alive, falter. The coup collapses. History does not remember this version because history runs on probability, not will.",
           "lineOrder": 1
         },
         {
@@ -271,6 +452,19 @@
           "portraitKey": "nobunaga_cold",
           "text": "The roads are still open.",
           "lineOrder": 3
+        },
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "He thinks of Kenshin\u2019s warning \u2014 \u2018tools break when used past their tolerance.\u2019 He thinks of Mitsuhide. For the first time in thirty years, he is not entirely certain he was right about everything.",
+          "lineOrder": 4,
+          "_note": "Conditional: mitsuhide_loyalty >= 2. The only place in the game a loyal-path player feels the full weight of the betrayal survived.",
+          "flagCondition": {
+            "flagKey": "mitsuhide_loyalty",
+            "operator": "gte",
+            "value": 2
+          }
         }
       ],
       "choices": []
@@ -279,7 +473,7 @@
       "sceneRef": "S05_LOSE",
       "backgroundKey": "honnoji_burning_final",
       "bgmKey": "bgm_defeat",
-      "sceneOrder": 8,
+      "sceneOrder": 10,
       "nextSceneRef": "S06",
       "isBattleGate": false,
       "isChapterEnd": false,
@@ -319,7 +513,7 @@
       "sceneRef": "S06",
       "backgroundKey": "japan_map_painted_scroll",
       "bgmKey": "bgm_ending_theme",
-      "sceneOrder": 9,
+      "sceneOrder": 11,
       "nextSceneRef": null,
       "isBattleGate": false,
       "isChapterEnd": false,
@@ -352,7 +546,7 @@
       "sceneRef": "S07_END",
       "backgroundKey": "owari_province_dawn",
       "bgmKey": "bgm_ending_theme",
-      "sceneOrder": 10,
+      "sceneOrder": 12,
       "nextSceneRef": null,
       "isBattleGate": false,
       "isChapterEnd": true,
@@ -361,7 +555,7 @@
           "speakerName": "Narrator",
           "speakerSide": "none",
           "portraitKey": null,
-          "text": "Your choices shaped the man. The loyalties you built or burned, the cruelties you chose or refused, the questions you answered or deferred — these are the record.",
+          "text": "Your choices shaped the man. The loyalties you built or burned, the cruelties you chose or refused, the questions you answered or deferred \u2014 these are the record.",
           "lineOrder": 1
         },
         {

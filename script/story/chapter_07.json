@@ -1,7 +1,7 @@
 {
   "chapter": {
     "title": "The Price of Heaven",
-    "subtitle": "1560 — Kyoto does not want you. It needs you. These are not the same thing.",
+    "subtitle": "1560 \u2014 Kyoto does not want you. It needs you. These are not the same thing.",
     "chapterOrder": 7,
     "isLocked": false
   },
@@ -19,7 +19,7 @@
           "speakerName": "Narrator",
           "speakerSide": "none",
           "portraitKey": null,
-          "text": "1560. The Ashikaga Shogunate is a fiction sustained by the willingness of everyone involved to pretend it isn't. The current shogun, Yoshiaki, is the last of the line. He has sent three letters to Nobunaga.",
+          "text": "1560. The Ashikaga Shogunate is a fiction sustained by the willingness of everyone involved to pretend it isn\u2019t. The current shogun, Yoshiaki, is the last of the line. He has sent three letters to Nobunaga.",
           "lineOrder": 1
         },
         {
@@ -33,14 +33,14 @@
           "speakerName": "Mitsuhide",
           "speakerSide": "left",
           "portraitKey": "mitsuhide_calm",
-          "text": "If you put Yoshiaki on the shogunal seat, every lord in Japan who hasn't committed to you yet will assume you're reaching for the same seat.",
+          "text": "If you put Yoshiaki on the shogunal seat, every lord in Japan who hasn\u2019t committed to you yet will assume you\u2019re reaching for the same seat.",
           "lineOrder": 3
         },
         {
           "speakerName": "Nobunaga",
           "speakerSide": "right",
           "portraitKey": "nobunaga_cold",
-          "text": "They'll assume that regardless.",
+          "text": "They\u2019ll assume that regardless.",
           "lineOrder": 4
         },
         {
@@ -73,21 +73,21 @@
           "speakerName": "Narrator",
           "speakerSide": "none",
           "portraitKey": null,
-          "text": "The shogunal palace is beautiful and slightly decayed — the way a man looks beautiful and slightly decayed when he has stopped eating properly but still insists on his dignity. Yoshiaki receives Nobunaga in the audience hall.",
+          "text": "The shogunal palace is beautiful and slightly decayed \u2014 the way a man looks beautiful and slightly decayed when he has stopped eating properly but still insists on his dignity. Yoshiaki receives Nobunaga in the audience hall.",
           "lineOrder": 1
         },
         {
           "speakerName": "Yoshiaki",
           "speakerSide": "left",
           "portraitKey": "yoshiaki_desperate",
-          "text": "Lord Nobunaga. My gratitude for answering at last. The Ashikaga name requires a protector with the force to hold Japan together. I am proposing an alliance that would benefit both —",
+          "text": "Lord Nobunaga. My gratitude for answering at last. The Ashikaga name requires a protector with the force to hold Japan together. I am proposing an alliance that would benefit both \u2014",
           "lineOrder": 2
         },
         {
           "speakerName": "Nobunaga",
           "speakerSide": "right",
           "portraitKey": "nobunaga_cold",
-          "text": "You want me to march an army through Kyoto on your behalf. Tell me what you actually want, not what you think I'll agree to.",
+          "text": "You want me to march an army through Kyoto on your behalf. Tell me what you actually want, not what you think I\u2019ll agree to.",
           "lineOrder": 3
         },
         {
@@ -113,7 +113,7 @@
           "speakerName": "Narrator",
           "speakerSide": "none",
           "portraitKey": null,
-          "text": "The honest answer changes the room. Yoshiaki is not a fool. He is a man who knows exactly how much leverage he doesn't have and has decided that honesty costs less than pretense.",
+          "text": "The honest answer changes the room. Yoshiaki is not a fool. He is a man who knows exactly how much leverage he doesn\u2019t have and has decided that honesty costs less than pretense.",
           "lineOrder": 1
         },
         {
@@ -167,7 +167,7 @@
           "speakerName": "Narrator",
           "speakerSide": "none",
           "portraitKey": null,
-          "text": "Yoshiaki is restored. The proclamation is read in every province. The traditional lords, who would never submit to Nobunaga directly, find themselves, through elaborate courtesy, submitting to the Shogun — who is in every practical sense submitting to Nobunaga.",
+          "text": "Yoshiaki is restored. The proclamation is read in every province. The traditional lords, who would never submit to Nobunaga directly, find themselves, through elaborate courtesy, submitting to the Shogun \u2014 who is in every practical sense submitting to Nobunaga.",
           "lineOrder": 1
         },
         {
@@ -207,7 +207,7 @@
           "speakerName": "Yoshiaki",
           "speakerSide": "left",
           "portraitKey": "yoshiaki_desperate",
-          "text": "You are asking me to be your—",
+          "text": "You are asking me to be your\u2014",
           "lineOrder": 2
         },
         {
@@ -247,7 +247,7 @@
           "speakerName": "Narrator",
           "speakerSide": "none",
           "portraitKey": null,
-          "text": "Nobunaga declines the audience and rides back toward Gifu before sundown. Word travels the way that silences always do — faster than any message.",
+          "text": "Nobunaga declines the audience and rides back toward Gifu before sundown. Word travels the way that silences always do \u2014 faster than any message.",
           "lineOrder": 1
         },
         {
@@ -261,7 +261,7 @@
           "speakerName": "Nobunaga",
           "speakerSide": "right",
           "portraitKey": "nobunaga_cold",
-          "text": "They can read it any way they like. When I take Kyoto, they'll have a choice: submit or leave. The Ashikaga name won't change that.",
+          "text": "They can read it any way they like. When I take Kyoto, they\u2019ll have a choice: submit or leave. The Ashikaga name won\u2019t change that.",
           "lineOrder": 3
         }
       ],
@@ -280,7 +280,7 @@
           "speakerName": "Narrator",
           "speakerSide": "none",
           "portraitKey": null,
-          "text": "Before leaving Kyoto or having left it, Nobunaga walks the street market without his guard. One of those moments of obscurity that great men sometimes allow themselves — a reminder of what they are building and for whom.",
+          "text": "Before leaving Kyoto or having left it, Nobunaga walks the street market without his guard. One of those moments of obscurity that great men sometimes allow themselves \u2014 a reminder of what they are building and for whom.",
           "lineOrder": 1
         },
         {
@@ -301,7 +301,7 @@
           "speakerName": "Merchant",
           "speakerSide": "left",
           "portraitKey": "merchant_kyoto",
-          "text": "Word is Oda did it. Mad bastard, by all accounts. But the roads are open. Don't care what he's called as long as the roads stay open.",
+          "text": "Word is Oda did it. Mad bastard, by all accounts. But the roads are open. Don\u2019t care what he\u2019s called as long as the roads stay open.",
           "lineOrder": 4
         }
       ],
@@ -386,7 +386,7 @@
           "speakerName": "Nobunaga",
           "speakerSide": "right",
           "portraitKey": "nobunaga_cold",
-          "text": "I'm Oda Nobunaga.",
+          "text": "I\u2019m Oda Nobunaga.",
           "lineOrder": 1
         },
         {
@@ -400,7 +400,7 @@
           "speakerName": "Merchant",
           "speakerSide": "left",
           "portraitKey": "merchant_kyoto",
-          "text": "Keep the roads open, my lord. That's all I ask.",
+          "text": "Keep the roads open, my lord. That\u2019s all I ask.",
           "lineOrder": 3
         },
         {
@@ -459,7 +459,7 @@
           "speakerName": "Nobunaga",
           "speakerSide": "right",
           "portraitKey": "nobunaga_cold",
-          "text": "No. But I found something I didn't know I was looking for.",
+          "text": "No. But I found something I didn\u2019t know I was looking for.",
           "lineOrder": 3
         },
         {
@@ -488,7 +488,7 @@
           "speakerName": "Narrator",
           "speakerSide": "none",
           "portraitKey": null,
-          "text": "On the road back, a displaced rebel garrison has taken position at the Kyoto gate road. Yoshiaki's enemies moving quickly, a test of resolve.",
+          "text": "On the road back, a displaced rebel garrison has taken position at the Kyoto gate road. Yoshiaki\u2019s enemies moving quickly, a test of resolve.",
           "lineOrder": 1
         },
         {
@@ -502,13 +502,66 @@
       "choices": []
     },
     {
-      "sceneRef": "S09_WIN",
+      "_comment": "resolveConditionalScene candidates for the WIN slot. S09_WIN_LOYAL (conditioned) must appear before S09_WIN (unconditional fallback) in any candidate array passed to the engine.",
+      "sceneRef": "S09_WIN_LOYAL",
       "backgroundKey": "kyoto_road_evening_clear",
       "bgmKey": "bgm_victory_somber",
       "sceneOrder": 14,
       "nextSceneRef": "S10",
       "isBattleGate": false,
       "isChapterEnd": false,
+      "flagCondition": {
+        "flagKey": "mitsuhide_loyalty",
+        "operator": "gte",
+        "value": 2
+      },
+      "flagWrites": [
+        { "flagKey": "ch7_battle_won", "flagValue": 1 }
+      ],
+      "dialogueLines": [
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "The garrison breaks. The road opens. Mitsuhide rides up as the last of them retreat, dust still settling on the evening road.",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Mitsuhide",
+          "speakerSide": "left",
+          "portraitKey": "mitsuhide_resolve",
+          "text": "You said the roads. Just the roads. I didn\u2019t understand it until this moment.",
+          "lineOrder": 2
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_cold",
+          "text": "Now you do.",
+          "lineOrder": 3
+        },
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "Word of the engagement reaches Kyoto before sundown. Mitsuhide files what he saw under a category that gives him, briefly, something like hope.",
+          "lineOrder": 4
+        }
+      ],
+      "choices": []
+    },
+    {
+      "sceneRef": "S09_WIN",
+      "backgroundKey": "kyoto_road_evening_clear",
+      "bgmKey": "bgm_victory_somber",
+      "sceneOrder": 15,
+      "nextSceneRef": "S10",
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "flagCondition": null,
+      "flagWrites": [
+        { "flagKey": "ch7_battle_won", "flagValue": 1 }
+      ],
       "dialogueLines": [
         {
           "speakerName": "Narrator",
@@ -521,13 +574,66 @@
       "choices": []
     },
     {
-      "sceneRef": "S09_LOSE",
+      "_comment": "resolveConditionalScene candidates for the LOSE slot. S09_LOSE_POLITICAL (conditioned) before S09_LOSE (unconditional fallback).",
+      "sceneRef": "S09_LOSE_POLITICAL",
       "backgroundKey": "kyoto_retreat_rainy",
       "bgmKey": "bgm_defeat",
-      "sceneOrder": 15,
+      "sceneOrder": 16,
       "nextSceneRef": "S10",
       "isBattleGate": false,
       "isChapterEnd": false,
+      "flagCondition": {
+        "flagKey": "political_power",
+        "operator": "gte",
+        "value": 3
+      },
+      "flagWrites": [
+        { "flagKey": "ch7_battle_won", "flagValue": 0 }
+      ],
+      "dialogueLines": [
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "The garrison captain lowers his weapon when he sees the Ashikaga seal on Nobunaga\u2019s escort. He will not attack the Shogun\u2019s protector directly. He simply blocks the road and waits.",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Mitsuhide",
+          "speakerSide": "left",
+          "portraitKey": "mitsuhide_grim",
+          "text": "One day. The seal bought us one day.",
+          "lineOrder": 2
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_cold",
+          "text": "Yoshiaki was worth something after all.",
+          "lineOrder": 3
+        },
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "They fall back and send for reinforcements. The road opens the following morning. The political investment paid off in the one currency no one had priced: time.",
+          "lineOrder": 4
+        }
+      ],
+      "choices": []
+    },
+    {
+      "sceneRef": "S09_LOSE",
+      "backgroundKey": "kyoto_retreat_rainy",
+      "bgmKey": "bgm_defeat",
+      "sceneOrder": 17,
+      "nextSceneRef": "S10",
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "flagCondition": null,
+      "flagWrites": [
+        { "flagKey": "ch7_battle_won", "flagValue": 0 }
+      ],
       "dialogueLines": [
         {
           "speakerName": "Narrator",
@@ -547,10 +653,11 @@
       "choices": []
     },
     {
+      "_comment": "S10 carries two flagCondition-gated narrator lines inserted between the fixed lines. The engine renders ALL dialogueLines in lineOrder; the conditional lines have a flagCondition field that the story page evaluates before deciding whether to include them in the render queue. Lines without flagCondition always render.",
       "sceneRef": "S10",
       "backgroundKey": "gifu_castle_tower_night",
       "bgmKey": "bgm_tension_resolve",
-      "sceneOrder": 16,
+      "sceneOrder": 18,
       "nextSceneRef": null,
       "isBattleGate": false,
       "isChapterEnd": true,
@@ -587,8 +694,34 @@
           "speakerName": "Nobunaga",
           "speakerSide": "right",
           "portraitKey": "nobunaga_cold",
-          "text": "The roads. Open. For everyone. That's the whole answer.",
+          "text": "The roads. Open. For everyone. That\u2019s the whole answer.",
           "lineOrder": 5
+        },
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "He paid for the answer today. The road cost something and it is open anyway, which is the only kind of answer worth having.",
+          "lineOrder": 5,
+          "_note": "Conditional line — insert between lineOrder 5 and 6 only on battle loss (ch7_battle_won = 0).",
+          "flagCondition": {
+            "flagKey": "ch7_battle_won",
+            "operator": "eq",
+            "value": 0
+          }
+        },
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "The road opened on the first push. The answer is clean and the cost was low, which makes it, for the moment, feel exactly like the truth.",
+          "lineOrder": 5,
+          "_note": "Conditional line — insert between lineOrder 5 and 6 only on battle win (ch7_battle_won = 1).",
+          "flagCondition": {
+            "flagKey": "ch7_battle_won",
+            "operator": "eq",
+            "value": 1
+          }
         },
         {
           "speakerName": "Narrator",
