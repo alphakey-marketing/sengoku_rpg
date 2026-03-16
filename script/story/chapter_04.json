@@ -741,6 +741,18 @@
       "battleEnemyKey": "ikko_ikki_nagashima_force",
       "battleWinSceneRef": "S09_WIN",
       "battleLoseSceneRef": "S09_LOSE",
+      "conditionalVariants": [
+        {
+          "outcome": "win",
+          "sceneRef": "S09_WIN_COLD",
+          "condition": { "flagKey": "mitsuhide_loyalty", "operator": "lte", "value": 0 }
+        },
+        {
+          "outcome": "lose",
+          "sceneRef": "S09_LOSE_COLD",
+          "condition": { "flagKey": "mitsuhide_loyalty", "operator": "lte", "value": 0 }
+        }
+      ],
       "isChapterEnd": false,
       "dialogueLines": [
         {
