@@ -97,6 +97,38 @@ const MIGRATIONS: string[] = [
   `ALTER TABLE companions ADD COLUMN IF NOT EXISTS agi               INTEGER NOT NULL DEFAULT 10`,
   `ALTER TABLE companions ADD COLUMN IF NOT EXISTS is_special        BOOLEAN NOT NULL DEFAULT FALSE`,
   `ALTER TABLE companions ADD COLUMN IF NOT EXISTS flag_unlock_condition TEXT`,
+
+  // ── M1 FIX: Backfill str/agi/vit/int/dex/luk from 1 → 10 (legacy rows) ───
+  //
+  // The original ADD COLUMN statements above used DEFAULT 1, which was lower
+  // than the schema.ts / STARTING_STATS default of 10.  Any account created
+  // before this fix has base stats of 1, producing near-zero combat values.
+  //
+  // These UPDATE statements are idempotent: they only touch rows that are
+  // still at the stale default (= 1), so players who have already allocated
+  // stat points above 1 are left completely untouched.
+  `UPDATE users SET str   = 10 WHERE str   = 1`,
+  `UPDATE users SET agi   = 10 WHERE agi   = 1`,
+  `UPDATE users SET vit   = 10 WHERE vit   = 1`,
+  `UPDATE users SET "int" = 10 WHERE "int" = 1`,
+  `UPDATE users SET dex   = 10 WHERE dex   = 1`,
+  `UPDATE users SET luk   = 10 WHERE luk   = 1`,
+
+  // ── M11 FIX: Backfill FIX-1 raised resource defaults (legacy rows) ────────
+  //
+  // schema.ts raised starting values (the "FIX 1" block) for hp / maxHp /
+  // attack / defense / gold.  The ADD COLUMN statements above never backfilled
+  // existing rows.  We apply the new floor ONLY to level-1 players whose
+  // values are still at the original stale defaults, so active high-level
+  // players (who genuinely earned lower stats via old code) are not touched.
+  //
+  //   Stale defaults  : hp=100, max_hp=100, attack=10, defense=5,  gold=100
+  //   Schema defaults : hp=200, max_hp=200, attack=30, defense=20, gold=500
+  `UPDATE users SET hp      = 200 WHERE hp      < 200 AND level = 1`,
+  `UPDATE users SET max_hp  = 200 WHERE max_hp  < 200 AND level = 1`,
+  `UPDATE users SET attack  = 30  WHERE attack  < 30  AND level = 1`,
+  `UPDATE users SET defense = 20  WHERE defense < 20  AND level = 1`,
+  `UPDATE users SET gold    = 500 WHERE gold    < 500 AND level = 1`,
 ];
 
 export async function runMigrations(): Promise<void> {
