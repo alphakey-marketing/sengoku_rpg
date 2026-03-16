@@ -8,6 +8,31 @@ import {
 import { db } from "./db";
 import { eq, and, inArray } from "drizzle-orm";
 
+// ── Single source of truth for starting stats ────────────────────────────────
+// These MUST mirror the defaults in schema.ts and migration 0003.
+// Used by restartGame() so a Seppuku reset lands on the same values
+// as a brand-new account.
+export const STARTING_STATS = {
+  level:     1,
+  experience: 0,
+  gold:      500,
+  rice:      100,
+  hp:        200,
+  maxHp:     200,
+  attack:    30,
+  defense:   20,
+  speed:     10,
+  str:       10,
+  agi:       10,
+  vit:       10,
+  int:       10,
+  dex:       10,
+  luk:       10,
+  stamina:   100,
+  maxStamina: 100,
+  statPoints: 48,
+} as const;
+
 // ── Single source of truth for quest definitions ──────────────────────────────
 export const QUEST_DEFINITIONS: Record<string, { goal: number; rewardType: string; amount: number }> = {
   daily_skirmish:       { goal: 5,  rewardType: "rice", amount: 50  },
@@ -66,7 +91,6 @@ export interface IStorage {
   createCompanion(companion: InsertCompanion): Promise<Companion>;
   updateCompanion(id: number, updates: Partial<Companion>): Promise<Companion>;
   deleteCompanion(id: number): Promise<void>;
-  /** Set isInParty=true for companions whose id is in companionIds, false for all others. */
   updateParty(userId: string, companionIds: number[]): Promise<void>;
 
   getEquipment(userId: string): Promise<(Equipment & { cards: Card[] })[]>;
@@ -98,7 +122,6 @@ export interface IStorage {
   claimQuest(userId: string, questKey: string): Promise<{ success: boolean; reward?: string }>;
   recycleEquipment(userId: string): Promise<{ count: number; stonesGained: number }>;
 
-  // Called once on first login — seeds base equipment for the user.
   syncBaseEquipment(userId: string): Promise<void>;
 }
 
@@ -116,18 +139,6 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
-  /**
-   * Upsert a user on Supabase login.
-   *
-   * Single-pass strategy:
-   *   - Conflict on `auth_user_id` (unique) — always the stable Supabase identity.
-   *   - If the row does not yet exist it is inserted.
-   *   - Any genuine DB error (network, schema mismatch) is allowed to propagate
-   *     so callers can see and handle it.
-   *
-   * After upsert, syncBaseEquipment is called if this is the user's first login
-   * (i.e. no equipment exists yet), keeping the sync out of the hot read path.
-   */
   async upsertUser(userData: UpsertUser): Promise<User> {
     const profileSet = {
       email:           userData.email,
@@ -137,7 +148,6 @@ export class DatabaseStorage implements IStorage {
       updatedAt:       new Date(),
     };
 
-    // Single upsert keyed on the Supabase auth UUID (authUserId)
     await db
       .insert(users)
       .values(userData)
@@ -146,7 +156,6 @@ export class DatabaseStorage implements IStorage {
         set: profileSet,
       });
 
-    // Re-fetch the canonical row
     const user =
       (await this.getUserByAuthId(userData.authUserId!)) ??
       (await this.getUser(userData.id!));
@@ -157,7 +166,6 @@ export class DatabaseStorage implements IStorage {
       );
     }
 
-    // Seed base equipment exactly once — on first login
     const existingEquipment = await db
       .select({ id: equipment.id })
       .from(equipment)
@@ -198,21 +206,13 @@ export class DatabaseStorage implements IStorage {
     await db.delete(companions).where(eq(companions.id, id));
   }
 
-  /**
-   * Atomically updates the party roster for a user.
-   * Step 1: clear isInParty for ALL of this user's companions.
-   * Step 2: set isInParty = true for the supplied IDs (if any).
-   * Passing an empty array simply clears the whole party.
-   */
   async updateParty(userId: string, companionIds: number[]): Promise<void> {
     await db.transaction(async (tx) => {
-      // Clear entire party
       await tx
         .update(companions)
         .set({ isInParty: false })
         .where(eq(companions.userId, userId));
 
-      // Set the new party members (skip if list is empty)
       if (companionIds.length > 0) {
         await tx
           .update(companions)
@@ -227,23 +227,16 @@ export class DatabaseStorage implements IStorage {
     });
   }
 
-  /**
-   * Fetches all equipment for a user with their associated cards.
-   * Uses 2 queries total (equipment + cards) instead of N+1.
-   * syncBaseEquipment is NOT called here — it runs once in upsertUser.
-   */
   async getEquipment(userId: string): Promise<(Equipment & { cards: Card[] })[]> {
     const items = await db.select().from(equipment).where(eq(equipment.userId, userId));
     if (items.length === 0) return [];
 
-    // Single query for all cards belonging to this user's equipment
     const equipmentIds = items.map(i => i.id);
     const allCards = await db
       .select()
       .from(cards)
       .where(inArray(cards.equipmentId, equipmentIds));
 
-    // Group cards by equipmentId in memory
     const cardMap = allCards.reduce<Record<number, Card[]>>((acc, card) => {
       if (card.equipmentId != null) {
         (acc[card.equipmentId] ??= []).push(card);
@@ -372,11 +365,6 @@ export class DatabaseStorage implements IStorage {
     return event;
   }
 
-  /**
-   * Returns today's quests for a user.
-   * If no quests exist or they are from a previous day, rotates them inside
-   * a single transaction to prevent partial-rotation corruption.
-   */
   async getQuests(userId: string): Promise<UserQuest[]> {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -392,7 +380,6 @@ export class DatabaseStorage implements IStorage {
 
     if (!isOutdated) return quests;
 
-    // Atomic rotation inside a transaction
     const selected = [...QUEST_POOL]
       .sort(() => 0.5 - Math.random())
       .slice(0, 3);
@@ -430,7 +417,6 @@ export class DatabaseStorage implements IStorage {
 
     if (!quest || !user || quest.isClaimed) return { success: false };
 
-    // Use the single QUEST_DEFINITIONS source of truth
     const def = QUEST_DEFINITIONS[questKey];
     if (!def || quest.progress < def.goal) return { success: false };
 
@@ -444,13 +430,8 @@ export class DatabaseStorage implements IStorage {
     return { success: true, reward: `${def.amount} ${def.rewardType}` };
   }
 
-  /**
-   * Seeds the base equipment catalogue for a user.
-   * Called ONCE during upsertUser (first login) — never on reads.
-   * Still idempotent: skips items the user already owns by name.
-   */
   async syncBaseEquipment(userId: string): Promise<void> {
-    const existing     = await db.select({ name: equipment.name }).from(equipment).where(eq(equipment.userId, userId));
+    const existing      = await db.select({ name: equipment.name }).from(equipment).where(eq(equipment.userId, userId));
     const existingNames = new Set(existing.map(e => e.name));
     const toInsert      = BASE_ITEMS
       .filter(item => !existingNames.has(item.name))
@@ -472,14 +453,35 @@ export class DatabaseStorage implements IStorage {
       await tx.delete(transformations).where(eq(transformations.userId, userId));
       await tx.delete(campaignEvents).where(eq(campaignEvents.userId, userId));
       await tx.update(users).set({
-        level: 1, experience: 0, gold: 0, rice: 100,
-        hp: 100, maxHp: 100, attack: 10, defense: 10, speed: 10,
-        str: 1, agi: 1, vit: 1, int: 1, dex: 1, luk: 1,
-        statPoints: 48, stamina: 100, maxStamina: 100,
-        currentLocationId: 1, activeTransformId: null, transformActiveUntil: null,
-        upgradeStones: 0, seppukuCount: (user.seppukuCount || 0) + 1,
-        permAttackBonus: 0, permDefenseBonus: 0, permSpeedBonus: 0, permHpBonus: 0,
-        updatedAt: new Date()
+        // Use STARTING_STATS so this always stays in sync with schema.ts.
+        level:             STARTING_STATS.level,
+        experience:        STARTING_STATS.experience,
+        gold:              STARTING_STATS.gold,
+        rice:              STARTING_STATS.rice,
+        hp:                STARTING_STATS.hp,
+        maxHp:             STARTING_STATS.maxHp,
+        attack:            STARTING_STATS.attack,
+        defense:           STARTING_STATS.defense,
+        speed:             STARTING_STATS.speed,
+        str:               STARTING_STATS.str,
+        agi:               STARTING_STATS.agi,
+        vit:               STARTING_STATS.vit,
+        int:               STARTING_STATS.int,
+        dex:               STARTING_STATS.dex,
+        luk:               STARTING_STATS.luk,
+        stamina:           STARTING_STATS.stamina,
+        maxStamina:        STARTING_STATS.maxStamina,
+        statPoints:        STARTING_STATS.statPoints,
+        currentLocationId: 1,
+        activeTransformId:   null,
+        transformActiveUntil: null,
+        upgradeStones:     0,
+        seppukuCount:      (user.seppukuCount || 0) + 1,
+        permAttackBonus:   0,
+        permDefenseBonus:  0,
+        permSpeedBonus:    0,
+        permHpBonus:       0,
+        updatedAt:         new Date(),
       }).where(eq(users.id, userId));
     });
     await this.syncBaseEquipment(userId);

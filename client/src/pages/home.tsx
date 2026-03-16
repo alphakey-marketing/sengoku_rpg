@@ -42,6 +42,9 @@ import { ContextualTips } from "@/components/home/contextual-tips";
 import { StoryProgressBanner } from "@/components/home/story-progress-banner";
 import { statUpgradeCost, totalUpgradeCost } from "@shared/stat-cost";
 
+// Starting stat points — matches schema.ts default and STARTING_STATS in storage.ts.
+const DEFAULT_STAT_POINTS = 48;
+
 async function fetchWithAuth(url: string, options: RequestInit = {}) {
   const { data } = await supabase.auth.getSession();
   const token = data.session?.access_token;
@@ -108,27 +111,33 @@ export default function Home() {
   const [pendingUpgrades, setPendingUpgrades] = useState<Record<string, number>>({});
 
   const stagedInfo = useMemo(() => {
-    // FIX: use only player.statPoints (GET /api/player) as the source of truth.
-    // teamStatus.player.statPoints is a combat snapshot that can be stale
-    // immediately after an upgrade while React Query is still refetching.
-    const basePoints = player?.statPoints ?? 0;
+    // Use player.statPoints (GET /api/player) as the source of truth.
+    // Fall back to DEFAULT_STAT_POINTS (48) instead of 0 to avoid a
+    // misleading flash of "0 points remaining" during a refetch.
+    const basePoints = player?.statPoints ?? DEFAULT_STAT_POINTS;
     let cost = 0;
     for (const [key, amount] of Object.entries(pendingUpgrades)) {
       const stat = THEMATIC_STATS.find(s => s.key === key);
+      // Prefer the combat-snapshot value; fall back to the live player row;
+      // final fallback is 10 (schema default) — never 1.
       const currentVal =
         (teamStatus?.player as any)?.[key]
         ?? (teamStatus?.player as any)?.[stat?.dbKey ?? key]
-        ?? 1;
+        ?? (player as any)?.[stat?.dbKey ?? key]
+        ?? 10;
       cost += totalUpgradeCost(currentVal, amount);
     }
     return { totalCost: cost, pointsLeft: basePoints - cost };
-  }, [pendingUpgrades, teamStatus?.player, player?.statPoints]);
+  }, [pendingUpgrades, teamStatus?.player, player]);
 
   const handleStageUpgrade = (statKey: string, dbKey: string) => {
+    // Prefer combat-snapshot; fall back to live player row; final fallback
+    // is 10 (schema default) — never the old ?? 1 which caused wrong cost calc.
     const currentVal =
       (teamStatus?.player as any)?.[statKey]
       ?? (teamStatus?.player as any)?.[dbKey]
-      ?? 1;
+      ?? (player as any)?.[dbKey]
+      ?? 10;
     const staged  = pendingUpgrades[statKey] || 0;
     const nextVal = currentVal + staged;
     if (nextVal >= 99) return;
@@ -149,8 +158,6 @@ export default function Home() {
     setPendingUpgrades(prev => {
       const next = { ...prev };
       if (next[statKey] <= 1) {
-        // FIX: delete the key entirely instead of leaving { key: 0 },
-        // which could cause a stale-currentVal miscalculation in stagedInfo.
         delete next[statKey];
       } else {
         next[statKey] -= 1;
@@ -424,7 +431,8 @@ export default function Home() {
                 const currentVal =
                   (teamStatus?.player as any)?.[stat.key]
                   ?? (teamStatus?.player as any)?.[stat.dbKey]
-                  ?? 1;
+                  ?? (player as any)?.[stat.dbKey]
+                  ?? 10;
                 const staged   = pendingUpgrades[stat.key] || 0;
                 const nextVal  = currentVal + staged;
                 const cost     = statUpgradeCost(nextVal);
