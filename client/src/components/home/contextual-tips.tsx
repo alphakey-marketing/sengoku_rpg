@@ -2,7 +2,9 @@ import { Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { Users, Sword, Shield, Trophy, Zap, BookOpen, Star, ChevronRight, Sparkles } from "lucide-react";
 import type { PlayerData, Companion, Equipment } from "@/hooks/use-game";
-import type { PlayerFlag } from "@/hooks/use-story";
+
+// flags from useStoryFlags() is Record<string,number>, NOT an array.
+type FlagsRecord = Record<string, number>;
 
 interface TipCard {
   id: string;
@@ -20,34 +22,37 @@ interface Props {
   player: PlayerData;
   companions: Companion[];
   equipment: Equipment[];
-  flags: PlayerFlag[];
+  // Accept both the old array shape (legacy) and the current Record shape
+  // so the component never throws regardless of which version is loaded.
+  flags: FlagsRecord | { flagKey: string; flagValue: number }[] | null | undefined;
 }
 
-function getFlagValue(flags: PlayerFlag[], key: string): number {
-  // Guard: flags may be undefined/null or a non-array (e.g. a 401 error object)
-  // before the query resolves. Fall back to 0 safely.
-  if (!Array.isArray(flags)) return 0;
-  return flags.find(f => f.flagKey === key)?.flagValue ?? 0;
+function getFlagValue(flags: Props["flags"], key: string): number {
+  if (!flags) return 0;
+  // Record<string,number> shape (current useStoryFlags() return type)
+  if (!Array.isArray(flags)) return (flags as FlagsRecord)[key] ?? 0;
+  // Legacy array shape fallback
+  return (flags as { flagKey: string; flagValue: number }[]).find(f => f.flagKey === key)?.flagValue ?? 0;
 }
 
 export function ContextualTips({ player, companions, equipment, flags }: Props) {
   const tips: TipCard[] = [];
 
   // Normalise props that may not be arrays yet while queries are loading
-  const safeFlags      = Array.isArray(flags)      ? flags      : [];
   const safeCompanions = Array.isArray(companions) ? companions : [];
   const safeEquipment  = Array.isArray(equipment)  ? equipment  : [];
 
-  const partyMembers = safeCompanions.filter(c => c.isInParty);
-  const equippedItems = safeEquipment.filter(e => e.isEquipped && e.equippedToType === "player");
-  const hasWeapon = equippedItems.some(e => e.type === "Weapon");
+  const partyMembers    = safeCompanions.filter(c => c.isInParty);
+  const equippedItems   = safeEquipment.filter(e => e.isEquipped && e.equippedToType === "player");
+  const hasWeapon       = equippedItems.some(e => e.type === "Weapon");
   const statPointsAvailable = player.statPoints > 0;
   const totalCompanions = safeCompanions.length;
-  const loyaltyHanzo    = getFlagValue(safeFlags, "loyalty_hanzo");
-  const loyaltyYukimura = getFlagValue(safeFlags, "loyalty_yukimura");
-  const campaignProgress = getFlagValue(safeFlags, "campaign_chapter");
 
-  // Priority 1 — No companions at all
+  const loyaltyHanzo    = getFlagValue(flags, "loyalty_hanzo");
+  const loyaltyYukimura = getFlagValue(flags, "loyalty_yukimura");
+  const campaignProgress = getFlagValue(flags, "campaign_chapter");
+
+  // Priority 1 — No companions at all → Shrine / Gacha
   if (totalCompanions === 0) {
     tips.push({
       id: "no-companions",
@@ -56,13 +61,13 @@ export function ContextualTips({ player, companions, equipment, flags }: Props) 
       borderColor: "border-amber-700/40",
       title: "Recruit Your First Ally",
       body: "A lord fights best with loyal warriors at their side. Visit the War Council Shrine to summon your first companion.",
-      cta: "Visit War Council",
-      href: "/war-council",
+      cta: "Visit Shrine",
+      href: "/gacha",
       priority: 1,
     });
   }
 
-  // Priority 2 — Has companions but none in party
+  // Priority 2 — Has companions but none in party → Party management
   if (totalCompanions > 0 && partyMembers.length === 0) {
     tips.push({
       id: "no-party",
@@ -72,12 +77,12 @@ export function ContextualTips({ player, companions, equipment, flags }: Props) 
       title: "Form Your War Party",
       body: `You have ${totalCompanions} warrior${totalCompanions > 1 ? "s" : ""} but none are assigned to your party. Add companions to fight alongside you in battle.`,
       cta: "Manage Party",
-      href: "/war-council",
+      href: "/party",
       priority: 2,
     });
   }
 
-  // Priority 3 — No weapon equipped
+  // Priority 3 — No weapon equipped → Equipment page
   if (!hasWeapon && safeEquipment.length > 0) {
     tips.push({
       id: "no-weapon",
@@ -85,14 +90,14 @@ export function ContextualTips({ player, companions, equipment, flags }: Props) 
       color: "text-orange-400",
       borderColor: "border-orange-700/40",
       title: "Equip a Weapon",
-      body: "Your attack power is reduced without a weapon. Head to the Armory to equip one of your items.",
-      cta: "Open Armory",
-      href: "/armory",
+      body: "Your attack power is reduced without a weapon. Head to the Equipment page to equip one of your items.",
+      cta: "Open Equipment",
+      href: "/equipment",
       priority: 3,
     });
   }
 
-  // Priority 4 — Stat points waiting
+  // Priority 4 — Stat points waiting (link stays at / — stat panel is on the Dojo page)
   if (statPointsAvailable) {
     tips.push({
       id: "stat-points",
@@ -100,7 +105,7 @@ export function ContextualTips({ player, companions, equipment, flags }: Props) 
       color: "text-purple-400",
       borderColor: "border-purple-700/40",
       title: `${player.statPoints} Stat Point${player.statPoints > 1 ? "s" : ""} Available`,
-      body: "Unspent attribute points are wasted potential. Allocate them below to grow stronger.",
+      body: "Unspent attribute points are wasted potential. Allocate them in the Warlord's Identity panel on this page.",
       cta: "Allocate Now",
       href: "/",
       priority: 4,
