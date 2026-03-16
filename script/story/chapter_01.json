@@ -1,7 +1,7 @@
 {
   "chapter": {
     "title": "The Fool of Owari",
-    "subtitle": "1551 \u2014 The land mocks you. Let it.",
+    "subtitle": "1551 — The land mocks you. Let it.",
     "chapterOrder": 1,
     "isLocked": false
   },
@@ -19,7 +19,7 @@
           "speakerName": "Narrator",
           "speakerSide": "none",
           "portraitKey": null,
-          "text": "Owari Province, 1551. The clan lords whisper that the young heir is a fool \u2014 wild, reckless, and beneath contempt. They have never been more wrong.",
+          "text": "Owari Province, 1551. The clan lords whisper that the young heir is a fool — wild, reckless, and beneath contempt. They have never been more wrong.",
           "lineOrder": 1
         },
         {
@@ -130,14 +130,14 @@
           "speakerName": "Elder Hayashi",
           "speakerSide": "left",
           "portraitKey": "hayashi_shocked",
-          "text": "You\u2019ll be dead within a year.",
+          "text": "You'll be dead within a year.",
           "lineOrder": 1
         },
         {
           "speakerName": "Nobunaga",
           "speakerSide": "right",
           "portraitKey": "nobunaga_fierce",
-          "text": "Then enjoy this year. It\u2019s the last you\u2019ll have power over anything.",
+          "text": "Then enjoy this year. It's the last you'll have power over anything.",
           "lineOrder": 2
         }
       ],
@@ -177,7 +177,7 @@
           "speakerName": "Mitsuhide",
           "speakerSide": "left",
           "portraitKey": "mitsuhide_resolve",
-          "text": "They undersell you. I would serve you, if you\u2019ll have me.",
+          "text": "They undersell you. I would serve you, if you'll have me.",
           "lineOrder": 4
         },
         {
@@ -190,12 +190,12 @@
       ],
       "choices": [
         {
-          "choiceText": "\"Welcome. A brilliant mind is rare \u2014 I\u2019d be a fool to turn one away.\"",
+          "choiceText": "\"Welcome. A brilliant mind is rare — I'd be a fool to turn one away.\"",
           "nextSceneRef": "S05",
           "flagKey": "mitsuhide_loyalty",
           "flagValue": 2,
-          "flagKey2": null,
-          "flagValue2": null,
+          "flagKey2": "bond_strength",
+          "flagValue2": 1,
           "choiceOrder": 1
         },
         {
@@ -231,7 +231,7 @@
           "speakerName": "Monk Messenger",
           "speakerSide": "left",
           "portraitKey": "monk_fearful",
-          "text": "My lord \u2014 near Nagashino. Workers unearthed a blade. Three men dead. No wounds. The blade sings at night.",
+          "text": "My lord — near Nagashino. Workers unearthed a blade. Three men dead. No wounds. The blade sings at night.",
           "lineOrder": 1
         },
         {
@@ -278,6 +278,10 @@
       "nextSceneRef": "S07",
       "isBattleGate": false,
       "isChapterEnd": false,
+      "flagWrites": [
+        { "flagKey": "weapon_legacy", "flagValue": 1 },
+        { "flagKey": "omen_read",     "flagValue": 1 }
+      ],
       "dialogueLines": [
         {
           "speakerName": "Narrator",
@@ -299,6 +303,13 @@
           "portraitKey": null,
           "text": "Something stirs at the edge of your mind. Ancient. Patient. Hungry.",
           "lineOrder": 3
+        },
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "A fox sits in the open doorway of the armory. It does not flinch at the sound of men or steel. It watches you hold the blade, then turns and walks into the dark. You note it the way you note anything that does not behave as expected.",
+          "lineOrder": 4
         }
       ],
       "choices": []
@@ -325,6 +336,13 @@
           "portraitKey": "mitsuhide_approving",
           "text": "A wise decision, my lord. A blade that kills its bearers serves no one.",
           "lineOrder": 2
+        },
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "One of the soldiers who carried the blade has left a dog behind — a lean, quiet animal that followed his horse from Nagashino and will not follow him back. It sits at the edge of the ash and waits. When the party turns for Owari, it falls in beside the column without being invited. Nobody sends it away.",
+          "lineOrder": 3
         }
       ],
       "choices": []
@@ -342,7 +360,7 @@
           "speakerName": "Scout",
           "speakerSide": "left",
           "portraitKey": "scout_panicked",
-          "text": "25,000 men, my lord. Imagawa Yoshimoto marches for Kyoto. He passes through Owari like we don\u2019t exist.",
+          "text": "25,000 men, my lord. Imagawa Yoshimoto marches for Kyoto. He passes through Owari like we don't exist.",
           "lineOrder": 1
         },
         {
@@ -358,11 +376,18 @@
           "portraitKey": "nobunaga_fierce",
           "text": "Or an opportunity. Storms are loud. Scouts go blind. 25,000 men cannot all watch at once.",
           "lineOrder": 3
+        },
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "His horse refuses to move. It plants its feet in the mud and turns its head away from the gorge, ears flat, shaking. Nobunaga dismounts without a word. He takes the reins and leads it forward by hand, walking at the front of the column into the storm on foot. The horse follows him.",
+          "lineOrder": 4
         }
       ],
       "choices": [
         {
-          "choiceText": "\"Strike now \u2014 full ambush in the storm. No hesitation.\"",
+          "choiceText": "\"Strike now — full ambush in the storm. No hesitation.\"",
           "nextSceneRef": "S08_BATTLE",
           "flagKey": "ruthlessness",
           "flagValue": 2,
@@ -418,6 +443,9 @@
       "nextSceneRef": "S10_WIN",
       "isBattleGate": false,
       "isChapterEnd": false,
+      "flagWrites": [
+        { "flagKey": "road_command", "flagValue": 1 }
+      ],
       "dialogueLines": [
         {
           "speakerName": "Narrator",
@@ -439,6 +467,13 @@
           "portraitKey": "nobunaga_smirk",
           "text": "They were waiting for a battle. I gave them a storm.",
           "lineOrder": 3
+        },
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "The horse is found afterward grazing at the edge of the gorge, calm now, unhurt. Someone asks its name. Nobunaga does not answer immediately. Then: \"Okehazama.\" The groom nods and writes it down. It is the first thing named after a victory rather than before one.",
+          "lineOrder": 4
         }
       ],
       "choices": []
@@ -503,7 +538,7 @@
           "speakerName": "Kenshin (letter)",
           "speakerSide": "left",
           "portraitKey": "kenshin_portrait",
-          "text": "The Fool of Owari has teeth. Interesting. You are either the most dangerous man in Japan or the luckiest. I intend to find out which. We will meet, and I will judge whether you are a sword worth fearing \u2014 or a plague to be ended.",
+          "text": "The Fool of Owari has teeth. Interesting. You are either the most dangerous man in Japan or the luckiest. I intend to find out which. We will meet, and I will judge whether you are a sword worth fearing — or a plague to be ended.",
           "lineOrder": 3
         },
         {
@@ -571,7 +606,7 @@
           "speakerName": "Narrator",
           "speakerSide": "none",
           "portraitKey": null,
-          "text": "The ash falls. The age of the Fool of Owari has begun \u2014 on his knees, looking up. He will not forget the view.",
+          "text": "The ash falls. The age of the Fool of Owari has begun — on his knees, looking up. He will not forget the view.",
           "lineOrder": 6
         }
       ],
