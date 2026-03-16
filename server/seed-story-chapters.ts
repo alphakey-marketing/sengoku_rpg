@@ -15,6 +15,7 @@ import {
   storyScenes,
   dialogueLines,
   storyChoices,
+  type ConditionalVariant,
 } from "../shared/schema";
 import { eq } from "drizzle-orm";
 
@@ -38,6 +39,18 @@ interface JsonChoice {
   choiceOrder: number;
 }
 
+interface JsonConditionalVariantCondition {
+  flagKey: string;
+  operator: "gte" | "lte" | "gt" | "lt" | "eq" | "neq";
+  value: number;
+}
+
+interface JsonConditionalVariant {
+  outcome: "win" | "lose";
+  sceneRef: string;
+  condition: JsonConditionalVariantCondition;
+}
+
 interface JsonScene {
   sceneRef: string;
   backgroundKey: string;
@@ -48,6 +61,7 @@ interface JsonScene {
   battleEnemyKey?: string;
   battleWinSceneRef?: string;
   battleLoseSceneRef?: string;
+  conditionalVariants?: JsonConditionalVariant[];
   isChapterEnd: boolean;
   dialogueLines: JsonDialogueLine[];
   choices: JsonChoice[];
@@ -63,7 +77,7 @@ interface JsonChapterFile {
   scenes: JsonScene[];
 }
 
-// ─── Core seed logic (mirrors script/seed-story.ts) ────────────────────────────
+// ─── Core seed logic ──────────────────────────────────────────────────────────────
 
 async function buildRefMap(
   scenes: JsonScene[],
@@ -94,12 +108,36 @@ async function resolveForwardRefs(
 ): Promise<void> {
   for (const s of scenes) {
     const sceneId = refMap.get(s.sceneRef)!;
+
+    // Resolve conditionalVariants: replace sceneRef strings with integer sceneIds.
+    let resolvedVariants: ConditionalVariant[] | null = null;
+    if (s.conditionalVariants && s.conditionalVariants.length > 0) {
+      resolvedVariants = s.conditionalVariants
+        .map((v): ConditionalVariant | null => {
+          const resolvedSceneId = refMap.get(v.sceneRef);
+          if (resolvedSceneId === undefined) {
+            console.warn(
+              `[seed-story] WARNING: conditionalVariant sceneRef "${v.sceneRef}" ` +
+              `not found in refMap for scene "${s.sceneRef}". Skipping variant.`,
+            );
+            return null;
+          }
+          return {
+            outcome:   v.outcome,
+            sceneId:   resolvedSceneId,
+            condition: v.condition,
+          };
+        })
+        .filter((v): v is ConditionalVariant => v !== null);
+    }
+
     await db
       .update(storyScenes)
       .set({
-        nextSceneId:       s.nextSceneRef       ? (refMap.get(s.nextSceneRef)       ?? null) : null,
-        battleWinSceneId:  s.battleWinSceneRef  ? (refMap.get(s.battleWinSceneRef)  ?? null) : null,
-        battleLoseSceneId: s.battleLoseSceneRef ? (refMap.get(s.battleLoseSceneRef) ?? null) : null,
+        nextSceneId:         s.nextSceneRef       ? (refMap.get(s.nextSceneRef)       ?? null) : null,
+        battleWinSceneId:    s.battleWinSceneRef  ? (refMap.get(s.battleWinSceneRef)  ?? null) : null,
+        battleLoseSceneId:   s.battleLoseSceneRef ? (refMap.get(s.battleLoseSceneRef) ?? null) : null,
+        conditionalVariants: resolvedVariants ?? null,
       })
       .where(eq(storyScenes.id, sceneId));
   }
@@ -196,8 +234,6 @@ async function seedOneChapter(filePath: string): Promise<void> {
 // ─── Public entry point ──────────────────────────────────────────────────────────────
 
 export async function seedStoryChapters(): Promise<void> {
-  // Resolve relative to the project root (where server/ lives), not __dirname,
-  // so this works whether running via ts-node, tsx, or compiled JS.
   const storyDir = resolve("script/story");
 
   let files: string[];
@@ -208,7 +244,6 @@ export async function seedStoryChapters(): Promise<void> {
       .sort()
       .map((f) => join(storyDir, f));
   } catch {
-    // script/story doesn't exist in this environment — safe to skip.
     console.log("[seed-story] script/story/ not found. Skipping chapter seed.");
     return;
   }

@@ -55,6 +55,24 @@ export function unlockConditionHint(
   return `${label} ${op} ${threshold} (currently ${current})`;
 }
 
+// ── ConditionalVariant — stored in story_scenes.conditional_variants JSONB ──
+//
+// Each element describes one flag-gated override of the default battle routing.
+// sceneId is the resolved integer DB id (not the JSON sceneRef string).
+// The engine checks these before falling back to battleWinSceneId / battleLoseSceneId.
+
+export interface ConditionalVariantCondition {
+  flagKey:  string;
+  operator: "gte" | "lte" | "gt" | "lt" | "eq" | "neq";
+  value:    number;
+}
+
+export interface ConditionalVariant {
+  outcome:   "win" | "lose";
+  sceneId:   number;
+  condition: ConditionalVariantCondition;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Core game tables
 // ─────────────────────────────────────────────────────────────────────────────
@@ -289,6 +307,11 @@ export const storyScenes = pgTable("story_scenes", {
   battleEnemyKey: text("battle_enemy_key"),
   battleWinSceneId: integer("battle_win_scene_id"),
   battleLoseSceneId: integer("battle_lose_scene_id"),
+  // Nullable JSONB array of ConditionalVariant objects.
+  // Checked by /api/story/battle-result BEFORE falling back to
+  // battleWinSceneId / battleLoseSceneId.
+  // Shape: { outcome: "win"|"lose", sceneId: number, condition: { flagKey, operator, value } }[]
+  conditionalVariants: jsonb("conditional_variants").$type<ConditionalVariant[]>(),
   isChapterEnd: boolean("is_chapter_end").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow(),
 });
