@@ -20,10 +20,13 @@
       "defaultValue": 0,
       "label": "Mitsuhide Loyalty",
       "description": "Tracks Mitsuhide's accumulated loyalty delta. Negative values unlock cold-path variants in Ch4 (S09_WIN_COLD, S09_LOSE_COLD). Critical threshold for Ch8 Honnoji branching.",
-      "writtenByChapters": [2, 4],
+      "writtenByChapters": [1, 2, 3, 4],
       "conditionalScenesTriggered": [
         { "chapter": 4, "sceneRef": "S09_WIN_COLD",  "condition": { "flagKey": "mitsuhide_loyalty", "operator": "lte", "value": 0 } },
-        { "chapter": 4, "sceneRef": "S09_LOSE_COLD", "condition": { "flagKey": "mitsuhide_loyalty", "operator": "lte", "value": 0 } }
+        { "chapter": 4, "sceneRef": "S09_LOSE_COLD", "condition": { "flagKey": "mitsuhide_loyalty", "operator": "lte", "value": 0 } },
+        { "chapter": 7, "sceneRef": "S09_WIN_LOYAL", "condition": { "flagKey": "mitsuhide_loyalty", "operator": "gte", "value": 2 } },
+        { "chapter": 8, "sceneRef": "S02_LOYAL",     "condition": { "flagKey": "mitsuhide_loyalty", "operator": "gte", "value": 2 } },
+        { "chapter": 8, "sceneRef": "S02_COLD",      "condition": { "flagKey": "mitsuhide_loyalty", "operator": "lte", "value": 0 } }
       ]
     },
     {
@@ -85,6 +88,57 @@
       "label": "Katsuie Loyalty",
       "description": "Tracks Katsuie's accumulated loyalty from Ch2 council and road scenes. Affects Ch2 chapter-end dialogue register. Reserved for future chapters.",
       "writtenByChapters": [2]
+    },
+    {
+      "flagKey": "bond_strength",
+      "defaultValue": 0,
+      "label": "Bond Strength",
+      "description": "Companion mechanic flag. Incremented when the player treats companions with deliberate care — welcoming Mitsuhide warmly (Ch1), accepting Ieyasu's full terms (Ch2), riding in silence with Nohime (Ch3), sending Mitsuhide to negotiate (Ch3), Ranmaru present at Honnoji (Ch7), S02_LOYAL fires (Ch8). Max 6. Threshold ≥3 unlocks deeper narrator beats in Ch6 S01; ≥4 unlocks Ch8 S04_BATTLE and S05_WIN companion codas.",
+      "writtenByChapters": [1, 2, 3, 7, 8],
+      "hidden": false,
+      "conditionalScenesTriggered": [
+        { "chapter": 6, "sceneRef": "S01", "condition": { "flagKey": "bond_strength", "operator": "gte", "value": 3 }, "effect": "dialogueLine_variant" },
+        { "chapter": 8, "sceneRef": "S04_BATTLE", "condition": { "flagKey": "bond_strength", "operator": "gte", "value": 4 }, "effect": "dialogueLine_variant" },
+        { "chapter": 8, "sceneRef": "S05_WIN", "condition": { "flagKey": "bond_strength", "operator": "gte", "value": 4 }, "effect": "dialogueLine_variant" }
+      ]
+    },
+    {
+      "flagKey": "weapon_legacy",
+      "defaultValue": 0,
+      "label": "Weapon Legacy",
+      "description": "Equipment mechanic flag. Incremented each time Nobunaga accepts or keeps a significant weapon: blade retrieved (Ch1 S06A), mystery gift accepted (Ch2 S06 micro-beat), Katsuie's weapon received (Ch4), Kenshin's blade received (Ch5). Max 4. Threshold ≥2 unlocks Kenshin's 'you carry things' line in Ch5 S04; ≥3 arms the named-weapon narrator beat in Ch8 S03B. weapon_legacy=0 on any Ch8 path triggers the 'travels light' alternative.",
+      "writtenByChapters": [1, 2, 4, 5],
+      "hidden": false,
+      "conditionalScenesTriggered": [
+        { "chapter": 5, "sceneRef": "S04", "condition": { "flagKey": "weapon_legacy", "operator": "gte", "value": 2 }, "effect": "dialogueLine_variant" },
+        { "chapter": 8, "sceneRef": "S03B", "condition": { "flagKey": "weapon_legacy", "operator": "gte", "value": 3 }, "effect": "dialogueLine_variant" },
+        { "chapter": 8, "sceneRef": "S03B", "condition": { "flagKey": "weapon_legacy", "operator": "eq",  "value": 0 }, "effect": "dialogueLine_variant" }
+      ]
+    },
+    {
+      "flagKey": "omen_read",
+      "defaultValue": 0,
+      "label": "Omen Read",
+      "description": "Pet mechanic flag. Incremented when Nobunaga pays attention to things outside the campaign: fox at the armory (Ch1 S06A), roadside omen with Nohime after Dosan (Ch3 S05A), high-supernatural_affinity mirror exchange with Kenshin (Ch5 S04). Max 3. Threshold ≥2 changes how Kenshin's 'tools break' warning is delivered in Ch5 S04 (personal vs general) and adds a premonition narrator beat to Ch8 S01.",
+      "writtenByChapters": [1, 3, 5],
+      "hidden": false,
+      "conditionalScenesTriggered": [
+        { "chapter": 5, "sceneRef": "S04", "condition": { "flagKey": "omen_read", "operator": "gte", "value": 2 }, "effect": "dialogueLine_variant" },
+        { "chapter": 8, "sceneRef": "S01", "condition": { "flagKey": "omen_read", "operator": "gte", "value": 2 }, "effect": "dialogueLine_variant" }
+      ]
+    },
+    {
+      "flagKey": "road_command",
+      "defaultValue": 0,
+      "label": "Road Command",
+      "description": "Stable mechanic flag. Incremented when Nobunaga invests in movement and mounted logistics: horse named after Okehazama (Ch1 S09_WIN), war-horse presence at Nobuyasu standoff (Ch2 S05A), lending stable horse to Mitsuhide (Ch4 mid-scene), mounted at garrison battle (Ch7 S08_BATTLE). Max 4. Threshold ≥3 unlocks a logistics-reflection narrator beat in Ch7 S09_WIN and S09_WIN_LOYAL, and the Okehazama horse callback in Ch8 S05_WIN.",
+      "writtenByChapters": [1, 2, 4, 7],
+      "hidden": false,
+      "conditionalScenesTriggered": [
+        { "chapter": 7, "sceneRef": "S09_WIN",       "condition": { "flagKey": "road_command", "operator": "gte", "value": 3 }, "effect": "dialogueLine_variant" },
+        { "chapter": 7, "sceneRef": "S09_WIN_LOYAL", "condition": { "flagKey": "road_command", "operator": "gte", "value": 3 }, "effect": "dialogueLine_variant" },
+        { "chapter": 8, "sceneRef": "S05_WIN",       "condition": { "flagKey": "road_command", "operator": "gte", "value": 3 }, "effect": "dialogueLine_variant" }
+      ]
     }
   ]
 }
