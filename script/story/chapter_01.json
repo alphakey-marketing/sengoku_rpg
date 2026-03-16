@@ -38,6 +38,7 @@
       "bgmKey": "bgm_tense_court",
       "sceneOrder": 2,
       "nextSceneRef": null,
+      "routingMode": "choices",
       "isBattleGate": false,
       "isChapterEnd": false,
       "dialogueLines": [
@@ -149,6 +150,7 @@
       "bgmKey": "bgm_journey",
       "sceneOrder": 5,
       "nextSceneRef": null,
+      "routingMode": "choices",
       "isBattleGate": false,
       "isChapterEnd": false,
       "dialogueLines": [
@@ -201,10 +203,11 @@
         {
           "choiceText": "\"Prove yourself first. Fetch water from the well.\"",
           "nextSceneRef": "S05",
-          "flagKey": "mitsuhide_loyalty",
-          "flagValue": 0,
+          "flagKey": null,
+          "flagValue": null,
           "flagKey2": null,
           "flagValue2": null,
+          "_comment": "Deliberate no-delta: prove-yourself response earns no loyalty or bond increment.",
           "choiceOrder": 2
         },
         {
@@ -224,6 +227,7 @@
       "bgmKey": "bgm_ominous",
       "sceneOrder": 6,
       "nextSceneRef": null,
+      "routingMode": "choices",
       "isBattleGate": false,
       "isChapterEnd": false,
       "dialogueLines": [
@@ -278,6 +282,7 @@
       "nextSceneRef": "S07",
       "isBattleGate": false,
       "isChapterEnd": false,
+      "_comment": "flagWrites here are scene-level unconditional writes — applied when the scene is reached, regardless of choice taken. Distinct from choice-level flagKey/flagKey2 pairs which are conditional on the player's selection.",
       "flagWrites": [
         { "flagKey": "weapon_legacy", "flagValue": 1 },
         { "flagKey": "omen_read",     "flagValue": 1 }
@@ -353,6 +358,7 @@
       "bgmKey": "bgm_war_drums",
       "sceneOrder": 9,
       "nextSceneRef": null,
+      "routingMode": "choices",
       "isBattleGate": false,
       "isChapterEnd": false,
       "dialogueLines": [

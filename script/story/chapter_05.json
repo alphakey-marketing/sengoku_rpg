@@ -58,7 +58,7 @@
       "backgroundKey": "mountain_inn_exterior",
       "bgmKey": "bgm_tense_court",
       "sceneOrder": 2,
-      "nextSceneRef": null,
+      "nextSceneRef": "S03",
       "isBattleGate": false,
       "isChapterEnd": false,
       "dialogueLines": [
@@ -106,6 +106,7 @@
       "bgmKey": "bgm_intrigue",
       "sceneOrder": 3,
       "nextSceneRef": null,
+      "routingMode": "choices",
       "isBattleGate": false,
       "isChapterEnd": false,
       "dialogueLines": [
@@ -294,6 +295,7 @@
       "bgmKey": "bgm_intrigue",
       "sceneOrder": 7,
       "nextSceneRef": null,
+      "routingMode": "choices",
       "isBattleGate": false,
       "isChapterEnd": false,
       "dialogueLines": [
@@ -384,6 +386,7 @@
       "bgmKey": "bgm_intrigue",
       "sceneOrder": 10,
       "nextSceneRef": null,
+      "routingMode": "choices",
       "isBattleGate": false,
       "isChapterEnd": false,
       "dialogueLines": [
@@ -543,7 +546,7 @@
       "backgroundKey": "mountain_inn_exterior_night",
       "bgmKey": "bgm_tension_resolve",
       "sceneOrder": 14,
-      "nextSceneRef": null,
+      "nextSceneRef": "S07",
       "isBattleGate": false,
       "isChapterEnd": false,
       "flagWrites": [
@@ -587,6 +590,7 @@
       "bgmKey": "bgm_intrigue",
       "sceneOrder": 15,
       "nextSceneRef": null,
+      "routingMode": "choices",
       "isBattleGate": false,
       "isChapterEnd": false,
       "dialogueLines": [
@@ -645,7 +649,7 @@
       "backgroundKey": "gifu_castle_garden_evening",
       "bgmKey": "bgm_quiet_resolve",
       "sceneOrder": 16,
-      "nextSceneRef": "S_FORGE",
+      "nextSceneRef": "S18",
       "isBattleGate": false,
       "isChapterEnd": false,
       "dialogueLines": [
@@ -671,7 +675,7 @@
       "backgroundKey": "gifu_castle_garden_evening",
       "bgmKey": "bgm_intrigue",
       "sceneOrder": 17,
-      "nextSceneRef": "S_FORGE",
+      "nextSceneRef": "S18",
       "isBattleGate": false,
       "isChapterEnd": false,
       "dialogueLines": [
@@ -693,11 +697,12 @@
       "choices": []
     },
     {
-      "sceneRef": "S_FORGE",
+      "sceneRef": "S18",
       "backgroundKey": "gifu_castle_map_room_day",
       "bgmKey": "bgm_quiet_resolve",
       "sceneOrder": 18,
       "nextSceneRef": null,
+      "routingMode": "choices",
       "isBattleGate": false,
       "isChapterEnd": false,
       "dialogueLines": [
@@ -733,7 +738,7 @@
       "choices": [
         {
           "choiceText": "Accept the blade. Have it mounted in the campaign room.",
-          "nextSceneRef": "S_FORGE_KEEP",
+          "nextSceneRef": "S18A",
           "flagKey": "weapon_legacy",
           "flagValue": 1,
           "flagKey2": null,
@@ -742,7 +747,7 @@
         },
         {
           "choiceText": "Return it to the smith. A reforged blade is not the same blade. He should keep the work.",
-          "nextSceneRef": "S_FORGE_RETURN",
+          "nextSceneRef": "S18B",
           "flagKey": "ruthlessness",
           "flagValue": 1,
           "flagKey2": null,
@@ -752,7 +757,7 @@
       ]
     },
     {
-      "sceneRef": "S_FORGE_KEEP",
+      "sceneRef": "S18A",
       "backgroundKey": "gifu_castle_map_room_day",
       "bgmKey": "bgm_quiet_resolve",
       "sceneOrder": 19,
@@ -778,7 +783,7 @@
       "choices": []
     },
     {
-      "sceneRef": "S_FORGE_RETURN",
+      "sceneRef": "S18B",
       "backgroundKey": "gifu_castle_map_room_day",
       "bgmKey": "bgm_quiet_resolve",
       "sceneOrder": 20,

@@ -6,21 +6,21 @@
       "defaultValue": 0,
       "label": "Ruthless",
       "description": "Incremented by choices that favour force, intimidation, or immediate cost over diplomacy. High values shift Mitsuhide grief scenes and Ch8 endings.",
-      "writtenByChapters": [1, 2, 3, 4]
+      "writtenByChapters": [1, 2, 3, 4, 5]
     },
     {
       "flagKey": "political_power",
       "defaultValue": 0,
       "label": "Political",
       "description": "Incremented by choices that favour leverage, patience, and institutional power over direct action. Affects Ch6 Nohime council scenes.",
-      "writtenByChapters": [1, 2, 3, 4]
+      "writtenByChapters": [1, 2, 3, 4, 5]
     },
     {
       "flagKey": "mitsuhide_loyalty",
       "defaultValue": 0,
       "label": "Mitsuhide Loyalty",
       "description": "Tracks Mitsuhide's accumulated loyalty delta. Negative values unlock cold-path variants in Ch4 (S09_WIN_COLD, S09_LOSE_COLD). Critical threshold for Ch8 Honnoji branching.",
-      "writtenByChapters": [1, 2, 3, 4],
+      "writtenByChapters": [1, 2, 3, 4, 5],
       "conditionalScenesTriggered": [
         { "chapter": 4, "sceneRef": "S09_WIN_COLD",  "condition": { "flagKey": "mitsuhide_loyalty", "operator": "lte", "value": 0 } },
         { "chapter": 4, "sceneRef": "S09_LOSE_COLD", "condition": { "flagKey": "mitsuhide_loyalty", "operator": "lte", "value": 0 } },
@@ -34,7 +34,7 @@
       "defaultValue": 0,
       "label": "Supernatural",
       "description": "Incremented by choices that engage with omen, ritual, or fate over material strategy. Affects Ch5 Kenshin mirror scene variants.",
-      "writtenByChapters": [1]
+      "writtenByChapters": [1, 5]
     },
     {
       "flagKey": "battle_won",
@@ -55,7 +55,7 @@
       "defaultValue": 0,
       "label": "Nohime Trust",
       "description": "Tracks accumulated trust with Nohime. Affects Ch6 Nohime gambit scene depth and available choices. High values unlock the Ch6 private council variant.",
-      "writtenByChapters": [3, 4]
+      "writtenByChapters": [3, 4, 5]
     },
     {
       "flagKey": "kennyo_hate",
@@ -93,8 +93,8 @@
       "flagKey": "bond_strength",
       "defaultValue": 0,
       "label": "Bond Strength",
-      "description": "Companion mechanic flag. Incremented when the player treats companions with deliberate care — welcoming Mitsuhide warmly (Ch1), accepting Ieyasu's full terms (Ch2), riding in silence with Nohime (Ch3), sending Mitsuhide to negotiate (Ch3), Ranmaru present at Honnoji (Ch7), S02_LOYAL fires (Ch8). Max 6. Threshold ≥3 unlocks deeper narrator beats in Ch6 S01; ≥4 unlocks Ch8 S04_BATTLE and S05_WIN companion codas.",
-      "writtenByChapters": [1, 2, 3, 7, 8],
+      "description": "Companion mechanic flag. Incremented when the player treats companions with deliberate care — welcoming Mitsuhide warmly (Ch1), accepting Ieyasu's full terms (Ch2), riding in silence with Nohime (Ch3), sending Mitsuhide to negotiate (Ch3), Ranmaru present at Honnoji (Ch7), S02_LOYAL fires (Ch8). Max 6 before Ch5 addition. Threshold ≥3 unlocks deeper narrator beats in Ch6 S01; ≥4 unlocks Ch8 S04_BATTLE and S05_WIN companion codas.",
+      "writtenByChapters": [1, 2, 3, 5, 7, 8],
       "hidden": false,
       "conditionalScenesTriggered": [
         { "chapter": 6, "sceneRef": "S01", "condition": { "flagKey": "bond_strength", "operator": "gte", "value": 3 }, "effect": "dialogueLine_variant" },
@@ -106,7 +106,7 @@
       "flagKey": "weapon_legacy",
       "defaultValue": 0,
       "label": "Weapon Legacy",
-      "description": "Equipment mechanic flag. Incremented each time Nobunaga accepts or keeps a significant weapon: blade retrieved (Ch1 S06A), mystery gift accepted (Ch2 S06 micro-beat), Katsuie's weapon received (Ch4), Kenshin's blade received (Ch5). Max 4. Threshold ≥2 unlocks Kenshin's 'you carry things' line in Ch5 S04; ≥3 arms the named-weapon narrator beat in Ch8 S03B. weapon_legacy=0 on any Ch8 path triggers the 'travels light' alternative.",
+      "description": "Equipment mechanic flag. Incremented each time Nobunaga accepts or keeps a significant weapon: blade retrieved (Ch1 S06A), mystery gift accepted (Ch2 S06 micro-beat), Katsuie's weapon received (Ch4), reforged Nagashino blade accepted (Ch5 S18A). Max 4. Threshold ≥2 unlocks Kenshin's 'you carry things' line in Ch5 S04; ≥3 arms the named-weapon narrator beat in Ch8 S03B. weapon_legacy=0 on any Ch8 path triggers the 'travels light' alternative.",
       "writtenByChapters": [1, 2, 4, 5],
       "hidden": false,
       "conditionalScenesTriggered": [
@@ -119,7 +119,7 @@
       "flagKey": "omen_read",
       "defaultValue": 0,
       "label": "Omen Read",
-      "description": "Pet mechanic flag. Incremented when Nobunaga pays attention to things outside the campaign: fox at the armory (Ch1 S06A), roadside omen with Nohime after Dosan (Ch3 S05A), high-supernatural_affinity mirror exchange with Kenshin (Ch5 S04). Max 3. Threshold ≥2 changes how Kenshin's 'tools break' warning is delivered in Ch5 S04 (personal vs general) and adds a premonition narrator beat to Ch8 S01.",
+      "description": "Pet mechanic flag. Incremented when Nobunaga pays attention to things outside the campaign: fox at the armory (Ch1 S06A), roadside omen with Nohime after Dosan (Ch3 S05A), Kenshin honest-assessment reception (Ch5 S03C) or blade-acknowledgement (Ch5 S05A). Max 3. Threshold ≥2 changes how Kenshin's 'tools break' warning is delivered in Ch5 S04 (personal vs general) and adds a premonition narrator beat to Ch8 S01.",
       "writtenByChapters": [1, 3, 5],
       "hidden": false,
       "conditionalScenesTriggered": [
