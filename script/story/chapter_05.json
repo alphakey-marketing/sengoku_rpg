@@ -169,8 +169,8 @@
           "nextSceneRef": "S03C",
           "flagKey": "nohime_trust",
           "flagValue": 1,
-          "flagKey2": null,
-          "flagValue2": null,
+          "flagKey2": "omen_read",
+          "flagValue2": 1,
           "choiceOrder": 3
         }
       ]
@@ -277,6 +277,13 @@
           "portraitKey": "kenshin_portrait",
           "text": "A man who does not know what he wants is more dangerous than one who does. I give you three years — and I will be watching to see what answer you find.",
           "lineOrder": 4
+        },
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "He receives the assessment the way Nohime received the heron on the Mino road — without naming it, without resolution, filed somewhere that does not announce itself. Not certainty. Attention.",
+          "lineOrder": 5
         }
       ],
       "choices": []
@@ -408,8 +415,8 @@
           "nextSceneRef": "S05A",
           "flagKey": "supernatural_affinity",
           "flagValue": 1,
-          "flagKey2": null,
-          "flagValue2": null,
+          "flagKey2": "omen_read",
+          "flagValue2": 1,
           "choiceOrder": 1
         },
         {
@@ -468,6 +475,13 @@
           "portraitKey": null,
           "text": "For the first time in the conversation, Kenshin looks surprised. He files this under a category that does not yet have a name.",
           "lineOrder": 4
+        },
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "A pause. The fire in the room settles. The mountain air outside the screen door has changed in some way that neither of them comments on — a pressure difference, the kind that comes before weather, or before something else entirely. Nobunaga notes it the way he notes everything: without expression, as a fact.",
+          "lineOrder": 5
         }
       ],
       "choices": []
@@ -532,6 +546,9 @@
       "nextSceneRef": null,
       "isBattleGate": false,
       "isChapterEnd": false,
+      "flagWrites": [
+        { "flagKey": "bond_strength", "flagValue": 1 }
+      ],
       "dialogueLines": [
         {
           "speakerName": "Kenshin",
@@ -558,7 +575,7 @@
           "speakerName": "Narrator",
           "speakerSide": "none",
           "portraitKey": null,
-          "text": "He leaves. The mountain is dark. Nobunaga stands at the inn's edge for a long time with Kenshin's words, which are neither threat nor comfort but something rarer: an honest assessment.",
+          "text": "He leaves. The mountain is dark. Nobunaga stands at the inn's edge for a long time with Kenshin's words, which are neither threat nor comfort but something rarer: an honest assessment. He has not received many of those. He notes this also.",
           "lineOrder": 4
         }
       ],
@@ -628,7 +645,7 @@
       "backgroundKey": "gifu_castle_garden_evening",
       "bgmKey": "bgm_quiet_resolve",
       "sceneOrder": 16,
-      "nextSceneRef": "S08",
+      "nextSceneRef": "S_FORGE",
       "isBattleGate": false,
       "isChapterEnd": false,
       "dialogueLines": [
@@ -654,7 +671,7 @@
       "backgroundKey": "gifu_castle_garden_evening",
       "bgmKey": "bgm_intrigue",
       "sceneOrder": 17,
-      "nextSceneRef": "S08",
+      "nextSceneRef": "S_FORGE",
       "isBattleGate": false,
       "isChapterEnd": false,
       "dialogueLines": [
@@ -676,10 +693,121 @@
       "choices": []
     },
     {
+      "sceneRef": "S_FORGE",
+      "backgroundKey": "gifu_castle_map_room_day",
+      "bgmKey": "bgm_quiet_resolve",
+      "sceneOrder": 18,
+      "nextSceneRef": null,
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "Two days after the mountain meeting, a package arrives from Nagashino. The swordsmith Nobunaga sent the recovered blade to — six months ago, with instructions to restore what could be restored — has finished the work.",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "The blade is different now. Not repaired — reforged. The smith has taken what was broken and worked it into something that carries the break as part of its structure. A visible seam along the lower third. Not hidden. Incorporated.",
+          "lineOrder": 2
+        },
+        {
+          "speakerName": "Mitsuhide",
+          "speakerSide": "left",
+          "portraitKey": "mitsuhide_calm",
+          "text": "The smith says it is stronger at the seam than it was before it broke. He says that is not always true but it was true this time.",
+          "lineOrder": 3
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_cold",
+          "text": "I believe him.",
+          "lineOrder": 4
+        }
+      ],
+      "choices": [
+        {
+          "choiceText": "Accept the blade. Have it mounted in the campaign room.",
+          "nextSceneRef": "S_FORGE_KEEP",
+          "flagKey": "weapon_legacy",
+          "flagValue": 1,
+          "flagKey2": null,
+          "flagValue2": null,
+          "choiceOrder": 1
+        },
+        {
+          "choiceText": "Return it to the smith. A reforged blade is not the same blade. He should keep the work.",
+          "nextSceneRef": "S_FORGE_RETURN",
+          "flagKey": "ruthlessness",
+          "flagValue": 1,
+          "flagKey2": null,
+          "flagValue2": null,
+          "choiceOrder": 2
+        }
+      ]
+    },
+    {
+      "sceneRef": "S_FORGE_KEEP",
+      "backgroundKey": "gifu_castle_map_room_day",
+      "bgmKey": "bgm_quiet_resolve",
+      "sceneOrder": 19,
+      "nextSceneRef": "S08",
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "The blade is mounted on the east wall of the campaign room, seam facing outward. No inscription. No ceremony. Mitsuhide looks at it once before returning to the map. He does not ask about it. Neither does anyone else.",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "It will be there for every meeting from this point forward. The seam visible. The break part of the record.",
+          "lineOrder": 2
+        }
+      ],
+      "choices": []
+    },
+    {
+      "sceneRef": "S_FORGE_RETURN",
+      "backgroundKey": "gifu_castle_map_room_day",
+      "bgmKey": "bgm_quiet_resolve",
+      "sceneOrder": 20,
+      "nextSceneRef": "S08",
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "The blade goes back to Nagashino with a note: the work is yours. Nobunaga does not explain the decision to Mitsuhide. Mitsuhide does not ask.",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "The east wall of the campaign room stays bare. Which is also a kind of statement, though nobody reads it that way yet.",
+          "lineOrder": 2
+        }
+      ],
+      "choices": []
+    },
+    {
       "sceneRef": "S08",
       "backgroundKey": "gifu_castle_tower_night",
       "bgmKey": "bgm_tension_resolve",
-      "sceneOrder": 18,
+      "sceneOrder": 21,
       "nextSceneRef": null,
       "isBattleGate": false,
       "isChapterEnd": true,
