@@ -51,9 +51,18 @@ export interface EnemyStats {
   maxStamina?: number;
 }
 
+/**
+ * Shape of the object returned by every battle route.
+ *
+ * M5 FIX: renamed `experienceGained` → `expGained` to match the key
+ * used in server/routes/battle.ts (all four battle handlers return
+ * { expGained, goldGained, ... }).  The old name was never populated,
+ * causing XP gain to always read as `undefined` in the UI.
+ */
 export interface BattleResult {
   victory: boolean;
-  experienceGained: number;
+  /** XP awarded this battle (key matches server response). */
+  expGained: number;
   goldGained: number;
   riceGained?: number;
   equipmentDropped?: Equipment[];
@@ -64,6 +73,8 @@ export interface BattleResult {
   logs: string[];
   playerTeam?: TeamStats;
   enemyTeam?: { enemies: EnemyStats[] };
+  /** Ninja encounter forwarded from field-battle repeat logic. */
+  ninjaEncounter?: EnemyStats;
 }
 
 export function useFieldBattle() {

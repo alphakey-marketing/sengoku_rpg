@@ -114,22 +114,38 @@ export async function getPlayerTeamStats(userId: string) {
 
   const stats: any = {
     player: {
-      name: user.firstName || user.lastName || "Warrior",
-      level: Lv, hp, maxHp, attack, defense, speed, weaponType,
-      // Three thematic stats (for Dojo display)
-      force: FORCE, influence: INFLUENCE, spirit: SPIRIT,
-      // Flag bonus percentages (for Dojo badge display)
+      name:    user.firstName || user.lastName || "Warrior",
+      level:   Lv,
+      hp,
+      maxHp,
+      attack,
+      defense,
+      speed,
+      weaponType,
+      // Three thematic stats (for Dojo / home.tsx display)
+      force:     FORCE,
+      influence: INFLUENCE,
+      spirit:    SPIRIT,
+      // Flag bonus percentages (for story-bonus badges)
       forceBonusPct:     Math.round(forceBonus     * 100),
       influenceBonusPct: Math.round(influenceBonus * 100),
       spiritBonusPct:    Math.round(spiritBonus    * 100),
       // Legacy derived stats (kept for combat engine compatibility)
       str: STR, agi: AGI, vit: VIT, int: INT, dex: DEX, luk: LUK,
-      weaponATK: weaponAtk, weaponLevel: weapon?.level || 1,
-      hardDEF: defense, softDEF, hit, flee,
-      critChance: critRate, critDamage: 0, bonusATK: 0,
-      sp: Math.floor(100 * (1 + 0.01 * INT) * (1 + influenceBonus)),
+      weaponATK:   weaponAtk,
+      weaponLevel: weapon?.level || 1,
+      hardDEF:     defense,
+      softDEF,
+      hit,
+      flee,
+      critChance:  critRate,
+      critDamage:  0,
+      bonusATK:    0,
+      sp:    Math.floor(100 * (1 + 0.01 * INT) * (1 + influenceBonus)),
       maxSp: Math.floor(100 * (1 + 0.01 * INT) * (1 + influenceBonus)),
-      statPoints: user.statPoints,
+      statPoints:   user.statPoints,
+      // M9 FIX: expose seppukuCount so the Incarnation badge in home.tsx works
+      seppukuCount: (user as any).seppukuCount || 0,
       permStats: {
         attack:  user.permAttackBonus  || 0,
         defense: user.permDefenseBonus || 0,
@@ -166,20 +182,23 @@ export async function getPlayerTeamStats(userId: string) {
 
     stats.companions.push({
       id: c.id, name: c.name, level: cLv,
-      hp:      Math.min((c.hp || 50) + cHpBonus, cMaxHp),
-      maxHp:   cMaxHp,
-      attack:  Math.floor((cStatusAtk + cWeaponAtk) * (1 + forceBonus * 0.5)),
-      defense: cHardDEF,
-      speed:   Math.floor(((c.speed || 10) + cSpdBonus + Math.floor(cAGI / 2)) * (1 + spiritBonus * 0.3)),
+      hp:         Math.min((c.hp || 50) + cHpBonus, cMaxHp),
+      maxHp:      cMaxHp,
+      attack:     Math.floor((cStatusAtk + cWeaponAtk) * (1 + forceBonus * 0.5)),
+      defense:    cHardDEF,
+      speed:      Math.floor(((c.speed || 10) + cSpdBonus + Math.floor(cAGI / 2)) * (1 + spiritBonus * 0.3)),
       weaponType: cWeaponType,
       str: cSTR, agi: cAGI, vit: cVIT, int: cINT, dex: cDEX, luk: cLUK,
-      weaponATK: cWeaponAtk, weaponLevel: cWeapon?.level || 1,
-      hardDEF: cHardDEF,
-      softDEF: Math.floor(cVIT / 2) + Math.floor(cAGI / 5),
-      hit:  175 + cLv + cDEX + Math.floor(cLUK / 3),
-      flee: 100 + cLv + cAGI + Math.floor(cLUK / 5) + Math.floor(cLUK / 10),
-      critChance: 0.3 * cLUK, critDamage: 0, bonusATK: 0,
-      skills: c.skill ? [c.skill] : ["Attack"],
+      weaponATK:   cWeaponAtk,
+      weaponLevel: cWeapon?.level || 1,
+      hardDEF:     cHardDEF,
+      softDEF:     Math.floor(cVIT / 2) + Math.floor(cAGI / 5),
+      hit:         175 + cLv + cDEX + Math.floor(cLUK / 3),
+      flee:        100 + cLv + cAGI + Math.floor(cLUK / 5) + Math.floor(cLUK / 10),
+      critChance:  0.3 * cLUK,
+      critDamage:  0,
+      bonusATK:    0,
+      skills:      c.skill ? [c.skill] : ["Attack"],
     });
   }
 
