@@ -1,16 +1,16 @@
 /**
  * story-routes.ts
- * ──────────────────────────────────────────────────────────────────────────────
+ * ─────────────────────────────────────────────────────────────────────────────────
  * All REST endpoints for the VN story engine.
  *
  * Mount in server/routes.ts with:
  *   app.use("/api/story", isAuthenticated, storyRouter);
  *
  * Endpoints
- * ──────────────────────────────────────────────────────────────────────────────
+ * ─────────────────────────────────────────────────────────────────────────────────
  *  GET  /api/story/chapters             → list all chapters with per-user isUnlocked / isCompleted
  *  GET  /api/story/chapters/:id         → full chapter with scenes + dialogue + choices
- *  GET  /api/story/progress             → player's progress for all chapters
+ *  GET  /api/story/progress             → player’s progress for all chapters
  *  POST /api/story/progress             → upsert progress (start / advance scene)
  *  POST /api/story/progress/complete    → mark chapter complete + write ending + bump currentChapter
  *  GET  /api/story/flags                → all player flags as Record<string,number>
@@ -28,13 +28,14 @@ import {
   type DialogueLine,
   type StoryChoice,
   type PlayerFlag,
+  type ConditionalVariant,
 } from "@shared/schema";
 import { eq, and, asc, sql } from "drizzle-orm";
 import { storage } from "./storage";
 
 export const storyRouter = Router();
 
-// ─── Auth helper ──────────────────────────────────────────────────────────────
+// ─── Auth helper ────────────────────────────────────────────────────────────────────
 
 function requireAuth(req: Request, res: Response): string | null {
   const userId = (req as any).user?.claims?.sub;
@@ -45,7 +46,7 @@ function requireAuth(req: Request, res: Response): string | null {
   return userId as string;
 }
 
-// ─── Shared flag helpers ──────────────────────────────────────────────────────
+// ─── Shared flag helpers ────────────────────────────────────────────────────────────
 
 /** Read all flags for a user, returning a map keyed by flagKey. */
 async function getFlagMap(userId: string): Promise<Map<string, PlayerFlag>> {
@@ -66,33 +67,27 @@ function flagRecord(map: Map<string, PlayerFlag>): Record<string, number> {
  * @param mutations  Additive deltas  { key: delta }  (default behaviour)
  * @param absolute   Absolute sets    { key: value }  (battle outcomes)
  *
- * Uses INSERT … ON CONFLICT (userId, flagKey) DO UPDATE so all keys land
- * in one round trip instead of N individual UPDATE/INSERT pairs.
- * The in-memory flagMap is updated after the upsert and returned directly
- * (no redundant re-read from DB).
+ * Returns the updated flag map (in-memory, no extra DB read).
  */
 async function writeFlags(
   userId: string,
   mutations: Record<string, number> = {},
   absolute: Record<string, number> = {},
-): Promise<Record<string, number>> {
+): Promise<{ record: Record<string, number>; map: Map<string, PlayerFlag> }> {
   const allKeys = [...Object.keys(mutations), ...Object.keys(absolute)];
-  if (allKeys.length === 0) {
-    // Nothing to write — just return current flags.
-    return flagRecord(await getFlagMap(userId));
-  }
 
-  // Read current values once.
   const flagMap = await getFlagMap(userId);
 
-  // Build the merged set of (key → newValue) to upsert.
+  if (allKeys.length === 0) {
+    return { record: flagRecord(flagMap), map: flagMap };
+  }
+
   const toUpsert: { flagKey: string; flagValue: number }[] = [];
 
   for (const [key, delta] of Object.entries(mutations)) {
-    const current = flagMap.get(key)?.flagValue ?? 0;
+    const current  = flagMap.get(key)?.flagValue ?? 0;
     const newValue = current + delta;
     toUpsert.push({ flagKey: key, flagValue: newValue });
-    // Update in-memory map so flagRecord() at the end is accurate.
     const existing = flagMap.get(key);
     if (existing) {
       existing.flagValue = newValue;
@@ -111,7 +106,6 @@ async function writeFlags(
     }
   }
 
-  // Single batch upsert — one DB round trip for all keys.
   await db
     .insert(playerFlags)
     .values(toUpsert.map((r) => ({ userId, flagKey: r.flagKey, flagValue: r.flagValue })))
@@ -123,10 +117,53 @@ async function writeFlags(
       },
     });
 
-  return flagRecord(flagMap);
+  return { record: flagRecord(flagMap), map: flagMap };
 }
 
-// ─── Chapter list ─────────────────────────────────────────────────────────────
+// ─── ConditionalVariant evaluator ────────────────────────────────────────────────────────
+
+/**
+ * Returns true if the variant’s condition passes against the given flag values.
+ * Operator strings match the seeder’s JsonConditionalVariantCondition interface.
+ */
+function evalConditionalVariant(
+  variant: ConditionalVariant,
+  flags: Record<string, number>,
+): boolean {
+  const { flagKey, operator, value } = variant.condition;
+  const current = flags[flagKey] ?? 0;
+  switch (operator) {
+    case "gte": return current >= value;
+    case "gt":  return current >  value;
+    case "lte": return current <= value;
+    case "lt":  return current <  value;
+    case "eq":  return current === value;
+    case "neq": return current !== value;
+    default:    return false;
+  }
+}
+
+/**
+ * Given a battle outcome and the scene’s conditionalVariants array,
+ * returns the sceneId of the first matching variant, or null if none match.
+ *
+ * Resolution order: array order (first match wins).
+ */
+function resolveConditionalVariant(
+  outcome: "win" | "lose",
+  variants: ConditionalVariant[] | null | undefined,
+  flags: Record<string, number>,
+): number | null {
+  if (!variants || variants.length === 0) return null;
+  for (const variant of variants) {
+    if (variant.outcome === outcome && evalConditionalVariant(variant, flags)) {
+      return variant.sceneId;
+    }
+  }
+  return null;
+}
+
+// ─── Chapter list ──────────────────────────────────────────────────────────────────────
 
 storyRouter.get("/chapters", async (req: Request, res: Response) => {
   try {
@@ -172,7 +209,7 @@ storyRouter.get("/chapters", async (req: Request, res: Response) => {
   }
 });
 
-// ─── Full chapter (scenes + dialogue + choices) ───────────────────────────────
+// ─── Full chapter (scenes + dialogue + choices) ─────────────────────────────────────────
 
 storyRouter.get("/chapters/:id", async (req: Request, res: Response) => {
   try {
@@ -233,7 +270,7 @@ storyRouter.get("/chapters/:id", async (req: Request, res: Response) => {
   }
 });
 
-// ─── Player progress ──────────────────────────────────────────────────────────
+// ─── Player progress ──────────────────────────────────────────────────────────────────
 
 storyRouter.get("/progress", async (req: Request, res: Response) => {
   const userId = requireAuth(req, res);
@@ -345,7 +382,7 @@ storyRouter.post("/progress/complete", async (req: Request, res: Response) => {
   }
 });
 
-// ─── Player flags ─────────────────────────────────────────────────────────────
+// ─── Player flags ────────────────────────────────────────────────────────────────────
 
 storyRouter.get("/flags", async (req: Request, res: Response) => {
   const userId = requireAuth(req, res);
@@ -368,14 +405,15 @@ storyRouter.post("/flags", async (req: Request, res: Response) => {
     if (typeof mutations !== "object" || typeof absolute !== "object") {
       return res.status(400).json({ error: "mutations and absolute must be objects" });
     }
-    res.json(await writeFlags(userId, mutations, absolute));
+    const { record } = await writeFlags(userId, mutations, absolute);
+    res.json(record);
   } catch (e) {
     console.error("[story] POST /flags", e);
     res.status(500).json({ error: "Failed to update flags" });
   }
 });
 
-// ─── Unlocked endings ─────────────────────────────────────────────────────────
+// ─── Unlocked endings ─────────────────────────────────────────────────────────────────
 
 storyRouter.get("/endings", async (req: Request, res: Response) => {
   const userId = requireAuth(req, res);
@@ -389,12 +427,15 @@ storyRouter.get("/endings", async (req: Request, res: Response) => {
   }
 });
 
-// ─── Battle-result ────────────────────────────────────────────────────────────
+// ─── Battle-result ───────────────────────────────────────────────────────────────────
 //
-// Single endpoint that resolves win/lose scene routing AND writes battle
-// outcome flags in one server call. The client previously duplicated both
-// of these jobs inline; now it just calls this endpoint and uses the
-// returned nextSceneId to advance.
+// Resolves win/lose scene routing AND writes battle outcome flags.
+//
+// Resolution order for nextSceneId:
+//   1. First conditionalVariant whose outcome matches AND whose condition
+//      passes against the player’s POST-write flags
+//   2. battleWinSceneId / battleLoseSceneId  (scalar fallback)
+//   3. nextSceneId  (final fallback)
 
 storyRouter.post("/battle-result", async (req: Request, res: Response) => {
   const userId = requireAuth(req, res);
@@ -415,14 +456,27 @@ storyRouter.post("/battle-result", async (req: Request, res: Response) => {
     if (!scene) return res.status(404).json({ error: "Scene not found" });
 
     const won = battleResult === "win";
-    const nextSceneId = won
-      ? (scene.battleWinSceneId ?? scene.nextSceneId)
-      : (scene.battleLoseSceneId ?? scene.nextSceneId);
 
-    const flagsUpdated = await writeFlags(userId, {}, {
+    // Step 1: write battle_won / battle_lost flags; get back the live flag map.
+    const { record: flagsUpdated, map: flagMap } = await writeFlags(userId, {}, {
       battle_won:  won ? 1 : 0,
       battle_lost: won ? 0 : 1,
     });
+
+    // Step 2: try conditionalVariants first (flag-gated routing).
+    const outcome: "win" | "lose" = won ? "win" : "lose";
+    const conditionalSceneId = resolveConditionalVariant(
+      outcome,
+      scene.conditionalVariants as ConditionalVariant[] | null,
+      flagRecord(flagMap),
+    );
+
+    // Step 3: fall back to scalar battleWin/LoseSceneId, then nextSceneId.
+    const nextSceneId =
+      conditionalSceneId ??
+      (won
+        ? (scene.battleWinSceneId  ?? scene.nextSceneId)
+        : (scene.battleLoseSceneId ?? scene.nextSceneId));
 
     res.json({ nextSceneId, flagsUpdated });
   } catch (e) {
