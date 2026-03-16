@@ -129,6 +129,29 @@ const MIGRATIONS: string[] = [
   `UPDATE users SET attack  = 30  WHERE attack  < 30  AND level = 1`,
   `UPDATE users SET defense = 20  WHERE defense < 20  AND level = 1`,
   `UPDATE users SET gold    = 500 WHERE gold    < 500 AND level = 1`,
+
+  // ── STORY ENGINE: story_scenes columns missing from live DB ───────────────
+  //
+  // The story_scenes table is created by Drizzle's createTable (via schema.ts)
+  // but columns added to the Drizzle schema after the initial table creation
+  // were never reflected here, causing:
+  //
+  //   column "conditional_variants" does not exist  (pg error 42703)
+  //   → GET /api/story/chapters/:id → 500
+  //   → "Failed to load chapter. Please refresh." in the UI
+  //
+  // All statements use ADD COLUMN IF NOT EXISTS so they are safe to re-run
+  // on any DB that already has some or all of these columns.
+  `ALTER TABLE story_scenes ADD COLUMN IF NOT EXISTS bgm_key               TEXT    NOT NULL DEFAULT ''`,
+  `ALTER TABLE story_scenes ADD COLUMN IF NOT EXISTS battle_win_scene_id   INTEGER`,
+  `ALTER TABLE story_scenes ADD COLUMN IF NOT EXISTS battle_lose_scene_id  INTEGER`,
+  `ALTER TABLE story_scenes ADD COLUMN IF NOT EXISTS conditional_variants  JSONB`,
+
+  // ── STORY ENGINE: story_chapters column missing from live DB ─────────────
+  //
+  // first_scene_id is written by seed-story-chapters.ts after inserting scenes
+  // but the column may not exist on DBs created before this schema addition.
+  `ALTER TABLE story_chapters ADD COLUMN IF NOT EXISTS first_scene_id      INTEGER`,
 ];
 
 export async function runMigrations(): Promise<void> {
