@@ -415,7 +415,7 @@
       "backgroundKey": "okehazama_aftermath_dawn",
       "bgmKey": "bgm_victory_somber",
       "sceneOrder": 11,
-      "nextSceneRef": "S10",
+      "nextSceneRef": "S10_WIN",
       "isBattleGate": false,
       "isChapterEnd": false,
       "dialogueLines": [
@@ -448,7 +448,7 @@
       "backgroundKey": "owari_castle_night_rain",
       "bgmKey": "bgm_defeat",
       "sceneOrder": 12,
-      "nextSceneRef": "S10",
+      "nextSceneRef": "S10_LOSE",
       "isBattleGate": false,
       "isChapterEnd": false,
       "dialogueLines": [
@@ -477,7 +477,7 @@
       "choices": []
     },
     {
-      "sceneRef": "S10",
+      "sceneRef": "S10_WIN",
       "backgroundKey": "owari_castle_night",
       "bgmKey": "bgm_tension_resolve",
       "sceneOrder": 13,
@@ -503,7 +503,7 @@
           "speakerName": "Kenshin (letter)",
           "speakerSide": "left",
           "portraitKey": "kenshin_portrait",
-          "text": "The Fool of Owari has teeth. Interesting. We will meet, and I will judge whether you are a sword worth fearing \u2014 or a plague to be ended.",
+          "text": "The Fool of Owari has teeth. Interesting. You are either the most dangerous man in Japan or the luckiest. I intend to find out which. We will meet, and I will judge whether you are a sword worth fearing \u2014 or a plague to be ended.",
           "lineOrder": 3
         },
         {
@@ -519,6 +519,60 @@
           "portraitKey": null,
           "text": "The first step is taken. Japan watches. The age of the Fool of Owari has begun.",
           "lineOrder": 5
+        }
+      ],
+      "choices": []
+    },
+    {
+      "sceneRef": "S10_LOSE",
+      "backgroundKey": "owari_castle_night",
+      "bgmKey": "bgm_defeat",
+      "sceneOrder": 14,
+      "nextSceneRef": null,
+      "isBattleGate": false,
+      "isChapterEnd": true,
+      "dialogueLines": [
+        {
+          "speakerName": "Messenger",
+          "speakerSide": "left",
+          "portraitKey": "messenger_formal",
+          "text": "My lord. A letter. Seal of the Uesugi clan.",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "You break the seal. The handwriting is precise. Controlled. The hand of a man who makes no corrections.",
+          "lineOrder": 2
+        },
+        {
+          "speakerName": "Kenshin (letter)",
+          "speakerSide": "left",
+          "portraitKey": "kenshin_portrait",
+          "text": "The Fool of Owari attempted Yoshimoto and failed. His name is now a lesson in the cost of arrogance. We will not need to meet.",
+          "lineOrder": 3
+        },
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "Nobunaga reads it twice. Then he holds the letter over the lamp until it catches. He watches it burn without looking away.",
+          "lineOrder": 4
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_cold",
+          "text": "We will meet.",
+          "lineOrder": 5
+        },
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "The ash falls. The age of the Fool of Owari has begun \u2014 on his knees, looking up. He will not forget the view.",
+          "lineOrder": 6
         }
       ],
       "choices": []

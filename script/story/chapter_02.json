@@ -1,7 +1,7 @@
 {
   "chapter": {
     "title": "The Alliance of Wolves",
-    "subtitle": "1552 — Allies are enemies who haven't decided yet.",
+    "subtitle": "1552 \u2014 Allies are enemies who haven't decided yet.",
     "chapterOrder": 2,
     "isLocked": false
   },
@@ -26,7 +26,7 @@
           "speakerName": "Narrator",
           "speakerSide": "none",
           "portraitKey": null,
-          "text": "Three men send letters within the same week. Tokugawa Ieyasu of Mikawa — practical, patient, calculating. Shibata Katsuie — Nobunaga's own general, old guard, slightly suspicious of the new direction. And Matsudaira Nobuyasu — a boy lord with a large army and an absent father who recently pledged loyalty to Nobunaga and may or may not mean it.",
+          "text": "Three men send letters within the same week. Tokugawa Ieyasu of Mikawa \u2014 practical, patient, calculating. Shibata Katsuie \u2014 Nobunaga's own general, old guard, slightly suspicious of the new direction. And Matsudaira Nobuyasu \u2014 a boy lord with a large army and an absent father who recently pledged loyalty to Nobunaga and may or may not mean it.",
           "lineOrder": 2
         },
         {
@@ -135,7 +135,7 @@
           "choiceOrder": 1
         },
         {
-          "choiceText": "Accept the first two terms. Remove the Shingen clause — Nobunaga doesn't pre-notify anyone of anything.",
+          "choiceText": "Accept the first two terms. Remove the Shingen clause \u2014 Nobunaga doesn't pre-notify anyone of anything.",
           "nextSceneRef": "S03B",
           "flagKey": "ieyasu_trust",
           "flagValue": 1,
@@ -351,7 +351,7 @@
           "choiceOrder": 1
         },
         {
-          "choiceText": "Create an advisory council with a seat for Katsuie. Advisory only — final decisions remain yours.",
+          "choiceText": "Create an advisory council with a seat for Katsuie. Advisory only \u2014 final decisions remain yours.",
           "nextSceneRef": "S04B",
           "flagKey": "katsuie_loyalty",
           "flagValue": 1,
@@ -482,7 +482,7 @@
           "speakerName": "Narrator",
           "speakerSide": "none",
           "portraitKey": null,
-          "text": "Three weeks later. The third letter writer — Matsudaira Nobuyasu — has not waited for a reply. He has moved his army to the Owari border and is demanding formal recognition of his territory in exchange for continued loyalty.",
+          "text": "Three weeks later. The third letter writer \u2014 Matsudaira Nobuyasu \u2014 has not waited for a reply. He has moved his army to the Owari border and is demanding formal recognition of his territory in exchange for continued loyalty.",
           "lineOrder": 1
         },
         {
@@ -502,7 +502,7 @@
       ],
       "choices": [
         {
-          "choiceText": "March to meet him. Not to fight — to stand in front of him personally with enough men that the number is the message.",
+          "choiceText": "March to meet him. Not to fight \u2014 to stand in front of him personally with enough men that the number is the message.",
           "nextSceneRef": "S05A",
           "flagKey": "ruthlessness",
           "flagValue": 1,
@@ -511,7 +511,7 @@
           "choiceOrder": 1
         },
         {
-          "choiceText": "Send Ieyasu. Let the new alliance do its first work. Nobuyasu is Mikawa-adjacent — Ieyasu will read the situation correctly.",
+          "choiceText": "Send Ieyasu. Let the new alliance do its first work. Nobuyasu is Mikawa-adjacent \u2014 Ieyasu will read the situation correctly.",
           "nextSceneRef": "S05B",
           "flagKey": "ieyasu_trust",
           "flagValue": 1,
@@ -550,7 +550,7 @@
           "speakerName": "Nobuyasu",
           "speakerSide": "left",
           "portraitKey": "nobuyasu_young",
-          "text": "I — I was simply requesting — the recognition of —",
+          "text": "I \u2014 I was simply requesting \u2014 the recognition of \u2014",
           "lineOrder": 2
         },
         {
@@ -663,7 +663,7 @@
           "speakerName": "Mitsuhide",
           "speakerSide": "left",
           "portraitKey": "mitsuhide_quiet",
-          "text": "The blade. Whoever destroyed it — or whoever didn't — this is something acknowledging its existence.",
+          "text": "The blade. Whoever destroyed it \u2014 or whoever didn't \u2014 this is something acknowledging its existence.",
           "lineOrder": 2
         },
         {
@@ -710,7 +710,7 @@
       "backgroundKey": "mino_border_morning_clear",
       "bgmKey": "bgm_victory_somber",
       "sceneOrder": 17,
-      "nextSceneRef": "S09",
+      "nextSceneRef": "S09_WIN",
       "isBattleGate": false,
       "isChapterEnd": false,
       "dialogueLines": [
@@ -720,6 +720,27 @@
           "portraitKey": null,
           "text": "The raiders are repelled. The road holds. Word spreads that Oda's northern roads are not easy pickings. This costs a future enemy three months of planning.",
           "lineOrder": 1
+        },
+        {
+          "speakerName": "Mitsuhide",
+          "speakerSide": "left",
+          "portraitKey": "mitsuhide_calm",
+          "text": "The northern road is yours now in name and in practice. Two different things, usually. Not today.",
+          "lineOrder": 2
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_cold",
+          "text": "Good. Tell Katsuie his wall held. He should know that.",
+          "lineOrder": 3
+        },
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "Katsuie receives the message in his camp. He does not reply. He does not need to. The road being open is his reply.",
+          "lineOrder": 4
         }
       ],
       "choices": []
@@ -729,7 +750,7 @@
       "backgroundKey": "northern_road_settlement_burned",
       "bgmKey": "bgm_defeat",
       "sceneOrder": 18,
-      "nextSceneRef": "S09",
+      "nextSceneRef": "S09_LOSE",
       "isBattleGate": false,
       "isChapterEnd": false,
       "dialogueLines": [
@@ -746,12 +767,33 @@
           "portraitKey": "katsuie_grim",
           "text": "The north is my concern, my lord. Tell me earlier next time.",
           "lineOrder": 2
+        },
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "The words are the same regardless of the history between you. But the weight behind them is not.",
+          "lineOrder": 3
+        },
+        {
+          "speakerName": "Katsuie",
+          "speakerSide": "left",
+          "portraitKey": "katsuie_grim",
+          "text": "I held the road you needed held. As I have always done. As I will continue to do. Whether or not that has value in councils is apparently a separate question.",
+          "lineOrder": 4
+        },
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "He does not wait for a reply. He goes back to the road. He has never needed a reply to do his job and he will not start now.",
+          "lineOrder": 5
         }
       ],
       "choices": []
     },
     {
-      "sceneRef": "S09",
+      "sceneRef": "S09_WIN",
       "backgroundKey": "gifu_castle_tower_night",
       "bgmKey": "bgm_tension_resolve",
       "sceneOrder": 19,
@@ -793,6 +835,74 @@
           "portraitKey": "nobunaga_cold",
           "text": "It's what separates us from Yoshimoto.",
           "lineOrder": 5
+        }
+      ],
+      "choices": []
+    },
+    {
+      "sceneRef": "S09_LOSE",
+      "backgroundKey": "gifu_castle_tower_night",
+      "bgmKey": "bgm_defeat",
+      "sceneOrder": 20,
+      "nextSceneRef": null,
+      "isBattleGate": false,
+      "isChapterEnd": true,
+      "dialogueLines": [
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "That night, Nobunaga puts the unsigned letter on the table in front of Mitsuhide. 'The sword remembers.'",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Mitsuhide",
+          "speakerSide": "left",
+          "portraitKey": "mitsuhide_calm",
+          "text": "I'll begin looking into who sent it.",
+          "lineOrder": 2
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_cold",
+          "text": "Don't. Not yet. Whoever sent it wanted a reaction. We give them nothing.",
+          "lineOrder": 3
+        },
+        {
+          "speakerName": "Mitsuhide",
+          "speakerSide": "left",
+          "portraitKey": "mitsuhide_calm",
+          "text": "And Katsuie?",
+          "lineOrder": 4
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_cold",
+          "text": "He held the road. That's what he does. I'll write to him.",
+          "lineOrder": 5
+        },
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "A beat. The kind of pause that means what follows is not standard.",
+          "lineOrder": 6
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_cold",
+          "text": "He should have been there from the start. He was right about that.",
+          "lineOrder": 7
+        },
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "Mitsuhide says nothing. He has learned that some things said aloud by Nobunaga are not for response \u2014 they are for the record. This is one of them.",
+          "lineOrder": 8
         }
       ],
       "choices": []
