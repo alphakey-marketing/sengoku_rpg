@@ -1,5 +1,5 @@
 /**
- * use-grants.ts  (Part 10/10 + Sprint 2)
+ * use-grants.ts  (Part 10/10 + Sprint 2 + Sprint 5)
  *
  * React Query hook for the player's active story-grant skills.
  *
@@ -13,6 +13,13 @@
  *  • newGrantsByCategory()  — breakdown of unseen grants by category;
  *                             used by the nav badge dot (3b) and the
  *                             NewGrantRing wrapper (3a)
+ *
+ * Sprint 5 additions
+ * ──────────────────
+ *  • PlayerGrant.awardedAtChapter — chapter number when the grant fired;
+ *    already returned by the server, now typed on the client interface.
+ *    Used by GrantsChronicleTab (4a) and GrantOriginPanel (4b) to render
+ *    "Granted after Chapter N — [title]" without an extra API call.
  *
  * localStorage key
  * ────────────────
@@ -29,16 +36,23 @@ import { getSkillDescription } from "@shared/skill-descriptions";
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 export interface PlayerGrant {
-  id:            number;
-  grantKey:      string;
-  displayName:   string;
-  flavourText:   string | null;
-  grantCategory: string;
-  rarity:        string;
-  gameRowId:     number | null;
-  isSuperseded:  boolean;
+  id:                number;
+  grantKey:          string;
+  displayName:       string;
+  flavourText:       string | null;
+  grantCategory:     string;
+  rarity:            string;
+  gameRowId:         number | null;
+  isSuperseded:      boolean;
   /** ISO-8601 timestamp — present in the server response from Part 5 */
-  awardedAt:     string;
+  awardedAt:         string;
+  /**
+   * Sprint 5 (4a/4b) — chapter number when the grant was issued.
+   * Sourced from player_story_grants.awarded_at_chapter.
+   * Used to render "Granted after Chapter N — [title]" in
+   * GrantsChronicleTab and GrantOriginPanel.
+   */
+  awardedAtChapter:  number;
 }
 
 export interface GrantsByCategory {
