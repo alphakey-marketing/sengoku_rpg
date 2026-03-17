@@ -10,6 +10,12 @@
  * gap-fix: invalidate /api/story/grants after chapter complete so
  * GrantSkillBadge pills appear immediately on inventory panels
  * without waiting for the 5-minute staleTime to expire.
+ *
+ * UAT-FIX-GRANTS: await the flag flush to the server BEFORE calling
+ * /progress/complete.  Previously the flush was fire-and-forget
+ * (.catch(() => {})), creating a race where evaluateGrants ran before
+ * the choice/battle flags were committed to the DB, returning grants:[]
+ * and suppressing the reward popup entirely.
  */
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useLocation } from "wouter";
@@ -75,22 +81,26 @@ export function StoryPlayer({ chapterId }: StoryPlayerProps) {
     ?? { path: "/story", label: "Return to Chronicles" };
   const catalogueEntry = CHAPTER_CATALOGUE.find((c) => c.id === chapterId);
 
-  // ── triggerCompletion ──────────────────────────────────────────────────────
-  // Part 9 change: reads response.grants from /progress/complete and holds
-  // them in pendingGrants state.  The GrantRewardPopup is shown while
-  // pendingGrants.length > 0; it calls onDismiss → setIsComplete(true).
+  // ── triggerCompletion ────────────────────────────────────────────────────────
   //
-  // gap-fix: after chapter complete, also invalidate the grants query so
-  // the inventory panels (party/pets/stable/equipment) show new badges
-  // immediately — no staleTime wait, no hard refresh required.
+  // UAT-FIX-GRANTS: The flag POST must be AWAITED before /progress/complete
+  // is called.  evaluateGrants() on the server reads flags from the DB at
+  // call time; if the flags haven’t been committed yet it sees an empty/stale
+  // flag map and returns grants:[] — suppressing the reward popup entirely.
+  //
+  // Previously this was fire-and-forget (.catch(() => {})), which introduced
+  // a race condition on every chapter completion.
   const triggerCompletion = useCallback(async () => {
     if (completionFiredRef.current || !chapter) return;
     completionFiredRef.current = true;
     try {
       const finalFlags = await getFlags();
+
+      // ✔ AWAITED — flags must be in the DB before /progress/complete runs
       if (Object.keys(finalFlags).length > 0) {
-        apiRequest("POST", "/api/story/flags", { absolute: finalFlags }).catch(() => {});
+        await apiRequest("POST", "/api/story/flags", { absolute: finalFlags });
       }
+
       const response = await apiRequest("POST", "/api/story/progress/complete", {
         chapterId,
         endingKey:         `ch${chapterId}_complete`,
@@ -125,7 +135,7 @@ export function StoryPlayer({ chapterId }: StoryPlayerProps) {
     }
   }, [chapter, chapterId]);
 
-  // ── Boot ───────────────────────────────────────────────────────────────────
+  // ── Boot ────────────────────────────────────────────────────────────────────
   useEffect(() => {
     (async () => {
       try {
@@ -171,7 +181,7 @@ export function StoryPlayer({ chapterId }: StoryPlayerProps) {
     })();
   }, [chapterId]);
 
-  // ── Typewriter ─────────────────────────────────────────────────────────────
+  // ── Typewriter ──────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!currentLine) return;
     if (typeTimerRef.current) clearTimeout(typeTimerRef.current);
@@ -193,7 +203,7 @@ export function StoryPlayer({ chapterId }: StoryPlayerProps) {
     if (scene) markSceneSeen(scene.sceneOrder);
   }, [sceneId]);
 
-  // ── Declarative completion fallback ───────────────────────────────────────
+  // ── Declarative completion fallback ─────────────────────────────────────
   useEffect(() => {
     if (scene?.isChapterEnd && isAtLastLine && !isTyping && !showChoices && !isComplete && !completionFiredRef.current) {
       triggerCompletion();
@@ -299,7 +309,7 @@ export function StoryPlayer({ chapterId }: StoryPlayerProps) {
     setPendingGrants([]);
   }, [chapter, chapterId]);
 
-  // ── Loading ────────────────────────────────────────────────────────────────
+  // ── Loading ──────────────────────────────────────────────────────────────────
   if (loading) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
