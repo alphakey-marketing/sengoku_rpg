@@ -112,6 +112,30 @@
   .custom-scrollbar::-webkit-scrollbar-thumb:hover {
     @apply bg-accent/50;
   }
+
+  /* ── Sprint 2 (3a): grant-ring-pulse ─────────────────────────────────────
+   * Used by NewGrantRing.tsx to animate the amber ring on newly granted
+   * inventory cards.  Defined here (not via a <style> tag) so Tailwind's
+   * JIT never purges the .grant-ring-pulse utility class.
+   * ─────────────────────────────────────────────────────────────────────── */
+  @keyframes grantRingPulse {
+    0%, 100% {
+      box-shadow:
+        0 0 0 2px rgba(251, 191, 36, 0.55),
+        0 0 10px rgba(251, 191, 36, 0.30);
+      transform: scale(1);
+    }
+    50% {
+      box-shadow:
+        0 0 0 4px rgba(251, 191, 36, 0.35),
+        0 0 18px rgba(251, 191, 36, 0.20);
+      transform: scale(1.03);
+    }
+  }
+
+  .grant-ring-pulse {
+    animation: grantRingPulse 2s ease-in-out infinite;
+  }
 }
 
 /* Washi paper subtle texture overlay */
