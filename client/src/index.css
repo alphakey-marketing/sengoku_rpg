@@ -136,6 +136,61 @@
   .grant-ring-pulse {
     animation: grantRingPulse 2s ease-in-out infinite;
   }
+
+  /* ── Sprint 4 (1a): animate-shimmer — dialogue grant hint underline ───────
+   *
+   * Renders a left-to-right amber shimmer sweep beneath the speaker name
+   * label in StoryPlayer when the current dialogue line has a grantHintKey.
+   *
+   * Implementation: border-bottom + background-image gradient on the <p>
+   * itself, animated via background-position sweep.
+   *
+   * Usage in StoryPlayer:
+   *   <p className={`text-amber-400 ... ${
+   *     currentLine.grantHintKey ? 'speaker-grant-hint' : ''
+   *   }`}>
+   *
+   * .speaker-grant-hint       — steady 2px amber underline (always on)
+   * .speaker-grant-hint-anim  — adds the shimmer sweep animation
+   *
+   * Both classes are applied together; separated so the underline still
+   * shows for the first frame before the animation paint.
+   * ─────────────────────────────────────────────────────────────────────── */
+  @keyframes shimmerSweep {
+    0%   { background-position: -200% center; }
+    100% { background-position:  200% center; }
+  }
+
+  .speaker-grant-hint {
+    /* Amber bottom border — always visible when class is present */
+    border-bottom: 2px solid rgba(251, 191, 36, 0.70);
+    padding-bottom: 1px;
+  }
+
+  .speaker-grant-hint-anim {
+    /*
+     * Overlay a transparent-to-amber-to-transparent gradient on the
+     * border area via outline-style trick is messy; instead we use a
+     * ::after pseudo-element approach via background on the element.
+     *
+     * The text colour stays amber-400; the shimmer is a box-shadow sweep.
+     */
+    box-shadow:
+      0 2px 0 0 rgba(251, 191, 36, 0.40),
+      0 2px 8px 0 rgba(251, 191, 36, 0.25);
+    animation: shimmerSweep 1.6s linear infinite;
+    background: linear-gradient(
+      90deg,
+      transparent       0%,
+      rgba(251,191,36,0.55) 45%,
+      rgba(251,191,36,0.85) 50%,
+      rgba(251,191,36,0.55) 55%,
+      transparent       100%
+    );
+    background-size: 200% 2px;
+    background-repeat: no-repeat;
+    background-position: -200% bottom;
+  }
 }
 
 /* Washi paper subtle texture overlay */
