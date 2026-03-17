@@ -12,6 +12,10 @@
  *   sengoku_story_flags     → StoryFlags   ← persists across ALL chapters
  *   sengoku_story_seen      → number[]
  *   sengoku_story_endings   → UnlockedEnding[]
+ *
+ * Sprint 4 (1a): DialogueLine.grantHintKey added — optional nullable string
+ * passed through from the DB column.  StoryPlayer uses it to conditionally
+ * apply an amber shimmer underline to the speaker name label.
  */
 
 import { apiRequest } from "./queryClient";
@@ -39,32 +43,12 @@ export interface UnlockedEnding {
 
 // ─── Flag condition + write types ─────────────────────────────────────────────
 
-/**
- * FlagCondition — evaluated against the current StoryFlags before displaying
- * a scene. If the condition is false the scene is skipped in favour of the
- * next candidate (or the no-condition fallback).
- *
- * operator semantics:
- *   eq   → flags[flagKey] === value
- *   neq  → flags[flagKey] !== value
- *   gt   → flags[flagKey] >   value
- *   gte  → flags[flagKey] >=  value
- *   lt   → flags[flagKey] <   value
- *   lte  → flags[flagKey] <=  value
- *
- * Missing flags default to 0 (same as applyFlags / getFlag).
- */
 export interface FlagCondition {
   flagKey: string;
   operator: "eq" | "neq" | "gt" | "gte" | "lt" | "lte";
   value: number;
 }
 
-/**
- * FlagWrite — applied automatically when a scene is entered.
- * The value is ADDITIVE (same semantics as applyFlags), not a hard set.
- * Use positive values to increment, negative to decrement.
- */
 export interface FlagWrite {
   flagKey: string;
   flagValue: number;
@@ -97,73 +81,61 @@ function write<T>(key: string, value: T): void {
 // ─── Chapter data types ───────────────────────────────────────────────────────
 
 export interface DialogueLine {
-  id: number;
+  id:          number;
   speakerName: string;
   speakerSide: "left" | "right" | "none";
   portraitKey: string | null;
-  text: string;
-  lineOrder: number;
+  text:        string;
+  lineOrder:   number;
+  /**
+   * Sprint 4 (1a) — Dialogue Grant Hint Shimmer
+   *
+   * Optional stable grant key set by scene writers (e.g. "ch2_nohime_sword").
+   * When present, StoryPlayer renders a 2px amber shimmer underline on the
+   * speaker name label — a subtle cue that this line carries a grant
+   * consequence.  null / undefined → no shimmer.
+   */
+  grantHintKey?: string | null;
 }
 
 export interface Choice {
-  id: number;
-  choiceText: string;
+  id:          number;
+  choiceText:  string;
   nextSceneId: number;
-  flagKey: string | null;
-  flagValue: number | null;
-  flagKey2: string | null;
-  flagValue2: number | null;
+  flagKey:     string | null;
+  flagValue:   number | null;
+  flagKey2:    string | null;
+  flagValue2:  number | null;
   choiceOrder: number;
 }
 
 export interface Scene {
-  id: number;
-  sceneOrder: number;
-  backgroundKey: string;
-  // bgmKey is present in the API response but the audio system is not yet
-  // implemented. Typed here so the field is not silently dropped from the
-  // API shape; use it once the BGM layer is wired up.
-  bgmKey: string;
-  nextSceneId: number | null;
-  isBattleGate: boolean;
-  battleEnemyKey?: string | null;
+  id:                number;
+  sceneOrder:        number;
+  backgroundKey:     string;
+  bgmKey:            string;
+  nextSceneId:       number | null;
+  isBattleGate:      boolean;
+  battleEnemyKey?:   string | null;
   battleWinSceneId?: number | null;
   battleLoseSceneId?: number | null;
-  isChapterEnd: boolean;
-  dialogueLines: DialogueLine[];
-  choices: Choice[];
-  /**
-   * Optional flag condition evaluated before this scene is shown.
-   * If the condition is false, the engine falls through to the next
-   * candidate scene (see resolveConditionalScene).
-   * Scenes with no flagCondition are always eligible.
-   */
-  flagCondition?: FlagCondition | null;
-  /**
-   * Flag mutations applied automatically when this scene is entered.
-   * Applied additively via applySceneFlagWrites() before the first
-   * dialogue line renders.
-   */
-  flagWrites?: FlagWrite[] | null;
+  isChapterEnd:      boolean;
+  dialogueLines:     DialogueLine[];
+  choices:           Choice[];
+  flagCondition?:    FlagCondition | null;
+  flagWrites?:       FlagWrite[] | null;
 }
 
 export interface ChapterData {
-  id: number;
-  title: string;
-  subtitle: string | null;
+  id:           number;
+  title:        string;
+  subtitle:     string | null;
   firstSceneId: number | null;
-  // isLocked comes from the API but locking is enforced client-side via
-  // currentChapter arithmetic in ChapterSelectHub; kept typed so the
-  // API contract is explicit.
-  isLocked: boolean;
-  scenes: Scene[];
+  isLocked:     boolean;
+  scenes:       Scene[];
 }
 
 // ─── fetchChapter ─────────────────────────────────────────────────────────────
-//
-// Uses apiRequest() so the correct auth header is always attached:
-//   - Supabase mode: Authorization: Bearer <token>
-//   - Dev mode:      x-dev-user-id: <uuid>
 
 export async function fetchChapter(chapterId: number): Promise<ChapterData> {
   let data: ChapterData;
@@ -210,22 +182,12 @@ export async function startChapter(
   return fresh;
 }
 
-/**
- * Advance the current scene.
- *
- * Writes to localStorage synchronously (so the UI is never blocked), then
- * fires POST /api/story/progress as a fire-and-forget background sync so
- * the server always has the latest scene position. This enables correct
- * chapter resume if the player closes the tab mid-chapter.
- */
 export async function advanceScene(nextSceneId: number): Promise<ProgressState> {
   const progress = read<ProgressState | null>(KEYS.progress, null);
   if (!progress) throw new Error("No active chapter. Call startChapter first.");
   const updated: ProgressState = { ...progress, currentSceneId: nextSceneId };
   write(KEYS.progress, updated);
 
-  // Background server sync — non-blocking, errors are intentionally swallowed
-  // so a network blip never interrupts story playback.
   apiRequest("POST", "/api/story/progress", {
     chapterId: progress.chapterId,
     currentSceneId: nextSceneId,
@@ -268,11 +230,6 @@ export async function getFlag(key: string): Promise<number> {
 
 // ─── Flag condition evaluation ────────────────────────────────────────────────
 
-/**
- * Evaluates a single FlagCondition against a StoryFlags snapshot.
- * Returns true if the condition passes (scene is eligible to show).
- * A null / undefined condition is always true.
- */
 export function evaluateFlagCondition(
   condition: FlagCondition | null | undefined,
   flags: StoryFlags,
@@ -290,47 +247,20 @@ export function evaluateFlagCondition(
   }
 }
 
-/**
- * Given an array of candidate scenes that share the same logical "slot"
- * (e.g. [S09_WIN, S09_WIN_COLD] — all routed to from S08_BATTLE's
- * battleWinSceneId), picks the FIRST scene whose flagCondition passes.
- *
- * Convention:
- *   - Put the most-specific scene first (the one with the flagCondition).
- *   - Put the unconditional fallback scene last (no flagCondition).
- *
- * Usage in the story page:
- *
- *   const targetScene = resolveConditionalScene(
- *     chapter.scenes.filter(s => s.id === battleWinSceneId || s.sceneRef === "S09_WIN_COLD"),
- *     await getFlags(),
- *   );
- *
- * If no candidate passes and there is no unconditional fallback, returns null.
- */
 export function resolveConditionalScene(
   candidates: Scene[],
   flags: StoryFlags,
 ): Scene | null {
-  // Scenes WITH a condition are evaluated in order; first pass wins.
   for (const scene of candidates) {
     if (scene.flagCondition && evaluateFlagCondition(scene.flagCondition, flags)) {
       return scene;
     }
   }
-  // Fallback: first scene with no condition.
   return candidates.find((s) => !s.flagCondition) ?? null;
 }
 
 // ─── Scene-level flag writes ──────────────────────────────────────────────────
 
-/**
- * Applies a scene's flagWrites to localStorage and returns the updated
- * StoryFlags. Call this immediately before rendering the scene's first
- * dialogue line (so later scenes in the same chapter see the written flags).
- *
- * If the scene has no flagWrites (or an empty array), this is a no-op.
- */
 export async function applySceneFlagWrites(scene: Scene): Promise<StoryFlags> {
   if (!scene.flagWrites || scene.flagWrites.length === 0) {
     return getFlags();
@@ -358,10 +288,10 @@ export async function unlockEnding(
   const existing = endings.find((e) => e.endingKey === ending.endingKey);
   if (existing) return existing;
   const record: UnlockedEnding = {
-    endingKey: ending.endingKey,
-    endingTitle: ending.endingTitle,
+    endingKey:         ending.endingKey,
+    endingTitle:       ending.endingTitle,
     endingDescription: ending.endingDescription,
-    unlockedAt: new Date().toISOString(),
+    unlockedAt:        new Date().toISOString(),
   };
   endings.push(record);
   write(KEYS.endings, record);
