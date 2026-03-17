@@ -3,27 +3,9 @@
  * Core scene renderer: typewriter dialogue, portrait display,
  * choice branching, battle-gate hand-off, and chapter completion.
  *
- * Part 9/10: triggerCompletion now captures grants[] from the
- * /progress/complete response and shows GrantRewardPopup before
- * the static isComplete screen.
- *
- * gap-fix: invalidate /api/story/grants after chapter complete so
- * GrantSkillBadge pills appear immediately on inventory panels
- * without waiting for the 5-minute staleTime to expire.
- *
- * UAT-FIX-GRANTS: await the flag flush to the server BEFORE calling
- * /progress/complete.  Previously the flush was fire-and-forget
- * (.catch(() => {})), creating a race where evaluateGrants ran before
- * the choice/battle flags were committed to the DB, returning grants:[]\
- * and suppressing the reward popup entirely.
- *
- * Sprint 3 (1b): triggerCompletion sets showCinematicBeat=true and
- * stores resolved grants in resolvedGrantsRef.  GrantCinematicBeat
- * fires onComplete which then routes to GrantRewardPopup or isComplete.
- *
- * Sprint 4 (1a): speaker name <p> gains 'speaker-grant-hint
- * speaker-grant-hint-anim' when currentLine.grantHintKey is set —
- * a 2px amber shimmer underline, no item revealed, defined in index.css.
+ * Sprint 4 (1a): when currentLine.grantHintKey is set, the speaker <p>
+ * receives 'speaker-grant-hint speaker-grant-hint-anim' — a 2px amber
+ * shimmer underline defined in index.css. No item is revealed.
  */
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useLocation } from "wouter";
@@ -71,15 +53,11 @@ export function StoryPlayer({ chapterId }: StoryPlayerProps) {
   const [error, setError]                 = useState<string | null>(null);
   const [comingSoon, setComingSoon]       = useState(false);
   const [advanceError, setAdvanceError]   = useState<string | null>(null);
-  // Part 9: pending grants from /progress/complete — non-empty triggers popup
   const [pendingGrants, setPendingGrants] = useState<IssuedGrant[]>([]);
-  // Sprint 3 (1b): cinematic beat shown before grants popup
   const [showCinematicBeat, setShowCinematicBeat] = useState(false);
 
   const typeTimerRef       = useRef<ReturnType<typeof setTimeout> | null>(null);
   const completionFiredRef = useRef(false);
-  // Sprint 3 (1b): holds resolved grants so handleCinematicComplete has
-  // fresh data without a closure staleness issue
   const resolvedGrantsRef  = useRef<IssuedGrant[]>([]);
 
   const sceneMap = chapter
@@ -95,21 +73,14 @@ export function StoryPlayer({ chapterId }: StoryPlayerProps) {
     ?? { path: "/story", label: "Return to Chronicles" };
   const catalogueEntry = CHAPTER_CATALOGUE.find((c) => c.id === chapterId);
 
-  // ── triggerCompletion ────────────────────────────────────────────────────────
-  //
-  // Sprint 3 (1b): store grants in resolvedGrantsRef and show cinematic
-  // beat; the beat's onComplete callback decides what renders next.
   const triggerCompletion = useCallback(async () => {
     if (completionFiredRef.current || !chapter) return;
     completionFiredRef.current = true;
     try {
       const finalFlags = await getFlags();
-
-      // ✔ AWAITED — flags must be in the DB before /progress/complete runs
       if (Object.keys(finalFlags).length > 0) {
         await apiRequest("POST", "/api/story/flags", { absolute: finalFlags });
       }
-
       const response = await apiRequest("POST", "/api/story/progress/complete", {
         chapterId,
         endingKey:         `ch${chapterId}_complete`,
@@ -124,25 +95,16 @@ export function StoryPlayer({ chapterId }: StoryPlayerProps) {
         endingDescription: `Chapter ${chapterId} complete.`,
       });
       await queryClient.refetchQueries({ queryKey: [api.player.get.path] });
-
-      // gap-fix: invalidate grants cache so GrantSkillBadge pills appear
-      // immediately on inventory panels.
       queryClient.invalidateQueries({ queryKey: [api.story.grants.path] });
-
       const grants: IssuedGrant[] = Array.isArray(response?.grants) ? response.grants : [];
-
-      // Sprint 3 (1b): store and cue cinematic beat (regardless of grant count
-      // so every chapter end gets the same dramatic pause)
       resolvedGrantsRef.current = grants;
       setShowCinematicBeat(true);
     } catch {
       completionFiredRef.current = false;
-      // On error: skip beat, fall straight to completion screen
       setIsComplete(true);
     }
   }, [chapter, chapterId]);
 
-  // Sprint 3 (1b): called by GrantCinematicBeat when beat ends or is skipped
   const handleCinematicComplete = useCallback(() => {
     setShowCinematicBeat(false);
     const grants = resolvedGrantsRef.current;
@@ -153,7 +115,6 @@ export function StoryPlayer({ chapterId }: StoryPlayerProps) {
     }
   }, []);
 
-  // ── Boot ────────────────────────────────────────────────────────────────────
   useEffect(() => {
     (async () => {
       try {
@@ -168,7 +129,6 @@ export function StoryPlayer({ chapterId }: StoryPlayerProps) {
         setChapter(chapterData);
         setFlags(savedFlags);
         const firstId = chapterData.firstSceneId ?? chapterData.scenes[0]?.id;
-
         if (progress && progress.chapterId === chapterId) {
           if (progress.isCompleted) {
             completionFiredRef.current = true;
@@ -199,7 +159,6 @@ export function StoryPlayer({ chapterId }: StoryPlayerProps) {
     })();
   }, [chapterId]);
 
-  // ── Typewriter ──────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!currentLine) return;
     if (typeTimerRef.current) clearTimeout(typeTimerRef.current);
@@ -221,7 +180,6 @@ export function StoryPlayer({ chapterId }: StoryPlayerProps) {
     if (scene) markSceneSeen(scene.sceneOrder);
   }, [sceneId]);
 
-  // ── Declarative completion fallback ─────────────────────────────────────
   useEffect(() => {
     if (
       scene?.isChapterEnd &&
@@ -271,18 +229,15 @@ export function StoryPlayer({ chapterId }: StoryPlayerProps) {
     const mutations: StoryFlags = {};
     if (choice.flagKey != null) mutations[choice.flagKey] = choice.flagValue ?? 0;
     if (choice.flagKey2 != null && choice.flagValue2 != null) mutations[choice.flagKey2] = choice.flagValue2;
-
     const optimistic = { ...flags };
     for (const [k, v] of Object.entries(mutations)) optimistic[k] = (optimistic[k] ?? 0) + v;
     setFlags(optimistic);
-
     applyFlags(mutations).catch((err: any) => {
       console.warn("[story] applyFlags error (non-blocking):", err?.message ?? err);
     });
     if (Object.keys(mutations).length > 0) {
       apiRequest("POST", "/api/story/flags", { mutations }).catch(() => {});
     }
-
     setSceneId(choice.nextSceneId);
     setLineIndex(0);
     setShowChoices(false);
@@ -337,7 +292,6 @@ export function StoryPlayer({ chapterId }: StoryPlayerProps) {
     setShowCinematicBeat(false);
   }, [chapter, chapterId]);
 
-  // ── Loading / error guards ──────────────────────────────────────────────────────
   if (loading) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
@@ -381,7 +335,6 @@ export function StoryPlayer({ chapterId }: StoryPlayerProps) {
     );
   }
 
-  // Sprint 3 (1b): cinematic beat — rendered before grants popup
   if (showCinematicBeat) {
     return (
       <GrantCinematicBeat
@@ -391,7 +344,6 @@ export function StoryPlayer({ chapterId }: StoryPlayerProps) {
     );
   }
 
-  // Part 9: show reward popup while grants are pending
   if (pendingGrants.length > 0) {
     return (
       <GrantRewardPopup
@@ -503,15 +455,14 @@ export function StoryPlayer({ chapterId }: StoryPlayerProps) {
           {currentLine && (
             <>
               {currentLine.speakerName !== "Narrator" && (
-                {/* Sprint 4 (1a): speaker-grant-hint + speaker-grant-hint-anim
-                    classes added when line carries a grantHintKey.
-                    Renders a 2px amber shimmer underline — no item revealed. */}
-                <p className={[
-                  "text-amber-400 text-xs font-semibold tracking-wide mb-1",
-                  currentLine.grantHintKey
-                    ? "speaker-grant-hint speaker-grant-hint-anim"
-                    : "",
-                ].join(" ")}>
+                <p
+                  className={[
+                    "text-amber-400 text-xs font-semibold tracking-wide mb-1",
+                    currentLine.grantHintKey
+                      ? "speaker-grant-hint speaker-grant-hint-anim"
+                      : "",
+                  ].join(" ")}
+                >
                   {currentLine.speakerName}
                 </p>
               )}
