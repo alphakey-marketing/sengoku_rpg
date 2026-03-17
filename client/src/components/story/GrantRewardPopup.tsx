@@ -19,6 +19,18 @@
  *
  * onDismiss() is called before navigation so the chapter-complete screen
  * resolves cleanly before the panel transition fires.
+ *
+ * Fix (2026-03-18) — Issue 5:
+ *   - IssuedGrant now carries `didUpgrade?: boolean` matching the server-side
+ *     type in grant-evaluator.ts. The field was present on the wire but absent
+ *     from the client interface so it was silently ignored.
+ *   - GrantCard renders an amber upgrade banner when didUpgrade === true:
+ *     ↥ Upgrade  ·  "replaces your previous <category>"
+ *     Banner is suppressed (no DOM node) when didUpgrade is false or undefined,
+ *     keeping first-acquisition cards pixel-identical to before.
+ *   - PlayerGrantView from GET /api/story/grants has no didUpgrade; treating the
+ *     field as optional (boolean | undefined) means the recovery path in
+ *     StoryPlayer.tsx (Bug 4 fix) correctly omits the banner without code changes.
  */
 
 import { useState } from "react";
@@ -27,7 +39,7 @@ import { useLocation } from "wouter";
 import { getSkillName } from "@shared/skill-descriptions";
 import { PORTRAIT_COLOURS, PORTRAIT_INITIALS } from "@/lib/story-constants";
 
-// ── Types ─────────────────────────────────────────────────────────────────────
+// ── Types ──────────────────────────────────────────────────────────────────────────────
 
 export interface IssuedGrant {
   grantKey:      string;
@@ -36,6 +48,15 @@ export interface IssuedGrant {
   grantCategory: string;
   rarity:        string;
   gameRowId:     number | null;
+  /**
+   * True when this grant superseded a previously issued base grant
+   * (e.g. Reforged Blade replacing Singing Blade).
+   *
+   * Optional so callers using the GET /api/story/grants recovery path
+   * (PlayerGrantView, which has no didUpgrade field) don’t break —
+   * the upgrade banner is simply suppressed when this is undefined.
+   */
+  didUpgrade?: boolean;
 }
 
 interface GrantRewardPopupProps {
@@ -43,7 +64,7 @@ interface GrantRewardPopupProps {
   onDismiss: () => void;
 }
 
-// ── Rarity palette ────────────────────────────────────────────────────────────
+// ── Rarity palette ─────────────────────────────────────────────────────────────────────
 
 const RARITY_STYLES: Record<string, {
   border: string;
@@ -99,7 +120,7 @@ function rarityStyle(rarity: string) {
   return RARITY_STYLES[rarity] ?? RARITY_STYLES.common;
 }
 
-// ── Category helpers ──────────────────────────────────────────────────────────
+// ── Category helpers ────────────────────────────────────────────────────────────────
 
 const CATEGORY_KANJI: Record<string, string> = {
   companion: "将",
@@ -129,7 +150,7 @@ const CATEGORY_CTA: Record<string, string> = {
   horse:     "View in Stables →",
 };
 
-// ── 2b: Portrait key derivation ───────────────────────────────────────────────
+// ── 2b: Portrait key derivation ────────────────────────────────────────────────────
 //
 // IssuedGrant carries displayName (e.g. "Nohime") but not a portraitKey.
 // We derive "<firstname_lower>_neutral" as the best-guess key, then fall back
@@ -142,7 +163,7 @@ function derivePortraitKey(displayName: string): string {
 
 const COMPANION_FALLBACK_COLOURS = "bg-rose-900 border-rose-600";
 
-// ── 2b: Animated asset reveal components ─────────────────────────────────────
+// ── 2b: Animated asset reveal components ────────────────────────────────────────────
 
 /** Shimmer keyframe — injected once; Tailwind purge-safe via a <style> tag. */
 const SHIMMER_STYLE = `
@@ -254,7 +275,38 @@ function AssetReveal({ grant }: AssetRevealProps) {
   }
 }
 
-// ── Single grant card ─────────────────────────────────────────────────────────
+// ── Issue 5: Upgrade banner ──────────────────────────────────────────────────────────────────
+//
+// Shown above the rarity/category badges when grant.didUpgrade === true.
+// Suppressed entirely (returns null) when didUpgrade is false or undefined
+// so standard first-acquisition cards are pixel-identical to before.
+
+interface UpgradeBannerProps {
+  grantCategory: string;
+}
+
+function UpgradeBanner({ grantCategory }: UpgradeBannerProps) {
+  const catLabel = (CATEGORY_LABEL[grantCategory] ?? grantCategory).toLowerCase();
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.28, duration: 0.4 }}
+      className="flex flex-col items-center gap-0.5 mb-3"
+    >
+      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full
+                        bg-amber-900/60 border border-amber-600/40 text-amber-400
+                        text-xs font-semibold tracking-widest uppercase">
+        <span aria-hidden="true">↥</span> Upgrade
+      </span>
+      <span className="text-stone-400 text-xs">
+        replaces your previous {catLabel}
+      </span>
+    </motion.div>
+  );
+}
+
+// ── Single grant card ──────────────────────────────────────────────────────────────────────
 
 interface GrantCardProps {
   grant:     IssuedGrant;
@@ -290,6 +342,11 @@ function GrantCard({ grant, index, total, onAdvance, onDeepLink }: GrantCardProp
 
       {/* 2b — Animated asset reveal */}
       <AssetReveal grant={grant} />
+
+      {/* Issue 5 — Upgrade banner (only when didUpgrade === true) */}
+      {grant.didUpgrade === true && (
+        <UpgradeBanner grantCategory={grant.grantCategory} />
+      )}
 
       {/* Rarity + category badges */}
       <motion.div
@@ -372,7 +429,7 @@ function GrantCard({ grant, index, total, onAdvance, onDeepLink }: GrantCardProp
   );
 }
 
-// ── Summary slide ─────────────────────────────────────────────────────────────
+// ── Summary slide ───────────────────────────────────────────────────────────────────────
 
 interface SummarySlideProps {
   grants:    IssuedGrant[];
@@ -429,6 +486,9 @@ function SummarySlide({ grants, onDismiss }: SummarySlideProps) {
                   {CATEGORY_LABEL[g.grantCategory] ?? g.grantCategory}
                   {" · "}
                   {g.rarity}
+                  {g.didUpgrade === true && (
+                    <span className="ml-1.5 text-amber-500">↥ upgraded</span>
+                  )}
                 </p>
               </div>
             </motion.div>
@@ -450,7 +510,7 @@ function SummarySlide({ grants, onDismiss }: SummarySlideProps) {
   );
 }
 
-// ── Main component ────────────────────────────────────────────────────────────
+// ── Main component ────────────────────────────────────────────────────────────────────────
 
 export function GrantRewardPopup({ grants, onDismiss }: GrantRewardPopupProps) {
   const [step, setStep]       = useState<number>(0);
