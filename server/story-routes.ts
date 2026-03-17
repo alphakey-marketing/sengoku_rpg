@@ -12,6 +12,7 @@
  *  GET  /api/story/chapters/:id         → full chapter with scenes + dialogue + choices
  *  GET  /api/story/progress             → player's progress for all chapters
  *  POST /api/story/progress             → upsert progress (start / advance scene)
+ *                                          + apply scene-level flagWrites if present
  *  POST /api/story/progress/complete    → mark chapter complete + write ending + bump currentChapter
  *                                          + evaluate and award story grants  (← NEW Part 5/10)
  *  GET  /api/story/flags                → all player flags as Record<string,number>
@@ -31,6 +32,7 @@ import {
   type StoryChoice,
   type PlayerFlag,
   type ConditionalVariant,
+  type SceneFlagWrite,
 } from "@shared/schema";
 import { eq, and, asc, sql } from "drizzle-orm";
 import { storage } from "./storage";
@@ -287,6 +289,33 @@ storyRouter.get("/progress", async (req: Request, res: Response) => {
   }
 });
 
+// ──────────────────────────────────────────────────────────────────────────────────
+// POST /api/story/progress
+// ──────────────────────────────────────────────────────────────────────────────────
+//
+// Upserts the player's current scene position within a chapter.
+//
+// Scene-level flagWrites (Phase 1 part 2):
+//   When currentSceneId changes to a new scene that has a non-empty
+//   story_scenes.flag_writes JSONB array, those writes are applied
+//   additively to player_flags BEFORE the progress row is written.
+//
+//   This fires unconditional flags such as:
+//     S06A: weapon_legacy +1, omen_read +1  (blade retrieved)
+//     S06B: omen_read -1                    (blade destroyed)
+//     S09_WIN: road_command +1              (Okehazama won)
+//
+//   Idempotency note: flagWrites fire every time the client advances to
+//   this scene. The chapter JSON author is responsible for ensuring that
+//   each scene with flagWrites is reached at most once per playthrough
+//   (i.e. it is not a hub scene the player can revisit). For the current
+//   linear VN structure this is always the case.
+//
+// Response: { ...progressRow, appliedFlagWrites: string[] }
+//   appliedFlagWrites lists the flagKeys that were mutated this call
+//   (empty array when no writes fired). The client can use this for
+//   optional debug logging; it is never required for correct operation.
+
 storyRouter.post("/progress", async (req: Request, res: Response) => {
   const userId = requireAuth(req, res);
   if (!userId) return;
@@ -299,6 +328,36 @@ storyRouter.post("/progress", async (req: Request, res: Response) => {
     const chapterId = Number(rawChapterId);
     if (!chapterId || isNaN(chapterId)) return res.status(400).json({ error: "chapterId required" });
 
+    // ── Scene-level flagWrites ────────────────────────────────────────────
+    // When the client advances to a new scene, check if that scene has any
+    // unconditional flag mutations and apply them before writing progress.
+    // Skip on forceRestart (the player is being repositioned, not advancing)
+    // and when no currentSceneId is supplied (chapter start upsert).
+    let appliedFlagWrites: string[] = [];
+
+    if (currentSceneId && !forceRestart) {
+      const [scene] = await db
+        .select({ flagWrites: storyScenes.flagWrites })
+        .from(storyScenes)
+        .where(eq(storyScenes.id, currentSceneId));
+
+      const sceneFlagWrites = scene?.flagWrites as SceneFlagWrite[] | null;
+
+      if (sceneFlagWrites && sceneFlagWrites.length > 0) {
+        const mutations: Record<string, number> = {};
+        for (const fw of sceneFlagWrites) {
+          mutations[fw.flagKey] = (mutations[fw.flagKey] ?? 0) + fw.flagValue;
+        }
+        await writeFlags(userId, mutations);
+        appliedFlagWrites = Object.keys(mutations);
+        console.log(
+          `[story] POST /progress → scene ${currentSceneId} flagWrites applied for ` +
+          `userId=${userId}: ${appliedFlagWrites.join(", ")}`,
+        );
+      }
+    }
+
+    // ── Progress upsert ───────────────────────────────────────────────────
     const [existing] = await db
       .select()
       .from(playerStoryProgress)
@@ -312,7 +371,7 @@ storyRouter.post("/progress", async (req: Request, res: Response) => {
         .insert(playerStoryProgress)
         .values({ userId, chapterId, currentSceneId: currentSceneId ?? null, isCompleted: false })
         .returning();
-      return res.json(fresh);
+      return res.json({ ...fresh, appliedFlagWrites });
     }
 
     if (!existing) {
@@ -320,7 +379,7 @@ storyRouter.post("/progress", async (req: Request, res: Response) => {
         .insert(playerStoryProgress)
         .values({ userId, chapterId, currentSceneId: currentSceneId ?? null, isCompleted: false })
         .returning();
-      return res.json(created);
+      return res.json({ ...created, appliedFlagWrites });
     }
 
     const [updated] = await db
@@ -328,7 +387,7 @@ storyRouter.post("/progress", async (req: Request, res: Response) => {
       .set({ currentSceneId: currentSceneId ?? existing.currentSceneId })
       .where(and(eq(playerStoryProgress.userId, userId), eq(playerStoryProgress.chapterId, chapterId)))
       .returning();
-    res.json(updated);
+    res.json({ ...updated, appliedFlagWrites });
   } catch (e) {
     console.error("[story] POST /progress", e);
     res.status(500).json({ error: "Failed to update progress" });
@@ -401,7 +460,7 @@ storyRouter.post("/progress/complete", async (req: Request, res: Response) => {
       }
     }
 
-    // Step 4: read live flags (written by /battle-result before this call)
+    // Step 4: read live flags (written by /battle-result and /progress before this call)
     // We read from DB here rather than having the client send flags, so there
     // is no opportunity for client-side flag manipulation.
     const flagMap   = await getFlagMap(userId);

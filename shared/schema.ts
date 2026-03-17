@@ -73,6 +73,26 @@ export interface ConditionalVariant {
   condition: ConditionalVariantCondition;
 }
 
+// ── SceneFlagWrite — stored in story_scenes.flag_writes JSONB ───────────────
+//
+// Each element is an unconditional additive flag mutation that fires the
+// moment the player's progress advances TO this scene.
+//
+// Semantics: additive delta (same as choice-level flagValue mutations).
+// A value of +1 increments the flag by 1; -1 decrements it by 1.
+//
+// This is how scenes like S06A and S06B apply flags such as:
+//   weapon_legacy +1, road_command +1, omen_read +1
+// independently of which choice the player makes within the scene.
+//
+// The writes fire in POST /api/story/progress when currentSceneId changes
+// to this scene's id, before the progress row is written.
+
+export interface SceneFlagWrite {
+  flagKey:   string;
+  flagValue: number;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Story Grant System
 // ─────────────────────────────────────────────────────────────────────────────
@@ -540,6 +560,12 @@ export const storyScenes = pgTable("story_scenes", {
   // battleWinSceneId / battleLoseSceneId.
   // Shape: { outcome: "win"|"lose", sceneId: number, condition: { flagKey, operator, value } }[]
   conditionalVariants: jsonb("conditional_variants").$type<ConditionalVariant[]>(),
+  // Nullable JSONB array of SceneFlagWrite objects.
+  // Each entry is an unconditional additive flag mutation applied the moment
+  // the player's progress advances TO this scene (in POST /api/story/progress).
+  // Shape: { flagKey: string; flagValue: number }[]
+  // null / [] → no scene-level writes for this scene.
+  flagWrites: jsonb("flag_writes").$type<SceneFlagWrite[]>(),
   isChapterEnd: boolean("is_chapter_end").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow(),
 });

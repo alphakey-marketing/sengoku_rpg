@@ -21,6 +21,7 @@ import {
   dialogueLines,
   storyChoices,
   type ConditionalVariant,
+  type SceneFlagWrite,
 } from "../shared/schema";
 import { eq } from "drizzle-orm";
 
@@ -56,6 +57,21 @@ interface JsonConditionalVariant {
   condition: JsonConditionalVariantCondition;
 }
 
+/**
+ * JsonFlagWrite — one unconditional additive flag mutation declared at scene level.
+ *
+ * Mirrors SceneFlagWrite from shared/schema.ts but lives here separately so the
+ * seeder's JSON interface types stay self-contained and don't import runtime schema.
+ *
+ * flagValue is a delta (not an absolute set): +1 increments, -1 decrements.
+ * Stored in story_scenes.flag_writes JSONB and applied by POST /api/story/progress
+ * when the player advances to this scene.
+ */
+interface JsonFlagWrite {
+  flagKey:   string;
+  flagValue: number;
+}
+
 interface JsonScene {
   sceneRef: string;
   backgroundKey: string;
@@ -67,6 +83,20 @@ interface JsonScene {
   battleWinSceneRef?: string;
   battleLoseSceneRef?: string;
   conditionalVariants?: JsonConditionalVariant[];
+  /**
+   * Optional array of unconditional flag mutations that fire when the
+   * player advances to this scene, regardless of choices made.
+   *
+   * Example (S06A — blade retrieved at Nagashino):
+   *   "flagWrites": [
+   *     { "flagKey": "weapon_legacy", "flagValue": 1 },
+   *     { "flagKey": "omen_read",     "flagValue": 1 }
+   *   ]
+   *
+   * Stored as-is in story_scenes.flag_writes JSONB.
+   * Absent or empty array → null stored in DB (no-op at runtime).
+   */
+  flagWrites?: JsonFlagWrite[];
   isChapterEnd: boolean;
   dialogueLines: JsonDialogueLine[];
   choices: JsonChoice[];
@@ -102,6 +132,14 @@ async function buildRefMap(
 ): Promise<Map<string, number>> {
   const refMap = new Map<string, number>();
   for (const s of scenes) {
+    // Normalise flagWrites: treat absent or empty array as null so the DB
+    // column stays null for scenes with no unconditional writes (saves a
+    // pointless JSONB parse on every scene advance at runtime).
+    const flagWrites: SceneFlagWrite[] | null =
+      s.flagWrites && s.flagWrites.length > 0
+        ? s.flagWrites.map((fw) => ({ flagKey: fw.flagKey, flagValue: fw.flagValue }))
+        : null;
+
     const [inserted] = await db
       .insert(storyScenes)
       .values({
@@ -112,6 +150,7 @@ async function buildRefMap(
         isBattleGate: s.isBattleGate,
         battleEnemyKey: s.battleEnemyKey ?? null,
         isChapterEnd: s.isChapterEnd,
+        flagWrites,
       })
       .returning({ id: storyScenes.id });
     refMap.set(s.sceneRef, inserted.id);
@@ -147,6 +186,9 @@ async function resolveForwardRefs(
         .filter((v): v is ConditionalVariant => v !== null);
     }
 
+    // Only forward-refs (nextSceneId, battleWin/LoseSceneId, conditionalVariants)
+    // need a second pass — flagWrites is a static column written at INSERT time
+    // in buildRefMap and does not reference other scenes.
     await db
       .update(storyScenes)
       .set({
