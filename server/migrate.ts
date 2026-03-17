@@ -242,6 +242,56 @@ const MIGRATIONS: string[] = [
            FROM   jsonb_array_elements(COALESCE(ss.flag_writes, '[]'::jsonb)) elem
            WHERE  elem->>'flagKey' = 'nohime_witnessed_win'
          )`,
+
+  // ── BUG 1 FIX: Backfill correct flag_condition for grant_weapon_reforged_blade ──
+  //
+  // seed-story-grants.ts is idempotent by grantKey (INSERT … skip if exists).
+  // Any DB seeded before the Bug 1 fix still holds the original condition:
+  //   flag_condition = 'weapon_legacy>=1'   (too broad)
+  // which matched BOTH the Ch1 singing-blade path AND the Ch2 anonymous-sword
+  // path, causing duplicate weapon slots and a dangling upgradeOf pointer for
+  // anonymous-sword players.
+  //
+  // Corrected value:
+  //   flag_condition = 'supernatural_affinity>=2'  (singing-blade path only)
+  //
+  // Idempotency: the WHERE clause matches only when the old value is still
+  // present.  Running on an already-patched DB is a no-op (0 rows updated).
+  `UPDATE story_grants
+   SET   flag_condition = 'supernatural_affinity>=2'
+   WHERE grant_key      = 'grant_weapon_reforged_blade'
+     AND flag_condition = 'weapon_legacy>=1'`,
+
+  // ── BUG 1 FIX (cont.): Backfill upgrade_of for grant_weapon_reforged_blade_v2 ──
+  //
+  // This parallel Ch5 row (anonymous-sword lineage) was added in the same
+  // fix commit as grant_weapon_reforged_blade.  Any DB seeded before the fix
+  // either does not have this row at all (seeder will INSERT it on next
+  // startup) or has it with upgrade_of = NULL (race: row seeded between
+  // deploy and restart).  Ensure the pointer is set.
+  //
+  // Idempotency: WHERE upgrade_of IS NULL prevents re-running.
+  `UPDATE story_grants
+   SET   upgrade_of = 'grant_weapon_anonymous_sword'
+   WHERE grant_key  = 'grant_weapon_reforged_blade_v2'
+     AND upgrade_of IS NULL`,
+
+  // ── BUG 3 FIX: Backfill correct flag_condition for grant_horse_nobuyasu_road ──
+  //
+  // Any DB seeded before the Bug 3 fix holds:
+  //   flag_condition = 'road_command>=1'
+  // which also matched Ch1 Okehazama winners (road_command written by S09_WIN),
+  // causing them to receive a second uncommon horse (grant_horse_nobuyasu_road)
+  // on Ch2 completion in addition to grant_horse_ch1_victory.
+  //
+  // Corrected value:
+  //   flag_condition = 'road_command>=2'  (requires Ch1 + Ch2 road_command writes)
+  //
+  // Idempotency: WHERE matches old value only.
+  `UPDATE story_grants
+   SET   flag_condition = 'road_command>=2'
+   WHERE grant_key      = 'grant_horse_nobuyasu_road'
+     AND flag_condition = 'road_command>=1'`,
 ];
 
 export async function runMigrations(): Promise<void> {
