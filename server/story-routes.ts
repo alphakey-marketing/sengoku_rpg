@@ -20,6 +20,7 @@
  *  GET  /api/story/endings              → all unlocked endings
  *  POST /api/story/battle-result        → write battle outcome flags + return nextSceneId
  *  GET  /api/story/grants               → all story grants issued to the player  (← NEW Part 5/10)
+ *                                          optional ?chapterId=N filters to that chapter only
  */
 
 import { Router, type Request, type Response } from "express";
@@ -606,8 +607,18 @@ storyRouter.post("/battle-result", async (req: Request, res: Response) => {
 // GET /api/story/grants  (NEW — Part 5/10)
 // ──────────────────────────────────────────────────────────────────────────────────
 //
-// Returns all story grants that have been issued to the authenticated player,
-// joined with catalogue metadata (displayName, flavourText, rarity).
+// Returns story grants issued to the authenticated player.
+//
+// Optional query param: ?chapterId=N
+//   When present, returns only grants awarded in that chapter
+//   (WHERE awarded_at_chapter = N).  Used by the Bug 4 recovery path in
+//   StoryPlayer.triggerCompletion: on POST /progress/complete failure the
+//   client calls GET /api/story/grants?chapterId=N to recover grants that
+//   were already written to the DB before the network blip.  Without this
+//   filter the recovery popup would re-show every grant the player has ever
+//   earned, not just the current chapter's.
+//
+// When the param is absent the full history is returned (backward-compatible).
 //
 // Response shape (array of PlayerGrantView):
 //   [
@@ -628,7 +639,15 @@ storyRouter.get("/grants", async (req: Request, res: Response) => {
   const userId = requireAuth(req, res);
   if (!userId) return;
   try {
-    const grants = await getPlayerGrants(userId);
+    const rawChapterId = req.query.chapterId;
+    const chapterIdFilter =
+      rawChapterId !== undefined ? parseInt(rawChapterId as string, 10) : undefined;
+
+    if (chapterIdFilter !== undefined && isNaN(chapterIdFilter)) {
+      return res.status(400).json({ error: "chapterId must be a valid integer" });
+    }
+
+    const grants = await getPlayerGrants(userId, chapterIdFilter);
     res.json(grants);
   } catch (e) {
     console.error("[story] GET /grants", e);
