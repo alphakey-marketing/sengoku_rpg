@@ -204,6 +204,44 @@ const MIGRATIONS: string[] = [
   //   client/src/lib/story-engine.ts  → DialogueLine.grantHintKey
   //   client/src/components/story/StoryPlayer.tsx → shimmer render
   `ALTER TABLE dialogue_lines ADD COLUMN IF NOT EXISTS grant_hint_key TEXT`,
+
+  // ── BUG 2 FIX: Backfill nohime_witnessed_win flagWrite onto Ch3 S07B_WIN ──
+  //
+  // chapter_03.json already declares flagWrites on S07B_WIN (scene_order=16):
+  //   { "flagKey": "nohime_witnessed_win", "flagValue": 1 }
+  //
+  // However the chapter seeder is idempotent: it skips any chapter whose title
+  // is already present in story_chapters. All deployed instances have Ch3
+  // seeded without this flagWrite, so grant_weapon_captains_jitte
+  // (flagCondition: "nohime_witnessed_win==1") could never fire.
+  //
+  // This UPDATE merges the missing entry into story_scenes.flag_writes JSONB
+  // for the S07B_WIN scene row (chapter_order=3, scene_order=16).
+  //
+  // Idempotency: jsonb_set replaces the key whether or not it exists, so
+  // running this on an already-patched DB is safe — the value stays the same.
+  //
+  // The join path is:
+  //   story_chapters.chapter_order = 3           → identifies Ch3
+  //   story_scenes.chapter_id = story_chapters.id
+  //   story_scenes.scene_order = 16              → S07B_WIN (battle-win result)
+  `
+  UPDATE story_scenes ss
+  SET    flag_writes = jsonb_set(
+           COALESCE(ss.flag_writes, '[]'::jsonb),
+           '{0}',
+           '[{"flagKey":"nohime_witnessed_win","flagValue":1}]'::jsonb -> 0,
+           true
+         )
+  FROM   story_chapters sc
+  WHERE  sc.chapter_order = 3
+    AND  ss.chapter_id    = sc.id
+    AND  ss.scene_order   = 16
+    AND  NOT EXISTS (
+           SELECT 1
+           FROM   jsonb_array_elements(COALESCE(ss.flag_writes, '[]'::jsonb)) elem
+           WHERE  elem->>'flagKey' = 'nohime_witnessed_win'
+         )`,
 ];
 
 export async function runMigrations(): Promise<void> {

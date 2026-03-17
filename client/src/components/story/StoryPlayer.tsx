@@ -15,6 +15,20 @@
  *     handleReset() is kept for UAT (?dev=reset) but not player-accessible.
  *     Unlimited replay broke the grant system (double-collecting exclusive
  *     grants, stacking flags across runs).
+ *
+ * Fix (2026-03-18) — Bug 4:
+ *   - triggerCompletion catch block no longer silently swallows grants.
+ *     If the POST /api/story/progress/complete fails after the DB write has
+ *     already committed, grants exist in player_story_grants but
+ *     resolvedGrantsRef was left empty — the player hit the completion screen
+ *     with no popup and could never recover it (player_story_grants is
+ *     idempotent; re-completing via chronicles re-entry won't re-award).
+ *   - New recovery path: on POST failure, attempt GET /api/story/grants with
+ *     chapterId filter. If grants are found, populate resolvedGrantsRef and
+ *     fire the cinematic beat as normal. Only falls back to setIsComplete(true)
+ *     if the GET also fails or returns nothing.
+ *   - completionFiredRef.current is reset to false only on total failure so
+ *     a manual re-entry can retry the full flow.
  */
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useLocation } from "wouter";
@@ -109,6 +123,36 @@ export function StoryPlayer({ chapterId }: StoryPlayerProps) {
       resolvedGrantsRef.current = grants;
       setShowCinematicBeat(true);
     } catch {
+      // ── Bug 4 fix: attempt to recover grants that were already written ──
+      //
+      // The POST may have failed AFTER the DB write committed (e.g. network
+      // blip on the response leg). In that case player_story_grants already
+      // holds the awarded rows but resolvedGrantsRef is empty — the player
+      // would hit the completion screen with no popup and never recover it
+      // because player_story_grants is idempotent on re-entry.
+      //
+      // Recovery: GET /api/story/grants?chapterId=N surfaces any grants
+      // already written for this chapter. If found, fire the cinematic beat
+      // normally. Only reset completionFiredRef and fall through to
+      // setIsComplete if the GET also fails or returns nothing.
+      try {
+        const pastGrants = await apiRequest(
+          "GET",
+          `/api/story/grants?chapterId=${chapterId}`,
+        );
+        const recovered: IssuedGrant[] = Array.isArray(pastGrants) ? pastGrants : [];
+        if (recovered.length > 0) {
+          resolvedGrantsRef.current = recovered;
+          setShowCinematicBeat(true);
+          // Do not reset completionFiredRef — the cinematic path handles
+          // setIsComplete via handleCinematicComplete.
+          return;
+        }
+      } catch {
+        // GET also failed — fall through to graceful degradation below.
+      }
+      // Total failure: reset the fired flag so a manual re-entry can retry,
+      // then surface the completion screen without grants.
       completionFiredRef.current = false;
       setIsComplete(true);
     }
