@@ -16,6 +16,10 @@
  * (.catch(() => {})), creating a race where evaluateGrants ran before
  * the choice/battle flags were committed to the DB, returning grants:[]
  * and suppressing the reward popup entirely.
+ *
+ * Sprint 3 (1b): triggerCompletion sets showCinematicBeat=true and
+ * stores resolved grants in resolvedGrantsRef.  GrantCinematicBeat
+ * fires onComplete which then routes to GrantRewardPopup or isComplete.
  */
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useLocation } from "wouter";
@@ -42,6 +46,7 @@ import { Portrait } from "./Portrait";
 import { FlagBar }  from "./FlagBar";
 import { BattleGateOverlay } from "./BattleGateOverlay";
 import { GrantRewardPopup, type IssuedGrant } from "./GrantRewardPopup";
+import { GrantCinematicBeat } from "./GrantCinematicBeat";
 
 export interface StoryPlayerProps {
   chapterId: number;
@@ -64,9 +69,14 @@ export function StoryPlayer({ chapterId }: StoryPlayerProps) {
   const [advanceError, setAdvanceError]   = useState<string | null>(null);
   // Part 9: pending grants from /progress/complete — non-empty triggers popup
   const [pendingGrants, setPendingGrants] = useState<IssuedGrant[]>([]);
+  // Sprint 3 (1b): cinematic beat shown before grants popup
+  const [showCinematicBeat, setShowCinematicBeat] = useState(false);
 
   const typeTimerRef       = useRef<ReturnType<typeof setTimeout> | null>(null);
   const completionFiredRef = useRef(false);
+  // Sprint 3 (1b): holds resolved grants so handleCinematicComplete has
+  // fresh data without a closure staleness issue
+  const resolvedGrantsRef  = useRef<IssuedGrant[]>([]);
 
   const sceneMap = chapter
     ? Object.fromEntries(chapter.scenes.map((s) => [s.id, s]))
@@ -83,13 +93,8 @@ export function StoryPlayer({ chapterId }: StoryPlayerProps) {
 
   // ── triggerCompletion ────────────────────────────────────────────────────────
   //
-  // UAT-FIX-GRANTS: The flag POST must be AWAITED before /progress/complete
-  // is called.  evaluateGrants() on the server reads flags from the DB at
-  // call time; if the flags haven’t been committed yet it sees an empty/stale
-  // flag map and returns grants:[] — suppressing the reward popup entirely.
-  //
-  // Previously this was fire-and-forget (.catch(() => {})), which introduced
-  // a race condition on every chapter completion.
+  // Sprint 3 (1b): store grants in resolvedGrantsRef and show cinematic
+  // beat; the beat’s onComplete callback decides what renders next.
   const triggerCompletion = useCallback(async () => {
     if (completionFiredRef.current || !chapter) return;
     completionFiredRef.current = true;
@@ -116,24 +121,33 @@ export function StoryPlayer({ chapterId }: StoryPlayerProps) {
       });
       await queryClient.refetchQueries({ queryKey: [api.player.get.path] });
 
-      // gap-fix: invalidate grants cache so inventory badge pills appear
-      // immediately on the Companions / Pets / Stable / Equipment panels.
+      // gap-fix: invalidate grants cache so GrantSkillBadge pills appear
+      // immediately on inventory panels.
       queryClient.invalidateQueries({ queryKey: [api.story.grants.path] });
 
-      // Part 9: show reward popup if any grants were issued, otherwise
-      // fall straight through to the completion screen.
       const grants: IssuedGrant[] = Array.isArray(response?.grants) ? response.grants : [];
-      if (grants.length > 0) {
-        setPendingGrants(grants);
-        // isComplete stays false until popup is dismissed
-      } else {
-        setIsComplete(true);
-      }
+
+      // Sprint 3 (1b): store and cue cinematic beat (regardless of grant count
+      // so every chapter end gets the same dramatic pause)
+      resolvedGrantsRef.current = grants;
+      setShowCinematicBeat(true);
     } catch {
       completionFiredRef.current = false;
+      // On error: skip beat, fall straight to completion screen
       setIsComplete(true);
     }
   }, [chapter, chapterId]);
+
+  // Sprint 3 (1b): called by GrantCinematicBeat when beat ends or is skipped
+  const handleCinematicComplete = useCallback(() => {
+    setShowCinematicBeat(false);
+    const grants = resolvedGrantsRef.current;
+    if (grants.length > 0) {
+      setPendingGrants(grants);
+    } else {
+      setIsComplete(true);
+    }
+  }, []);
 
   // ── Boot ────────────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -205,10 +219,18 @@ export function StoryPlayer({ chapterId }: StoryPlayerProps) {
 
   // ── Declarative completion fallback ─────────────────────────────────────
   useEffect(() => {
-    if (scene?.isChapterEnd && isAtLastLine && !isTyping && !showChoices && !isComplete && !completionFiredRef.current) {
+    if (
+      scene?.isChapterEnd &&
+      isAtLastLine &&
+      !isTyping &&
+      !showChoices &&
+      !isComplete &&
+      !showCinematicBeat &&
+      !completionFiredRef.current
+    ) {
       triggerCompletion();
     }
-  }, [scene, isAtLastLine, isTyping, showChoices, isComplete, triggerCompletion]);
+  }, [scene, isAtLastLine, isTyping, showChoices, isComplete, showCinematicBeat, triggerCompletion]);
 
   const skipTypewriter = useCallback(() => {
     if (isTyping && currentLine) {
@@ -298,6 +320,7 @@ export function StoryPlayer({ chapterId }: StoryPlayerProps) {
   const handleReset = useCallback(async () => {
     if (!chapter) return;
     completionFiredRef.current = false;
+    resolvedGrantsRef.current  = [];
     await resetStory();
     const firstId = chapter.firstSceneId ?? chapter.scenes[0]?.id;
     await startChapter(chapterId, firstId, true);
@@ -307,9 +330,10 @@ export function StoryPlayer({ chapterId }: StoryPlayerProps) {
     setIsComplete(false);
     setFlags({});
     setPendingGrants([]);
+    setShowCinematicBeat(false);
   }, [chapter, chapterId]);
 
-  // ── Loading ──────────────────────────────────────────────────────────────────
+  // ── Loading / error guards ──────────────────────────────────────────────────────
   if (loading) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
@@ -353,8 +377,17 @@ export function StoryPlayer({ chapterId }: StoryPlayerProps) {
     );
   }
 
+  // Sprint 3 (1b): cinematic beat — rendered before grants popup
+  if (showCinematicBeat) {
+    return (
+      <GrantCinematicBeat
+        firstGrantCategory={resolvedGrantsRef.current[0]?.grantCategory}
+        onComplete={handleCinematicComplete}
+      />
+    );
+  }
+
   // Part 9: show reward popup while grants are pending
-  // Rendered BEFORE the isComplete screen so the player sees grants first.
   if (pendingGrants.length > 0) {
     return (
       <GrantRewardPopup
