@@ -10,6 +10,13 @@
  * --------------------
  * Only files matching `chapter_*.json` are processed. Other JSON files in the
  * same directory (e.g. flag-registry.json) are intentionally ignored.
+ *
+ * Sprint 4 (1a): JsonDialogueLine now accepts optional grantHintKey so scene
+ * writers can annotate individual lines in chapter JSON files:
+ *
+ *   { "grantHintKey": "ch2_nohime_sword" }
+ *
+ * The value is passed straight through to dialogue_lines.grant_hint_key.
  */
 
 import { readFile, readdir } from "fs/promises";
@@ -25,7 +32,7 @@ import {
 } from "../shared/schema";
 import { eq } from "drizzle-orm";
 
-// ─── JSON file types ──────────────────────────────────────────────────────────────
+// ─── JSON file types ───────────────────────────────────────────────────────────
 
 interface JsonDialogueLine {
   speakerName: string;
@@ -33,6 +40,20 @@ interface JsonDialogueLine {
   portraitKey: string | null;
   text: string;
   lineOrder: number;
+  /**
+   * Sprint 4 (1a) — Dialogue Grant Hint Shimmer
+   *
+   * Optional field. Scene writers add this key to any dialogue line whose
+   * speaker is about to trigger a story grant, e.g.:
+   *
+   *   "grantHintKey": "ch2_nohime_sword"
+   *
+   * StoryPlayer renders a 2 px amber shimmer underline on the speaker name
+   * label for that line — a subtle visual cue only.  No item is revealed.
+   *
+   * Absent / null → NULL stored in DB → no shimmer rendered.
+   */
+  grantHintKey?: string | null;
 }
 
 interface JsonChoice {
@@ -124,7 +145,7 @@ function isValidChapterFile(data: unknown): data is JsonChapterFile {
   );
 }
 
-// ─── Core seed logic ──────────────────────────────────────────────────────────────
+// ─── Core seed logic ───────────────────────────────────────────────────────────
 
 async function buildRefMap(
   scenes: JsonScene[],
@@ -132,9 +153,6 @@ async function buildRefMap(
 ): Promise<Map<string, number>> {
   const refMap = new Map<string, number>();
   for (const s of scenes) {
-    // Normalise flagWrites: treat absent or empty array as null so the DB
-    // column stays null for scenes with no unconditional writes (saves a
-    // pointless JSONB parse on every scene advance at runtime).
     const flagWrites: SceneFlagWrite[] | null =
       s.flagWrites && s.flagWrites.length > 0
         ? s.flagWrites.map((fw) => ({ flagKey: fw.flagKey, flagValue: fw.flagValue }))
@@ -186,9 +204,6 @@ async function resolveForwardRefs(
         .filter((v): v is ConditionalVariant => v !== null);
     }
 
-    // Only forward-refs (nextSceneId, battleWin/LoseSceneId, conditionalVariants)
-    // need a second pass — flagWrites is a static column written at INSERT time
-    // in buildRefMap and does not reference other scenes.
     await db
       .update(storyScenes)
       .set({
@@ -211,11 +226,14 @@ async function insertDialogueLines(
     await db.insert(dialogueLines).values(
       s.dialogueLines.map((l) => ({
         sceneId,
-        speakerName: l.speakerName,
-        speakerSide: l.speakerSide,
-        portraitKey: l.portraitKey,
-        text: l.text,
-        lineOrder: l.lineOrder,
+        speakerName:  l.speakerName,
+        speakerSide:  l.speakerSide,
+        portraitKey:  l.portraitKey,
+        text:         l.text,
+        lineOrder:    l.lineOrder,
+        // Sprint 4 (1a): pass grantHintKey straight through to DB.
+        // Absent / null in JSON → null in DB → no shimmer rendered.
+        grantHintKey: l.grantHintKey ?? null,
       })),
     );
   }
@@ -254,9 +272,6 @@ async function seedOneChapter(filePath: string): Promise<void> {
     return;
   }
 
-  // Guard: skip files that don't match the expected chapter shape.
-  // This prevents flag-registry.json and any other auxiliary JSON from
-  // crashing the seeder with a "Cannot read properties of undefined" error.
   if (!isValidChapterFile(data)) {
     console.warn(
       `[seed-story] ⚠️  Skipping "${filePath}" — does not match JsonChapterFile shape ` +
@@ -308,7 +323,7 @@ async function seedOneChapter(filePath: string): Promise<void> {
   console.log(`[seed-story] ✅  "${chapter.title}" seeded (chapterId=${chapterId}).`);
 }
 
-// ─── Public entry point ──────────────────────────────────────────────────────────────
+// ─── Public entry point ────────────────────────────────────────────────────────
 
 export async function seedStoryChapters(): Promise<void> {
   const storyDir = resolve("script/story");
@@ -317,8 +332,6 @@ export async function seedStoryChapters(): Promise<void> {
   try {
     const entries = await readdir(storyDir);
     files = entries
-      // FIX: only process chapter_*.json — excludes flag-registry.json and
-      // any other auxiliary JSON files that live in the same directory.
       .filter((f) => /^chapter_.*\.json$/.test(f))
       .sort()
       .map((f) => join(storyDir, f));
