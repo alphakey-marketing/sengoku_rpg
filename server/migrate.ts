@@ -242,6 +242,28 @@ const MIGRATIONS: string[] = [
   `UPDATE users SET "int" = 10 WHERE "int" = 1`,
   `UPDATE users SET dex   = 10 WHERE dex   = 1`,
   `UPDATE users SET luk   = 10 WHERE luk   = 1`,
+
+  // ── Phase 1 part 2: scene-level flagWrites engine ─────────────────────────
+  //
+  // story_scenes.flag_writes is a nullable JSONB column that stores an array
+  // of unconditional additive flag mutations fired the moment a player's
+  // progress advances to this scene (POST /api/story/progress).
+  //
+  // Shape: { flagKey: string; flagValue: number }[]
+  //   flagValue is a delta (+1 increments, -1 decrements) — same semantics
+  //   as choice-level flagValue mutations already in the system.
+  //
+  // NULL / missing → no scene-level writes for this scene (no-op at runtime).
+  //
+  // Existing rows default to NULL automatically (Postgres nullable column
+  // with no DEFAULT expression). New scenes populated from chapter JSON
+  // have flagWrites written at INSERT time by seed-story-chapters.ts.
+  //
+  // Cross-references:
+  //   shared/schema.ts            → SceneFlagWrite interface + flagWrites column
+  //   server/seed-story-chapters.ts → JsonFlagWrite + buildRefMap INSERT
+  //   server/story-routes.ts      → POST /api/story/progress flagWrites block
+  `ALTER TABLE story_scenes ADD COLUMN IF NOT EXISTS flag_writes JSONB`,
 ];
 
 export async function runMigrations(): Promise<void> {
