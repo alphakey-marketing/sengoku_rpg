@@ -39,10 +39,11 @@ const GRANTS: InsertStoryGrant[] = [
   {
     // Blade-keeper path: player chose "Send men to retrieve it" at S05 (supernatural_affinity +2).
     // Scene S06A then writes weapon_legacy +1 and omen_read +1 unconditionally.
-    // This grant is the base item for the Ch5 upgrade chain:
+    // This grant is the base item for the Ch5 upgrade chain (singing-blade path only):
     //   grant_weapon_singing_blade → grant_weapon_reforged_blade (upgradeOf)
-    // Without this seed, grant_weapon_reforged_blade's upgradeOf pointer is dangling
-    // and the Ch5 evaluator's isSuperseded logic silently does nothing.
+    // flagCondition is "supernatural_affinity>=2" which exclusively identifies the
+    // blade-keeper path. The Ch5 upgrade grant mirrors this condition so the
+    // upgradeOf pointer is never dangling.
     grantKey:       "grant_weapon_singing_blade",
     displayName:    "The Singing Blade",
     flavourText:    "Unearthed at Nagashino. Three men died holding it. You picked it up yourself.",
@@ -172,12 +173,17 @@ const GRANTS: InsertStoryGrant[] = [
     // descriptive lines: "a good animal, calm under the noise of four thousand men...
     // The horse is a sentence in the same letter." — this is clearly a grant beat.
     // No horse grant existed for the S05A path.
-    // Condition: road_command>=1 at Ch2 completion.
+    //
+    // FIX (Bug 3): Condition raised from "road_command>=1" to "road_command>=2".
+    // Players who won Okehazama in Ch1 already enter Ch2 with road_command=1.
+    // Using >=1 caused both grant_horse_ch1_victory (Ch1) and this grant (Ch2) to
+    // fire for anyone who then took S05A, resulting in two uncommon horses by Ch2.
+    // road_command>=2 correctly targets only players who earned it in BOTH chapters.
     grantKey:       "grant_horse_nobuyasu_road",
     displayName:    "The Border Horse",
     flavourText:    "Calm under the noise of four thousand men. A sentence in a letter written by presence alone.",
     chapterTrigger: 2,
-    flagCondition:  "road_command>=1",
+    flagCondition:  "road_command>=2",
     grantCategory:  "horse",
     grantPayload: {
       category:     "horse",
@@ -469,9 +475,63 @@ const GRANTS: InsertStoryGrant[] = [
   // ══════════════════════════════════════════════════════════════════════════
 
   {
+    // FIX (Bug 1, path A — singing-blade lineage):
+    // Narrowed flagCondition from "weapon_legacy>=1" to "supernatural_affinity>=2".
+    //
+    // Previously, flagCondition "weapon_legacy>=1" matched BOTH the Ch1 singing-blade
+    // path (supernatural_affinity>=2, weapon_legacy written by S06A) AND the Ch2
+    // anonymous-sword path (weapon_legacy written by S06_KEEP). This caused the
+    // upgradeOf: "grant_weapon_singing_blade" pointer to hit an empty row for
+    // anonymous-sword players — isSuperseded silently returned false, the old Ch2
+    // weapon was never retired, and players received a duplicate weapon slot.
+    //
+    // "supernatural_affinity>=2" exclusively identifies the blade-keeper path,
+    // so this entry now only fires for players who actually hold grant_weapon_singing_blade.
     grantKey:       "grant_weapon_reforged_blade",
     displayName:    "The Reforged Blade",
     flavourText:    "Returned by the Nagashino smith, stronger at the seam. It remembers what it survived.",
+    chapterTrigger: 5,
+    flagCondition:  "supernatural_affinity>=2",
+    grantCategory:  "equipment",
+    grantPayload: {
+      category:            "equipment",
+      name:                "The Reforged Blade",
+      type:                "weapon",
+      rarity:              "epic",
+      weaponType:          "katana",
+      attackBonus:         28,
+      defenseBonus:        0,
+      speedBonus:          4,
+      hpBonus:             0,
+      mdefBonus:           0,
+      fleeBonus:           0,
+      matkBonus:           0,
+      critChance:          6,
+      critDamage:          20,
+      cardSlots:           1,
+      passiveDescription:  "Supersedes the Singing Blade. The reforged edge carries the omen forward.",
+      storyFlagRequirement: "supernatural_affinity>=2",
+    },
+    upgradeOf: "grant_weapon_singing_blade",
+  },
+
+  {
+    // FIX (Bug 1, path B — anonymous-sword lineage):
+    // New parallel Ch5 entry to cover players who came through the Ch2 S06_KEEP path
+    // (grant_weapon_anonymous_sword). These players have weapon_legacy>=1 but
+    // supernatural_affinity<2, so the original grant_weapon_reforged_blade
+    // (now narrowed to supernatural_affinity>=2) no longer matches them.
+    //
+    // flagCondition "weapon_legacy>=1" here safely targets only anonymous-sword
+    // players because at chapterTrigger=5 the evaluator loads candidates WHERE
+    // chapter_trigger=5 — and supernatural_affinity>=2 players are already claimed
+    // by grant_weapon_reforged_blade above.
+    //
+    // upgradeOf: "grant_weapon_anonymous_sword" ensures isSuperseded correctly
+    // retires the Ch2 sword and the didUpgrade flag is set to true on the response.
+    grantKey:       "grant_weapon_reforged_blade_v2",
+    displayName:    "The Reforged Blade",
+    flavourText:    "The anonymous sword, returned by the mountain smith. Stronger at the seam. The sender's mark is still absent.",
     chapterTrigger: 5,
     flagCondition:  "weapon_legacy>=1",
     grantCategory:  "equipment",
@@ -491,10 +551,10 @@ const GRANTS: InsertStoryGrant[] = [
       critChance:          6,
       critDamage:          20,
       cardSlots:           1,
-      passiveDescription:  "Supersedes the Singing Blade. The reforged edge carries weapon_legacy forward.",
+      passiveDescription:  "Supersedes the Anonymous Sword. The reforged edge carries weapon_legacy forward. The sender still watches.",
       storyFlagRequirement: "weapon_legacy>=1",
     },
-    upgradeOf: "grant_weapon_singing_blade",
+    upgradeOf: "grant_weapon_anonymous_sword",
   },
 
   {
