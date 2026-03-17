@@ -150,16 +150,23 @@ export const FLAG_LABELS: Record<string, string> = {
   nohime_witnessed_loss:  "👁 Witnessed Defeat",
 };
 
-/** Where to navigate after each chapter completes. */
+/**
+ * Where to navigate after each chapter completes.
+ *
+ * Fix (2026-03-17): Ch1 was "/" which matched the home/dashboard route.
+ * The onboarding guard at "/" redirected any player with currentChapter < 1
+ * back to /story/1, creating an infinite loop. Changed to "/dojo" which is
+ * the correct progressive-onboarding destination for Chapter 1 completion.
+ */
 export const CHAPTER_COMPLETE_DESTINATION: Record<number, { path: string; label: string }> = {
-  1: { path: "/",       label: "Enter the Dojo" },
-  2: { path: "/stable", label: "Visit War Council" },
-  3: { path: "/gear",   label: "Open the Armoury" },
-  4: { path: "/gacha",  label: "Visit the Shrine" },
-  5: { path: "/pets",   label: "Visit the Menagerie" },
-  6: { path: "/party",  label: "Visit the Stables" },
-  7: { path: "/map",    label: "Open Campaign Map" },
-  8: { path: "/story",  label: "Return to Chronicles" },
+  1: { path: "/dojo",    label: "Enter the Dojo" },
+  2: { path: "/stable",  label: "Visit War Council" },
+  3: { path: "/gear",    label: "Open the Armoury" },
+  4: { path: "/gacha",   label: "Visit the Shrine" },
+  5: { path: "/pets",    label: "Visit the Menagerie" },
+  6: { path: "/party",   label: "Visit the Stables" },
+  7: { path: "/map",     label: "Open Campaign Map" },
+  8: { path: "/story",   label: "Return to Chronicles" },
 };
 
 /** Static chapter metadata shown in the chapter-select hub. */

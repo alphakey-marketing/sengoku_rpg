@@ -6,6 +6,15 @@
  * Sprint 4 (1a): when currentLine.grantHintKey is set, the speaker <p>
  * receives 'speaker-grant-hint speaker-grant-hint-anim' — a 2px amber
  * shimmer underline defined in index.css. No item is revealed.
+ *
+ * Fix (2026-03-17):
+ *   - Boot guard: when progress.isCompleted === true, skip setSceneId
+ *     entirely. The completion screen does not use sceneId; restoring it
+ *     caused a brief mid-story scene flash before isComplete took effect.
+ *   - Replay button removed from isComplete screen and in-scene top-bar.
+ *     handleReset() is kept for UAT (?dev=reset) but not player-accessible.
+ *     Unlimited replay broke the grant system (double-collecting exclusive
+ *     grants, stacking flags across runs).
  */
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useLocation } from "wouter";
@@ -131,8 +140,11 @@ export function StoryPlayer({ chapterId }: StoryPlayerProps) {
         const firstId = chapterData.firstSceneId ?? chapterData.scenes[0]?.id;
         if (progress && progress.chapterId === chapterId) {
           if (progress.isCompleted) {
+            // ── Fix: skip setSceneId when chapter is already complete ──
+            // The completion screen does not render a scene; restoring
+            // currentSceneId caused a one-frame flash of a mid-story scene
+            // before isComplete took effect.
             completionFiredRef.current = true;
-            setSceneId(progress.currentSceneId ?? firstId);
             setIsComplete(true);
           } else if (progress.currentSceneId) {
             setSceneId(progress.currentSceneId);
@@ -276,6 +288,16 @@ export function StoryPlayer({ chapterId }: StoryPlayerProps) {
     }
   }, [scene, flags]);
 
+  /**
+   * handleReset — kept for UAT use only.
+   * Not exposed in player-facing UI. Can be triggered programmatically
+   * or via a hidden dev tool (e.g. ?dev=reset query param).
+   *
+   * Rationale for removal from player UI:
+   *   Unlimited replay allows double-collecting mutually-exclusive grants
+   *   (e.g. Ch1 Singing Blade + Road Dog) and additively stacks flags
+   *   across runs, which can prematurely unlock higher-chapter grants.
+   */
   const handleReset = useCallback(async () => {
     if (!chapter) return;
     completionFiredRef.current = false;
@@ -291,6 +313,13 @@ export function StoryPlayer({ chapterId }: StoryPlayerProps) {
     setPendingGrants([]);
     setShowCinematicBeat(false);
   }, [chapter, chapterId]);
+
+  // Expose handleReset for dev tooling only (never rendered in player UI)
+  // Usage: window.__storyReset?.() in browser console during UAT
+  useEffect(() => {
+    (window as any).__storyReset = handleReset;
+    return () => { delete (window as any).__storyReset; };
+  }, [handleReset]);
 
   if (loading) {
     return (
@@ -382,8 +411,8 @@ export function StoryPlayer({ chapterId }: StoryPlayerProps) {
             </p>
           </div>
           <div className="flex gap-3 justify-center flex-wrap">
-            <button onClick={handleReset} className="px-5 py-2 bg-stone-800 hover:bg-stone-700 text-white rounded text-sm transition">
-              ↺ Replay Chapter
+            <button onClick={() => navigate("/story")} className="px-5 py-2 bg-stone-800 hover:bg-stone-700 text-white rounded text-sm transition">
+              ← Chronicles
             </button>
             <button onClick={() => navigate(completionDest.path)} className="px-5 py-2 bg-amber-700 hover:bg-amber-600 text-white rounded text-sm font-semibold transition">
               → {completionDest.label}
@@ -427,13 +456,6 @@ export function StoryPlayer({ chapterId }: StoryPlayerProps) {
         </span>
         <div className="flex gap-2 items-center">
           <FlagBar flags={flags} />
-          <button
-            onClick={(e) => { e.stopPropagation(); handleReset(); }}
-            className="text-stone-600 hover:text-stone-400 text-xs ml-2 transition"
-            title="Restart chapter"
-          >
-            ↺
-          </button>
         </div>
       </div>
 
