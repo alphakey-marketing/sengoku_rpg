@@ -210,21 +210,53 @@ const MIGRATIONS: string[] = [
   // human-readable passive/special effect description for story-granted items.
   // Nullable TEXT; existing equipment rows default to NULL (no passive).
   `ALTER TABLE equipment ADD COLUMN IF NOT EXISTS passive_description TEXT`,
+
+  // ── UAT-FIX-STATS: correct column DEFAULT for str/agi/vit/int/dex/luk ────
+  //
+  // The original ADD COLUMN statements (top of this file) used DEFAULT 1.
+  // schema.ts and STARTING_STATS both correctly use 10.  Every server boot
+  // the M1 backfill above (WHERE stat = 1) was silently re-zeroing any
+  // player who had a stat exactly at 1, but more critically any DB that still
+  // has the old column default will give newly-inserted rows stat=1 if the
+  // application ever inserts without an explicit value.
+  //
+  // ALTER COLUMN SET DEFAULT is safe to re-run (idempotent DDL on Postgres).
+  // It only changes the DEFAULT expression stored in pg_attrdef; it does NOT
+  // touch existing row data.
+  `ALTER TABLE users ALTER COLUMN str   SET DEFAULT 10`,
+  `ALTER TABLE users ALTER COLUMN agi   SET DEFAULT 10`,
+  `ALTER TABLE users ALTER COLUMN vit   SET DEFAULT 10`,
+  `ALTER TABLE users ALTER COLUMN "int" SET DEFAULT 10`,
+  `ALTER TABLE users ALTER COLUMN dex   SET DEFAULT 10`,
+  `ALTER TABLE users ALTER COLUMN luk   SET DEFAULT 10`,
+
+  // ── UAT-FIX-STATS: safe second-pass backfill now that DEFAULT is fixed ────
+  //
+  // The M1 backfill above only ran once when stats = 1.  Any player who had
+  // their stats reset back to 1 by the old DEFAULT (e.g. via upsert with an
+  // omitted stat field) and is still at 1 will be corrected here.
+  // Idempotent: skips rows where the stat is already > 1.
+  `UPDATE users SET str   = 10 WHERE str   = 1`,
+  `UPDATE users SET agi   = 10 WHERE agi   = 1`,
+  `UPDATE users SET vit   = 10 WHERE vit   = 1`,
+  `UPDATE users SET "int" = 10 WHERE "int" = 1`,
+  `UPDATE users SET dex   = 10 WHERE dex   = 1`,
+  `UPDATE users SET luk   = 10 WHERE luk   = 1`,
 ];
 
 export async function runMigrations(): Promise<void> {
   const client = await pool.connect();
   try {
-    console.log("[migrate] Running startup migrations…");
+    console.log("[migrate] Running startup migrations\u2026");
     await client.query("BEGIN");
     for (const sql of MIGRATIONS) {
       await client.query(sql);
     }
     await client.query("COMMIT");
-    console.log(`[migrate] Done — ${MIGRATIONS.length} statements applied.`);
+    console.log(`[migrate] Done \u2014 ${MIGRATIONS.length} statements applied.`);
   } catch (err) {
     await client.query("ROLLBACK");
-    console.error("[migrate] FAILED — rolled back:", err);
+    console.error("[migrate] FAILED \u2014 rolled back:", err);
     // Re-throw so the server refuses to start with a broken schema.
     throw err;
   } finally {
