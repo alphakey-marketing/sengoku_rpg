@@ -8,6 +8,8 @@
  * - Locked items are rendered as greyed-out entries with a tooltip
  *   explaining which chapter unlocks them — visible but unreachable,
  *   so players always know what's coming next.
+ *
+ * Sprint 2 (3b): amber badge dot on nav items that have unseen grants.
  */
 import { Link, useLocation } from "wouter";
 import {
@@ -46,6 +48,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { usePlayer } from "@/hooks/use-game";
 import { NAV_ITEMS, isNavUnlocked } from "@/lib/nav-unlock";
 import type { NavItem } from "@/lib/nav-unlock";
+import { useNewGrants } from "@/hooks/use-grants";
 
 // Map icon name strings → lucide components
 const ICON_MAP: Record<string, React.ElementType> = {
@@ -61,10 +64,23 @@ const ICON_MAP: Record<string, React.ElementType> = {
   Rabbit,
 };
 
+/**
+ * Maps nav URLs to the grant category key they surface.
+ * Only the four panels that display story-granted items are listed;
+ * all other nav items will never show a badge dot.
+ */
+const GRANT_NAV_URLS: Record<string, keyof ReturnType<typeof useNewGrants>> = {
+  "/stable": "companion",
+  "/gear":   "equipment",
+  "/pets":   "pet",
+  "/party":  "horse",
+};
+
 export function AppSidebar() {
-  const [location] = useLocation();
-  const { logout, user } = useAuth();
-  const { data: player } = usePlayer();
+  const [location]        = useLocation();
+  const { logout, user }  = useAuth();
+  const { data: player }  = usePlayer();
+  const newGrants         = useNewGrants();
 
   // Fall back to 0 (story-only mode) while player data is loading
   const currentChapter = player?.currentChapter ?? 0;
@@ -98,6 +114,12 @@ export function AppSidebar() {
       );
     }
 
+    // ── Sprint 2 (3b): badge dot ───────────────────────────────────
+    const grantCategory = GRANT_NAV_URLS[item.url];
+    const hasNewGrant   =
+      grantCategory !== undefined &&
+      (newGrants[grantCategory] as unknown[]).length > 0;
+
     return (
       <SidebarMenuItem key={item.title}>
         <SidebarMenuButton
@@ -112,12 +134,25 @@ export function AppSidebar() {
             }
           `}
         >
-          <Link href={item.url} className="flex items-center gap-3 px-3 py-2 w-full">
+          <Link href={item.url} className="relative flex items-center gap-3 px-3 py-2 w-full">
             <IconComponent
               size={18}
               className={isActive ? "text-accent" : "text-muted-foreground"}
             />
             <span className="font-medium">{item.title}</span>
+
+            {/* 3b — amber badge dot for unseen story grants */}
+            {hasNewGrant && (
+              <span
+                aria-label="New reward"
+                className="
+                  absolute top-1 right-1
+                  w-2.5 h-2.5 rounded-full
+                  bg-amber-400
+                  grant-ring-pulse
+                "
+              />
+            )}
           </Link>
         </SidebarMenuButton>
       </SidebarMenuItem>
