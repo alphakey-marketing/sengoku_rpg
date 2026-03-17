@@ -14,7 +14,7 @@
  * UAT-FIX-GRANTS: await the flag flush to the server BEFORE calling
  * /progress/complete.  Previously the flush was fire-and-forget
  * (.catch(() => {})), creating a race where evaluateGrants ran before
- * the choice/battle flags were committed to the DB, returning grants:[]
+ * the choice/battle flags were committed to the DB, returning grants:[]\
  * and suppressing the reward popup entirely.
  *
  * Sprint 3 (1b): triggerCompletion sets showCinematicBeat=true and
@@ -98,7 +98,7 @@ export function StoryPlayer({ chapterId }: StoryPlayerProps) {
   // ── triggerCompletion ────────────────────────────────────────────────────────
   //
   // Sprint 3 (1b): store grants in resolvedGrantsRef and show cinematic
-  // beat; the beat’s onComplete callback decides what renders next.
+  // beat; the beat's onComplete callback decides what renders next.
   const triggerCompletion = useCallback(async () => {
     if (completionFiredRef.current || !chapter) return;
     completionFiredRef.current = true;
@@ -506,13 +506,12 @@ export function StoryPlayer({ chapterId }: StoryPlayerProps) {
                 {/* Sprint 4 (1a): speaker-grant-hint + speaker-grant-hint-anim
                     classes added when line carries a grantHintKey.
                     Renders a 2px amber shimmer underline — no item revealed. */}
-                <p className={`
-                  text-amber-400 text-xs font-semibold tracking-wide mb-1
-                  ${ currentLine.grantHintKey
+                <p className={[
+                  "text-amber-400 text-xs font-semibold tracking-wide mb-1",
+                  currentLine.grantHintKey
                     ? "speaker-grant-hint speaker-grant-hint-anim"
-                    : ""
-                  }
-                `}>
+                    : "",
+                ].join(" ")}>
                   {currentLine.speakerName}
                 </p>
               )}
