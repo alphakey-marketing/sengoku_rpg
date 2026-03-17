@@ -97,6 +97,166 @@ const GRANTS: InsertStoryGrant[] = [
     upgradeOf: null,
   },
 
+  {
+    // Victory path: Ch1 S09_WIN fires when the player wins the Okehazama battle.
+    // flag-registry road_command entry: "horse named after Okehazama (Ch1 S09_WIN)".
+    // S09_WIN is the isChapterEnd scene reached after a battle win — road_command
+    // is set +1 by the S09_WIN flagWrites block in chapter_01.json.
+    // No horse grant existed for Ch1 winners; this fills that gap.
+    // Condition: road_command>=1 (exclusively written by S09_WIN at this chapter).
+    grantKey:       "grant_horse_ch1_victory",
+    displayName:    "Okehazama's Shadow",
+    flavourText:    "Stabled at Kiyosu since the battle. The groom said it refuses every rider but one.",
+    chapterTrigger: 1,
+    flagCondition:  "road_command>=1",
+    grantCategory:  "horse",
+    grantPayload: {
+      category:     "horse",
+      name:         "Okehazama's Shadow",
+      rarity:       "uncommon",
+      speedBonus:   14,
+      attackBonus:  4,
+      defenseBonus: 2,
+      skill:        "okehazama_memory",
+    },
+    upgradeOf: null,
+  },
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // CHAPTER 2 — The Alliance of Wolves
+  // ══════════════════════════════════════════════════════════════════════════
+
+  {
+    // S06_KEEP path: player chose "Keep it. A weapon offered by someone watching this
+    // closely is worth understanding." — sets weapon_legacy+1.
+    // flag-registry weapon_legacy entry explicitly lists Ch2 as a write source with
+    // the note "mystery gift accepted (Ch2 S06 micro-beat)".
+    // The anonymous short sword is described in the scene in detail ("old, well-kept,
+    // no maker's mark") — it is the grant object. No equipment grant existed for this path.
+    // Condition: weapon_legacy>=1 at Ch2 completion.
+    // chapterTrigger=2 prevents this from double-firing with the Ch1 weapon_legacy write;
+    // the evaluator only loads candidates WHERE chapter_trigger = chapterNumber.
+    grantKey:       "grant_weapon_anonymous_sword",
+    displayName:    "The Anonymous Sword",
+    flavourText:    "No maker's mark. Old, well-kept. Whoever sent it knew enough to send something a warlord might actually carry.",
+    chapterTrigger: 2,
+    flagCondition:  "weapon_legacy>=1",
+    grantCategory:  "equipment",
+    grantPayload: {
+      category:             "equipment",
+      name:                 "The Anonymous Sword",
+      type:                 "weapon",
+      rarity:               "uncommon",
+      weaponType:           "sword",
+      attackBonus:          15,
+      defenseBonus:         2,
+      speedBonus:           1,
+      hpBonus:              0,
+      mdefBonus:            0,
+      fleeBonus:            0,
+      matkBonus:            0,
+      critChance:           3,
+      critDamage:           10,
+      cardSlots:            1,
+      passiveDescription:   "From an unknown hand. The sender is still watching.",
+      storyFlagRequirement: null,
+    },
+    upgradeOf: null,
+  },
+
+  {
+    // S05A path: player chose "March to meet him — stand in front of him personally."
+    // Scene S05A has flagWrites: road_command+1.
+    // flag-registry road_command entry notes "war-horse presence at Nobuyasu standoff
+    // (Ch2 S05A)" as a source write. The scene narration gives the horse two full
+    // descriptive lines: "a good animal, calm under the noise of four thousand men...
+    // The horse is a sentence in the same letter." — this is clearly a grant beat.
+    // No horse grant existed for the S05A path.
+    // Condition: road_command>=1 at Ch2 completion.
+    grantKey:       "grant_horse_nobuyasu_road",
+    displayName:    "The Border Horse",
+    flavourText:    "Calm under the noise of four thousand men. A sentence in a letter written by presence alone.",
+    chapterTrigger: 2,
+    flagCondition:  "road_command>=1",
+    grantCategory:  "horse",
+    grantPayload: {
+      category:     "horse",
+      name:         "The Border Horse",
+      rarity:       "uncommon",
+      speedBonus:   12,
+      attackBonus:  3,
+      defenseBonus: 5,
+      skill:        "standing_ground",
+    },
+    upgradeOf: null,
+  },
+
+  {
+    // Ieyasu companion: awarded when ieyasu_trust>=2 at Ch2 completion.
+    // ieyasu_trust is exclusively written in Ch2 (S03 choice: "Accept all three terms",
+    // flagValue: 2; or S05B, flagValue: +1 stacked). It is not written by any earlier chapter.
+    // Pattern: every chapter where a major ally is cultivated (Ch3 Nohime at nohime_trust>=2,
+    // Ch4 Mitsuhide at mitsuhide_loyalty>=2, Ch7 Mitsuhide Resolved at mitsuhide_loyalty>=2)
+    // awards them as a companion. Ieyasu is Ch2's primary cultivatable ally.
+    // Condition: ieyasu_trust>=2 — requires the full-trust S03A path ("Accept all three terms").
+    grantKey:       "grant_companion_ieyasu",
+    displayName:    "Tokugawa Ieyasu",
+    flavourText:    "He arrived exactly on time. He always does. The Kiyosu Alliance sealed in under four minutes.",
+    chapterTrigger: 2,
+    flagCondition:  "ieyasu_trust>=2",
+    grantCategory:  "companion",
+    grantPayload: {
+      category:            "companion",
+      name:                "Tokugawa Ieyasu",
+      type:                "tactician",
+      rarity:              "rare",
+      hp:                  85,
+      maxHp:               85,
+      attack:              24,
+      defense:             30,
+      speed:               16,
+      dex:                 22,
+      agi:                 16,
+      skill:               "patient_hold",
+      isSpecial:           true,
+      flagUnlockCondition: "ieyasu_trust>=2",
+    },
+    upgradeOf: null,
+  },
+
+  {
+    // Katsuie companion: awarded when katsuie_loyalty>=2 at Ch2 completion.
+    // katsuie_loyalty is written by Ch2 S04 choices and (later) Ch4.
+    // At Ch2 the maximum is 2 (S04A: "Grant him the council seat with real authority").
+    // Katsuie is the secondary cultivatable ally in Ch2 — Ieyasu and Katsuie are
+    // mutually exclusive at the >=2 threshold (both require different S03/S04 choices
+    // that cost ieyasu_trust, making it practically impossible to hit both >=2 in one run).
+    // Condition: katsuie_loyalty>=2 — requires the full-authority S04A path.
+    grantKey:       "grant_companion_katsuie",
+    displayName:    "Shibata Katsuie",
+    flavourText:    "He presented a campaign plan instead of a thank-you. That is how Katsuie says thank you.",
+    chapterTrigger: 2,
+    flagCondition:  "katsuie_loyalty>=2",
+    grantCategory:  "companion",
+    grantPayload: {
+      category:            "companion",
+      name:                "Shibata Katsuie",
+      type:                "warrior",
+      rarity:              "rare",
+      hp:                  110,
+      maxHp:               110,
+      attack:              35,
+      defense:             32,
+      speed:               10,
+      dex:                 14,
+      agi:                 10,
+      skill:               "north_wall",
+      isSpecial:           true,
+      flagUnlockCondition: "katsuie_loyalty>=2",
+    },
+    upgradeOf: null,
+  },
+
   // ══════════════════════════════════════════════════════════════════════════
   // CHAPTER 3 — The Mino Gambit
   // ══════════════════════════════════════════════════════════════════════════
