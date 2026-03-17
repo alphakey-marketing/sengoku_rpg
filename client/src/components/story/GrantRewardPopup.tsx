@@ -1,39 +1,33 @@
 /**
- * GrantRewardPopup.tsx  (Part 9/10)
+ * GrantRewardPopup.tsx  (Sprint 1 — 2b + 2c)
  *
  * Fullscreen chapter-end grant reveal screen.
  *
- * Shown automatically by StoryPlayer when POST /api/story/progress/complete
- * returns a non-empty `grants` array.  The popup sequences through each grant
- * one at a time with a cinematic staggered entrance, then calls onDismiss()
- * when the player taps through or clicks "Continue".
+ * Sprint 1 additions on top of the existing sequential card flow (2a):
  *
- * Props
- * ─────
- *  grants     IssuedGrant[]  — from the /progress/complete response
- *  onDismiss  () => void     — called after the player dismisses all cards
+ * 2b — Animated asset reveal per category:
+ *   companion → Portrait tile fades in (opacity + scale, 600 ms)
+ *   equipment → Kanji crest with a shimmer sweep keyframe (700 ms)
+ *   pet       → Paw SVG silhouette materialises (opacity + scale, 800 ms)
+ *   horse     → Horse kanji silhouette materialises (opacity + scale, 800 ms)
  *
- * Render contract
- * ───────────────
- *  • If grants is empty the component renders nothing (null).
- *  • Each grant is shown as a full-bleed card; the player taps to advance.
- *  • After the last card a summary slide lists all grants together.
- *  • The summary slide has a single "Continue" button that calls onDismiss.
+ * 2c — Contextual deep-link CTA at the bottom of each reveal card:
+ *   companion → /party   "View in War Council →"
+ *   equipment → /gear    "View in Armoury →"
+ *   pet       → /pets    "View in Menagerie →"
+ *   horse     → /stable  "View in Stables →"
  *
- * Category icons
- * ──────────────
- *  companion → 将  (kanji: general)
- *  equipment → 刀  (kanji: blade)
- *  pet       → 獣  (kanji: beast)
- *  horse     → 馬  (kanji: horse)
+ * onDismiss() is called before navigation so the chapter-complete screen
+ * resolves cleanly before the panel transition fires.
  */
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useLocation } from "wouter";
 import { getSkillName } from "@shared/skill-descriptions";
+import { PORTRAIT_COLOURS, PORTRAIT_INITIALS } from "@/lib/story-constants";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
-// Mirror of the IssuedGrant shape returned by evaluateGrants / the route.
 
 export interface IssuedGrant {
   grantKey:      string;
@@ -56,13 +50,49 @@ const RARITY_STYLES: Record<string, {
   glow:   string;
   badge:  string;
   text:   string;
+  shimmerFrom: string;
+  silhouette:  string;
 }> = {
-  uncommon:  { border: "border-emerald-500/60",   glow: "shadow-[0_0_40px_rgba(16,185,129,0.3)]",   badge: "bg-emerald-900/60 text-emerald-300",  text: "text-emerald-300" },
-  rare:      { border: "border-blue-400/60",       glow: "shadow-[0_0_40px_rgba(96,165,250,0.3)]",   badge: "bg-blue-900/60 text-blue-300",        text: "text-blue-300"   },
-  epic:      { border: "border-purple-400/60",     glow: "shadow-[0_0_50px_rgba(168,85,247,0.35)]",  badge: "bg-purple-900/60 text-purple-300",    text: "text-purple-300" },
-  legendary: { border: "border-amber-400/70",      glow: "shadow-[0_0_60px_rgba(251,191,36,0.4)]",   badge: "bg-amber-900/60 text-amber-300",      text: "text-amber-300"  },
-  // fallback
-  common:    { border: "border-stone-500/50",      glow: "",                                          badge: "bg-stone-800 text-stone-300",          text: "text-stone-300"  },
+  uncommon:  {
+    border:      "border-emerald-500/60",
+    glow:        "shadow-[0_0_40px_rgba(16,185,129,0.3)]",
+    badge:       "bg-emerald-900/60 text-emerald-300",
+    text:        "text-emerald-300",
+    shimmerFrom: "rgba(16,185,129,0.55)",
+    silhouette:  "text-emerald-400/70",
+  },
+  rare: {
+    border:      "border-blue-400/60",
+    glow:        "shadow-[0_0_40px_rgba(96,165,250,0.3)]",
+    badge:       "bg-blue-900/60 text-blue-300",
+    text:        "text-blue-300",
+    shimmerFrom: "rgba(96,165,250,0.55)",
+    silhouette:  "text-blue-400/70",
+  },
+  epic: {
+    border:      "border-purple-400/60",
+    glow:        "shadow-[0_0_50px_rgba(168,85,247,0.35)]",
+    badge:       "bg-purple-900/60 text-purple-300",
+    text:        "text-purple-300",
+    shimmerFrom: "rgba(168,85,247,0.55)",
+    silhouette:  "text-purple-400/70",
+  },
+  legendary: {
+    border:      "border-amber-400/70",
+    glow:        "shadow-[0_0_60px_rgba(251,191,36,0.4)]",
+    badge:       "bg-amber-900/60 text-amber-300",
+    text:        "text-amber-300",
+    shimmerFrom: "rgba(251,191,36,0.55)",
+    silhouette:  "text-amber-400/70",
+  },
+  common: {
+    border:      "border-stone-500/50",
+    glow:        "",
+    badge:       "bg-stone-800 text-stone-300",
+    text:        "text-stone-300",
+    shimmerFrom: "rgba(168,162,158,0.4)",
+    silhouette:  "text-stone-400/60",
+  },
 };
 
 function rarityStyle(rarity: string) {
@@ -85,6 +115,145 @@ const CATEGORY_LABEL: Record<string, string> = {
   horse:     "Horse",
 };
 
+const CATEGORY_ROUTE: Record<string, string> = {
+  companion: "/party",
+  equipment: "/gear",
+  pet:       "/pets",
+  horse:     "/stable",
+};
+
+const CATEGORY_CTA: Record<string, string> = {
+  companion: "View in War Council →",
+  equipment: "View in Armoury →",
+  pet:       "View in Menagerie →",
+  horse:     "View in Stables →",
+};
+
+// ── 2b: Portrait key derivation ───────────────────────────────────────────────
+//
+// IssuedGrant carries displayName (e.g. "Nohime") but not a portraitKey.
+// We derive "<firstname_lower>_neutral" as the best-guess key, then fall back
+// to a fixed rose/indigo colour if the key is absent from PORTRAIT_COLOURS.
+
+function derivePortraitKey(displayName: string): string {
+  const first = displayName.split(" ")[0].toLowerCase().replace(/[^a-z]/g, "");
+  return `${first}_neutral`;
+}
+
+const COMPANION_FALLBACK_COLOURS = "bg-rose-900 border-rose-600";
+
+// ── 2b: Animated asset reveal components ─────────────────────────────────────
+
+/** Shimmer keyframe — injected once; Tailwind purge-safe via a <style> tag. */
+const SHIMMER_STYLE = `
+@keyframes shimmerSweep {
+  0%   { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+.grant-shimmer {
+  background-size: 200% auto;
+  animation: shimmerSweep 1.4s linear infinite;
+}
+`;
+
+interface AssetRevealProps {
+  grant: IssuedGrant;
+}
+
+function CompanionReveal({ grant }: AssetRevealProps) {
+  const portraitKey = derivePortraitKey(grant.displayName);
+  const colours     = PORTRAIT_COLOURS[portraitKey] ?? COMPANION_FALLBACK_COLOURS;
+  const initials    = PORTRAIT_INITIALS[portraitKey] ?? grant.displayName[0]?.toUpperCase() ?? "?";
+  const s           = rarityStyle(grant.rarity);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.88 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ delay: 0.1, duration: 0.6, ease: "easeOut" }}
+      className={`w-28 h-36 rounded-sm border-2 ${colours} ${s.glow}
+                  flex items-end justify-center pb-2 mb-6 shadow-2xl`}
+    >
+      <span className="text-3xl font-bold text-white/60">{initials}</span>
+    </motion.div>
+  );
+}
+
+function EquipmentReveal({ grant }: AssetRevealProps) {
+  const s     = rarityStyle(grant.rarity);
+  const kanji = CATEGORY_KANJI.equipment;
+
+  return (
+    <>
+      <style>{SHIMMER_STYLE}</style>
+      <motion.div
+        initial={{ opacity: 0, scale: 0.7 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ delay: 0.1, duration: 0.55, ease: "easeOut" }}
+        className={`w-24 h-24 rounded-full border-2 ${s.border} ${s.glow}
+                    flex items-center justify-center mb-6 relative overflow-hidden`}
+        style={{
+          background: `linear-gradient(120deg, transparent 25%, ${s.shimmerFrom} 50%, transparent 75%)`,
+        }}
+      >
+        <div
+          className="grant-shimmer absolute inset-0 rounded-full"
+          style={{
+            background: `linear-gradient(120deg, transparent 20%, ${s.shimmerFrom} 50%, transparent 80%)`,
+          }}
+        />
+        <span className={`font-display text-5xl relative z-10 ${s.text}`}>{kanji}</span>
+      </motion.div>
+    </>
+  );
+}
+
+function PetReveal({ grant }: AssetRevealProps) {
+  const s = rarityStyle(grant.rarity);
+  return (
+    <motion.div
+      initial={{ opacity: 0.15, scale: 0.72 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ delay: 0.08, duration: 0.8, ease: [0.34, 1.56, 0.64, 1] }}
+      className={`mb-6 ${s.silhouette}`}
+    >
+      {/* Paw print SVG silhouette */}
+      <svg viewBox="0 0 64 64" className="w-24 h-24 fill-current drop-shadow-lg">
+        <ellipse cx="32" cy="48" rx="14" ry="11" />
+        <ellipse cx="14" cy="30" rx="7"  ry="9"  />
+        <ellipse cx="50" cy="30" rx="7"  ry="9"  />
+        <ellipse cx="22" cy="18" rx="6"  ry="8"  />
+        <ellipse cx="42" cy="18" rx="6"  ry="8"  />
+      </svg>
+    </motion.div>
+  );
+}
+
+function HorseReveal({ grant }: AssetRevealProps) {
+  const s     = rarityStyle(grant.rarity);
+  const kanji = CATEGORY_KANJI.horse;
+  return (
+    <motion.div
+      initial={{ opacity: 0.15, scale: 0.72 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ delay: 0.08, duration: 0.8, ease: [0.34, 1.56, 0.64, 1] }}
+      className={`w-28 h-28 flex items-center justify-center mb-6 ${s.silhouette}`}
+    >
+      <span className="font-display text-8xl leading-none">{kanji}</span>
+    </motion.div>
+  );
+}
+
+function AssetReveal({ grant }: AssetRevealProps) {
+  switch (grant.grantCategory) {
+    case "companion": return <CompanionReveal grant={grant} />;
+    case "equipment": return <EquipmentReveal grant={grant} />;
+    case "pet":       return <PetReveal       grant={grant} />;
+    case "horse":     return <HorseReveal     grant={grant} />;
+    default:          return null;
+  }
+}
+
 // ── Single grant card ─────────────────────────────────────────────────────────
 
 interface GrantCardProps {
@@ -92,13 +261,15 @@ interface GrantCardProps {
   index:     number;
   total:     number;
   onAdvance: () => void;
+  onDeepLink: (route: string) => void;
 }
 
-function GrantCard({ grant, index, total, onAdvance }: GrantCardProps) {
-  const s       = rarityStyle(grant.rarity);
-  const kanji   = CATEGORY_KANJI[grant.grantCategory] ?? "紋";
+function GrantCard({ grant, index, total, onAdvance, onDeepLink }: GrantCardProps) {
+  const s        = rarityStyle(grant.rarity);
   const catLabel = CATEGORY_LABEL[grant.grantCategory] ?? grant.grantCategory;
   const skillName = getSkillName(grant.grantKey);
+  const ctaLabel  = CATEGORY_CTA[grant.grantCategory];
+  const ctaRoute  = CATEGORY_ROUTE[grant.grantCategory];
 
   return (
     <motion.div
@@ -117,20 +288,10 @@ function GrantCard({ grant, index, total, onAdvance }: GrantCardProps) {
         {index + 1} / {total}
       </div>
 
-      {/* Category kanji crest */}
-      <motion.div
-        initial={{ scale: 0.5, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        transition={{ delay: 0.15, duration: 0.6, ease: "easeOut" }}
-        className={`w-24 h-24 rounded-full border-2 ${s.border} ${s.glow}
-                    flex items-center justify-center mb-8`}
-      >
-        <span className="font-display text-5xl" style={{ color: "inherit" }}>
-          {kanji}
-        </span>
-      </motion.div>
+      {/* 2b — Animated asset reveal */}
+      <AssetReveal grant={grant} />
 
-      {/* Rarity + category badge */}
+      {/* Rarity + category badges */}
       <motion.div
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
@@ -174,10 +335,28 @@ function GrantCard({ grant, index, total, onAdvance }: GrantCardProps) {
           initial={{ opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.58, duration: 0.4 }}
-          className="max-w-sm text-center text-stone-400 text-sm italic leading-relaxed"
+          className="max-w-sm text-center text-stone-400 text-sm italic leading-relaxed mb-8"
         >
           &ldquo;{grant.flavourText}&rdquo;
         </motion.p>
+      )}
+
+      {/* 2c — Deep-link CTA */}
+      {ctaLabel && ctaRoute && (
+        <motion.button
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.78, duration: 0.35 }}
+          onClick={(e) => {
+            e.stopPropagation(); // don't also fire onAdvance
+            onDeepLink(ctaRoute);
+          }}
+          className={`px-5 py-2 rounded border ${s.border} ${s.text}
+                       bg-white/5 hover:bg-white/10 text-xs font-semibold
+                       tracking-widest uppercase transition-colors`}
+        >
+          {ctaLabel}
+        </motion.button>
       )}
 
       {/* Tap hint */}
@@ -230,7 +409,7 @@ function SummarySlide({ grants, onDismiss }: SummarySlideProps) {
 
       <div className="w-full max-w-sm flex flex-col gap-3 mb-8">
         {grants.map((g, i) => {
-          const s = rarityStyle(g.rarity);
+          const s     = rarityStyle(g.rarity);
           const kanji = CATEGORY_KANJI[g.grantCategory] ?? "紋";
           return (
             <motion.div
@@ -274,10 +453,8 @@ function SummarySlide({ grants, onDismiss }: SummarySlideProps) {
 // ── Main component ────────────────────────────────────────────────────────────
 
 export function GrantRewardPopup({ grants, onDismiss }: GrantRewardPopupProps) {
-  // -1 = not yet started (shouldn't happen if caller guards on grants.length)
-  // 0..n-1 = showing individual cards
-  // n = showing summary
-  const [step, setStep] = useState<number>(0);
+  const [step, setStep]       = useState<number>(0);
+  const [, navigate]          = useLocation();
 
   if (!grants || grants.length === 0) return null;
 
@@ -285,6 +462,12 @@ export function GrantRewardPopup({ grants, onDismiss }: GrantRewardPopupProps) {
 
   function advance() {
     setStep((prev) => prev + 1);
+  }
+
+  /** 2c — dismiss the popup then navigate to the target panel. */
+  function handleDeepLink(route: string) {
+    onDismiss();
+    navigate(route);
   }
 
   return (
@@ -296,6 +479,7 @@ export function GrantRewardPopup({ grants, onDismiss }: GrantRewardPopupProps) {
           index={step}
           total={total}
           onAdvance={advance}
+          onDeepLink={handleDeepLink}
         />
       ) : (
         <SummarySlide
