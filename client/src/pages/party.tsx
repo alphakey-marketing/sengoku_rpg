@@ -9,6 +9,7 @@ import {
   type Companion,
 } from "@/hooks/use-game";
 import { usePlayerGrants, resolveGrantSkillLabel } from "@/hooks/use-grants";
+import { GrantOriginPanel } from "@/components/story/GrantOriginPanel";
 import { MainLayout } from "@/components/layout/main-layout";
 import { Button } from "@/components/ui/button";
 import {
@@ -34,7 +35,7 @@ import { motion } from "framer-motion";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 
-// ── Rarity badge helper ──────────────────────────────────────────────────────────────
+// ── Rarity badge helper ─────────────────────────────────────────────────────────────────────────
 function RarityBadge({ rarity }: { rarity: string }) {
   const cls =
     rarity === "5" ? "text-orange-500 border-orange-500 bg-orange-500/10 shadow-[0_0_10px_rgba(255,165,0,0.3)]" :
@@ -49,7 +50,7 @@ function RarityBadge({ rarity }: { rarity: string }) {
   );
 }
 
-// ── Story-grant skill badge (Part 10) ──────────────────────────────────────────────
+// ── Story-grant skill badge (Part 10) ──────────────────────────────────────────────────────
 function GrantSkillBadge({ label, flavour }: { label: string; flavour?: string | null }) {
   return (
     <Tooltip>
@@ -90,7 +91,7 @@ export default function Party() {
     setSelectedIds(companions.filter(c => c.isInParty).map(c => c.id));
   }
 
-  // ── Selection toggle ─────────────────────────────────────────────────────────
+  // ── Selection toggle ──────────────────────────────────────────────────────
   const toggleSelection = (comp: Companion) => {
     if (comp.isLocked) {
       toast({
@@ -132,7 +133,7 @@ export default function Party() {
       <MainLayout>
         <div className="space-y-6">
 
-          {/* ── Header ─────────────────────────────────────────────────────── */}
+          {/* ── Header ────────────────────────────────────────────────────────── */}
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-border/50 pb-4">
             <div className="flex-1">
               <h1 className="text-3xl font-display font-bold text-white mb-2" data-testid="text-page-title">
@@ -162,7 +163,7 @@ export default function Party() {
             </div>
           </div>
 
-          {/* ── Empty state ──────────────────────────────────────────────────── */}
+          {/* ── Empty state ─────────────────────────────────────────────────────── */}
           {sortedComps.length === 0 ? (
             <div className="text-center p-12 bg-card rounded-lg border border-border/50 border-dashed">
               <Users className="w-12 h-12 mx-auto text-muted-foreground mb-4 opacity-50" />
@@ -195,7 +196,7 @@ export default function Party() {
                     data-testid={`companion-card-${comp.id}`}
                   >
 
-                    {/* ── A2: Lock overlay ──────────────────────────────────────────────── */}
+                    {/* ── A2: Lock overlay ────────────────────────────────────────────────────────── */}
                     {isLocked && (
                       <Tooltip>
                         <TooltipTrigger asChild>
@@ -214,7 +215,7 @@ export default function Party() {
                       </Tooltip>
                     )}
 
-                    {/* ── A2: Lock badge (top-right corner) ────────────────────────────── */}
+                    {/* ── A2: Lock badge (top-right corner) ─────────────────────────────────────────────── */}
                     {isLocked && (
                       <div className="absolute top-3 right-3 z-20 flex items-center gap-1 bg-zinc-800/90 border border-zinc-600 rounded-full px-2 py-0.5">
                         <Lock size={11} className="text-amber-400" />
@@ -222,7 +223,7 @@ export default function Party() {
                       </div>
                     )}
 
-                    {/* ── Card body ──────────────────────────────────────────────────── */}
+                    {/* ── Card body ──────────────────────────────────────────────────────────────────────── */}
                     <div
                       className="flex gap-4"
                       onClick={() => !isLocked && toggleSelection(comp)}
@@ -279,7 +280,7 @@ export default function Party() {
                       </div>
                     </div>
 
-                    {/* ── EXP bar ───────────────────────────────────────────────────────────── */}
+                    {/* ── EXP bar ─────────────────────────────────────────────────────────────────────────── */}
                     <div className="mt-4">
                       <div className="flex items-center justify-between text-[10px] text-zinc-400 mb-1 uppercase font-bold tracking-widest">
                         <span>Lv {comp.level}</span>
@@ -291,7 +292,7 @@ export default function Party() {
                       />
                     </div>
 
-                    {/* ── Equipped gear ──────────────────────────────────────────────────── */}
+                    {/* ── Equipped gear ────────────────────────────────────────────────────────────────────── */}
                     {!isLocked && compEquip.length > 0 && (
                       <div className="mt-3 p-2 bg-background/50 rounded border border-border/30 text-xs text-zinc-400 space-y-1">
                         <span className="text-muted-foreground uppercase tracking-wider font-bold text-[10px]">Equipped Gear</span>
@@ -304,7 +305,7 @@ export default function Party() {
                       </div>
                     )}
 
-                    {/* ── Gacha skill line ──────────────────────────────────────────────────── */}
+                    {/* ── Gacha skill line ──────────────────────────────────────────────────────────────────────── */}
                     {!isLocked && comp.skill && (
                       <div className="mt-3 p-2 bg-background/50 rounded text-xs text-zinc-400 border border-border/30">
                         <span className="text-accent mr-2 font-bold">Skill:</span>
@@ -312,15 +313,18 @@ export default function Party() {
                       </div>
                     )}
 
-                    {/* ── Part 10: story-grant skill badge ─────────────────────────────────── */}
+                    {/* ── Part 10: story-grant skill badge + Sprint 5 (4b): origin panel ───────────── */}
                     {!isLocked && grant && (
-                      <GrantSkillBadge
-                        label={resolveGrantSkillLabel(grant)}
-                        flavour={grant.flavourText}
-                      />
+                      <>
+                        <GrantSkillBadge
+                          label={resolveGrantSkillLabel(grant)}
+                          flavour={grant.flavourText}
+                        />
+                        <GrantOriginPanel grant={grant} />
+                      </>
                     )}
 
-                    {/* ── Lock hint ──────────────────────────────────────────────────────────── */}
+                    {/* ── Lock hint ────────────────────────────────────────────────────────────────────────────── */}
                     {isLocked && (
                       <div className="mt-3 p-2 bg-amber-950/20 rounded border border-amber-900/30 text-xs text-amber-500/80 flex items-start gap-2">
                         <Lock size={12} className="mt-0.5 shrink-0 text-amber-500" />
@@ -328,7 +332,7 @@ export default function Party() {
                       </div>
                     )}
 
-                    {/* ── Action buttons ─────────────────────────────────────────────────────── */}
+                    {/* ── Action buttons ───────────────────────────────────────────────────────────────────────────── */}
                     <div className="mt-auto pt-4 flex gap-2">
                       <Button
                         size="sm"
