@@ -20,6 +20,10 @@
  * Sprint 3 (1b): triggerCompletion sets showCinematicBeat=true and
  * stores resolved grants in resolvedGrantsRef.  GrantCinematicBeat
  * fires onComplete which then routes to GrantRewardPopup or isComplete.
+ *
+ * Sprint 4 (1a): speaker name <p> gains 'speaker-grant-hint
+ * speaker-grant-hint-anim' when currentLine.grantHintKey is set —
+ * a 2px amber shimmer underline, no item revealed, defined in index.css.
  */
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useLocation } from "wouter";
@@ -499,7 +503,16 @@ export function StoryPlayer({ chapterId }: StoryPlayerProps) {
           {currentLine && (
             <>
               {currentLine.speakerName !== "Narrator" && (
-                <p className="text-amber-400 text-xs font-semibold tracking-wide mb-1">
+                {/* Sprint 4 (1a): speaker-grant-hint + speaker-grant-hint-anim
+                    classes added when line carries a grantHintKey.
+                    Renders a 2px amber shimmer underline — no item revealed. */}
+                <p className={`
+                  text-amber-400 text-xs font-semibold tracking-wide mb-1
+                  ${ currentLine.grantHintKey
+                    ? "speaker-grant-hint speaker-grant-hint-anim"
+                    : ""
+                  }
+                `}>
                   {currentLine.speakerName}
                 </p>
               )}
