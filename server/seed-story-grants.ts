@@ -2,7 +2,7 @@
  * server/seed-story-grants.ts
  *
  * Seeds the `story_grants` catalogue table with every story-driven reward
- * defined for chapters 3–8.  Idempotent — skips any grant whose `grantKey`
+ * defined for chapters 1–8.  Idempotent — skips any grant whose `grantKey`
  * is already present.  Safe to call on every server startup.
  *
  * Called from server/index.ts after runMigrations() and seedStoryChapters().
@@ -31,6 +31,71 @@ import { eq } from "drizzle-orm";
 // ─────────────────────────────────────────────────────────────────────────────
 
 const GRANTS: InsertStoryGrant[] = [
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // CHAPTER 1 — The Fool of Owari
+  // ══════════════════════════════════════════════════════════════════════════
+
+  {
+    // Blade-keeper path: player chose "Send men to retrieve it" at S05 (supernatural_affinity +2).
+    // Scene S06A then writes weapon_legacy +1 and omen_read +1 unconditionally.
+    // This grant is the base item for the Ch5 upgrade chain:
+    //   grant_weapon_singing_blade → grant_weapon_reforged_blade (upgradeOf)
+    // Without this seed, grant_weapon_reforged_blade's upgradeOf pointer is dangling
+    // and the Ch5 evaluator's isSuperseded logic silently does nothing.
+    grantKey:       "grant_weapon_singing_blade",
+    displayName:    "The Singing Blade",
+    flavourText:    "Unearthed at Nagashino. Three men died holding it. You picked it up yourself.",
+    chapterTrigger: 1,
+    flagCondition:  "supernatural_affinity>=2",
+    grantCategory:  "equipment",
+    grantPayload: {
+      category:             "equipment",
+      name:                 "The Singing Blade",
+      type:                 "weapon",
+      rarity:               "rare",
+      weaponType:           "katana",
+      attackBonus:          18,
+      defenseBonus:         0,
+      speedBonus:           2,
+      hpBonus:              0,
+      mdefBonus:            0,
+      fleeBonus:            0,
+      matkBonus:            0,
+      critChance:           4,
+      critDamage:           14,
+      cardSlots:            1,
+      passiveDescription:   "Hums faintly in the dark. The first weapon that chose you.",
+      storyFlagRequirement: "supernatural_affinity>=2",
+    },
+    upgradeOf: null,
+  },
+
+  {
+    // Blade-burner path: player chose "Destroy it" at S05 (supernatural_affinity -1, mitsuhide_loyalty +1).
+    // Scene S06B narrates the stray dog joining the column — this grant closes that loop.
+    // Condition uses supernatural_affinity<=-1 to target exclusively the burn path.
+    // Ensures every Ch1 path receives at least one inventory grant.
+    grantKey:       "grant_pet_nagashino_dog",
+    displayName:    "The Road Dog",
+    flavourText:    "It followed the column from Nagashino ash. Nobody sent it away.",
+    chapterTrigger: 1,
+    flagCondition:  "supernatural_affinity<=-1",
+    grantCategory:  "pet",
+    grantPayload: {
+      category:  "pet",
+      name:      "The Road Dog",
+      type:      "dog",
+      rarity:    "common",
+      hp:        28,
+      maxHp:     28,
+      attack:    8,
+      defense:   10,
+      speed:     14,
+      skill:     "road_follower",
+    },
+    upgradeOf: null,
+  },
 
   // ══════════════════════════════════════════════════════════════════════════
   // CHAPTER 3 — The Mino Gambit
