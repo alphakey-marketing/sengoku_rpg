@@ -1,5 +1,6 @@
 import { usePets, useSetActivePet, useRecyclePet, useUpgradePet, usePlayer } from "@/hooks/use-game";
 import { usePlayerGrants, resolveGrantSkillLabel } from "@/hooks/use-grants";
+import { GrantOriginPanel } from "@/components/story/GrantOriginPanel";
 import { MainLayout } from "@/components/layout/main-layout";
 import { Button } from "@/components/ui/button";
 import { Heart, Sword, Shield, Zap, Sparkles, ArrowUp, Trash2, Hammer, FlaskConical } from "lucide-react";
@@ -11,7 +12,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
-// ── Story-grant skill badge (Part 10) ──────────────────────────────────────────────
+// ── Story-grant skill badge (Part 10) ─────────────────────────────────────────────────────
 function GrantSkillBadge({ label, flavour }: { label: string; flavour?: string | null }) {
   return (
     <Tooltip>
@@ -161,12 +162,15 @@ export default function PetsPage() {
                       </div>
                     )}
 
-                    {/* Part 10: story-grant skill badge */}
+                    {/* Part 10 + Sprint 5 (4b): story-grant skill badge + origin panel */}
                     {grant && (
-                      <GrantSkillBadge
-                        label={resolveGrantSkillLabel(grant)}
-                        flavour={grant.flavourText}
-                      />
+                      <>
+                        <GrantSkillBadge
+                          label={resolveGrantSkillLabel(grant)}
+                          flavour={grant.flavourText}
+                        />
+                        <GrantOriginPanel grant={grant} />
+                      </>
                     )}
 
                     <div className="mt-auto pt-3 border-t border-white/10 flex gap-2">

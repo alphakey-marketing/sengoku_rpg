@@ -1,5 +1,6 @@
 import { usePets, useHorses, useSetActivePet, useSetActiveHorse, useTransformations, usePlayer, useCompanions, useSetParty, useEquipment, useRecycleCompanion, useUpgradeCompanion, useRecyclePet, useUpgradePet, useRecycleHorse, useCombineHorses } from "@/hooks/use-game";
 import { usePlayerGrants, resolveGrantSkillLabel } from "@/hooks/use-grants";
+import { GrantOriginPanel } from "@/components/story/GrantOriginPanel";
 import { MainLayout } from "@/components/layout/main-layout";
 import { Button } from "@/components/ui/button";
 import { Sparkles, Zap, Star, Heart, Sword, Shield, Crown, Timer, Users, Trash2, Hammer, Flame, FlaskConical } from "lucide-react";
@@ -18,7 +19,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useState, useEffect } from "react";
 import { Progress } from "@/components/ui/progress";
 
-// ── Shared story-grant skill badge (Part 10) ───────────────────────────────────────
+// ── Shared story-grant skill badge (Part 10) ─────────────────────────────────────────────────────
 function GrantSkillBadge({ label, flavour }: { label: string; flavour?: string | null }) {
   return (
     <Tooltip>
@@ -40,8 +41,7 @@ function GrantSkillBadge({ label, flavour }: { label: string; flavour?: string |
   );
 }
 
-// ── Horse speed badge (Part 10) ──────────────────────────────────────────────────────
-// Shows the ↓ combat aspd bonus inline next to the speed stat.
+// ── Horse speed badge (Part 10) ─────────────────────────────────────────────────────────────────────────
 function HorseGrantBadge({ aspdBonus, grantLabel }: { aspdBonus: number; grantLabel: string }) {
   return (
     <Tooltip>
@@ -158,7 +158,7 @@ export default function StablePage() {
               </TabsTrigger>
             </TabsList>
 
-            {/* ── PARTY TAB ───────────────────────────────────────────────────────────── */}
+            {/* ── PARTY TAB ─────────────────────────────────────────────────────────────────── */}
             <TabsContent value="party" className="mt-6 space-y-6">
               <div className="flex justify-between items-center bg-card/30 p-4 rounded-lg border border-border/30">
                 <div className="flex items-center gap-4">
@@ -254,12 +254,15 @@ export default function StablePage() {
                             <span className="text-accent mr-2 font-bold">Skill:</span>{comp.skill}
                           </div>
                         )}
-                        {/* Part 10: story-grant badge */}
+                        {/* Part 10 + Sprint 5 (4b): story-grant badge + origin panel */}
                         {grant && (
-                          <GrantSkillBadge
-                            label={resolveGrantSkillLabel(grant)}
-                            flavour={grant.flavourText}
-                          />
+                          <>
+                            <GrantSkillBadge
+                              label={resolveGrantSkillLabel(grant)}
+                              flavour={grant.flavourText}
+                            />
+                            <GrantOriginPanel grant={grant} />
+                          </>
                         )}
                         <div className="mt-auto pt-4 flex gap-2">
                           <Button
@@ -286,7 +289,7 @@ export default function StablePage() {
               )}
             </TabsContent>
 
-            {/* ── HORSES TAB ──────────────────────────────────────────────────────────── */}
+            {/* ── HORSES TAB ────────────────────────────────────────────────────────────────── */}
             <TabsContent value="horses" className="mt-6 space-y-6">
               <div className="flex flex-col md:flex-row justify-between items-center bg-card/30 p-4 rounded-lg border border-border/30 gap-4">
                 <div className="flex flex-col">
@@ -359,25 +362,13 @@ export default function StablePage() {
                               horse.rarity === 'green' ? 'text-green-400 border-green-400/50 bg-green-400/10' :
                               'text-zinc-400 border-zinc-400/50 bg-zinc-400/10'
                             }`}>
-                              {
-                                horse.rarity === 'white' ? 'WHITE' :
-                                horse.rarity === 'green' ? 'GREEN' :
-                                horse.rarity === 'blue' ? 'BLUE' :
-                                horse.rarity === 'purple' ? 'PURPLE' :
-                                horse.rarity === 'gold' ? 'GOLD' :
-                                horse.rarity === 'mythic' ? 'MYTHIC' :
-                                horse.rarity === 'exotic' ? 'EXOTIC' :
-                                horse.rarity === 'transcendent' ? 'TRANSCENDENT' :
-                                horse.rarity === 'celestial' ? 'CELESTIAL' :
-                                horse.rarity === 'primal' ? 'PRIMAL' : horse.rarity.toUpperCase()
-                              }
+                              {horse.rarity.toUpperCase()}
                             </span>
                           </div>
                         </div>
                         {horse.isActive && <span className="text-xs bg-cyan-900/30 text-cyan-400 px-2 py-1 rounded font-bold border border-cyan-700/30">ACTIVE</span>}
                       </div>
                       <div className="grid grid-cols-2 gap-2 text-sm mb-3">
-                        {/* Part 10: speed row with inline aspd bonus badge when grant is active */}
                         <div className="flex items-center gap-1">
                           <Zap size={14} className="text-cyan-400" />
                           <span>+{horse.speedBonus}% SPD</span>
@@ -393,12 +384,15 @@ export default function StablePage() {
                         <div className="text-xs text-muted-foreground self-center">Lv {horse.level}</div>
                       </div>
                       {horse.skill && <p className="text-xs text-cyan-400 mb-3">Skill: {horse.skill}</p>}
-                      {/* Part 10: grant skill badge below gacha skill */}
+                      {/* Part 10 + Sprint 5 (4b): story-grant badge + origin panel */}
                       {grant && (
-                        <GrantSkillBadge
-                          label={resolveGrantSkillLabel(grant)}
-                          flavour={grant.flavourText}
-                        />
+                        <>
+                          <GrantSkillBadge
+                            label={resolveGrantSkillLabel(grant)}
+                            flavour={grant.flavourText}
+                          />
+                          <GrantOriginPanel grant={grant} />
+                        </>
                       )}
                       <div className="flex gap-2 mt-3">
                         {!horse.isActive && (
@@ -428,7 +422,7 @@ export default function StablePage() {
               )}
             </TabsContent>
 
-            {/* ── PETS TAB ───────────────────────────────────────────────────────────── */}
+            {/* ── PETS TAB ─────────────────────────────────────────────────────────────────── */}
             <TabsContent value="pets" className="mt-6 space-y-6">
               <div className="flex justify-between items-center bg-card/30 p-4 rounded-lg border border-border/30">
                 <div className="flex items-center gap-2 bg-blue-900/20 border border-blue-700/30 px-4 py-2 rounded-lg">
@@ -503,12 +497,15 @@ export default function StablePage() {
                           <Progress value={(pet.experience / pet.expToNext) * 100} className="h-1.5" />
                         </div>
                         {pet.skill && <p className="text-xs text-green-400 mb-3">Skill: {pet.skill}</p>}
-                        {/* Part 10: story-grant badge */}
+                        {/* Part 10 + Sprint 5 (4b): story-grant badge + origin panel */}
                         {grant && (
-                          <GrantSkillBadge
-                            label={resolveGrantSkillLabel(grant)}
-                            flavour={grant.flavourText}
-                          />
+                          <>
+                            <GrantSkillBadge
+                              label={resolveGrantSkillLabel(grant)}
+                              flavour={grant.flavourText}
+                            />
+                            <GrantOriginPanel grant={grant} />
+                          </>
                         )}
                         <div className="flex gap-2 mt-3">
                           {!pet.isActive && (
@@ -517,7 +514,6 @@ export default function StablePage() {
                               onClick={() => setActivePet(pet.id)} disabled={petPending}
                               data-testid={`activate-pet-${pet.id}`}
                             >Set Active</Button>
-
                           )}
                           {pet.isActive && (
                             <Button size="sm" variant="secondary" className="flex-1" disabled>Active</Button>
@@ -553,7 +549,7 @@ export default function StablePage() {
               )}
             </TabsContent>
 
-            {/* ── TRANSFORMS TAB (unchanged) ───────────────────────────────────────── */}
+            {/* ── TRANSFORMS TAB (unchanged) ─────────────────────────────────────────────── */}
             <TabsContent value="transforms" className="mt-6">
               <div className="mb-6 p-4 rounded-lg bg-purple-900/10 border border-purple-500/20 flex items-center justify-between">
                 <div className="flex items-center gap-3">
