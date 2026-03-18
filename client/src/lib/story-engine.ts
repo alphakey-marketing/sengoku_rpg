@@ -1,6 +1,6 @@
 /**
  * story-engine.ts  (Phase 5 — API-backed fetchChapter)
- * ──────────────────────────────────────────────────────────────────────────────
+ * ────────────────────────────────────────────────────────────────────────────
  * localStorage state manager + live API chapter loader.
  *
  * All state (progress, flags, seen scenes, endings) remains in localStorage
@@ -8,10 +8,24 @@
  * to the server, enabling all authored chapters to be played.
  *
  * Storage keys (prefix: "sengoku_story_")
- *   sengoku_story_progress  → ProgressState
- *   sengoku_story_flags     → StoryFlags   ← persists across ALL chapters
- *   sengoku_story_seen      → number[]
- *   sengoku_story_endings   → UnlockedEnding[]
+ *   sengoku_story_progress        → ProgressState
+ *   sengoku_story_flags           → StoryFlags   ← live, mutated during play
+ *   sengoku_story_flags_baseline  → StoryFlags   ← snapshot at chapter-start
+ *   sengoku_story_seen            → number[]
+ *   sengoku_story_endings         → UnlockedEnding[]
+ *
+ * Flag accumulation fix (UAT 2026-03-18)
+ * ───────────────────────────────────────
+ * applyFlags() is purely additive. Before this fix, tab-switching /
+ * HMR remounts caused StoryPlayer to restore the saved scene without
+ * resetting flags, so every re-mount re-applied choice mutations.
+ * The fix introduces a per-chapter baseline snapshot:
+ *
+ *   • On fresh chapter start → baseline = {}  (flags cleared)
+ *   • On resume            → live flags reset to baseline  (discard drift)
+ *   • snapshotFlagsBaseline() called in triggerCompletion, just before the
+ *     final POST /api/story/flags, so baseline reflects the authoritative
+ *     end-of-chapter state and any completion retry is idempotent.
  *
  * Sprint 4 (1a): DialogueLine.grantHintKey added — optional nullable string
  * passed through from the DB column.  StoryPlayer uses it to conditionally
@@ -41,7 +55,7 @@ export interface UnlockedEnding {
   unlockedAt: string;
 }
 
-// ─── Flag condition + write types ─────────────────────────────────────────────
+// ─── Flag condition + write types ───────────────────────────────────────────────
 
 export interface FlagCondition {
   flagKey: string;
@@ -54,16 +68,17 @@ export interface FlagWrite {
   flagValue: number;
 }
 
-// ─── Storage keys ─────────────────────────────────────────────────────────────
+// ─── Storage keys ────────────────────────────────────────────────────────────────
 
 const KEYS = {
-  progress: "sengoku_story_progress",
-  flags:    "sengoku_story_flags",
-  seen:     "sengoku_story_seen",
-  endings:  "sengoku_story_endings",
+  progress:      "sengoku_story_progress",
+  flags:         "sengoku_story_flags",
+  flagsBaseline: "sengoku_story_flags_baseline",
+  seen:          "sengoku_story_seen",
+  endings:       "sengoku_story_endings",
 } as const;
 
-// ─── Low-level helpers ────────────────────────────────────────────────────────
+// ─── Low-level helpers ─────────────────────────────────────────────────────────────
 
 function read<T>(key: string, fallback: T): T {
   try {
@@ -78,7 +93,7 @@ function write<T>(key: string, value: T): void {
   localStorage.setItem(key, JSON.stringify(value));
 }
 
-// ─── Chapter data types ───────────────────────────────────────────────────────
+// ─── Chapter data types ───────────────────────────────────────────────────────────
 
 export interface DialogueLine {
   id:          number;
@@ -135,7 +150,7 @@ export interface ChapterData {
   scenes:       Scene[];
 }
 
-// ─── fetchChapter ─────────────────────────────────────────────────────────────
+// ─── fetchChapter ────────────────────────────────────────────────────────────────────
 
 export async function fetchChapter(chapterId: number): Promise<ChapterData> {
   let data: ChapterData;
@@ -155,21 +170,54 @@ export async function fetchChapter(chapterId: number): Promise<ChapterData> {
   return data;
 }
 
-// ─── Progress ─────────────────────────────────────────────────────────────────
+// ─── Progress ───────────────────────────────────────────────────────────────────────
 
+/**
+ * startChapter
+ * ─────────────────────────────
+ * Three distinct code-paths:
+ *
+ * A) forceRestart = true (UAT reset button)
+ *    • Clear flags, baseline, seen
+ *    • Write fresh progress + baseline = {}
+ *
+ * B) Fresh start — no existing progress (or different chapter)
+ *    • Clear flags, baseline, seen
+ *    • Write fresh progress + baseline = {}
+ *
+ * C) Resume — existing progress for this chapter, no forceRestart
+ *    • Read baseline from storage (or {} if missing / first login)
+ *    • RESET live flags to baseline  ← the accumulation fix
+ *    • Return existing progress unchanged
+ *
+ * Path C ensures that every re-mount of StoryPlayer (tab switch, HMR,
+ * browser back) starts from the same flag state as the beginning of the
+ * chapter, then re-accumulates naturally as the player advances.
+ */
 export async function startChapter(
   chapterId: number,
   firstSceneId: number,
   forceRestart = false,
 ): Promise<ProgressState> {
   const existing = read<ProgressState | null>(KEYS.progress, null);
-  if (existing && existing.chapterId === chapterId && !forceRestart) return existing;
 
-  if (forceRestart) {
-    localStorage.removeItem(KEYS.flags);
+  // ── Path C: resume ─────────────────────────────────────────────────
+  if (existing && existing.chapterId === chapterId && !forceRestart) {
+    // Reset live flags back to the chapter-start baseline to discard any
+    // mutations that accumulated via tab-switching or HMR remounts.
+    const baseline = read<StoryFlags>(KEYS.flagsBaseline, {});
+    write(KEYS.flags, baseline);
+    return existing;
   }
 
+  // ── Paths A + B: fresh start or forced restart ───────────────────────
+  // Clear everything that is chapter-scoped.
+  localStorage.removeItem(KEYS.flags);
+  localStorage.removeItem(KEYS.flagsBaseline);
   localStorage.removeItem(KEYS.seen);
+
+  // Baseline starts empty — all flags at zero for a new chapter run.
+  write(KEYS.flagsBaseline, {});
 
   const fresh: ProgressState = {
     chapterId,
@@ -208,7 +256,7 @@ export async function getProgress(): Promise<ProgressState | null> {
   return read<ProgressState | null>(KEYS.progress, null);
 }
 
-// ─── Flags ────────────────────────────────────────────────────────────────────
+// ─── Flags ───────────────────────────────────────────────────────────────────────────
 
 export async function applyFlags(mutations: Partial<StoryFlags>): Promise<StoryFlags> {
   const flags = read<StoryFlags>(KEYS.flags, {});
@@ -228,7 +276,28 @@ export async function getFlag(key: string): Promise<number> {
   return flags[key] ?? 0;
 }
 
-// ─── Flag condition evaluation ────────────────────────────────────────────────
+/**
+ * snapshotFlagsBaseline
+ * ──────────────────────────
+ * Promotes the current live flags to the baseline snapshot.
+ *
+ * Called by StoryPlayer.triggerCompletion immediately before
+ * POST /api/story/flags so the baseline reflects the final
+ * authoritative state. If triggerCompletion is retried (Bug 4
+ * recovery path), getFlags() still returns the correct finals
+ * because they are now the baseline and startChapter (resume path)
+ * will restore to them rather than {}.
+ *
+ * This is intentionally NOT called during normal scene advance —
+ * only at chapter completion, when the flag state is definitively
+ * settled and correct.
+ */
+export async function snapshotFlagsBaseline(): Promise<void> {
+  const current = read<StoryFlags>(KEYS.flags, {});
+  write(KEYS.flagsBaseline, current);
+}
+
+// ─── Flag condition evaluation ──────────────────────────────────────────────────
 
 export function evaluateFlagCondition(
   condition: FlagCondition | null | undefined,
@@ -259,7 +328,7 @@ export function resolveConditionalScene(
   return candidates.find((s) => !s.flagCondition) ?? null;
 }
 
-// ─── Scene-level flag writes ──────────────────────────────────────────────────
+// ─── Scene-level flag writes ──────────────────────────────────────────────────────
 
 export async function applySceneFlagWrites(scene: Scene): Promise<StoryFlags> {
   if (!scene.flagWrites || scene.flagWrites.length === 0) {
@@ -272,14 +341,14 @@ export async function applySceneFlagWrites(scene: Scene): Promise<StoryFlags> {
   return applyFlags(mutations);
 }
 
-// ─── Seen scenes ──────────────────────────────────────────────────────────────
+// ─── Seen scenes ────────────────────────────────────────────────────────────────────
 
 export async function markSceneSeen(sceneId: number): Promise<void> {
   const seen = read<number[]>(KEYS.seen, []);
   if (!seen.includes(sceneId)) { seen.push(sceneId); write(KEYS.seen, seen); }
 }
 
-// ─── Endings ──────────────────────────────────────────────────────────────────
+// ─── Endings ───────────────────────────────────────────────────────────────────────────
 
 export async function unlockEnding(
   ending: Omit<UnlockedEnding, "unlockedAt"> & { chapterId?: number },
@@ -302,7 +371,7 @@ export async function getUnlockedEndings(): Promise<UnlockedEnding[]> {
   return read<UnlockedEnding[]>(KEYS.endings, []);
 }
 
-// ─── Reset ────────────────────────────────────────────────────────────────────
+// ─── Reset ────────────────────────────────────────────────────────────────────────────
 
 export async function resetStory(): Promise<void> {
   Object.values(KEYS).forEach((k) => localStorage.removeItem(k));
