@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, integer, boolean, timestamp, jsonb, index } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, boolean, timestamp, jsonb, index, uniqueIndex } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -490,7 +490,7 @@ export const playerFlags = pgTable("player_flags", {
   flagValue: integer("flag_value").notNull().default(0),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (t) => ([
-  index("player_flags_user_id_idx").on(t.userId),
+  index("player_flags_user_id_idx").on(t.userId),     uniqueIndex("player_flags_user_flag_uniq").on(t.userId, t.flagKey), // Sprint 1 Fix 2
 ]));
 
 export const storyEndings = pgTable("story_endings", {
