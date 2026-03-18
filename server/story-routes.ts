@@ -334,9 +334,9 @@ storyRouter.post("/progress", async (req: Request, res: Response) => {
     // unconditional flag mutations and apply them before writing progress.
     // Skip on forceRestart (the player is being repositioned, not advancing)
     // and when no currentSceneId is supplied (chapter start upsert).
-    let appliedFlagWrites: string[] = [];
+    // Sprint 1 Fix 1: pre-fetch existing progress so flagWrites idempotency guard     // can compare currentSceneId against the already-stored scene before applying writes.     const [existing] = await db       .select()       .from(playerStoryProgress)       .where(and(eq(playerStoryProgress.userId, userId), eq(playerStoryProgress.chapterId, chapterId)));     let appliedFlagWrites: string[] = [];
 
-    if (currentSceneId && !forceRestart) {
+    if (currentSceneId && !forceRestart && currentSceneId !== existing?.currentSceneId) {
       const [scene] = await db
         .select({ flagWrites: storyScenes.flagWrites })
         .from(storyScenes)
@@ -359,11 +359,7 @@ storyRouter.post("/progress", async (req: Request, res: Response) => {
     }
 
     // ── Progress upsert ───────────────────────────────────────────────────
-    const [existing] = await db
-      .select()
-      .from(playerStoryProgress)
-      .where(and(eq(playerStoryProgress.userId, userId), eq(playerStoryProgress.chapterId, chapterId)));
-
+    
     if (forceRestart && existing) {
       await db
         .delete(playerStoryProgress)
