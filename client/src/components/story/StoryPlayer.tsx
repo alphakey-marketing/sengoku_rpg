@@ -29,6 +29,15 @@
  *     if the GET also fails or returns nothing.
  *   - completionFiredRef.current is reset to false only on total failure so
  *     a manual re-entry can retry the full flow.
+ *
+ * Fix (2026-03-18) — flag accumulation (UAT):
+ *   - snapshotFlagsBaseline() called at the very start of triggerCompletion
+ *     (before getFlags). This promotes the live flag values to the baseline
+ *     so that: (a) the correct finals are posted to the server, and (b) any
+ *     retry of triggerCompletion or resume after the cinematic beat restores
+ *     to the final state rather than {}.
+ *   - The baseline reset-on-resume is handled entirely in story-engine.ts
+ *     startChapter(); no other changes to StoryPlayer are needed.
  */
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useLocation } from "wouter";
@@ -45,6 +54,7 @@ import {
   getFlags,
   resetStory,
   fetchChapter,
+  snapshotFlagsBaseline,
   type StoryFlags,
   type Choice,
   type Scene,
@@ -100,6 +110,13 @@ export function StoryPlayer({ chapterId }: StoryPlayerProps) {
     if (completionFiredRef.current || !chapter) return;
     completionFiredRef.current = true;
     try {
+      // ── Snapshot baseline FIRST so the finals are locked before any retry ──
+      // This promotes the live flag state to sengoku_story_flags_baseline.
+      // startChapter (resume path) resets live flags to the baseline on every
+      // re-mount; by snapshotting here we ensure any post-cinematic tab-switch
+      // or Bug 4 retry sees the correct final values, not {}.
+      await snapshotFlagsBaseline();
+
       const finalFlags = await getFlags();
       if (Object.keys(finalFlags).length > 0) {
         await apiRequest("POST", "/api/story/flags", { absolute: finalFlags });
