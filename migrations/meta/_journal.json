@@ -29,6 +29,20 @@
       "when": 1773622260000,
       "tag": "0003_fix_user_stat_defaults",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1773838004907,
+      "tag": "0004_supreme_lady_deathstrike",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1773838431399,
+      "tag": "0005_oval_skullbuster",
+      "breakpoints": true
     }
   ]
 }
