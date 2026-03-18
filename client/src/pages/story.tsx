@@ -40,7 +40,7 @@ export default function StoryPage() {
   }
 
   // Always show StoryPlayer when a chapter URL param is present
-  if (hasChapterParam && chapterIdFromParam) {
+  if (hasChapterParam && chapterIdFromParam !== null) {
     return <StoryPlayer chapterId={chapterIdFromParam} />;
   }
 
