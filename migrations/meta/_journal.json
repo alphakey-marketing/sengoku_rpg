@@ -33,15 +33,22 @@
     {
       "idx": 4,
       "version": "7",
-      "when": 1773838004907,
-      "tag": "0004_supreme_lady_deathstrike",
+      "when": 1773700000000,
+      "tag": "0004_dialogue_grant_hint_key",
       "breakpoints": true
     },
     {
       "idx": 5,
       "version": "7",
+      "when": 1773838004907,
+      "tag": "0005_supreme_lady_deathstrike",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
       "when": 1773838431399,
-      "tag": "0005_oval_skullbuster",
+      "tag": "0006_oval_skullbuster",
       "breakpoints": true
     }
   ]
