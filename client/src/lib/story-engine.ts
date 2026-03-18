@@ -363,9 +363,10 @@ export async function unlockEnding(
     unlockedAt:        new Date().toISOString(),
   };
   endings.push(record);
-  write(KEYS.endings, record);
+  write(KEYS.endings, endings); // ✅ persist full array
   return record;
 }
+
 
 export async function getUnlockedEndings(): Promise<UnlockedEnding[]> {
   return read<UnlockedEnding[]>(KEYS.endings, []);
