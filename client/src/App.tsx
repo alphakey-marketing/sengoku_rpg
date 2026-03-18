@@ -49,6 +49,17 @@ function Router() {
       <Route path="/">
         <AuthGuard routePath="/"><Home /></AuthGuard>
       </Route>
+
+      {/*
+        /dojo — Ch1 completion destination (CHAPTER_COMPLETE_DESTINATION[1]).
+        Alias for the Home dashboard; Home is currentChapter-aware and
+        surfaces the Dojo panel when currentChapter >= 1.
+        No separate page component is needed.
+      */}
+      <Route path="/dojo">
+        <AuthGuard routePath="/dojo"><Home /></AuthGuard>
+      </Route>
+
       <Route path="/party">
         <AuthGuard routePath="/party"><Party /></AuthGuard>
       </Route>
