@@ -81,7 +81,7 @@ export const NAV_ITEMS: NavItem[] = [
   },
   {
     title: "Stables (Horses)",
-    url: "/party",
+    url: "/stable",
     icon: "Tent",
     unlockChapter: 6,
     unlockHint: "Complete Chapter 6 to ride into battle",
