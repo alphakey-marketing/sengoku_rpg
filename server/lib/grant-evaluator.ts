@@ -376,7 +376,7 @@ export async function getPlayerGrants(
       storyGrants,
       eq(playerStoryGrants.grantKey, storyGrants.grantKey),
     )
-    .where(eq(playerStoryGrants.userId, userId));
+    .where(       chapterIdFilter !== undefined         ? and(eq(playerStoryGrants.userId, userId), eq(playerStoryGrants.awardedAtChapter, chapterIdFilter))         : eq(playerStoryGrants.userId, userId),     );
 
   return rows.map((r) => ({
     id:               r.id,
