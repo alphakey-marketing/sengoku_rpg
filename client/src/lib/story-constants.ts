@@ -160,11 +160,11 @@ export const FLAG_LABELS: Record<string, string> = {
  */
 export const CHAPTER_COMPLETE_DESTINATION: Record<number, { path: string; label: string }> = {
   1: { path: "/dojo",    label: "Enter the Dojo" },
-  2: { path: "/stable",  label: "Visit War Council" },
+    2: { path: "/party",   label: "Visit War Council" },
   3: { path: "/gear",    label: "Open the Armoury" },
   4: { path: "/gacha",   label: "Visit the Shrine" },
   5: { path: "/pets",    label: "Visit the Menagerie" },
-  6: { path: "/party",   label: "Visit the Stables" },
+    6: { path: "/stable",  label: "Visit the Stables" },
   7: { path: "/map",     label: "Open Campaign Map" },
   8: { path: "/story",   label: "Return to Chronicles" },
 };
