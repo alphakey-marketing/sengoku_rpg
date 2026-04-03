@@ -19,6 +19,29 @@ import { Loader2 } from "lucide-react";
 
 type Mode = "signin" | "signup";
 
+/** Map raw Supabase error messages to player-friendly copy. */
+function friendlyAuthError(err: any, mode: Mode): string {
+  const msg: string = err?.message ?? String(err);
+  // sign-up with an existing email
+  if (mode === "signup" && (msg.includes("already registered") || msg.includes("already been registered"))) {
+    return "That email is already registered — please sign in instead.";
+  }
+  // wrong password / no account on sign-in
+  if (mode === "signin" && (msg.includes("Invalid login credentials") || msg.includes("invalid_credentials"))) {
+    return "Incorrect email or password. Please try again.";
+  }
+  // email not confirmed
+  if (msg.includes("Email not confirmed")) {
+    return "Please confirm your email address before signing in.";
+  }
+  // weak password
+  if (msg.includes("Password should be") || msg.includes("at least")) {
+    return "Password must be at least 6 characters.";
+  }
+  // fallback — return the raw message but capitalised
+  return msg.charAt(0).toUpperCase() + msg.slice(1);
+}
+
 export default function LoginPage() {
   const { isAuthenticated, isLoading } = useAuth();
   const [mode, setMode] = useState<Mode>("signin");
@@ -48,7 +71,7 @@ export default function LoginPage() {
         // useAuth onAuthStateChange will pick up the session and redirect via AuthGuard
       }
     } catch (err: any) {
-      setMessage({ type: "error", text: err.message ?? String(err) });
+      setMessage({ type: "error", text: friendlyAuthError(err, mode) });
     } finally {
       setSubmitting(false);
     }
@@ -109,6 +132,20 @@ export default function LoginPage() {
             message.type === "error" ? "text-red-400" : "text-green-400"
           }`}>
             {message.text}
+            {/* If the error hints to sign in, show a quick-switch link */}
+            {message.type === "error" && message.text.includes("sign in instead") && (
+              <>
+                {" "}{
+                  <button
+                    type="button"
+                    onClick={() => { setMode("signin"); setMessage(null); }}
+                    className="underline font-semibold text-primary ml-1"
+                  >
+                    Switch to sign in
+                  </button>
+                }
+              </>
+            )}
           </p>
         )}
 

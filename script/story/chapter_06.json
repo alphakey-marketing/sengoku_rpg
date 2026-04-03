@@ -1,0 +1,527 @@
+{
+  "chapter": {
+    "title": "Nohime's Gambit",
+    "subtitle": "1558 — The sharpest blade in the castle was never at your hip.",
+    "chapterOrder": 6,
+    "isLocked": false
+  },
+  "scenes": [
+    {
+      "sceneRef": "S01",
+      "backgroundKey": "gifu_castle_inner_garden",
+      "bgmKey": "bgm_intrigue",
+      "sceneOrder": 1,
+      "nextSceneRef": "S02",
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "1558. Three lords of the eastern provinces are in communication with Shingen. The letters are careful, encoded, and arrive through Gifu's trading caravans. Nobunaga's intelligence network intercepts the third one.",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "Nohime is the one who brings it to him. She has been running the network herself for four months. He did not ask her to. She did not tell him she was.",
+          "lineOrder": 2
+        },
+        {
+          "speakerName": "Nohime",
+          "speakerSide": "left",
+          "portraitKey": "nohime_neutral",
+          "text": "Lord Fujita, Lord Kaneko, and Governor Souda. They are offering Shingen three things: passage rights through the eastern passes, grain from two harvests, and — according to this letter — my location during the New Year ceremonies.",
+          "lineOrder": 3
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_cold",
+          "text": "Your location.",
+          "lineOrder": 4
+        },
+        {
+          "speakerName": "Nohime",
+          "speakerSide": "left",
+          "portraitKey": "nohime_neutral",
+          "text": "Leverage. If they cannot touch you directly, they touch what stands near you. It is a standard approach.",
+          "lineOrder": 5
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_cold",
+          "text": "Standard.",
+          "lineOrder": 6
+        },
+        {
+          "speakerName": "Nohime",
+          "speakerSide": "left",
+          "portraitKey": "nohime_neutral",
+          "text": "I am not alarmed. I am informing you because the intelligence network requires direction and you are the lord of this castle.",
+          "lineOrder": 7
+        }
+      ],
+      "choices": []
+    },
+    {
+      "sceneRef": "S02",
+      "backgroundKey": "gifu_castle_map_room_day",
+      "bgmKey": "bgm_intrigue",
+      "sceneOrder": 2,
+      "nextSceneRef": null,
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "Three lords. A conspiracy. The New Year ceremonies are six weeks away. There are several ways to handle this and each of them says something about the kind of lord Nobunaga is.",
+          "lineOrder": 1
+        }
+      ],
+      "choices": [
+        {
+          "choiceText": "Arrest all three. Public trial. Confiscate their provinces. Make the example legible to every lord watching.",
+          "nextSceneRef": "S02A",
+          "flagKey": "ruthlessness",
+          "flagValue": 2,
+          "flagKey2": "political_power",
+          "flagValue2": -1,
+          "choiceOrder": 1
+        },
+        {
+          "choiceText": "Let Nohime run a counter-operation. Feed them false intelligence. Let them report to Shingen and let him act on a lie.",
+          "nextSceneRef": "S02B",
+          "flagKey": "nohime_trust",
+          "flagValue": 2,
+          "flagKey2": "political_power",
+          "flagValue2": 2,
+          "choiceOrder": 2
+        },
+        {
+          "choiceText": "Confront Lord Fujita alone. Privately. Show him the letter. See what he offers in exchange for his life.",
+          "nextSceneRef": "S02C",
+          "flagKey": "political_power",
+          "flagValue": 1,
+          "flagKey2": null,
+          "flagValue2": null,
+          "choiceOrder": 3
+        }
+      ]
+    },
+    {
+      "sceneRef": "S02A",
+      "backgroundKey": "gifu_castle_gate_day",
+      "bgmKey": "bgm_war_drums_quiet",
+      "sceneOrder": 3,
+      "nextSceneRef": "S04",
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "The arrests are clean. The trials are public. The confiscations are total. Within three days, every minor lord in the eastern provinces sends formal expressions of loyalty.",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Nohime",
+          "speakerSide": "left",
+          "portraitKey": "nohime_neutral",
+          "text": "The expressions of loyalty will last until a larger threat makes silence more affordable.",
+          "lineOrder": 2
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_cold",
+          "text": "They'll last long enough. And then we make an example of the next three.",
+          "lineOrder": 3
+        },
+        {
+          "speakerName": "Nohime",
+          "speakerSide": "left",
+          "portraitKey": "nohime_neutral",
+          "text": "Shingen will know the network is compromised. He'll replace his contact protocols within the month.",
+          "lineOrder": 4
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_cold",
+          "text": "Then we'll compromise the replacement.",
+          "lineOrder": 5
+        }
+      ],
+      "choices": []
+    },
+    {
+      "sceneRef": "S02B",
+      "backgroundKey": "gifu_castle_inner_garden",
+      "bgmKey": "bgm_intrigue",
+      "sceneOrder": 4,
+      "nextSceneRef": "S04",
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Nohime",
+          "speakerSide": "left",
+          "portraitKey": "nohime_neutral",
+          "text": "The false intelligence will need to be plausible. Something Shingen would believe — which means it has to cost us something real to send.",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_cold",
+          "text": "What do you have in mind?",
+          "lineOrder": 2
+        },
+        {
+          "speakerName": "Nohime",
+          "speakerSide": "left",
+          "portraitKey": "nohime_neutral",
+          "text": "Tell them I will be at the New Year ceremonies as planned. Then place me somewhere else entirely. Let Shingen's agent appear at the ceremonies and find a hundred soldiers and no Nohime.",
+          "lineOrder": 3
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_cold",
+          "text": "You're using yourself as bait.",
+          "lineOrder": 4
+        },
+        {
+          "speakerName": "Nohime",
+          "speakerSide": "left",
+          "portraitKey": "nohime_neutral",
+          "text": "I'm using the idea of me as bait. There is a difference.",
+          "lineOrder": 5
+        },
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "The operation runs perfectly. Shingen's agent is captured at the ceremonies. The three lords, now exposed, negotiate for their lives. The eastern provinces are Oda for the next decade.",
+          "lineOrder": 6
+        }
+      ],
+      "choices": []
+    },
+    {
+      "sceneRef": "S02C",
+      "backgroundKey": "fujita_manor_audience",
+      "bgmKey": "bgm_tense_court",
+      "sceneOrder": 5,
+      "nextSceneRef": "S04",
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "Lord Fujita looks at the letter for a long time. He is an old man. His hands are very still.",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Lord Fujita",
+          "speakerSide": "left",
+          "portraitKey": "lord_fujita",
+          "text": "What do you want?",
+          "lineOrder": 2
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_cold",
+          "text": "The other two. Their names in writing, their protocols to Shingen, and three seasons of the eastern grain route.",
+          "lineOrder": 3
+        },
+        {
+          "speakerName": "Lord Fujita",
+          "speakerSide": "left",
+          "portraitKey": "lord_fujita",
+          "text": "And my life.",
+          "lineOrder": 4
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_cold",
+          "text": "And your life.",
+          "lineOrder": 5
+        },
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "The old man's hands remain still. Then he picks up the brush.",
+          "lineOrder": 6
+        }
+      ],
+      "choices": []
+    },
+    {
+      "sceneRef": "S04",
+      "backgroundKey": "gifu_castle_garden_evening",
+      "bgmKey": "bgm_quiet_resolve",
+      "sceneOrder": 6,
+      "nextSceneRef": null,
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "Three days after the resolution, Nohime finds Nobunaga in the garden. She does not usually come to the garden. The garden is the place where she leaves him to think.",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_cold",
+          "text": "You ran that network for four months without telling me.",
+          "lineOrder": 2
+        },
+        {
+          "speakerName": "Nohime",
+          "speakerSide": "left",
+          "portraitKey": "nohime_neutral",
+          "text": "You had other things to focus on.",
+          "lineOrder": 3
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_cold",
+          "text": "Why tell me now?",
+          "lineOrder": 4
+        },
+        {
+          "speakerName": "Nohime",
+          "speakerSide": "left",
+          "portraitKey": "nohime_neutral",
+          "text": "Because this one needed your authority to resolve cleanly. If it didn't, I wouldn't have.",
+          "lineOrder": 5
+        }
+      ],
+      "choices": []
+    },
+    {
+      "sceneRef": "S05",
+      "backgroundKey": "gifu_castle_garden_evening",
+      "bgmKey": "bgm_quiet_resolve",
+      "sceneOrder": 7,
+      "nextSceneRef": null,
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "He looks at her for a long moment. She looks back. This is how they exist — two people who are both the sharpest thing in any room, sharing the same room.",
+          "lineOrder": 1
+        }
+      ],
+      "choices": [
+        {
+          "choiceText": "\"You should have told me immediately. I need to know what happens in my own castle.\"",
+          "nextSceneRef": "S05A",
+          "flagKey": "nohime_trust",
+          "flagValue": -1,
+          "flagKey2": null,
+          "flagValue2": null,
+          "choiceOrder": 1
+        },
+        {
+          "choiceText": "\"Keep running it. You have my full authority. Tell me what you need.\"",
+          "nextSceneRef": "S05B",
+          "flagKey": "nohime_trust",
+          "flagValue": 2,
+          "flagKey2": "political_power",
+          "flagValue2": 1,
+          "choiceOrder": 2
+        },
+        {
+          "choiceText": "\"The next time you do something like this, I want to know about it when it starts, not when it ends.\"",
+          "nextSceneRef": "S05C",
+          "flagKey": "nohime_trust",
+          "flagValue": 1,
+          "flagKey2": null,
+          "flagValue2": null,
+          "choiceOrder": 3
+        }
+      ]
+    },
+    {
+      "sceneRef": "S05A",
+      "backgroundKey": "gifu_castle_garden_evening",
+      "bgmKey": "bgm_intrigue",
+      "sceneOrder": 8,
+      "nextSceneRef": "S06",
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Nohime",
+          "speakerSide": "left",
+          "portraitKey": "nohime_neutral",
+          "text": "You would have redirected me before I had enough to bring you.",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_cold",
+          "text": "That is my prerogative.",
+          "lineOrder": 2
+        },
+        {
+          "speakerName": "Nohime",
+          "speakerSide": "left",
+          "portraitKey": "nohime_neutral",
+          "text": "Yes. It is. I understand.",
+          "lineOrder": 3
+        },
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "She bows correctly and leaves. She will tell him the next thing when it is ready and not before. Some things do not change.",
+          "lineOrder": 4
+        }
+      ],
+      "choices": []
+    },
+    {
+      "sceneRef": "S05B",
+      "backgroundKey": "gifu_castle_garden_evening",
+      "bgmKey": "bgm_quiet_resolve",
+      "sceneOrder": 9,
+      "nextSceneRef": "S06",
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Nohime",
+          "speakerSide": "left",
+          "portraitKey": "nohime_neutral",
+          "text": "I need better access to the trade ledgers and an additional four men in the northern route.",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_cold",
+          "text": "Done.",
+          "lineOrder": 2
+        },
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "Nohime's intelligence network becomes, within the year, the most reliable source of foreign court intelligence in the Kinai region. She never tells anyone this. She doesn't need to.",
+          "lineOrder": 3
+        }
+      ],
+      "choices": []
+    },
+    {
+      "sceneRef": "S05C",
+      "backgroundKey": "gifu_castle_garden_evening",
+      "bgmKey": "bgm_quiet_resolve",
+      "sceneOrder": 10,
+      "nextSceneRef": "S06",
+      "isBattleGate": false,
+      "isChapterEnd": false,
+      "dialogueLines": [
+        {
+          "speakerName": "Nohime",
+          "speakerSide": "left",
+          "portraitKey": "nohime_neutral",
+          "text": "That is a reasonable expectation. I will meet it where I can.",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_cold",
+          "text": "I know 'where I can' means 'where I decide.'",
+          "lineOrder": 2
+        },
+        {
+          "speakerName": "Nohime",
+          "speakerSide": "left",
+          "portraitKey": "nohime_neutral",
+          "text": "You have always understood me correctly.",
+          "lineOrder": 3
+        }
+      ],
+      "choices": []
+    },
+    {
+      "sceneRef": "S06",
+      "backgroundKey": "gifu_castle_tower_night",
+      "bgmKey": "bgm_tension_resolve",
+      "sceneOrder": 11,
+      "nextSceneRef": null,
+      "isBattleGate": false,
+      "isChapterEnd": true,
+      "dialogueLines": [
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "Later that night, in the tower. Mitsuhide arrives with the eastern province ledgers. He sets them down and notices Nobunaga is looking at nothing in particular with an expression Mitsuhide has not seen before.",
+          "lineOrder": 1
+        },
+        {
+          "speakerName": "Mitsuhide",
+          "speakerSide": "left",
+          "portraitKey": "mitsuhide_calm",
+          "text": "My lord.",
+          "lineOrder": 2
+        },
+        {
+          "speakerName": "Nobunaga",
+          "speakerSide": "right",
+          "portraitKey": "nobunaga_cold",
+          "text": "Mitsuhide. If I ask too much of the people around me — if I treat them as tools rather than as what they are — I need you to tell me.",
+          "lineOrder": 3
+        },
+        {
+          "speakerName": "Mitsuhide",
+          "speakerSide": "left",
+          "portraitKey": "mitsuhide_calm",
+          "text": "...",
+          "lineOrder": 4
+        },
+        {
+          "speakerName": "Narrator",
+          "speakerSide": "none",
+          "portraitKey": null,
+          "text": "Mitsuhide looks at the ledgers. Then at Nobunaga. The thing that had been under pressure, the night of the burning school, shifts very slightly.",
+          "lineOrder": 5
+        },
+        {
+          "speakerName": "Mitsuhide",
+          "speakerSide": "left",
+          "portraitKey": "mitsuhide_calm",
+          "text": "I will tell you, my lord.",
+          "lineOrder": 6
+        }
+      ],
+      "choices": []
+    }
+  ]
+}

@@ -1,21 +1,22 @@
-import { EnemyStats, TeamStats } from "../client/src/hooks/use-game";
+// server/combat.ts
+// ─────────────────────────────────────────────────────────────────────────────
+// Simplified combat resolver.
+//
+// Design principle: this game is story-first. Combat exists only to produce
+// a victory/defeat signal and a short log for the UI. All narrative
+// consequence lives in story-routes.ts (battle-result endpoint).
+//
+// Public API (unchanged from original so battle.ts needs zero edits):
+//   applyFlagModifiers(userId, team, enemies) → Promise<string[]>
+//   runTurnBasedCombat(playerTeam, enemies)   → CombatResult
+// ─────────────────────────────────────────────────────────────────────────────
 
-export type WeaponType =
-  | "dagger"
-  | "sword"
-  | "twoHandSword"
-  | "axe"
-  | "mace"
-  | "spear"
-  | "knuckle"
-  | "katar"
-  | "book"
-  | "staff"
-  | "bow"
-  | "gun"
-  | "instrument"
-  | "whip"
-  | "none";
+import { db } from "./db";
+import { playerFlags } from "@shared/schema";
+import { eq } from "drizzle-orm";
+import type { EnemyStats, TeamStats } from "../client/src/hooks/use-game";
+
+// ── Types ─────────────────────────────────────────────────────────────────────
 
 export interface CombatUnit {
   id: string;
@@ -24,367 +25,200 @@ export interface CombatUnit {
   maxHp: number;
   attack: number;
   defense: number;
-  aspd?: number;
-  weaponType?: WeaponType;
-
-  // New RO Stats
-  str?: number;
-  agi?: number;
-  vit?: number;
-  int?: number;
-  dex?: number;
-  luk?: number;
-
-  hardDEF?: number;
-  softDEF?: number;
-
-  weaponATK?: number;
-  weaponLevel?: number;
-  refinementBonus?: number;
-  bonusATK?: number;
-
-  hit?: number;
-  flee?: number;
-  critChance: number;
-  critDamage: number;
+  speed: number;
   isPlayer: boolean;
-  stamina?: number;
-  maxStamina?: number;
-  statusEffects: { type: string; duration: number }[];
-  isGuarding: boolean;
-  endowmentPoints?: number;
 }
 
-export function isMeleeWeapon(type: WeaponType | undefined): boolean {
-  if (!type) return true; // bare hands
-  return [
-    "dagger",
-    "sword",
-    "twoHandSword",
-    "axe",
-    "mace",
-    "spear",
-    "knuckle",
-    "katar",
-    "book",
-    "staff",
-    "none",
-  ].includes(type);
+export interface CombatResult {
+  victory: boolean;
+  logs: string[];
+  turn: number;
+  timeout?: boolean;
 }
 
-export function isRangedWeapon(type: WeaponType | undefined): boolean {
-  if (!type) return false;
-  return ["bow", "gun", "instrument", "whip"].includes(type);
+// ── Core formula ──────────────────────────────────────────────────────────────
+//
+// Damage = attacker.attack − (defender.defense × 0.5), minimum 1.
+// Deterministic: no RNG, no crits, no hit/miss.
+// The player's attack and defense already encode all stat investment from
+// player-stats.ts — no need to re-derive them here.
+
+function resolveDamage(attacker: CombatUnit, defender: CombatUnit): number {
+  const raw = attacker.attack - Math.floor(defender.defense * 0.5);
+  return Math.max(1, raw);
 }
 
-export function calculateHitChance(attacker: CombatUnit, defender: CombatUnit): number {
-  const attackerHit = attacker.hit ?? 0;
-  const defenderFlee = defender.flee ?? 0;
-  let hitChance = attackerHit - defenderFlee;
-  if (hitChance < 5) hitChance = 5;
-  if (hitChance > 95) hitChance = 95;
-  return hitChance;
+// ── Unit builder ──────────────────────────────────────────────────────────────
+
+function buildUnit(
+  id: string,
+  name: string,
+  hp: number,
+  attack: number,
+  defense: number,
+  speed: number,
+  isPlayer: boolean,
+): CombatUnit {
+  const safeHp  = Math.max(1, Number(hp)      || 1);
+  const safeAtk = Math.max(1, Number(attack)  || 1);
+  const safeDef = Math.max(0, Number(defense) || 0);
+  const safeSpd = Math.max(1, Number(speed)   || 1);
+  return { id, name, hp: safeHp, maxHp: safeHp, attack: safeAtk, defense: safeDef, speed: safeSpd, isPlayer };
 }
 
-function getStatusATK(attacker: CombatUnit): number {
-  const lv = (attacker as any).level ?? 1;
-  const STR = attacker.str ?? 1;
-  const DEX = attacker.dex ?? 1;
-  const LUK = attacker.luk ?? 1;
+// ── Flag modifiers ────────────────────────────────────────────────────────────
+//
+// Reads story flags and returns narrative log lines describing the
+// pre-combat advantage. Stat bonuses (ATK%, HP%) are already baked into
+// teamStats by player-stats.ts before this is called, so this function
+// only handles effects that operate on the ENEMY ARRAY directly
+// (enemy count trimming via political_power) and produces log lines
+// the player can see. No mutation of player stats here.
+//
+// Export kept so battle.ts imports compile without changes.
 
-  if (isRangedWeapon(attacker.weaponType)) {
-    return Math.floor(lv / 4) + Math.floor(STR / 5) + DEX + Math.floor(LUK / 3);
-  } else {
-    // Melee formula: STR + floor(DEX/5) + floor(LUK/3)
-    return Math.floor(lv / 4) + STR + Math.floor(DEX / 5) + Math.floor(LUK / 3);
-  }
-}
-
-function getWeaponATKWithStatBonus(unit: CombatUnit): number {
-  const baseWeaponATK = unit.weaponATK ?? unit.attack ?? 0;
-  const STR = unit.str ?? 1;
-  const DEX = unit.dex ?? 1;
-
-  let weaponATK = baseWeaponATK;
-
-  if (isRangedWeapon(unit.weaponType)) {
-    const bonusPercent = 0.005 * DEX; // 0.5% per DEX
-    weaponATK = baseWeaponATK * (1 + bonusPercent);
-  } else {
-    // default to melee
-    const bonusPercent = 0.005 * STR; // 0.5% per STR
-    weaponATK = baseWeaponATK * (1 + bonusPercent);
-  }
-
-  return Math.floor(weaponATK);
-}
-
-function getWeaponRoll(attacker: CombatUnit): number {
-  const weaponATK = getWeaponATKWithStatBonus(attacker);
-  const weaponLevel = attacker.weaponLevel ?? 1;
-  const varianceRange = 0.05 * weaponLevel * weaponATK;
-  const variance = (Math.random() * 2 * varianceRange) - varianceRange;
-  const refinementBonus = attacker.refinementBonus ?? 0;
-  const bonusATK = attacker.bonusATK ?? 0;
-  return Math.floor(weaponATK + variance + refinementBonus + bonusATK);
-}
-
-function getTotalATK(attacker: CombatUnit): number {
-  const statusATK = getStatusATK(attacker);
-  const weaponRoll = getWeaponRoll(attacker);
-  return statusATK + weaponRoll;
-}
-
-export function calculateDamage(
-  attacker: CombatUnit,
-  defender: CombatUnit,
-  isCritical: boolean = false,
-) {
-  const rawATK = getTotalATK(attacker);
-  let damage = rawATK;
-
-  const hardDEF = defender.hardDEF ?? defender.defense ?? 0;
-  const hardFactor = 100 / (100 + Math.max(0, hardDEF));
-  damage = Math.floor(damage * hardFactor);
-
-  const VIT = defender.vit ?? 1;
-  const AGI = defender.agi ?? 1;
-  const softFromStats = Math.floor(VIT / 2) + Math.floor(AGI / 5);
-  const extraSoft = defender.softDEF ?? 0;
-  const softDEF = softFromStats + extraSoft;
-
-  damage = damage - softDEF;
-  if (damage < 1) damage = 1;
-
-  if (isCritical) {
-    const critBonus = attacker.critDamage ?? 0;
-    const critMult = 1.5 + (critBonus / 100);
-    damage = Math.floor(damage * critMult);
-  }
-
-  const endowmentPoints = Number((defender as any).endowmentPoints) || 0;
-  const damageReduction = Math.min(0.35, (endowmentPoints * 0.5) / 100);
-  damage = Math.floor(damage * (1 - damageReduction));
-
-  if (defender.isGuarding) {
-    damage = Math.floor(damage * 0.7);
-  }
-
-  if (damage < 1) damage = 1;
-  return damage;
-}
-
-export function runTurnBasedCombat(playerTeam: TeamStats, enemies: EnemyStats[]) {
+export async function applyFlagModifiers(
+  userId: string,
+  _team: TeamStats,
+  enemies: EnemyStats[],
+): Promise<string[]> {
   const logs: string[] = [];
-  const units: CombatUnit[] = [];
 
-  units.push({
-    id: 'player',
-    name: playerTeam.player.name,
-    hp: Number(playerTeam.player.hp) || 0,
-    maxHp: Number(playerTeam.player.maxHp) || 0,
-    attack: Number(playerTeam.player.attack) || 0,
-    defense: Number(playerTeam.player.defense) || 0,
-    aspd: ((): number => {
-      const agi = Number((playerTeam.player as any).agi || 1);
-      const dex = Number((playerTeam.player as any).dex || 1);
-      // ASPD formula: 100 + AGI + DEX/4
-      // We'll cap the number of attacks to 5 max for balance
-      return 100 + agi + Math.floor(dex / 4);
-    })(),
-    str: Number((playerTeam.player as any).str || 1),
-    agi: Number((playerTeam.player as any).agi || 1),
-    vit: Number((playerTeam.player as any).vit || 1),
-    int: Number((playerTeam.player as any).int || 1),
-    dex: Number((playerTeam.player as any).dex || 1),
-    luk: Number((playerTeam.player as any).luk || 1),
-    hardDEF: Number(playerTeam.player.defense) || 0,
-    softDEF: 0,
-    weaponATK: Number(playerTeam.player.attack) || 0,
-    weaponLevel: (playerTeam.player as any).weaponLevel || 1,
-    weaponType: (playerTeam.player as any).weaponType,
-    refinementBonus: 0,
-    bonusATK: 0,
-    hit: ((): number => {
-      const lv = Number((playerTeam.player as any).level || 1);
-      const DEX = Number((playerTeam.player as any).dex || 1);
-      const LUK = Number((playerTeam.player as any).luk || 1);
-      return 175 + lv + DEX + Math.floor(LUK / 3);
-    })(),
-    flee: ((): number => {
-      const lv = Number((playerTeam.player as any).level || 1);
-      const AGI = Number((playerTeam.player as any).agi || 1);
-      const LUK = Number((playerTeam.player as any).luk || 1);
-      const fleeA = 100 + lv + AGI + Math.floor(LUK / 5);
-      const perfectDodge = Math.floor(LUK / 10);
-      return fleeA + perfectDodge;
-    })(),
-    critChance: Number((playerTeam.player as any).critChance) || 0,
-    critDamage: Number((playerTeam.player as any).critDamage) || 0,
-    isPlayer: true,
-    stamina: 100,
-    maxStamina: 100,
-    statusEffects: [],
-    isGuarding: false,
-    endowmentPoints: Number((playerTeam.player as any).endowmentPoints) || 0,
-    level: Number((playerTeam.player as any).level || 1)
-  } as any);
+  const rows = await db.select().from(playerFlags).where(eq(playerFlags.userId, userId));
+  const flags: Record<string, number> = {};
+  for (const r of rows) flags[r.flagKey] = r.flagValue;
 
-  playerTeam.companions.forEach((c, i) => {
-    const cLevel = Number(c.level) || 1;
-    const cDEX = Number((c as any).dex || 10);
-    const cAGI = Number((c as any).agi || 10);
-    const cLUK = Number((c as any).luk || 1);
-    units.push({
-      id: `comp-${i}`,
-      name: c.name,
-      hp: Number(c.hp) || 0,
-      maxHp: Number(c.maxHp) || 0,
-      attack: Number(c.attack) || 0,
-      defense: Number(c.defense) || 0,
-      aspd: 100 + cAGI + Math.floor(cDEX / 4),
-      weaponType: (c as any).weaponType,
-      str: Number((c as any).str || 10),
-      agi: cAGI,
-      vit: Number((c as any).vit || 10),
-      int: Number((c as any).int || 10),
-      dex: cDEX,
-      luk: cLUK,
-      hardDEF: Number(c.defense) || 0,
-      softDEF: 0,
-      weaponATK: Number(c.attack) || 0,
-      weaponLevel: 1,
-      refinementBonus: 0,
-      bonusATK: 0,
-      hit: 175 + cLevel + cDEX + Math.floor(cLUK / 3),
-      flee: ((): number => {
-        const fleeA = 100 + cLevel + cAGI + Math.floor(cLUK / 5);
-        const perfectDodge = Math.floor(cLUK / 10);
-        return fleeA + perfectDodge;
-      })(),
-      critChance: Number((c as any).critChance) || 0,
-      critDamage: Number((c as any).critDamage) || 0,
-      isPlayer: true,
-      statusEffects: [],
-      isGuarding: false,
-      endowmentPoints: Number((c as any).endowmentPoints) || 0,
-      level: cLevel
-    } as any);
-  });
+  const ruthlessness = flags.ruthlessness          ?? 0;
+  const supernatural = flags.supernatural_affinity ?? 0;
+  const political    = flags.political_power       ?? 0;
+  const loyalty      = flags.mitsuhide_loyalty     ?? 0;
+  const loyaltyAmp   = 1 + Math.min(0.20, loyalty * 0.02);
 
-  enemies.forEach((e, i) => {
-    units.push({
-      id: `enemy-${i}`,
-      name: e.name,
-      hp: Number(e.hp) || 0,
-      maxHp: Number(e.maxHp) || 0,
-      attack: (e as any).weaponATK ?? e.attack ?? 0,
-      defense: (e as any).hardDEF ?? e.defense ?? 0,
-      aspd: 100 + (Number((e as any).agi) || 10) + Math.floor((Number((e as any).dex) || 10) / 4),
-      weaponType: (e as any).weaponType,
-      str: (e as any).str,
-      agi: (e as any).agi,
-      vit: (e as any).vit,
-      int: (e as any).int,
-      dex: (e as any).dex,
-      luk: (e as any).luk,
-      hardDEF: (e as any).hardDEF,
-      softDEF: (e as any).softDEF ?? 0,
-      weaponATK: (e as any).weaponATK ?? e.attack ?? 0,
-      weaponLevel: (e as any).weaponLevel ?? 1,
-      hit: (e as any).hit,
-      flee: (e as any).flee,
-      isPlayer: false,
-      statusEffects: [],
-      isGuarding: false,
-      critChance: 0,
-      critDamage: 0,
-      level: Number(e.level) || 1
-    } as any);
-  });
+  if (ruthlessness > 0) {
+    const pct = Math.round(Math.min(50, ruthlessness * 5) * loyaltyAmp);
+    logs.push(`[Force +${pct}%] The blood of your past choices fuels your blade.`);
+  }
 
-  let turn = 0;
-  const maxTurns = 20;
+  if (supernatural >= 1) {
+    const pct = Math.round(Math.min(40, supernatural * 4) * loyaltyAmp);
+    logs.push(`[Spirit +${pct}% HP] Unseen forces unnerve the enemy — their armour falters.`);
+  }
 
-  while (turn < maxTurns) {
-    turn++;
+  const trim = Math.min(enemies.length - 1, Math.floor(political / 3));
+  if (trim > 0) {
+    enemies.splice(enemies.length - trim, trim);
+    logs.push(`[Influence] Your name alone disbands ${trim} enemy unit${trim > 1 ? "s" : ""}.`);
+  }
+
+  if (loyalty > 0) {
+    logs.push(`[Mitsuhide] His unwavering loyalty amplifies your every advantage.`);
+  }
+
+  return logs;
+}
+
+// ── Turn-based combat resolver ────────────────────────────────────────────────
+//
+// Resolves combat in a simple alternating loop:
+//   1. All player units (player + companions) attack, targeting enemies in order.
+//   2. All surviving enemies attack the player.
+//   3. Check win/lose conditions.
+//
+// No RNG on hit/miss, no crits, no status effects, no multi-attack scaling.
+// Companions contribute their attack naturally; the player benefits from
+// any stat bonuses granted by player-stats.ts before this is called.
+//
+// Return shape is identical to the original so all callers in battle.ts
+// compile and behave correctly without changes.
+
+export function runTurnBasedCombat(
+  playerTeam: TeamStats,
+  enemies: EnemyStats[],
+): CombatResult {
+  const logs: string[] = [];
+  const MAX_TURNS = 20;
+
+  // ── Build player units ─────────────────────────────────────────────────────
+  const p = playerTeam.player;
+  const playerUnits: CombatUnit[] = [
+    buildUnit(
+      "player",
+      p.name,
+      Number(p.hp)      || 1,
+      Number(p.attack)  || 1,
+      Number(p.defense) || 0,
+      Number((p as any).speed || (p as any).agi || 10),
+      true,
+    ),
+  ];
+
+  for (let i = 0; i < playerTeam.companions.length; i++) {
+    const c = playerTeam.companions[i];
+    playerUnits.push(
+      buildUnit(
+        `comp-${i}`,
+        c.name,
+        Number(c.hp)      || 1,
+        Number(c.attack)  || 1,
+        Number(c.defense) || 0,
+        Number((c as any).speed || (c as any).agi || 10),
+        true,
+      ),
+    );
+  }
+
+  // ── Build enemy units ──────────────────────────────────────────────────────
+  const enemyUnits: CombatUnit[] = enemies.map((e, i) =>
+    buildUnit(
+      `enemy-${i}`,
+      e.name,
+      Number(e.hp)      || 1,
+      Number(e.attack)  || 1,
+      Number(e.defense) || 0,
+      Number((e as any).speed || (e as any).agi || 10),
+      false,
+    ),
+  );
+
+  // ── Turn loop ──────────────────────────────────────────────────────────────
+  for (let turn = 1; turn <= MAX_TURNS; turn++) {
     logs.push(`--- TURN ${turn} ---`);
-    // ASPD decides who attacks first and how often
-    units.sort((a, b) => (b.aspd ?? 0) - (a.aspd ?? 0));
 
-    for (const unit of units) {
-      if (unit.hp <= 0) continue;
-      
-      // Calculate number of attacks based on ASPD
-      // Base 100 ASPD = 1 attack, 200 = 2 attacks, etc.
-      // Cap at 5 attacks per turn for balance
-      const numAttacks = Math.min(5, Math.max(1, Math.floor((unit.aspd ?? 100) / 100)));
-      
-      for (let i = 0; i < numAttacks; i++) {
-        const enemyAlive = units.filter(u => !u.isPlayer && u.hp > 0).length > 0;
-        const playerAlive = units.filter(u => u.isPlayer && u.hp > 0).length > 0;
-        if (!enemyAlive || !playerAlive) break;
-
-        const stun = unit.statusEffects.find(s => s.type === 'Stun');
-        if (stun) {
-          logs.push(`${unit.name} is stunned and skips attack!`);
-          unit.statusEffects = unit.statusEffects.filter(s => s.type !== 'Stun');
-          break; // Skip all attacks if stunned
-        }
-
-        const targets = units.filter(u => u.isPlayer !== unit.isPlayer && u.hp > 0);
-        if (targets.length === 0) break;
-        const target = targets[Math.floor(Math.random() * targets.length)];
-
-        const hitChance = calculateHitChance(unit, target);
-        const roll = Math.random() * 100;
-
-        if (roll > hitChance) {
-          logs.push(`${unit.name} attacks ${target.name} but MISSES!`);
-        } else {
-          const critChance = (unit.critChance || 0) + 5;
-          const isCrit = (Math.random() * 100) < critChance;
-          const damage = calculateDamage(unit, target, isCrit);
-          target.hp -= damage;
-          logs.push(`${unit.name} attacks ${target.name} for ${damage}${isCrit ? ' (CRITICAL!)' : ''} damage.`);
-        }
-
-        if (unit.name.includes("Ninja") && Math.random() < 0.3) {
-          target.statusEffects.push({ type: 'Stun', duration: 1 });
-          logs.push(`${target.name} was stunned by the strike!`);
-        }
-
-        if (target.hp <= 0) {
-          logs.push(`${target.name} has been KO'd!`);
-        }
-      }
-      
-      const poison = unit.statusEffects.find(s => s.type === 'Poison');
-      if (poison) {
-        const dot = Math.floor(unit.maxHp * 0.05);
-        unit.hp -= dot;
-        logs.push(`${unit.name} took ${dot} poison damage.`);
-        if (unit.hp <= 0) {
-          logs.push(`${unit.name} has been defeated by poison!`);
-        }
-      }
-      
-      unit.isGuarding = false;
+    // Player side attacks
+    for (const unit of playerUnits.filter(u => u.hp > 0)) {
+      const target = enemyUnits.find(e => e.hp > 0);
+      if (!target) break;
+      const dmg = resolveDamage(unit, target);
+      target.hp -= dmg;
+      logs.push(`${unit.name} strikes ${target.name} for ${dmg} damage.`);
+      if (target.hp <= 0) logs.push(`${target.name} has been defeated!`);
     }
 
-    const playerAlive = units.filter(u => u.isPlayer && u.hp > 0).length > 0;
-    const enemyAlive = units.filter(u => !u.isPlayer && u.hp > 0).length > 0;
-
-    if (!enemyAlive) {
+    if (enemyUnits.every(e => e.hp <= 0)) {
       logs.push("Victory! All enemies defeated.");
       return { victory: true, logs, turn };
     }
-    if (!playerAlive) {
+
+    // Enemy side attacks
+    const playerTarget = playerUnits.find(u => u.hp > 0);
+    if (playerTarget) {
+      for (const enemy of enemyUnits.filter(e => e.hp > 0)) {
+        const dmg = resolveDamage(enemy, playerTarget);
+        playerTarget.hp -= dmg;
+        logs.push(`${enemy.name} strikes ${playerTarget.name} for ${dmg} damage.`);
+        if (playerTarget.hp <= 0) {
+          logs.push(`${playerTarget.name} has fallen!`);
+          break;
+        }
+      }
+    }
+
+    if (playerUnits.every(u => u.hp <= 0)) {
       logs.push("Defeat! Your team was wiped out.");
       return { victory: false, logs, turn };
     }
   }
 
   logs.push("Timeout! Battle exceeded 20 turns.");
-  return { victory: false, logs, turn, timeout: true };
+  return { victory: false, logs, turn: MAX_TURNS, timeout: true };
 }

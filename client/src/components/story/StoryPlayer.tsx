@@ -1,0 +1,594 @@
+/**
+ * StoryPlayer.tsx
+ * Core scene renderer: typewriter dialogue, portrait display,
+ * choice branching, battle-gate hand-off, and chapter completion.
+ *
+ * Sprint 4 (1a): when currentLine.grantHintKey is set, the speaker <p>
+ * receives 'speaker-grant-hint speaker-grant-hint-anim' — a 2px amber
+ * shimmer underline defined in index.css. No item is revealed.
+ *
+ * Fix (2026-03-17):
+ *   - Boot guard: when progress.isCompleted === true, skip setSceneId
+ *     entirely. The completion screen does not use sceneId; restoring it
+ *     caused a brief mid-story scene flash before isComplete took effect.
+ *   - Replay button removed from isComplete screen and in-scene top-bar.
+ *     handleReset() is kept for UAT (?dev=reset) but not player-accessible.
+ *     Unlimited replay broke the grant system (double-collecting exclusive
+ *     grants, stacking flags across runs).
+ *
+ * Fix (2026-03-18) — Bug 4:
+ *   - triggerCompletion catch block no longer silently swallows grants.
+ *     If the POST /api/story/progress/complete fails after the DB write has
+ *     already committed, grants exist in player_story_grants but
+ *     resolvedGrantsRef was left empty — the player hit the completion screen
+ *     with no popup and could never recover it (player_story_grants is
+ *     idempotent; re-completing via chronicles re-entry won't re-award).
+ *   - New recovery path: on POST failure, attempt GET /api/story/grants with
+ *     chapterId filter. If grants are found, populate resolvedGrantsRef and
+ *     fire the cinematic beat as normal. Only falls back to setIsComplete(true)
+ *     if the GET also fails or returns nothing.
+ *   - completionFiredRef.current is reset to false only on total failure so
+ *     a manual re-entry can retry the full flow.
+ *
+ * Fix (2026-03-18) — flag accumulation (UAT):
+ *   - snapshotFlagsBaseline() called at the very start of triggerCompletion
+ *     (before getFlags). This promotes the live flag values to the baseline
+ *     so that: (a) the correct finals are posted to the server, and (b) any
+ *     retry of triggerCompletion or resume after the cinematic beat restores
+ *     to the final state rather than {}.
+ *   - The baseline reset-on-resume is handled entirely in story-engine.ts
+ *     startChapter(); no other changes to StoryPlayer are needed.
+ */
+import { useState, useEffect, useCallback, useRef } from "react";
+import { useLocation } from "wouter";
+import { queryClient, apiRequest } from "@/lib/queryClient";
+import { api } from "@shared/routes";
+import {
+  startChapter,
+  advanceScene,
+  completeChapter,
+  markSceneSeen,
+  applyFlags,
+  unlockEnding,
+  getProgress,
+  getFlags,
+  resetStory,
+  fetchChapter,
+  snapshotFlagsBaseline,
+  type StoryFlags,
+  type Choice,
+  type Scene,
+  type ChapterData,
+} from "@/lib/story-engine";
+import { BG_MAP, CHAPTER_COMPLETE_DESTINATION, CHAPTER_CATALOGUE } from "@/lib/story-constants";
+import { Portrait } from "./Portrait";
+import { FlagBar }  from "./FlagBar";
+import { BattleGateOverlay } from "./BattleGateOverlay";
+import { GrantRewardPopup, type IssuedGrant } from "./GrantRewardPopup";
+import { GrantCinematicBeat } from "./GrantCinematicBeat";
+
+export interface StoryPlayerProps {
+  chapterId: number;
+}
+
+export function StoryPlayer({ chapterId }: StoryPlayerProps) {
+  const [, navigate] = useLocation();
+
+  const [chapter, setChapter]             = useState<ChapterData | null>(null);
+  const [sceneId, setSceneId]             = useState<number | null>(null);
+  const [lineIndex, setLineIndex]         = useState(0);
+  const [showChoices, setShowChoices]     = useState(false);
+  const [isComplete, setIsComplete]       = useState(false);
+  const [flags, setFlags]                 = useState<StoryFlags>({});
+  const [displayedText, setDisplayedText] = useState("");
+  const [isTyping, setIsTyping]           = useState(false);
+  const [loading, setLoading]             = useState(true);
+  const [error, setError]                 = useState<string | null>(null);
+  const [comingSoon, setComingSoon]       = useState(false);
+  const [advanceError, setAdvanceError]   = useState<string | null>(null);
+  const [pendingGrants, setPendingGrants] = useState<IssuedGrant[]>([]);
+  const [showCinematicBeat, setShowCinematicBeat] = useState(false);
+
+  const typeTimerRef       = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const completionFiredRef = useRef(false);
+  const resolvedGrantsRef  = useRef<IssuedGrant[]>([]);
+
+  const sceneMap = chapter
+    ? Object.fromEntries(chapter.scenes.map((s) => [s.id, s]))
+    : {};
+  const scene       = sceneId ? sceneMap[sceneId] ?? null : null;
+  const currentLine = scene?.dialogueLines[lineIndex] ?? null;
+
+  const isAtLastLine = !!scene && lineIndex >= scene.dialogueLines.length - 1;
+  const battleReady  = !!scene?.isBattleGate && !showChoices && isAtLastLine && !isTyping;
+
+  const completionDest = CHAPTER_COMPLETE_DESTINATION[chapterId]
+    ?? { path: "/story", label: "Return to Chronicles" };
+  const catalogueEntry = CHAPTER_CATALOGUE.find((c) => c.id === chapterId);
+
+  const triggerCompletion = useCallback(async () => {
+    if (completionFiredRef.current || !chapter) return;
+    completionFiredRef.current = true;
+    try {
+      // ── Snapshot baseline FIRST so the finals are locked before any retry ──
+      // This promotes the live flag state to sengoku_story_flags_baseline.
+      // startChapter (resume path) resets live flags to the baseline on every
+      // re-mount; by snapshotting here we ensure any post-cinematic tab-switch
+      // or Bug 4 retry sees the correct final values, not {}.
+      await snapshotFlagsBaseline();
+
+      const finalFlags = await getFlags();
+      if (Object.keys(finalFlags).length > 0) {
+        await apiRequest("POST", "/api/story/flags", { absolute: finalFlags });
+      }
+      const response = await apiRequest("POST", "/api/story/progress/complete", {
+        chapterId,
+        endingKey:         `ch${chapterId}_complete`,
+        endingTitle:       chapter.title,
+        endingDescription: `Chapter ${chapterId} complete.`,
+      });
+      await completeChapter();
+      await unlockEnding({
+        chapterId,
+        endingKey:         `ch${chapterId}_complete`,
+        endingTitle:       chapter.title,
+        endingDescription: `Chapter ${chapterId} complete.`,
+      });
+      await queryClient.refetchQueries({ queryKey: [api.player.get.path] });
+      queryClient.invalidateQueries({ queryKey: [api.story.grants.path] });
+      const grants: IssuedGrant[] = Array.isArray(response?.grants) ? response.grants : [];
+      resolvedGrantsRef.current = grants;
+      setShowCinematicBeat(true);
+    } catch {
+      // ── Bug 4 fix: attempt to recover grants that were already written ──
+      //
+      // The POST may have failed AFTER the DB write committed (e.g. network
+      // blip on the response leg). In that case player_story_grants already
+      // holds the awarded rows but resolvedGrantsRef is empty — the player
+      // would hit the completion screen with no popup and never recover it
+      // because player_story_grants is idempotent on re-entry.
+      //
+      // Recovery: GET /api/story/grants?chapterId=N surfaces any grants
+      // already written for this chapter. If found, fire the cinematic beat
+      // normally. Only reset completionFiredRef and fall through to
+      // setIsComplete if the GET also fails or returns nothing.
+      try {
+        const pastGrants = await apiRequest(
+          "GET",
+          `/api/story/grants?chapterId=${chapterId}`,
+        );
+        const recovered: IssuedGrant[] = Array.isArray(pastGrants) ? pastGrants : [];
+        if (recovered.length > 0) {
+          resolvedGrantsRef.current = recovered;
+          setShowCinematicBeat(true);
+          // Do not reset completionFiredRef — the cinematic path handles
+          // setIsComplete via handleCinematicComplete.
+          return;
+        }
+      } catch {
+        // GET also failed — fall through to graceful degradation below.
+      }
+      // Total failure: reset the fired flag so a manual re-entry can retry,
+      // then surface the completion screen without grants.
+      completionFiredRef.current = false;
+      setIsComplete(true);
+    }
+  }, [chapter, chapterId]);
+
+  const handleCinematicComplete = useCallback(() => {
+    setShowCinematicBeat(false);
+    const grants = resolvedGrantsRef.current;
+    if (grants.length > 0) {
+      setPendingGrants(grants);
+    } else {
+      setIsComplete(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        setLoading(true);
+        setComingSoon(false);
+        setError(null);
+        const [chapterData, savedFlags, progress] = await Promise.all([
+          fetchChapter(chapterId),
+          getFlags(),
+          getProgress(),
+        ]);
+        setChapter(chapterData);
+        setFlags(savedFlags);
+        const firstId = chapterData.firstSceneId ?? chapterData.scenes[0]?.id;
+        if (progress && progress.chapterId === chapterId) {
+          if (progress.isCompleted) {
+            // ── Fix: skip setSceneId when chapter is already complete ──
+            // The completion screen does not render a scene; restoring
+            // currentSceneId caused a one-frame flash of a mid-story scene
+            // before isComplete took effect.
+            completionFiredRef.current = true;
+            setIsComplete(true);
+          } else if (progress.currentSceneId) {
+            setSceneId(progress.currentSceneId);
+          } else {
+            await startChapter(chapterId, firstId);
+            setSceneId(firstId);
+            setFlags(await getFlags());
+          }
+        } else {
+          await startChapter(chapterId, firstId);
+          setSceneId(firstId);
+          setFlags(await getFlags());
+        }
+      } catch (err: any) {
+        const msg: string = err?.message ?? String(err);
+        if (msg.toLowerCase().includes("not yet available") || msg.toLowerCase().includes("not available")) {
+          setComingSoon(true);
+        } else {
+          setError("Failed to load chapter. Please refresh.");
+        }
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [chapterId]);
+
+  useEffect(() => {
+    if (!currentLine) return;
+    if (typeTimerRef.current) clearTimeout(typeTimerRef.current);
+    const full = currentLine.text;
+    let i = 0;
+    setDisplayedText("");
+    setIsTyping(true);
+    const tick = () => {
+      i++;
+      setDisplayedText(full.slice(0, i));
+      if (i < full.length) { typeTimerRef.current = setTimeout(tick, 22); }
+      else { setIsTyping(false); }
+    };
+    typeTimerRef.current = setTimeout(tick, 22);
+    return () => { if (typeTimerRef.current) clearTimeout(typeTimerRef.current); };
+  }, [sceneId, lineIndex]);
+
+  useEffect(() => {
+    if (scene) markSceneSeen(scene.sceneOrder);
+  }, [sceneId]);
+
+  useEffect(() => {
+    if (
+      scene?.isChapterEnd &&
+      isAtLastLine &&
+      !isTyping &&
+      !showChoices &&
+      !isComplete &&
+      !showCinematicBeat &&
+      !completionFiredRef.current
+    ) {
+      triggerCompletion();
+    }
+  }, [scene, isAtLastLine, isTyping, showChoices, isComplete, showCinematicBeat, triggerCompletion]);
+
+  const skipTypewriter = useCallback(() => {
+    if (isTyping && currentLine) {
+      if (typeTimerRef.current) clearTimeout(typeTimerRef.current);
+      setDisplayedText(currentLine.text);
+      setIsTyping(false);
+    }
+  }, [isTyping, currentLine]);
+
+  const advance = useCallback(async () => {
+    if (!scene || !chapter) return;
+    if (isTyping) { skipTypewriter(); return; }
+    setAdvanceError(null);
+    const nextLineIdx = lineIndex + 1;
+    if (nextLineIdx < scene.dialogueLines.length) { setLineIndex(nextLineIdx); return; }
+    if (scene.choices.length > 0) { setShowChoices(true); return; }
+    if (scene.isBattleGate) return;
+    if (scene.isChapterEnd) { await triggerCompletion(); return; }
+    if (scene.nextSceneId) {
+      const nextId = scene.nextSceneId;
+      setSceneId(nextId);
+      setLineIndex(0);
+      setShowChoices(false);
+      advanceScene(nextId).catch((err: any) => {
+        console.warn("[story] advanceScene server error (non-blocking):", err?.message ?? err);
+        setAdvanceError("⚠ sync error — tap again if needed");
+        setTimeout(() => setAdvanceError(null), 3000);
+      });
+    }
+  }, [scene, chapter, lineIndex, isTyping, skipTypewriter, triggerCompletion]);
+
+  const handleChoice = useCallback(async (choice: Choice) => {
+    if (!scene) return;
+    const mutations: StoryFlags = {};
+    if (choice.flagKey != null) mutations[choice.flagKey] = choice.flagValue ?? 0;
+    if (choice.flagKey2 != null && choice.flagValue2 != null) mutations[choice.flagKey2] = choice.flagValue2;
+    const optimistic = { ...flags };
+    for (const [k, v] of Object.entries(mutations)) optimistic[k] = (optimistic[k] ?? 0) + v;
+    setFlags(optimistic);
+    applyFlags(mutations).catch((err: any) => {
+      console.warn("[story] applyFlags error (non-blocking):", err?.message ?? err);
+    });
+    if (Object.keys(mutations).length > 0) {
+      apiRequest("POST", "/api/story/flags", { mutations }).catch(() => {});
+    }
+    setSceneId(choice.nextSceneId);
+    setLineIndex(0);
+    setShowChoices(false);
+    advanceScene(choice.nextSceneId).catch((err: any) => {
+      console.warn("[story] advanceScene (choice) server error (non-blocking):", err?.message ?? err);
+    });
+  }, [scene, flags]);
+
+  const handleBattleResult = useCallback(async (won: boolean, _logs: string[]) => {
+    if (!scene) return;
+    try {
+      const result = await apiRequest("POST", "/api/story/battle-result", {
+        sceneId: scene.id,
+        battleResult: won ? "win" : "lose",
+      });
+      const nextId: number | null = result?.nextSceneId ?? null;
+      if (!nextId) return;
+      let latestFlags = flags;
+      try { latestFlags = await getFlags(); } catch {}
+      setFlags(latestFlags);
+      setSceneId(nextId);
+      setLineIndex(0);
+      setShowChoices(false);
+      advanceScene(nextId).catch((err: any) => {
+        console.warn("[story] advanceScene (battle) server error (non-blocking):", err?.message ?? err);
+      });
+    } catch (err: any) {
+      console.warn("[story] handleBattleResult error:", err?.message ?? err);
+      const nextId = won
+        ? (scene.battleWinSceneId ?? scene.nextSceneId)
+        : (scene.battleLoseSceneId ?? scene.nextSceneId);
+      if (!nextId) return;
+      setSceneId(nextId);
+      setLineIndex(0);
+      setShowChoices(false);
+    }
+  }, [scene, flags]);
+
+  /**
+   * handleReset — kept for UAT use only.
+   * Not exposed in player-facing UI. Can be triggered programmatically
+   * or via a hidden dev tool (e.g. ?dev=reset query param).
+   *
+   * Rationale for removal from player UI:
+   *   Unlimited replay allows double-collecting mutually-exclusive grants
+   *   (e.g. Ch1 Singing Blade + Road Dog) and additively stacks flags
+   *   across runs, which can prematurely unlock higher-chapter grants.
+   */
+  const handleReset = useCallback(async () => {
+    if (!chapter) return;
+    completionFiredRef.current = false;
+    resolvedGrantsRef.current  = [];
+    await resetStory();
+    const firstId = chapter.firstSceneId ?? chapter.scenes[0]?.id;
+    await startChapter(chapterId, firstId, true);
+    setSceneId(firstId);
+    setLineIndex(0);
+    setShowChoices(false);
+    setIsComplete(false);
+    setFlags({});
+    setPendingGrants([]);
+    setShowCinematicBeat(false);
+  }, [chapter, chapterId]);
+
+  // Expose handleReset for dev tooling only (never rendered in player UI)
+  // Usage: window.__storyReset?.() in browser console during UAT
+  useEffect(() => {
+    (window as any).__storyReset = handleReset;
+    return () => { delete (window as any).__storyReset; };
+  }, [handleReset]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <p className="text-stone-500 text-sm animate-pulse">Loading chapter…</p>
+      </div>
+    );
+  }
+
+  if (comingSoon) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-stone-950 via-zinc-900 to-black flex flex-col items-center justify-center p-8 text-center">
+        <div className="max-w-md">
+          <p className="text-amber-400 text-xs tracking-widest uppercase mb-4">Coming Soon</p>
+          <h1 className="text-2xl font-bold text-white mb-2">
+            Chapter {chapterId}{catalogueEntry ? `: ${catalogueEntry.title}` : ""}
+          </h1>
+          {catalogueEntry && (
+            <p className="text-stone-400 italic mb-6">{catalogueEntry.subtitle}</p>
+          )}
+          <div className="mb-8 p-4 bg-white/5 rounded border border-white/10">
+            <p className="text-stone-400 text-sm">
+              This chapter is still being written. The Sengoku chronicle continues — check back soon.
+            </p>
+          </div>
+          <button onClick={() => navigate("/story")} className="px-5 py-2 bg-stone-800 hover:bg-stone-700 text-white rounded text-sm transition">
+            ← Back to Chronicles
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !chapter) {
+    return (
+      <div className="min-h-screen bg-black flex flex-col items-center justify-center gap-4 p-6 text-center">
+        <p className="text-red-400 text-sm">{error ?? "Chapter not found."}</p>
+        <button onClick={() => navigate("/story")} className="px-4 py-2 bg-stone-800 hover:bg-stone-700 text-white text-sm rounded transition">
+          ← Back to Chronicles
+        </button>
+      </div>
+    );
+  }
+
+  if (showCinematicBeat) {
+    return (
+      <GrantCinematicBeat
+        firstGrantCategory={resolvedGrantsRef.current[0]?.grantCategory}
+        onComplete={handleCinematicComplete}
+      />
+    );
+  }
+
+  if (pendingGrants.length > 0) {
+    return (
+      <GrantRewardPopup
+        grants={pendingGrants}
+        onDismiss={() => {
+          setPendingGrants([]);
+          setIsComplete(true);
+        }}
+      />
+    );
+  }
+
+  if (isComplete) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-zinc-950 to-black flex flex-col items-center justify-center p-8 text-center">
+        <div className="max-w-lg">
+          <p className="text-amber-400 text-sm tracking-widest uppercase mb-4">Chapter Complete</p>
+          <h1 className="text-3xl font-bold text-white mb-2">{chapter.title}</h1>
+          <p className="text-stone-400 italic mb-8">{chapter.subtitle}</p>
+          <div className="mb-8 p-4 bg-white/5 rounded border border-white/10">
+            <p className="text-stone-300 text-sm mb-3">Your legacy choices:</p>
+            <FlagBar flags={flags} />
+          </div>
+          <div className="mb-8 p-4 bg-amber-900/20 rounded border border-amber-700/30 text-left">
+            <p className="text-amber-400 text-xs font-semibold uppercase tracking-widest mb-1">★ New area unlocked</p>
+            <p className="text-white text-sm font-semibold">{completionDest.label}</p>
+            <p className="text-stone-400 text-xs mt-1">
+              {chapterId === 1 && "Your Dojo is now open — review your stats and spend your first stat points."}
+              {chapterId === 2 && "The War Council opens — recruit companions and build your party."}
+              {chapterId === 3 && "The Armoury is unlocked — equip and upgrade the loot you've earned."}
+              {chapterId === 4 && "The Shrine awaits — summon new warriors with the Gacha."}
+              {chapterId === 5 && "The Menagerie is open — tame and equip spirit beasts."}
+              {chapterId === 6 && "The Stables are ready — mount your war horses."}
+              {chapterId === 7 && "The Campaign Map is open — lead your armies across Japan."}
+              {chapterId === 8 && "The chronicle is complete. Your legacy is written."}
+            </p>
+          </div>
+          <div className="flex gap-3 justify-center flex-wrap">
+            <button onClick={() => navigate("/story")} className="px-5 py-2 bg-stone-800 hover:bg-stone-700 text-white rounded text-sm transition">
+              ← Chronicles
+            </button>
+            <button onClick={() => navigate(completionDest.path)} className="px-5 py-2 bg-amber-700 hover:bg-amber-600 text-white rounded text-sm font-semibold transition">
+              → {completionDest.label}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!scene) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <p className="text-red-400 text-sm">Scene not found.</p>
+      </div>
+    );
+  }
+
+  const bgGradient    = BG_MAP[scene.backgroundKey] ?? BG_MAP.default;
+  const leftPortrait  = currentLine?.speakerSide === "left"  ? currentLine.portraitKey : null;
+  const rightPortrait = currentLine?.speakerSide === "right" ? currentLine.portraitKey : null;
+
+  if (battleReady) {
+    return <BattleGateOverlay scene={scene} bgGradient={bgGradient} onResult={handleBattleResult} />;
+  }
+
+  return (
+    <div
+      className={`min-h-screen bg-gradient-to-b ${bgGradient} flex flex-col select-none`}
+      onClick={!showChoices ? advance : undefined}
+    >
+      <div className="flex items-center justify-between px-4 py-2 bg-black/40 backdrop-blur-sm">
+        <button
+          onClick={(e) => { e.stopPropagation(); navigate("/story"); }}
+          className="text-stone-400 hover:text-white text-xs transition cursor-pointer"
+        >
+          ← Chapters
+        </button>
+        <span className="text-stone-500 text-xs tracking-widest uppercase">
+          Ch.{chapterId} · {chapter.title}
+        </span>
+        <div className="flex gap-2 items-center">
+          <FlagBar flags={flags} />
+        </div>
+      </div>
+
+      <div className="flex-1 flex items-end justify-between px-6 pb-2 pointer-events-none">
+        <div className={`transition-all duration-300 ${
+          leftPortrait ? "opacity-100 translate-y-0" : "opacity-30 translate-y-2"
+        }`}>
+          <Portrait portraitKey={leftPortrait} side="left" />
+        </div>
+        <div className={`transition-all duration-300 ${
+          rightPortrait ? "opacity-100 translate-y-0" : "opacity-30 translate-y-2"
+        }`}>
+          <Portrait portraitKey={rightPortrait} side="right" />
+        </div>
+      </div>
+
+      <div className="mx-3 mb-3 rounded bg-black/70 backdrop-blur border border-white/10 p-4 min-h-[130px] flex flex-col justify-between">
+        <div>
+          {currentLine && (
+            <>
+              {currentLine.speakerName !== "Narrator" && (
+                <p
+                  className={[
+                    "text-amber-400 text-xs font-semibold tracking-wide mb-1",
+                    currentLine.grantHintKey
+                      ? "speaker-grant-hint speaker-grant-hint-anim"
+                      : "",
+                  ].join(" ")}
+                >
+                  {currentLine.speakerName}
+                </p>
+              )}
+              <p className={`text-sm leading-relaxed ${
+                currentLine.speakerName === "Narrator" ? "text-stone-300 italic" : "text-white"
+              }`}>
+                {displayedText}
+                {isTyping && <span className="animate-pulse">▌</span>}
+              </p>
+            </>
+          )}
+        </div>
+
+        {showChoices && scene.choices.length > 0 && (
+          <div className="mt-3 flex flex-col gap-2">
+            {[...scene.choices]
+              .sort((a, b) => a.choiceOrder - b.choiceOrder)
+              .map((c, i) => (
+                <button
+                  key={i}
+                  onClick={(e) => { e.stopPropagation(); handleChoice(c); }}
+                  className="text-left text-sm text-white bg-white/5 hover:bg-white/15
+                    border border-white/10 hover:border-amber-500/50 rounded px-3 py-2
+                    transition-all duration-150 cursor-pointer"
+                >
+                  {c.choiceText}
+                </button>
+              ))}
+          </div>
+        )}
+
+        {scene.isBattleGate && isAtLastLine && !isTyping && (
+          <p className="text-right text-red-500/70 text-xs mt-2 animate-pulse">tap to enter battle ⚔</p>
+        )}
+        {!showChoices && !isTyping && !scene.isBattleGate && !scene.isChapterEnd && (
+          <p className="text-right text-stone-600 text-xs mt-2 animate-pulse">
+            {advanceError ?? "tap to continue ▸"}
+          </p>
+        )}
+        {scene.isChapterEnd && isAtLastLine && !isTyping && (
+          <p className="text-right text-amber-600/70 text-xs mt-2 animate-pulse">tap to complete chapter ★</p>
+        )}
+      </div>
+    </div>
+  );
+}

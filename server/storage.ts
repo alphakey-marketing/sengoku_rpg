@@ -1,12 +1,119 @@
 import {
   users, companions, equipment, pets, horses, transformations, campaignEvents, userQuests, cards,
+  playerStoryGrants, storyGrants,
   type User, type UpsertUser, type InsertCompanion, type InsertEquipment,
   type Companion, type Equipment, type Pet, type Horse, type Transformation,
   type InsertPet, type InsertHorse, type InsertTransformation, type CampaignEvent,
-  type UserQuest, type Card, type InsertCard
+  type UserQuest, type Card, type InsertCard,
+  type PlayerStoryGrant, type InsertPlayerStoryGrant,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and } from "drizzle-orm";
+import { eq, and, inArray } from "drizzle-orm";
+
+// ── Single source of truth for starting stats ─────────────────────────────────────────
+// These MUST mirror the defaults in schema.ts and migration 0003.
+// Used by restartGame() so a Seppuku reset lands on the same values
+// as a brand-new account.
+export const STARTING_STATS = {
+  level:     1,
+  experience: 0,
+  gold:      500,
+  rice:      100,
+  hp:        200,
+  maxHp:     200,
+  attack:    30,
+  defense:   20,
+  speed:     10,
+  str:       10,
+  agi:       10,
+  vit:       10,
+  int:       10,
+  dex:       10,
+  luk:       10,
+  stamina:   100,
+  maxStamina: 100,
+  statPoints: 48,
+} as const;
+
+// ── Single source of truth for quest definitions ─────────────────────────────────────────
+export const QUEST_DEFINITIONS: Record<string, { goal: number; rewardType: string; amount: number }> = {
+  daily_skirmish:       { goal: 5,  rewardType: "rice", amount: 50  },
+  daily_boss:           { goal: 1,  rewardType: "rice", amount: 30  },
+  daily_gacha:          { goal: 3,  rewardType: "rice", amount: 40  },
+  daily_skirmish_elite: { goal: 10, rewardType: "rice", amount: 100 },
+  daily_gacha_elite:    { goal: 5,  rewardType: "rice", amount: 80  },
+};
+
+const QUEST_POOL = Object.entries(QUEST_DEFINITIONS).map(([key, def]) => ({ key, ...def }));
+
+// ── Base equipment catalogue (seeded once per user on first login) ──────────────────
+const BASE_ITEMS: Omit<InsertEquipment, "userId">[] = [
+  { name: "Knife",           type: "Weapon",        weaponType: "dagger", rarity: "white", level: 1,  attackBonus: 17, isEquipped: false },
+  { name: "Cutter",          type: "Weapon",        weaponType: "dagger", rarity: "white", level: 1,  attackBonus: 28, isEquipped: false },
+  { name: "Main Gauche",     type: "Weapon",        weaponType: "dagger", rarity: "white", level: 1,  attackBonus: 43, isEquipped: false },
+  { name: "Sword",           type: "Weapon",        weaponType: "sword",  rarity: "white", level: 2,  attackBonus: 25, isEquipped: false },
+  { name: "Falchion",        type: "Weapon",        weaponType: "sword",  rarity: "white", level: 2,  attackBonus: 39, isEquipped: false },
+  { name: "Blade",           type: "Weapon",        weaponType: "sword",  rarity: "white", level: 2,  attackBonus: 53, isEquipped: false },
+  { name: "Spear",           type: "Weapon",        weaponType: "spear",  rarity: "white", level: 2,  attackBonus: 37, isEquipped: false },
+  { name: "Bow",             type: "Weapon",        weaponType: "bow",    rarity: "white", level: 1,  attackBonus: 15, isEquipped: false },
+  { name: "Composite Bow",   type: "Weapon",        weaponType: "bow",    rarity: "white", level: 1,  attackBonus: 29, isEquipped: false },
+  { name: "Great Bow",       type: "Weapon",        weaponType: "bow",    rarity: "white", level: 10, attackBonus: 43, isEquipped: false },
+  { name: "Rod",             type: "Weapon",        weaponType: "staff",  rarity: "white", level: 1,  attackBonus: 15, matkBonus: 15, isEquipped: false },
+  { name: "Wand",            type: "Weapon",        weaponType: "staff",  rarity: "white", level: 1,  attackBonus: 34, matkBonus: 15, isEquipped: false },
+  { name: "Cotton Shirt",    type: "Armor",         rarity: "white", level: 1,  defenseBonus: 1, isEquipped: false },
+  { name: "Jacket",          type: "Armor",         rarity: "white", level: 1,  defenseBonus: 2, isEquipped: false },
+  { name: "Adventurer Suit", type: "Armor",         rarity: "white", level: 1,  defenseBonus: 3, isEquipped: false },
+  { name: "Mantle",          type: "Armor",         rarity: "white", level: 1,  defenseBonus: 4, isEquipped: false },
+  { name: "Coat",            type: "Armor",         rarity: "white", level: 14, defenseBonus: 5, isEquipped: false },
+  { name: "Padded Armor",    type: "Armor",         rarity: "white", level: 14, defenseBonus: 6, isEquipped: false },
+  { name: "Guard",           type: "Shield",        rarity: "white", level: 1,  defenseBonus: 3, isEquipped: false },
+  { name: "Buckler",         type: "Shield",        rarity: "white", level: 14, defenseBonus: 4, isEquipped: false },
+  { name: "Hood",            type: "Garment",       rarity: "white", level: 1,  defenseBonus: 1, isEquipped: false },
+  { name: "Muffler",         type: "Garment",       rarity: "white", level: 14, defenseBonus: 2, isEquipped: false },
+  { name: "Sandals",         type: "Footgear",      rarity: "white", level: 1,  defenseBonus: 1, isEquipped: false },
+  { name: "Shoes",           type: "Footgear",      rarity: "white", level: 14, defenseBonus: 2, isEquipped: false },
+  { name: "Novice Armlet",   type: "Accessory",     rarity: "white", level: 1,  hpBonus: 10, isEquipped: false },
+  { name: "Ring",            type: "Accessory",     rarity: "white", level: 20, isEquipped: false },
+  { name: "Brooch",          type: "Accessory",     rarity: "white", level: 20, isEquipped: false },
+  { name: "Rosary",          type: "Accessory",     rarity: "white", level: 20, isEquipped: false },
+  { name: "Bandana",         type: "HeadgearUpper", rarity: "white", level: 1,  defenseBonus: 1, isEquipped: false },
+  { name: "Cap",             type: "HeadgearUpper", rarity: "white", level: 14, defenseBonus: 3, isEquipped: false },
+  { name: "Ribbon",          type: "HeadgearUpper", rarity: "white", level: 1,  defenseBonus: 1, mdefBonus: 3, isEquipped: false },
+  { name: "Glasses",         type: "HeadgearMiddle",rarity: "white", level: 1,  isEquipped: false },
+  { name: "Flu Mask",        type: "HeadgearLower", rarity: "white", level: 1,  isEquipped: false },
+];
+
+// ──────────────────────────────────────────────────────────────────────────────────
+// Story-grant view type (Part 6/10)
+// ──────────────────────────────────────────────────────────────────────────────────
+//
+// Shared between IStorage and the REST layer so callers don’t need to import
+// from grant-evaluator.ts directly.
+
+export interface StorageGrantView {
+  /** Auto-increment PK from player_story_grants */
+  id:               number;
+  /** Stable key from story_grants catalogue */
+  grantKey:         string;
+  /** Human-readable label (from story_grants) */
+  displayName:      string;
+  /** Flavour sentence shown in the Chronicle Wall and reward popup */
+  flavourText:      string | null;
+  /** "companion" | "equipment" | "pet" | "horse" */
+  grantCategory:    string;
+  /** Rarity from the payload: "uncommon" | "rare" | "epic" | "legendary" */
+  rarity:           string;
+  /** DB id of the game-table row that was created when this grant was issued */
+  gameRowId:        number | null;
+  /** True when a newer tier has superseded this grant (upgrade chain) */
+  isSuperseded:     boolean;
+  /** chapterOrder at which the grant was awarded */
+  awardedAtChapter: number;
+  /** Wall-clock timestamp of the award */
+  awardedAt:        Date;
+}
+
+// ── IStorage interface ───────────────────────────────────────────────────────────────────
 
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
@@ -18,6 +125,7 @@ export interface IStorage {
   createCompanion(companion: InsertCompanion): Promise<Companion>;
   updateCompanion(id: number, updates: Partial<Companion>): Promise<Companion>;
   deleteCompanion(id: number): Promise<void>;
+  updateParty(userId: string, companionIds: number[]): Promise<void>;
 
   getEquipment(userId: string): Promise<(Equipment & { cards: Card[] })[]>;
   createEquipment(equip: InsertEquipment): Promise<Equipment>;
@@ -49,7 +157,31 @@ export interface IStorage {
   recycleEquipment(userId: string): Promise<{ count: number; stonesGained: number }>;
 
   syncBaseEquipment(userId: string): Promise<void>;
+
+  // ── Story grant helpers (Part 6/10) ──────────────────────────────────────────────
+  //
+  // getPlayerGrants  — read-only list of all grants issued to a player,
+  //                    joined with catalogue displayName / flavourText / rarity.
+  //                    Used by GET /api/story/grants and the Chronicle Wall.
+  //
+  // awardGrant       — low-level write helper for external callers that need to
+  //                    issue a grant outside the normal evaluateGrants() path
+  //                    (e.g. admin tools, test harnesses, special events).
+  //                    Idempotent: silently returns the existing row if the
+  //                    grant has already been issued.
+
+  getPlayerGrants(userId: string): Promise<StorageGrantView[]>;
+
+  awardGrant(
+    userId:      string,
+    grantKey:    string,
+    gameRowId:   number | null,
+    chapterNum:  number,
+    flagSnapshot: Record<string, number>,
+  ): Promise<{ granted: boolean; row: PlayerStoryGrant }>;
 }
+
+// ── DatabaseStorage ─────────────────────────────────────────────────────────────────────
 
 export class DatabaseStorage implements IStorage {
   async getUser(id: string): Promise<User | undefined> {
@@ -65,64 +197,44 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
-  /**
-   * Upsert a user row on first and subsequent Supabase logins.
-   *
-   * Strategy:
-   *   1. Try INSERT. Conflict on `id` (PK) OR `auth_user_id` (unique) is
-   *      handled by updating the profile columns so the row is always
-   *      returned with .returning().
-   *   2. Because Postgres only allows one ON CONFLICT target per statement
-   *      we run two sequential upserts:
-   *        a) conflict on auth_user_id  (returning user whose PK ≠ Supabase UUID)
-   *        b) conflict on id (PK)       (new user whose id = Supabase UUID)
-   *      Whichever upsert finds/creates the row wins; we re-fetch by authUserId
-   *      to guarantee we always return the canonical row.
-   */
   async upsertUser(userData: UpsertUser): Promise<User> {
     const profileSet = {
-      email: userData.email,
-      firstName: userData.firstName,
-      lastName: userData.lastName,
+      email:           userData.email,
+      firstName:       userData.firstName,
+      lastName:        userData.lastName,
       profileImageUrl: userData.profileImageUrl,
-      updatedAt: new Date(),
+      updatedAt:       new Date(),
     };
 
-    // Pass 1: conflict on authUserId — covers returning users
     await db
       .insert(users)
       .values(userData)
       .onConflictDoUpdate({
         target: users.authUserId,
         set: profileSet,
-      })
-      .returning()
-      .catch(() => {
-        // May throw if id PK conflicts first; handled in pass 2
       });
 
-    // Pass 2: conflict on id (PK) — covers brand-new users whose UUID is the PK
-    await db
-      .insert(users)
-      .values(userData)
-      .onConflictDoUpdate({
-        target: users.id,
-        set: { ...profileSet, authUserId: userData.authUserId },
-      })
-      .returning()
-      .catch(() => {
-        // Ignore — row already exists from pass 1
-      });
+    const user =
+      (await this.getUserByAuthId(userData.authUserId!)) ??
+      (await this.getUser(userData.id!));
 
-    // Always re-fetch by authUserId to get the definitive row
-    const existing = await this.getUserByAuthId(userData.authUserId!);
-    if (existing) return existing;
+    if (!user) {
+      throw new Error(
+        `upsertUser: could not find or create user for authUserId=${userData.authUserId}`
+      );
+    }
 
-    // Absolute fallback: fetch by id
-    const byId = await this.getUser(userData.id!);
-    if (byId) return byId;
+    const existingEquipment = await db
+      .select({ id: equipment.id })
+      .from(equipment)
+      .where(eq(equipment.userId, user.id))
+      .limit(1);
 
-    throw new Error(`upsertUser: could not find or create user for authUserId=${userData.authUserId}`);
+    if (existingEquipment.length === 0) {
+      await this.syncBaseEquipment(user.id);
+    }
+
+    return user;
   }
 
   async updateUser(id: string, updates: Partial<User>): Promise<User> {
@@ -152,18 +264,45 @@ export class DatabaseStorage implements IStorage {
     await db.delete(companions).where(eq(companions.id, id));
   }
 
-  async getEquipment(userId: string): Promise<(Equipment & { cards: Card[] })[]> {
-    await this.syncBaseEquipment(userId);
-    const items = await db.select().from(equipment).where(eq(equipment.userId, userId));
-    const equipmentWithCards = await Promise.all(items.map(async (item) => {
-      try {
-        const itemCards = await db.select().from(cards).where(eq(cards.equipmentId, item.id));
-        return { ...item, cards: itemCards };
-      } catch (e) {
-        return { ...item, cards: [] };
+  async updateParty(userId: string, companionIds: number[]): Promise<void> {
+    await db.transaction(async (tx) => {
+      await tx
+        .update(companions)
+        .set({ isInParty: false })
+        .where(eq(companions.userId, userId));
+
+      if (companionIds.length > 0) {
+        await tx
+          .update(companions)
+          .set({ isInParty: true })
+          .where(
+            and(
+              eq(companions.userId, userId),
+              inArray(companions.id, companionIds)
+            )
+          );
       }
-    }));
-    return equipmentWithCards;
+    });
+  }
+
+  async getEquipment(userId: string): Promise<(Equipment & { cards: Card[] })[]> {
+    const items = await db.select().from(equipment).where(eq(equipment.userId, userId));
+    if (items.length === 0) return [];
+
+    const equipmentIds = items.map(i => i.id);
+    const allCards = await db
+      .select()
+      .from(cards)
+      .where(inArray(cards.equipmentId, equipmentIds));
+
+    const cardMap = allCards.reduce<Record<number, Card[]>>((acc, card) => {
+      if (card.equipmentId != null) {
+        (acc[card.equipmentId] ??= []).push(card);
+      }
+      return acc;
+    }, {});
+
+    return items.map(item => ({ ...item, cards: cardMap[item.id] ?? [] }));
   }
 
   async createEquipment(equip: InsertEquipment): Promise<Equipment> {
@@ -287,33 +426,36 @@ export class DatabaseStorage implements IStorage {
   async getQuests(userId: string): Promise<UserQuest[]> {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+
     const quests = await db.select().from(userQuests).where(eq(userQuests.userId, userId));
-    const isOutdated = quests.length === 0 || quests.some(q => {
-      const lu = q.lastUpdated ? new Date(q.lastUpdated) : new Date(0);
-      return lu < today;
-    });
-    if (isOutdated) {
-      const QUEST_POOL = [
-        { key: 'daily_skirmish', goal: 5, rewardType: 'rice', amount: 50 },
-        { key: 'daily_boss', goal: 1, rewardType: 'rice', amount: 30 },
-        { key: 'daily_gacha', goal: 3, rewardType: 'rice', amount: 40 },
-        { key: 'daily_skirmish_elite', goal: 10, rewardType: 'rice', amount: 100 },
-        { key: 'daily_gacha_elite', goal: 5, rewardType: 'rice', amount: 80 }
-      ];
-      const selected = [...QUEST_POOL].sort(() => 0.5 - Math.random()).slice(0, 3);
-      await db.delete(userQuests).where(eq(userQuests.userId, userId));
-      for (const q of selected) {
-        await db.insert(userQuests).values({
+
+    const isOutdated =
+      quests.length === 0 ||
+      quests.some(q => {
+        const lu = q.lastUpdated ? new Date(q.lastUpdated) : new Date(0);
+        return lu < today;
+      });
+
+    if (!isOutdated) return quests;
+
+    const selected = [...QUEST_POOL]
+      .sort(() => 0.5 - Math.random())
+      .slice(0, 3);
+
+    await db.transaction(async (tx) => {
+      await tx.delete(userQuests).where(eq(userQuests.userId, userId));
+      await tx.insert(userQuests).values(
+        selected.map(q => ({
           userId,
-          questKey: q.key,
-          progress: 0,
-          isClaimed: false,
-          lastUpdated: new Date()
-        });
-      }
-      return await db.select().from(userQuests).where(eq(userQuests.userId, userId));
-    }
-    return quests;
+          questKey:    q.key,
+          progress:    0,
+          isClaimed:   false,
+          lastUpdated: new Date(),
+        }))
+      );
+    });
+
+    return await db.select().from(userQuests).where(eq(userQuests.userId, userId));
   }
 
   async updateQuestProgress(userId: string, questKey: string, increment: number): Promise<void> {
@@ -328,68 +470,31 @@ export class DatabaseStorage implements IStorage {
 
   async claimQuest(userId: string, questKey: string): Promise<{ success: boolean; reward?: string }> {
     const quests = await this.getQuests(userId);
-    const quest = quests.find(q => q.questKey === questKey);
-    const user = await this.getUser(userId);
+    const quest  = quests.find(q => q.questKey === questKey);
+    const user   = await this.getUser(userId);
+
     if (!quest || !user || quest.isClaimed) return { success: false };
-    const QUEST_DEFS_LOOKUP: Record<string, { goal: number, rewardType: string, amount: number }> = {
-      'daily_skirmish': { goal: 5, rewardType: 'rice', amount: 50 },
-      'daily_boss': { goal: 1, rewardType: 'rice', amount: 30 },
-      'daily_gacha': { goal: 3, rewardType: 'rice', amount: 40 },
-      'daily_skirmish_elite': { goal: 10, rewardType: 'rice', amount: 100 },
-      'daily_gacha_elite': { goal: 5, rewardType: 'rice', amount: 80 }
-    };
-    const def = QUEST_DEFS_LOOKUP[questKey];
+
+    const def = QUEST_DEFINITIONS[questKey];
     if (!def || quest.progress < def.goal) return { success: false };
+
     await db.transaction(async (tx) => {
       await tx.update(userQuests).set({ isClaimed: true }).where(eq(userQuests.id, quest.id));
       const update: any = {};
       update[def.rewardType] = (user as any)[def.rewardType] + def.amount;
       await tx.update(users).set(update).where(eq(users.id, userId));
     });
+
     return { success: true, reward: `${def.amount} ${def.rewardType}` };
   }
 
   async syncBaseEquipment(userId: string): Promise<void> {
-    const existing = await db.select().from(equipment).where(eq(equipment.userId, userId));
+    const existing      = await db.select({ name: equipment.name }).from(equipment).where(eq(equipment.userId, userId));
     const existingNames = new Set(existing.map(e => e.name));
+    const toInsert      = BASE_ITEMS
+      .filter(item => !existingNames.has(item.name))
+      .map(item => ({ ...item, userId }));
 
-    const BASE_ITEMS: InsertEquipment[] = [
-      { userId, name: "Knife", type: "Weapon", weaponType: "dagger", rarity: "white", level: 1, attackBonus: 17, isEquipped: false },
-      { userId, name: "Cutter", type: "Weapon", weaponType: "dagger", rarity: "white", level: 1, attackBonus: 28, isEquipped: false },
-      { userId, name: "Main Gauche", type: "Weapon", weaponType: "dagger", rarity: "white", level: 1, attackBonus: 43, isEquipped: false },
-      { userId, name: "Sword", type: "Weapon", weaponType: "sword", rarity: "white", level: 2, attackBonus: 25, isEquipped: false },
-      { userId, name: "Falchion", type: "Weapon", weaponType: "sword", rarity: "white", level: 2, attackBonus: 39, isEquipped: false },
-      { userId, name: "Blade", type: "Weapon", weaponType: "sword", rarity: "white", level: 2, attackBonus: 53, isEquipped: false },
-      { userId, name: "Spear", type: "Weapon", weaponType: "spear", rarity: "white", level: 2, attackBonus: 37, isEquipped: false },
-      { userId, name: "Bow", type: "Weapon", weaponType: "bow", rarity: "white", level: 1, attackBonus: 15, isEquipped: false },
-      { userId, name: "Composite Bow", type: "Weapon", weaponType: "bow", rarity: "white", level: 1, attackBonus: 29, isEquipped: false },
-      { userId, name: "Great Bow", type: "Weapon", weaponType: "bow", rarity: "white", level: 10, attackBonus: 43, isEquipped: false },
-      { userId, name: "Rod", type: "Weapon", weaponType: "staff", rarity: "white", level: 1, attackBonus: 15, matkBonus: 15, isEquipped: false },
-      { userId, name: "Wand", type: "Weapon", weaponType: "staff", rarity: "white", level: 1, attackBonus: 34, matkBonus: 15, isEquipped: false },
-      { userId, name: "Cotton Shirt", type: "Armor", rarity: "white", level: 1, defenseBonus: 1, isEquipped: false },
-      { userId, name: "Jacket", type: "Armor", rarity: "white", level: 1, defenseBonus: 2, isEquipped: false },
-      { userId, name: "Adventurer Suit", type: "Armor", rarity: "white", level: 1, defenseBonus: 3, isEquipped: false },
-      { userId, name: "Mantle", type: "Armor", rarity: "white", level: 1, defenseBonus: 4, isEquipped: false },
-      { userId, name: "Coat", type: "Armor", rarity: "white", level: 14, defenseBonus: 5, isEquipped: false },
-      { userId, name: "Padded Armor", type: "Armor", rarity: "white", level: 14, defenseBonus: 6, isEquipped: false },
-      { userId, name: "Guard", type: "Shield", rarity: "white", level: 1, defenseBonus: 3, isEquipped: false },
-      { userId, name: "Buckler", type: "Shield", rarity: "white", level: 14, defenseBonus: 4, isEquipped: false },
-      { userId, name: "Hood", type: "Garment", rarity: "white", level: 1, defenseBonus: 1, isEquipped: false },
-      { userId, name: "Muffler", type: "Garment", rarity: "white", level: 14, defenseBonus: 2, isEquipped: false },
-      { userId, name: "Sandals", type: "Footgear", rarity: "white", level: 1, defenseBonus: 1, isEquipped: false },
-      { userId, name: "Shoes", type: "Footgear", rarity: "white", level: 14, defenseBonus: 2, isEquipped: false },
-      { userId, name: "Novice Armlet", type: "Accessory", rarity: "white", level: 1, hpBonus: 10, isEquipped: false },
-      { userId, name: "Ring", type: "Accessory", rarity: "white", level: 20, isEquipped: false },
-      { userId, name: "Brooch", type: "Accessory", rarity: "white", level: 20, isEquipped: false },
-      { userId, name: "Rosary", type: "Accessory", rarity: "white", level: 20, isEquipped: false },
-      { userId, name: "Bandana", type: "HeadgearUpper", rarity: "white", level: 1, defenseBonus: 1, isEquipped: false },
-      { userId, name: "Cap", type: "HeadgearUpper", rarity: "white", level: 14, defenseBonus: 3, isEquipped: false },
-      { userId, name: "Ribbon", type: "HeadgearUpper", rarity: "white", level: 1, defenseBonus: 1, mdefBonus: 3, isEquipped: false },
-      { userId, name: "Glasses", type: "HeadgearMiddle", rarity: "white", level: 1, isEquipped: false },
-      { userId, name: "Flu Mask", type: "HeadgearLower", rarity: "white", level: 1, isEquipped: false },
-    ];
-
-    const toInsert = BASE_ITEMS.filter(item => !existingNames.has(item.name));
     if (toInsert.length > 0) {
       await db.insert(equipment).values(toInsert);
     }
@@ -406,17 +511,174 @@ export class DatabaseStorage implements IStorage {
       await tx.delete(transformations).where(eq(transformations.userId, userId));
       await tx.delete(campaignEvents).where(eq(campaignEvents.userId, userId));
       await tx.update(users).set({
-        level: 1, experience: 0, gold: 0, rice: 100,
-        hp: 100, maxHp: 100, attack: 10, defense: 10, speed: 10,
-        str: 1, agi: 1, vit: 1, int: 1, dex: 1, luk: 1,
-        statPoints: 48, stamina: 100, maxStamina: 100,
-        currentLocationId: 1, activeTransformId: null, transformActiveUntil: null,
-        upgradeStones: 0, seppukuCount: (user.seppukuCount || 0) + 1,
-        permAttackBonus: 0, permDefenseBonus: 0, permSpeedBonus: 0, permHpBonus: 0,
-        updatedAt: new Date()
+        // Use STARTING_STATS so this always stays in sync with schema.ts.
+        level:             STARTING_STATS.level,
+        experience:        STARTING_STATS.experience,
+        gold:              STARTING_STATS.gold,
+        rice:              STARTING_STATS.rice,
+        hp:                STARTING_STATS.hp,
+        maxHp:             STARTING_STATS.maxHp,
+        attack:            STARTING_STATS.attack,
+        defense:           STARTING_STATS.defense,
+        speed:             STARTING_STATS.speed,
+        str:               STARTING_STATS.str,
+        agi:               STARTING_STATS.agi,
+        vit:               STARTING_STATS.vit,
+        int:               STARTING_STATS.int,
+        dex:               STARTING_STATS.dex,
+        luk:               STARTING_STATS.luk,
+        stamina:           STARTING_STATS.stamina,
+        maxStamina:        STARTING_STATS.maxStamina,
+        statPoints:        STARTING_STATS.statPoints,
+        currentLocationId: 1,
+        activeTransformId:   null,
+        transformActiveUntil: null,
+        upgradeStones:     0,
+        seppukuCount:      (user.seppukuCount || 0) + 1,
+        permAttackBonus:   0,
+        permDefenseBonus:  0,
+        permSpeedBonus:    0,
+        permHpBonus:       0,
+        updatedAt:         new Date(),
       }).where(eq(users.id, userId));
     });
     await this.syncBaseEquipment(userId);
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────────────
+  // Story grant helpers (Part 6/10)
+  // ──────────────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Return all story grants issued to a player, enriched with catalogue
+   * display metadata (displayName, flavourText, rarity) via a single JOIN.
+   *
+   * Design note: this is intentionally the ONLY method in storage.ts that
+   * performs a JOIN.  It is acceptable here because the join is read-only,
+   * always keyed by a unique index (user_id), and the result set is small
+   * (max ~26 rows per player for the full Ch3–8 run).  All writes still go
+   * through single-table helpers.
+   */
+  async getPlayerGrants(userId: string): Promise<StorageGrantView[]> {
+    const rows = await db
+      .select({
+        id:               playerStoryGrants.id,
+        grantKey:         playerStoryGrants.grantKey,
+        displayName:      storyGrants.displayName,
+        flavourText:      storyGrants.flavourText,
+        grantCategory:    playerStoryGrants.grantCategory,
+        grantPayload:     storyGrants.grantPayload,
+        gameRowId:        playerStoryGrants.gameRowId,
+        isSuperseded:     playerStoryGrants.isSuperseded,
+        awardedAtChapter: playerStoryGrants.awardedAtChapter,
+        awardedAt:        playerStoryGrants.awardedAt,
+      })
+      .from(playerStoryGrants)
+      .innerJoin(
+        storyGrants,
+        eq(playerStoryGrants.grantKey, storyGrants.grantKey),
+      )
+      .where(eq(playerStoryGrants.userId, userId));
+
+    return rows.map((r) => ({
+      id:               r.id,
+      grantKey:         r.grantKey,
+      displayName:      r.displayName,
+      flavourText:      r.flavourText ?? null,
+      grantCategory:    r.grantCategory,
+      // Extract rarity from the JSONB payload — all four payload shapes
+      // have a top-level `rarity` string field.
+      rarity:           (r.grantPayload as { rarity?: string })?.rarity ?? "common",
+      gameRowId:        r.gameRowId,
+      isSuperseded:     r.isSuperseded,
+      awardedAtChapter: r.awardedAtChapter,
+      awardedAt:        r.awardedAt,
+    }));
+  }
+
+  /**
+   * Low-level grant issuance helper.
+   *
+   * Inserts a player_story_grants row and marks the base grant as superseded
+   * when the catalogue row has an `upgradeOf` key pointing to a previously
+   * issued grant.
+   *
+   * Idempotent: if the grantKey is already owned by this user, returns
+   * { granted: false, row: existingRow } without writing anything.
+   *
+   * This method does NOT create the companion / equipment / pet / horse row.
+   * That is the caller’s responsibility (or use evaluateGrants() which handles
+   * the full flow end-to-end).
+   */
+  async awardGrant(
+    userId:      string,
+    grantKey:    string,
+    gameRowId:   number | null,
+    chapterNum:  number,
+    flagSnapshot: Record<string, number>,
+  ): Promise<{ granted: boolean; row: PlayerStoryGrant }> {
+    // Idempotency check — single indexed read.
+    const [existing] = await db
+      .select()
+      .from(playerStoryGrants)
+      .where(
+        and(
+          eq(playerStoryGrants.userId, userId),
+          eq(playerStoryGrants.grantKey, grantKey),
+        ),
+      )
+      .limit(1);
+
+    if (existing) {
+      return { granted: false, row: existing };
+    }
+
+    // Resolve grantCategory from the catalogue so the caller doesn’t need
+    // to pass it explicitly — it’s a static property of the grant definition.
+    const [catalogueRow] = await db
+      .select({
+        grantCategory: storyGrants.grantCategory,
+        upgradeOf:     storyGrants.upgradeOf,
+      })
+      .from(storyGrants)
+      .where(eq(storyGrants.grantKey, grantKey))
+      .limit(1);
+
+    if (!catalogueRow) {
+      throw new Error(
+        `awardGrant: grantKey "${grantKey}" not found in story_grants catalogue. ` +
+        `Run seedStoryGrants() first.`,
+      );
+    }
+
+    // Insert the player award row.
+    const [inserted] = await db
+      .insert(playerStoryGrants)
+      .values({
+        userId,
+        grantKey,
+        gameRowId,
+        grantCategory:    catalogueRow.grantCategory,
+        isSuperseded:     false,
+        awardedAtChapter: chapterNum,
+        flagSnapshot:     flagSnapshot as unknown as Record<string, unknown>,
+      })
+      .returning();
+
+    // Mark the base grant as superseded if this is a tier upgrade.
+    if (catalogueRow.upgradeOf) {
+      await db
+        .update(playerStoryGrants)
+        .set({ isSuperseded: true })
+        .where(
+          and(
+            eq(playerStoryGrants.userId, userId),
+            eq(playerStoryGrants.grantKey, catalogueRow.upgradeOf),
+          ),
+        );
+    }
+
+    return { granted: true, row: inserted };
   }
 }
 

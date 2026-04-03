@@ -1,0 +1,55 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1773530782343,
+      "tag": "0000_left_phil_sheldon",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1773531326651,
+      "tag": "0001_whole_skrulls",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1773618000000,
+      "tag": "0002_story_scenes_conditional_variants",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1773622260000,
+      "tag": "0003_fix_user_stat_defaults",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1773700000000,
+      "tag": "0004_dialogue_grant_hint_key",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1773838004907,
+      "tag": "0005_supreme_lady_deathstrike",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1773838431399,
+      "tag": "0006_oval_skullbuster",
+      "breakpoints": true
+    }
+  ]
+}
